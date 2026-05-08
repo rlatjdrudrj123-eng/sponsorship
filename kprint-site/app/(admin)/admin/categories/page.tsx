@@ -15,6 +15,7 @@ import {
   ArrowUp,
   ChevronDown,
   ChevronUp,
+  GripVertical,
   Palette,
   Search,
   Upload,
@@ -70,6 +71,8 @@ export default function CategoriesListPage() {
   const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
   const [seeding, setSeeding] = useState(false);
   const [seedResult, setSeedResult] = useState<SeedResult | null>(null);
+  const [draggingId, setDraggingId] = useState<string | null>(null);
+  const [dragOverId, setDragOverId] = useState<string | null>(null);
 
   useEffect(() => {
     const db = getDb();
@@ -143,6 +146,72 @@ export default function CategoriesListPage() {
     } finally {
       setSeeding(false);
     }
+  };
+
+  /** 드래그앤드롭으로 source 카테고리를 target 위치에 끼워넣고 모든 order 0..N 재할당. */
+  const reorderTo = async (sourceId: string, targetId: string) => {
+    if (sourceId === targetId) return;
+    const sorted = [...enriched].sort((a, b) => a.order - b.order);
+    const fromIdx = sorted.findIndex((c) => c.id === sourceId);
+    const toIdx = sorted.findIndex((c) => c.id === targetId);
+    if (fromIdx < 0 || toIdx < 0) return;
+    const [moved] = sorted.splice(fromIdx, 1);
+    sorted.splice(toIdx, 0, moved);
+
+    try {
+      // 변경된 카테고리만 batch update (500개 한계 안전 — 카테고리는 보통 < 100)
+      const now = Timestamp.fromDate(new Date());
+      const batch = writeBatch(getDb());
+      let changes = 0;
+      sorted.forEach((c, i) => {
+        if (c.order !== i) {
+          batch.update(doc(getDb(), "categories", c.id), {
+            order: i,
+            updatedAt: now,
+          });
+          changes++;
+        }
+      });
+      if (changes > 0) await batch.commit();
+    } catch (e) {
+      alert(`순서 일괄 갱신 실패: ${e instanceof Error ? e.message : String(e)}`);
+    }
+  };
+
+  const handleDragStart = (e: React.DragEvent, catId: string) => {
+    setDraggingId(catId);
+    e.dataTransfer.effectAllowed = "move";
+    // Firefox 호환: 데이터 설정 필수
+    try {
+      e.dataTransfer.setData("text/plain", catId);
+    } catch {
+      /* ignore */
+    }
+  };
+
+  const handleDragEnd = () => {
+    setDraggingId(null);
+    setDragOverId(null);
+  };
+
+  const handleDragOver = (e: React.DragEvent, catId: string) => {
+    if (!draggingId || draggingId === catId) return;
+    e.preventDefault();
+    e.dataTransfer.dropEffect = "move";
+    if (dragOverId !== catId) setDragOverId(catId);
+  };
+
+  const handleDragLeave = (catId: string) => {
+    if (dragOverId === catId) setDragOverId(null);
+  };
+
+  const handleDrop = async (e: React.DragEvent, targetId: string) => {
+    e.preventDefault();
+    const sourceId = draggingId;
+    setDraggingId(null);
+    setDragOverId(null);
+    if (!sourceId) return;
+    await reorderTo(sourceId, targetId);
   };
 
   const moveOrder = async (cat: EnrichedCategory, dir: -1 | 1) => {
@@ -324,11 +393,17 @@ export default function CategoriesListPage() {
         />
       </div>
 
+      <div className="text-[11px] text-ink-500 -mb-2 px-1 flex items-center gap-1.5">
+        <GripVertical className="w-3 h-3" />
+        행을 잡고 드래그해서 순서 변경 — 또는 ▲▼ 버튼으로 한 칸씩
+      </div>
+
       <div className="bg-white border border-ink-100 rounded-card overflow-hidden">
         <table className="w-full text-sm">
           <thead>
             <tr className="bg-ink-50 text-[11px] uppercase tracking-wide text-ink-700">
-              <th className="text-left px-4 py-2.5 font-semibold">{sortHeader("code", "코드")}</th>
+              <th className="w-7"></th>
+              <th className="text-left px-3 py-2.5 font-semibold">{sortHeader("code", "코드")}</th>
               <th className="text-left px-4 py-2.5 font-semibold">{sortHeader("name", "이름")}</th>
               <th className="text-left px-4 py-2.5 font-semibold">채널</th>
               <th className="text-left px-4 py-2.5 font-semibold">유형</th>
@@ -341,14 +416,14 @@ export default function CategoriesListPage() {
           <tbody>
             {loading && (
               <tr>
-                <td colSpan={8} className="px-4 py-12 text-center text-sm text-ink-500">
+                <td colSpan={9} className="px-4 py-12 text-center text-sm text-ink-500">
                   불러오는 중…
                 </td>
               </tr>
             )}
             {!loading && filtered.length === 0 && categories.length === 0 && (
               <tr>
-                <td colSpan={8} className="px-4 py-12 text-center text-sm text-ink-500">
+                <td colSpan={9} className="px-4 py-12 text-center text-sm text-ink-500">
                   아직 카테고리가 없습니다.{" "}
                   <Link href="/admin/import" className="text-mint-700 font-semibold hover:underline">
                     엑셀 업로드부터 시작하세요 →
@@ -358,7 +433,7 @@ export default function CategoriesListPage() {
             )}
             {!loading && filtered.length === 0 && categories.length > 0 && (
               <tr>
-                <td colSpan={8} className="px-4 py-12 text-center text-sm text-ink-500">
+                <td colSpan={9} className="px-4 py-12 text-center text-sm text-ink-500">
                   필터 조건에 맞는 카테고리가 없습니다.
                 </td>
               </tr>
@@ -366,13 +441,29 @@ export default function CategoriesListPage() {
             {filtered.map((c) => (
               <tr
                 key={c.id}
-                className="border-t border-ink-100 hover:bg-ink-50 cursor-pointer"
+                draggable
+                onDragStart={(e) => handleDragStart(e, c.id)}
+                onDragEnd={handleDragEnd}
+                onDragOver={(e) => handleDragOver(e, c.id)}
+                onDragLeave={() => handleDragLeave(c.id)}
+                onDrop={(e) => handleDrop(e, c.id)}
+                className={
+                  "border-t border-ink-100 cursor-pointer transition-colors " +
+                  (draggingId === c.id
+                    ? "opacity-40 "
+                    : dragOverId === c.id
+                      ? "bg-mint-50 outline outline-2 outline-mint-500 "
+                      : "hover:bg-ink-50 ")
+                }
                 onClick={(e) => {
-                  // 토글/링크 클릭은 별도로 처리되니까 행 클릭으로만 이동
+                  if (draggingId) return;
                   if ((e.target as HTMLElement).closest("button,a,input")) return;
                   window.location.href = `/admin/categories/${c.id}`;
                 }}
               >
+                <td className="w-7 text-ink-300 hover:text-ink-500 cursor-grab active:cursor-grabbing">
+                  <GripVertical className="w-3.5 h-3.5 mx-auto" />
+                </td>
                 <td className="px-4 py-2.5 font-mono text-ink-900 text-[12px]">{c.code}</td>
                 <td className="px-4 py-2.5">
                   <Link href={`/admin/categories/${c.id}`} className="text-ink-900 font-semibold hover:text-mint-700">
