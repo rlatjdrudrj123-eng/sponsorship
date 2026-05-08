@@ -245,6 +245,116 @@ export type Taxonomy = {
   channels: Array<{ id: Channel; label: string }>;
 };
 
+// ============= EVENT (다년도/다행사) =============
+export type Event = {
+  id: string;            // doc id, e.g. "kprint-2026"
+  name: string;          // "K-PRINT 2026"
+  shortName: string;     // "K-PRINT"
+  year: number;          // 2026
+  isActive: boolean;     // 사이드바 기본 선택 후보
+  order: number;
+  lastYearTotal?: number;  // 작년 합계 (협찬제외, KRW)
+  note?: string;
+  createdAt: Timestamp;
+  updatedAt: Timestamp;
+};
+
+// ============= SPONSOR =============
+export type SponsorStatus = "in_progress" | "reviewing" | "declined" | "in_kind";
+// in_progress: 진행중 / reviewing: 검토중 / declined: 진행X / in_kind: 참가업체X(협찬, 합계 제외)
+
+export type SponsorContact = {
+  name: string;
+  email?: string;
+  phone?: string;
+  role?: string;
+};
+
+export type SponsorItem = {
+  label: string;          // 자유 텍스트 (예: "옥외광고 패키지", "C홀 천장배너 1")
+  slotId?: string;        // 옵션 — 슬롯 연결
+  categoryId?: string;    // 옵션 — 카테고리 연결
+  packageId?: string;     // 옵션 — 패키지 연결
+  note?: string;
+};
+
+export type DesignItem = {
+  label: string;          // "천장배너", "쇼가이드", "인스타그램카드뉴스"
+  deadline?: string;      // 자유 텍스트 (예: "2026-03-04", "3월 4일")
+  status?: "pending" | "received" | "done";
+  note?: string;
+};
+
+export type Sponsor = {
+  id: string;
+  eventId: string;        // FK to events
+  companyName: string;
+
+  amount: number;         // 비용
+  currency: "KRW" | "USD";
+  amountNote?: string;    // "(할인가)" 같은 메모
+
+  items: SponsorItem[];
+
+  benefits: {
+    eventNotice: boolean; // 이벤트 안내
+    topPin: boolean;      // 혜택1 상위고정
+    badge: boolean;       // 혜택2 뱃지표기
+    logoBanner: boolean;  // 혜택3 로고/배너
+  };
+
+  bannerType?: string;    // "참가업체 배너" / "로고" / "전시품 배너" / "해당없음(마감, 2부스)"
+  bannerNote?: string;    // 부가 메모 (예: "- 준현조")
+
+  designItems: DesignItem[];
+  contacts: SponsorContact[];
+
+  status: SponsorStatus;
+  notes?: string;
+
+  inquiryId?: string;     // 파이프라인 — 원본 문의
+
+  createdAt: Timestamp;
+  updatedAt: Timestamp;
+};
+
+// ============= QUOTE SETTINGS (사무국 정보 + 견적서 기본값) =============
+export type QuoteSettings = {
+  // 사무국(발행자) 정보
+  issuer: {
+    companyName: string;       // ㈜한국이앤엑스
+    businessNumber: string;    // 120-81-813111
+    representative: string;    // 김정조
+    address: string;           // 서울시 강남구 영동대로 511 트레이드타워 2001호
+    businessType: string;      // 서비스
+    industry: string;          // 전시회장
+    phone: string;             // 02)551-0102
+    fax: string;               // 02)551-0103
+    contactDept: string;       // 전시사업부
+    contactName: string;       // 조준현 대리
+  };
+  // 입금 계좌
+  bank: {
+    bankName: string;          // 우리은행
+    accountNumber: string;     // 424-04-132799
+    accountHolder: string;     // (주)한국이앤엑스
+  };
+  // 행사 안내 (견적서 본문 상단)
+  eventSubtitle: string;       // 제41회 국제의료기기+병원설비전시회
+  eventIntro: string;          // "오는 2026년 3월 19일부터 22일까지 서울 COEX..."
+  // 일련번호 prefix (예: KMS26-)
+  serialPrefix: string;
+  serialNextNumber: number;    // 다음 발급 번호 (1부터)
+  // 지불조건/추가제공 기본값
+  defaultPaymentTerms: string; // "전액 현금 완납"
+  defaultBenefitItems: Array<{ label: string; note?: string }>; // 추가제공 기본 4종
+  // 푸터 슬로건
+  footerSlogan: string;        // "한국의 전시문화를 선도하는 ㈜한국이앤엑스가 되겠습니다."
+  // 로고 이미지 (선택)
+  logoUrl?: string;
+  logoStoragePath?: string;
+};
+
 // ============= IMPORT HISTORY =============
 export type ImportHistory = {
   id: string;

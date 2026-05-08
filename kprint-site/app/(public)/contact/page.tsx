@@ -129,13 +129,13 @@ export default function ContactPage() {
             className="inline-flex items-center gap-1.5 text-[12px] text-ink-500 hover:text-ink-900 mb-3"
           >
             <ArrowLeft className="w-3.5 h-3.5" />
-            카트로
+            관심 항목으로
           </Link>
           <h1 className="text-[28px] md:text-[40px] font-bold tracking-tight leading-tight">
             문의하기
           </h1>
           <p className="text-[13px] text-ink-700 mt-2">
-            담은 항목과 연락처를 함께 보내주세요. 1영업일 내 회신드립니다.
+            관심 표시한 항목과 함께 보내주시면 사무국에서 1영업일 내 정식 견적을 회신드립니다.
           </p>
         </header>
 
@@ -205,19 +205,19 @@ export default function ContactPage() {
             </div>
           </form>
 
-          {/* Cart sidebar */}
+          {/* Wishlist sidebar */}
           <aside className="bg-[#fafaf7] border border-ink-100 rounded-card p-5 lg:sticky lg:top-6">
             <div className="text-[10px] uppercase tracking-[0.2em] text-mint-700 font-bold mb-3">
-              첨부될 카트 ({items.length}건)
+              첨부될 관심 항목 ({items.length}건)
             </div>
             {!hydrated ? (
               <div className="text-[12px] text-ink-500">불러오는 중…</div>
             ) : items.length === 0 ? (
               <div className="text-[12px] text-ink-500 py-2">
-                카트가 비어있어도 문의는 보낼 수 있어요.
+                관심 항목이 없어도 문의는 보낼 수 있어요.
               </div>
             ) : (
-              <ul className="space-y-2.5 mb-4">
+              <ul className="space-y-2.5">
                 {items.map((item) => {
                   if (item.type === "slot") {
                     const cat = categories.get(item.categoryId);
@@ -236,14 +236,11 @@ export default function ContactPage() {
                             {sub?.name.ko ? ` · ${sub.name.ko}` : ""}
                           </div>
                         </div>
-                        <div className="text-ink-700 font-mono shrink-0">
-                          {item.price.toLocaleString()}
-                        </div>
                         <button
                           type="button"
                           onClick={() => removeSlot(item.slotId)}
                           className="w-5 h-5 text-ink-300 hover:text-red-700 shrink-0"
-                          aria-label="제거"
+                          aria-label="관심 해제"
                         >
                           <X className="w-3.5 h-3.5" />
                         </button>
@@ -264,14 +261,11 @@ export default function ContactPage() {
                           {item.code} · 패키지
                         </div>
                       </div>
-                      <div className="text-ink-700 font-mono shrink-0">
-                        {item.price.toLocaleString()}
-                      </div>
                       <button
                         type="button"
                         onClick={() => removePackage(item.packageId)}
                         className="w-5 h-5 text-ink-300 hover:text-red-700 shrink-0"
-                        aria-label="제거"
+                        aria-label="관심 해제"
                       >
                         <X className="w-3.5 h-3.5" />
                       </button>
@@ -280,11 +274,9 @@ export default function ContactPage() {
                 })}
               </ul>
             )}
-            <div className="space-y-1 pt-3 border-t border-ink-100 text-[12px]">
-              <RowSmall label="소계" value={subtotal} />
-              <RowSmall label="VAT" value={vat} />
-              <RowSmall label="합계" value={total} accent />
-            </div>
+            <p className="mt-4 pt-3 border-t border-ink-100 text-[11px] text-ink-500 leading-relaxed">
+              정식 견적 금액·VAT은 사무국에서 검토 후 회신드립니다.
+            </p>
           </aside>
         </div>
       </main>
@@ -316,28 +308,3 @@ function Field({
   );
 }
 
-function RowSmall({
-  label,
-  value,
-  accent,
-}: {
-  label: string;
-  value: number;
-  accent?: boolean;
-}) {
-  return (
-    <div className="flex items-baseline justify-between">
-      <span className={accent ? "font-bold text-ink-900" : "text-ink-500"}>
-        {label}
-      </span>
-      <span
-        className={
-          "font-mono " +
-          (accent ? "text-[15px] font-bold text-mint-700" : "text-ink-700")
-        }
-      >
-        {value.toLocaleString()}원
-      </span>
-    </div>
-  );
-}

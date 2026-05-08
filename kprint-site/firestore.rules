@@ -38,6 +38,22 @@ service cloud.firestore {
       allow read, write: if isAdmin();
     }
 
+    // 행사 (이벤트/에디션) — 어드민 전용
+    match /events/{id} {
+      allow read, write: if isAdmin();
+    }
+
+    // 스폰서 — 어드민 전용 (내부 트래킹)
+    match /sponsors/{id} {
+      allow read, write: if isAdmin();
+    }
+
+    // 견적서 설정 (사무국 정보, 계좌, 기본값) — 공개 읽기 가능, 쓰기 어드민
+    match /quoteSettings/{id} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
     function isAdmin() {
       return request.auth != null
         && request.auth.token.email in ['admin@kprint.kr']; // 실제 이메일로 교체

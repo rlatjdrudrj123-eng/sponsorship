@@ -1,5 +1,6 @@
 "use client";
 
+import { Check } from "lucide-react";
 import { useCartStore } from "@/lib/cart/cartStore";
 import type { FloorImage, Slot, Subcategory } from "@/lib/types";
 
@@ -12,7 +13,8 @@ type Props = {
 
 export function PinOverlay({ floorImage, categoryId, subcategory, slots }: Props) {
   const hasSlot = useCartStore((s) => s.hasSlot);
-  const toggleSlot = useCartStore((s) => s.toggleSlot);
+  const addSlot = useCartStore((s) => s.addSlot);
+  const removeSlot = useCartStore((s) => s.removeSlot);
   const hydrated = useCartStore((s) => s.hasHydrated);
 
   const slotById = new Map(slots.map((s) => [s.id, s]));
@@ -36,41 +38,49 @@ export function PinOverlay({ floorImage, categoryId, subcategory, slots }: Props
           const num = slotIndexMap.get(pin.slotId) ?? "?";
           const isSold = slot.status !== "available";
           const inCart = hydrated && hasSlot(slot.id);
+          const onClickPin = (e: React.MouseEvent) => {
+            e.preventDefault();
+            e.stopPropagation();
+            if (isSold) return;
+            if (hasSlot(slot.id)) {
+              removeSlot(slot.id);
+            } else {
+              addSlot({
+                type: "slot",
+                slotId: slot.id,
+                categoryId,
+                subcategoryId: subcategory.id,
+                code: slot.code,
+                price: subcategory.priceKRW,
+              });
+            }
+          };
           return (
             <button
               key={pin.slotId}
               type="button"
               disabled={isSold}
-              onClick={() =>
-                !isSold &&
-                toggleSlot({
-                  type: "slot",
-                  slotId: slot.id,
-                  categoryId,
-                  subcategoryId: subcategory.id,
-                  code: slot.code,
-                  price: subcategory.priceKRW,
-                })
-              }
+              aria-pressed={inCart}
+              onClick={onClickPin}
               title={`${slot.code}${pin.note ? ` · ${pin.note}` : ""}`}
               className={
-                "absolute w-7 h-7 rounded-full border-[3px] grid place-items-center text-[11px] font-bold shadow-lg transition-transform group " +
+                "absolute w-8 h-8 rounded-full border-[3px] grid place-items-center text-[11px] font-bold shadow-lg transition-all group " +
                 (isSold
                   ? "bg-ink-300 text-white border-white opacity-60 cursor-not-allowed"
                   : inCart
-                    ? "bg-ink-900 text-mint-500 border-mint-500 scale-110"
+                    ? "bg-ink-900 text-mint-500 border-mint-500 ring-4 ring-mint-200"
                     : "bg-mint-500 text-ink-900 border-white hover:scale-110 cursor-pointer")
               }
               style={{
                 left: `${pin.x}%`,
                 top: `${pin.y}%`,
-                transform: `translate(-50%, -50%)${inCart ? " scale(1.1)" : ""}`,
+                transform: `translate(-50%, -50%)${inCart ? " scale(1.15)" : ""}`,
               }}
             >
-              {num}
+              {inCart ? <Check className="w-4 h-4" strokeWidth={3} /> : num}
               <span className="absolute left-1/2 -translate-x-1/2 -top-7 px-1.5 py-0.5 bg-ink-900 text-white text-[10px] rounded font-mono whitespace-nowrap opacity-0 group-hover:opacity-100 pointer-events-none">
                 {slot.code}
-                {pin.note && ` · ${pin.note}`}
+                {inCart ? " · 관심 표시됨" : pin.note ? ` · ${pin.note}` : ""}
               </span>
             </button>
           );

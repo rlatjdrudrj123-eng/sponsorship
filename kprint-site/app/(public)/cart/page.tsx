@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { collection, doc, getDoc, getDocs } from "firebase/firestore";
-import { ArrowLeft, ArrowRight, Trash2, X } from "lucide-react";
+import { ArrowLeft, ArrowRight, Bookmark, FileDown, Trash2, X } from "lucide-react";
 import { getDb } from "@/lib/firebase/firestore";
 import { useCartStore } from "@/lib/cart/cartStore";
 import type {
@@ -16,7 +16,6 @@ import { Footer } from "@/components/public/Footer";
 
 export default function CartPage() {
   const items = useCartStore((s) => s.items);
-  const subtotal = useCartStore((s) => s.subtotal());
   const removeSlot = useCartStore((s) => s.removeSlot);
   const removePackage = useCartStore((s) => s.removePackage);
   const clear = useCartStore((s) => s.clear);
@@ -28,6 +27,9 @@ export default function CartPage() {
   );
   const [packages, setPackages] = useState<Map<string, Package>>(new Map());
   const [settings, setSettings] = useState<SiteSettings | null>(null);
+
+  // 선택된 항목 (PDF 출력용) — 기본 전체 선택
+  const [selected, setSelected] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     (async () => {
@@ -62,8 +64,32 @@ export default function CartPage() {
     })();
   }, []);
 
-  const vat = useMemo(() => Math.round(subtotal * 0.1), [subtotal]);
-  const total = subtotal + vat;
+  // 카트 변경 시 선택을 전체로 동기화
+  useEffect(() => {
+    setSelected(new Set(items.map(itemKey)));
+  }, [items]);
+
+  const allSelected = items.length > 0 && selected.size === items.length;
+  const noneSelected = selected.size === 0;
+
+  const toggleSelect = (key: string) => {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
+  };
+  const toggleAll = () => {
+    if (allSelected) setSelected(new Set());
+    else setSelected(new Set(items.map(itemKey)));
+  };
+
+  const printPdf = () => {
+    if (noneSelected) return;
+    const ids = Array.from(selected).join(",");
+    window.open(`/cart/print?ids=${encodeURIComponent(ids)}`, "_blank");
+  };
 
   return (
     <>
@@ -76,34 +102,64 @@ export default function CartPage() {
             <ArrowLeft className="w-3.5 h-3.5" />
             전체 스폰서십
           </Link>
-          <h1 className="text-[28px] md:text-[40px] font-bold tracking-tight leading-tight">
-            견적 카트
+          <h1 className="text-[28px] md:text-[40px] font-bold tracking-tight leading-tight flex items-center gap-3">
+            <Bookmark className="w-7 h-7 text-mint-700" fill="currentColor" />
+            관심 항목
           </h1>
           <p className="text-[13px] text-ink-700 mt-2">
-            담은 항목으로 한 번에 문의하세요. 사무국이 1영업일 내 회신합니다.
+            관심 표시한 항목들입니다. 사무국에 문의하시면 1영업일 내 정식 견적을 회신드려요.
           </p>
         </header>
 
         <div className="max-w-4xl mx-auto px-6 md:px-12 py-10">
           {!hydrated ? (
-            <div className="text-center text-sm text-ink-500 py-16">
-              불러오는 중…
-            </div>
+            <div className="text-center text-sm text-ink-500 py-16">불러오는 중…</div>
           ) : items.length === 0 ? (
             <div className="bg-ink-50 rounded-card py-16 text-center">
-              <p className="text-[15px] text-ink-700">장바구니가 비어있어요.</p>
+              <p className="text-[15px] text-ink-700">
+                아직 관심 표시한 항목이 없습니다.
+              </p>
               <Link
                 href="/sponsorships"
                 className="mt-4 inline-block px-5 py-2.5 rounded-btn bg-mint-500 text-ink-900 font-semibold hover:bg-mint-700 hover:text-white"
               >
-                둘러보러 가기 →
+                스폰서십 둘러보기 →
               </Link>
             </div>
           ) : (
             <>
+              {/* 선택 / PDF 출력 */}
+              <div className="flex items-center justify-between gap-3 mb-3 flex-wrap">
+                <label className="flex items-center gap-2 text-[12.5px] text-ink-700 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={allSelected}
+                    onChange={toggleAll}
+                    className="accent-mint-500 w-4 h-4"
+                  />
+                  <span>
+                    전체 선택{" "}
+                    <span className="text-ink-500">
+                      ({selected.size}/{items.length})
+                    </span>
+                  </span>
+                </label>
+                <button
+                  type="button"
+                  onClick={printPdf}
+                  disabled={noneSelected}
+                  className="px-3.5 py-2 rounded-btn border border-ink-100 text-[12.5px] font-semibold text-ink-900 hover:bg-ink-50 disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1.5"
+                >
+                  <FileDown className="w-3.5 h-3.5" />
+                  선택 항목 PDF로 저장
+                </button>
+              </div>
+
               <div className="bg-white border border-ink-100 rounded-card overflow-hidden">
                 <ul>
                   {items.map((item, i) => {
+                    const key = itemKey(item);
+                    const checked = selected.has(key);
                     if (item.type === "slot") {
                       const cat = categories.get(item.categoryId);
                       const sub = subcategories.get(item.subcategoryId);
@@ -115,10 +171,16 @@ export default function CartPage() {
                             (i > 0 ? "border-t border-ink-100" : "")
                           }
                         >
+                          <input
+                            type="checkbox"
+                            checked={checked}
+                            onChange={() => toggleSelect(key)}
+                            className="accent-mint-500 w-4 h-4 shrink-0"
+                          />
                           <div className="w-1 h-10 bg-mint-500 rounded-full shrink-0" />
                           <div className="flex-1 min-w-0">
                             <div className="text-[10px] uppercase tracking-wider text-mint-700 font-semibold">
-                              슬롯
+                              스폰서십
                             </div>
                             <div className="font-bold text-[14px] text-ink-900">
                               {cat?.name.ko ?? "(삭제됨)"}
@@ -132,14 +194,11 @@ export default function CartPage() {
                               {item.code}
                             </div>
                           </div>
-                          <div className="text-[14px] font-bold font-mono shrink-0">
-                            {item.price.toLocaleString()}원
-                          </div>
                           <button
                             type="button"
                             onClick={() => removeSlot(item.slotId)}
                             className="w-8 h-8 grid place-items-center text-ink-400 hover:text-red-700 hover:bg-red-50 rounded shrink-0"
-                            title="제거"
+                            title="관심 해제"
                           >
                             <X className="w-4 h-4" />
                           </button>
@@ -155,10 +214,17 @@ export default function CartPage() {
                           (i > 0 ? "border-t border-ink-100" : "")
                         }
                       >
+                        <input
+                          type="checkbox"
+                          checked={checked}
+                          onChange={() => toggleSelect(key)}
+                          className="accent-mint-500 w-4 h-4 shrink-0"
+                        />
                         <div className="w-1 h-10 bg-ink-900 rounded-full shrink-0" />
                         <div className="flex-1 min-w-0">
                           <div className="text-[10px] uppercase tracking-wider text-ink-700 font-semibold">
-                            패키지 · {pkg?.tier === "signature" ? "시그니처" : "스탠다드"}
+                            패키지
+                            {pkg?.tier === "signature" ? " · 시그니처" : pkg?.tier === "standard" ? " · 스탠다드" : ""}
                           </div>
                           <div className="font-bold text-[14px] text-ink-900">
                             {pkg?.name.ko ?? "(삭제됨)"}
@@ -167,13 +233,11 @@ export default function CartPage() {
                             {item.code}
                           </div>
                         </div>
-                        <div className="text-[14px] font-bold font-mono shrink-0">
-                          {item.price.toLocaleString()}원
-                        </div>
                         <button
                           type="button"
                           onClick={() => removePackage(item.packageId)}
                           className="w-8 h-8 grid place-items-center text-ink-400 hover:text-red-700 hover:bg-red-50 rounded shrink-0"
+                          title="관심 해제"
                         >
                           <X className="w-4 h-4" />
                         </button>
@@ -183,19 +247,11 @@ export default function CartPage() {
                 </ul>
               </div>
 
-              <div className="mt-6 max-w-md ml-auto bg-[#fafaf7] border border-ink-100 rounded-card p-5">
-                <Row label="소계" value={subtotal} />
-                <Row label="VAT (10%)" value={vat} />
-                <div className="mt-3 pt-3 border-t border-ink-100">
-                  <Row label="합계" value={total} accent />
-                </div>
-              </div>
-
               <div className="mt-6 flex items-center justify-between gap-3 flex-wrap">
                 <button
                   type="button"
                   onClick={() => {
-                    if (confirm("카트를 모두 비울까요?")) clear();
+                    if (confirm("관심 항목을 모두 비울까요?")) clear();
                   }}
                   className="text-[13px] text-ink-500 hover:text-red-700 flex items-center gap-1.5"
                 >
@@ -206,10 +262,14 @@ export default function CartPage() {
                   href="/contact"
                   className="px-5 py-3 rounded-btn bg-mint-500 text-ink-900 font-semibold hover:bg-mint-700 hover:text-white flex items-center gap-2"
                 >
-                  문의하기
+                  관심 항목으로 문의 보내기
                   <ArrowRight className="w-4 h-4" />
                 </Link>
               </div>
+
+              <p className="mt-4 text-[11.5px] text-ink-500 leading-relaxed">
+                * 정식 견적은 사무국 검토 후 회신드립니다. 가격은 협의 단계에 따라 달라질 수 있어요.
+              </p>
             </>
           )}
         </div>
@@ -219,34 +279,6 @@ export default function CartPage() {
   );
 }
 
-function Row({
-  label,
-  value,
-  accent,
-}: {
-  label: string;
-  value: number;
-  accent?: boolean;
-}) {
-  return (
-    <div className="flex items-baseline justify-between gap-3 py-1">
-      <span
-        className={
-          "text-[13px] " + (accent ? "text-ink-900 font-bold" : "text-ink-500")
-        }
-      >
-        {label}
-      </span>
-      <span
-        className={
-          "font-mono " +
-          (accent
-            ? "text-[20px] font-bold text-mint-700"
-            : "text-[13px] text-ink-700")
-        }
-      >
-        {value.toLocaleString()}원
-      </span>
-    </div>
-  );
+function itemKey(item: { type: "slot"; slotId: string } | { type: "package"; packageId: string }): string {
+  return item.type === "slot" ? `slot:${item.slotId}` : `pkg:${item.packageId}`;
 }

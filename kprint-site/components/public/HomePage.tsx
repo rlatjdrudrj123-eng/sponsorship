@@ -41,7 +41,7 @@ const BENEFITS: Array<{ title: string; desc: string }> = [
   },
   {
     title: "결정 빠른 한 채널",
-    desc: "구좌 단위 견적 카트 — 둘러보고, 담고, 1영업일 회신. 복잡한 PT 자료 X.",
+    desc: "구좌 단위로 둘러보고 관심 표시 → 사무국에서 1영업일 내 정식 견적 회신.",
   },
 ];
 

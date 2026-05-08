@@ -25,6 +25,7 @@ import { getDb } from "@/lib/firebase/firestore";
 import type {
   Category,
   Channel,
+  Package,
   SiteSettings,
   Slot,
   Subcategory,
@@ -39,6 +40,13 @@ const CHANNEL_LABELS: Record<Channel | "all", string> = {
   online: "온라인",
   package: "패키지",
 };
+
+// 사이드바 필터에서는 패키지를 별도 섹션으로 분리했으므로 채널 옵션에서 제외
+const CHANNEL_FILTER_OPTIONS: Array<{ id: Channel | "all"; label: string }> = [
+  { id: "all", label: "전체" },
+  { id: "offline", label: "오프라인" },
+  { id: "online", label: "온라인" },
+];
 
 // 광고 목적 태그는 taxonomy/main 도큐먼트에서 동적으로 로드 (kind === 'purpose')
 
@@ -82,6 +90,7 @@ export default function SponsorshipsPage() {
   const [categories, setCategories] = useState<Category[]>([]);
   const [subcategories, setSubcategories] = useState<Subcategory[]>([]);
   const [slots, setSlots] = useState<Slot[]>([]);
+  const [packages, setPackages] = useState<Package[]>([]);
   const [settings, setSettings] = useState<SiteSettings | null>(null);
 
   const [purposeTags, setPurposeTags] = useState<Tag[]>([]);
@@ -97,22 +106,31 @@ export default function SponsorshipsPage() {
     (async () => {
       try {
         const db = getDb();
-        const [catSnap, subSnap, slotSnap, settingsSnap, taxSnap] = await Promise.all([
+        const [catSnap, subSnap, slotSnap, pkgSnap, settingsSnap, taxSnap] = await Promise.all([
           getDocs(
             query(collection(db, "categories"), where("isPublished", "==", true))
           ),
           getDocs(collection(db, "subcategories")),
           getDocs(collection(db, "slots")),
+          getDocs(
+            query(collection(db, "packages"), where("isPublished", "==", true))
+          ),
           getDoc(doc(db, "siteSettings", "main")),
           getDoc(doc(db, "taxonomy", "main")),
         ]);
         setCategories(
-          catSnap.docs.map((d) => ({ ...(d.data() as Category), id: d.id }))
+          // type='package'인 카테고리는 통합 후 별도 섹션에 표시되므로 그리드에서 제외
+          catSnap.docs
+            .map((d) => ({ ...(d.data() as Category), id: d.id }))
+            .filter((c) => c.type !== "package")
         );
         setSubcategories(
           subSnap.docs.map((d) => ({ ...(d.data() as Subcategory), id: d.id }))
         );
         setSlots(slotSnap.docs.map((d) => ({ ...(d.data() as Slot), id: d.id })));
+        setPackages(
+          pkgSnap.docs.map((d) => ({ ...(d.data() as Package), id: d.id }))
+        );
         if (settingsSnap.exists()) setSettings(settingsSnap.data() as SiteSettings);
         if (taxSnap.exists()) {
           const tax = taxSnap.data() as Taxonomy;
@@ -230,7 +248,7 @@ export default function SponsorshipsPage() {
                 전체 스폰서십
               </h1>
               <p className="text-[13px] text-ink-700 mt-2">
-                구좌 단위로 둘러보고, 카트에 담은 뒤, 한 번에 문의하세요.
+                구좌 단위로 둘러보고 관심 표시한 뒤, 사무국에 한 번에 문의하세요.
               </p>
             </header>
 
@@ -289,6 +307,11 @@ export default function SponsorshipsPage() {
                   <ViewModeToggle viewMode={viewMode} setViewMode={setViewMode} />
                 </div>
 
+                {/* 패키지 전용 섹션 (필터 미적용 — 항상 노출) */}
+                {packages.length > 0 && !hasActiveFilter && (
+                  <PackageSection packages={packages} />
+                )}
+
                 {filtered.length === 0 ? (
                   <div className="bg-ink-50 rounded-card py-16 text-center text-sm text-ink-500">
                     조건에 맞는 항목이 없어요.
@@ -303,7 +326,17 @@ export default function SponsorshipsPage() {
                     )}
                   </div>
                 ) : (
-                  <CardGrid items={filtered} />
+                  <>
+                    {packages.length > 0 && !hasActiveFilter && (
+                      <div className="mt-8 mb-4 flex items-center gap-3">
+                        <span className="text-[10px] uppercase tracking-[0.2em] text-mint-700 font-bold">
+                          개별 구좌
+                        </span>
+                        <div className="flex-1 h-px bg-ink-100" />
+                      </div>
+                    )}
+                    <CardGrid items={filtered} />
+                  </>
                 )}
               </section>
             </div>
@@ -312,54 +345,64 @@ export default function SponsorshipsPage() {
         </>
       )}
 
-      {/* 필터 시트 — 카드/슬라이드 모드 둘 다에서 사용 */}
+      {/* 필터 드로어 — 우측 드로어 (카드·슬라이드 모드 공용) */}
       {sheetOpen && (
-        <div className="fixed inset-0 z-50 bg-white flex flex-col">
-          <header className="px-5 py-4 border-b border-ink-100 flex items-center justify-between">
-            <h2 className="font-bold text-[15px]">필터</h2>
-            <button
-              type="button"
-              onClick={() => setSheetOpen(false)}
-              className="w-8 h-8 grid place-items-center rounded-btn hover:bg-ink-50"
-            >
-              <X className="w-4 h-4" />
-            </button>
-          </header>
-          <div className="flex-1 overflow-y-auto px-5 py-4">
-            <FilterPanel
-              search={search}
-              setSearch={setSearch}
-              filterChannel={filterChannel}
-              setFilterChannel={setFilterChannel}
-              purposeTags={purposeTags}
-              activePurposes={activePurposes}
-              togglePurpose={togglePurpose}
-              priceRange={priceRange}
-              setPriceRange={setPriceRange}
-              deadlineSoon={deadlineSoon}
-              setDeadlineSoon={setDeadlineSoon}
-              totalCount={totalCount}
-              resultCount={filtered.length}
-              hasActiveFilter={hasActiveFilter}
-              onReset={resetFilters}
-            />
-          </div>
-          <footer className="px-5 py-3 border-t border-ink-100 grid grid-cols-2 gap-2">
-            <button
-              type="button"
-              onClick={resetFilters}
-              className="px-4 py-2.5 rounded-btn border border-ink-100 text-[13px] font-semibold"
-            >
-              초기화
-            </button>
-            <button
-              type="button"
-              onClick={() => setSheetOpen(false)}
-              className="px-4 py-2.5 rounded-btn bg-mint-500 text-ink-900 hover:bg-mint-700 hover:text-white text-[13px] font-semibold"
-            >
-              {filtered.length}개 결과 보기
-            </button>
-          </footer>
+        <div className="fixed inset-0 z-50 flex">
+          {/* 배경 */}
+          <button
+            type="button"
+            aria-label="필터 닫기"
+            onClick={() => setSheetOpen(false)}
+            className="flex-1 bg-ink-900/30 backdrop-blur-[1px]"
+          />
+          {/* 드로어 */}
+          <aside className="w-full max-w-[420px] bg-white flex flex-col shadow-2xl border-l border-ink-100">
+            <header className="px-5 py-4 border-b border-ink-100 flex items-center justify-between shrink-0">
+              <h2 className="font-bold text-[15px]">필터</h2>
+              <button
+                type="button"
+                onClick={() => setSheetOpen(false)}
+                className="w-8 h-8 grid place-items-center rounded-btn hover:bg-ink-50"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </header>
+            <div className="flex-1 overflow-y-auto px-5 py-4">
+              <FilterPanel
+                search={search}
+                setSearch={setSearch}
+                filterChannel={filterChannel}
+                setFilterChannel={setFilterChannel}
+                purposeTags={purposeTags}
+                activePurposes={activePurposes}
+                togglePurpose={togglePurpose}
+                priceRange={priceRange}
+                setPriceRange={setPriceRange}
+                deadlineSoon={deadlineSoon}
+                setDeadlineSoon={setDeadlineSoon}
+                totalCount={totalCount}
+                resultCount={filtered.length}
+                hasActiveFilter={hasActiveFilter}
+                onReset={resetFilters}
+              />
+            </div>
+            <footer className="px-5 py-3 border-t border-ink-100 grid grid-cols-2 gap-2 shrink-0">
+              <button
+                type="button"
+                onClick={resetFilters}
+                className="px-4 py-2.5 rounded-btn border border-ink-100 text-[13px] font-semibold"
+              >
+                초기화
+              </button>
+              <button
+                type="button"
+                onClick={() => setSheetOpen(false)}
+                className="px-4 py-2.5 rounded-btn bg-mint-500 text-ink-900 hover:bg-mint-700 hover:text-white text-[13px] font-semibold"
+              >
+                {filtered.length}개 결과 보기
+              </button>
+            </footer>
+          </aside>
         </div>
       )}
 
@@ -453,22 +496,25 @@ function FilterPanel({
       {/* (B) 채널 */}
       <FilterSection title="채널">
         <div className="flex flex-wrap lg:flex-col gap-1">
-          {(["all", "offline", "online", "package"] as const).map((c) => (
+          {CHANNEL_FILTER_OPTIONS.map((opt) => (
             <button
-              key={c}
+              key={opt.id}
               type="button"
-              onClick={() => setFilterChannel(c)}
+              onClick={() => setFilterChannel(opt.id)}
               className={
                 "text-left px-3 py-1.5 rounded-btn text-[13px] transition-colors " +
-                (filterChannel === c
+                (filterChannel === opt.id
                   ? "bg-ink-900 text-white font-semibold"
                   : "text-ink-700 hover:bg-ink-50")
               }
             >
-              {CHANNEL_LABELS[c]}
+              {opt.label}
             </button>
           ))}
         </div>
+        <p className="mt-1.5 px-1 text-[10.5px] text-ink-500">
+          패키지는 페이지 상단 전용 섹션에서 확인하세요.
+        </p>
       </FilterSection>
 
       {/* (C) 광고 목적 — taxonomy 기반 동적 (kind === 'purpose' && isActive) */}
@@ -594,6 +640,118 @@ function ViewModeToggle({
 // ============================================================================
 // Card grid view (default)
 // ============================================================================
+
+// ============================================================================
+// Package section (상단 전용)
+// ============================================================================
+
+function PackageSection({ packages }: { packages: Package[] }) {
+  const sorted = [...packages].sort((a, b) => {
+    // 시그니처 먼저, 그다음 order
+    if (a.tier !== b.tier) return a.tier === "signature" ? -1 : 1;
+    return (a.order ?? 0) - (b.order ?? 0);
+  });
+
+  return (
+    <section className="mb-2">
+      <div className="flex items-center gap-3 mb-3">
+        <span className="text-[10px] uppercase tracking-[0.2em] text-mint-700 font-bold">
+          추천 패키지
+        </span>
+        <div className="flex-1 h-px bg-ink-100" />
+      </div>
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+        {sorted.map((pkg) => {
+          const hero = pkg.heroImages?.images?.[0]?.url;
+          const hasDiscount = pkg.originalPrice > 0 && pkg.originalPrice > pkg.discountPrice;
+          const isSignature = pkg.tier === "signature";
+          return (
+            <Link
+              key={pkg.id}
+              href={`/packages/${pkg.id}`}
+              className={
+                "group bg-white border-2 rounded-card overflow-hidden flex flex-col h-full transition-colors " +
+                (isSignature
+                  ? "border-mint-500 hover:border-mint-700"
+                  : "border-ink-100 hover:border-mint-500")
+              }
+            >
+              <div className="aspect-[4/3] bg-ink-100 relative shrink-0">
+                {hero ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={hero}
+                    alt={pkg.name.ko}
+                    className="absolute inset-0 w-full h-full object-cover"
+                  />
+                ) : (
+                  <div className="w-full h-full grid place-items-center text-ink-300 text-xs">
+                    이미지 없음
+                  </div>
+                )}
+                <div className="absolute top-3 left-3">
+                  <span
+                    className={
+                      "text-[10px] uppercase tracking-wider px-2 py-0.5 rounded font-bold " +
+                      (isSignature
+                        ? "bg-mint-500 text-ink-900"
+                        : "bg-white/90 text-ink-900")
+                    }
+                  >
+                    {isSignature ? "Signature" : "Standard"}
+                  </span>
+                </div>
+              </div>
+              <div className="p-4 flex-1 flex flex-col">
+                <div className="font-bold text-[15px] text-ink-900 group-hover:text-mint-700 leading-tight">
+                  {pkg.name.ko}
+                </div>
+                {pkg.tagline && (
+                  <p className="text-[12px] text-ink-500 mt-1.5 line-clamp-2 leading-snug">
+                    {pkg.tagline}
+                  </p>
+                )}
+                {pkg.includedItems && pkg.includedItems.length > 0 && (
+                  <ul className="mt-2.5 space-y-0.5 text-[11px] text-ink-700">
+                    {pkg.includedItems.slice(0, 3).map((it, i) => (
+                      <li key={i} className="truncate">
+                        · {it.label}
+                      </li>
+                    ))}
+                    {pkg.includedItems.length > 3 && (
+                      <li className="text-ink-500">
+                        … 외 {pkg.includedItems.length - 3}개
+                      </li>
+                    )}
+                  </ul>
+                )}
+                <div className="mt-auto pt-3 flex items-center justify-between">
+                  {hasDiscount ? (
+                    <div>
+                      <div className="text-[10px] text-ink-500 line-through font-mono">
+                        {pkg.originalPrice.toLocaleString()}원
+                      </div>
+                      <div className="text-[14px] font-bold text-mint-700 font-mono">
+                        {pkg.discountPrice.toLocaleString()}원
+                      </div>
+                    </div>
+                  ) : pkg.discountPrice > 0 ? (
+                    <div className="text-[14px] font-bold text-ink-900 font-mono">
+                      {pkg.discountPrice.toLocaleString()}원
+                    </div>
+                  ) : (
+                    <div className="text-[11px] text-ink-500">문의 가격</div>
+                  )}
+                  <span className="text-ink-300">→</span>
+                </div>
+              </div>
+            </Link>
+          );
+        })}
+      </div>
+    </section>
+  );
+}
 
 function CardGrid({ items }: { items: EnrichedCategory[] }) {
   return (
@@ -815,7 +973,7 @@ function SlideSection({
               href={`/sponsorships/${item.slug}`}
               className="px-5 py-2.5 rounded-btn border border-ink-100 text-ink-900 hover:border-mint-500 hover:text-mint-700 font-semibold text-[13px] transition-colors"
             >
-              자세히 보기 · 카트 담기
+              자세히 보기
             </Link>
           </div>
 

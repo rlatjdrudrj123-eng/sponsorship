@@ -15,6 +15,8 @@ import {
   AlertCircle,
   ArrowLeft,
   Check,
+  FileText,
+  Handshake,
   Mail,
   Phone,
   User,
@@ -147,13 +149,30 @@ export default function InquiryDetailPage() {
             </div>
           </div>
         </div>
-        <a
-          href={`mailto:${inquiry.email}?subject=K-PRINT 2026 문의 답변 (${inquiry.companyName})`}
-          className="px-3.5 py-2 rounded-btn border border-ink-100 text-[13px] font-semibold text-ink-900 hover:bg-ink-50 flex items-center gap-1.5"
-        >
-          <Mail className="w-4 h-4" />
-          이메일 답장
-        </a>
+        <div className="flex items-center gap-2 flex-wrap">
+          <Link
+            href={`/admin/quotes/print/inquiry/${inquiry.id}`}
+            target="_blank"
+            className="px-3.5 py-2 rounded-btn border border-ink-100 text-[13px] font-semibold text-ink-900 hover:bg-ink-50 flex items-center gap-1.5"
+          >
+            <FileText className="w-4 h-4" />
+            견적서 추출
+          </Link>
+          <Link
+            href={`/admin/sponsors/new?inquiryId=${inquiry.id}`}
+            className="px-3.5 py-2 rounded-btn bg-mint-500 text-ink-900 text-[13px] font-bold hover:bg-mint-700 hover:text-white flex items-center gap-1.5"
+          >
+            <Handshake className="w-4 h-4" />
+            스폰서로 전환
+          </Link>
+          <a
+            href={`mailto:${inquiry.email}?subject=K-PRINT 2026 문의 답변 (${inquiry.companyName})`}
+            className="px-3.5 py-2 rounded-btn border border-ink-100 text-[13px] font-semibold text-ink-900 hover:bg-ink-50 flex items-center gap-1.5"
+          >
+            <Mail className="w-4 h-4" />
+            이메일 답장
+          </a>
+        </div>
       </header>
 
       <div className="grid grid-cols-[1fr_320px] gap-5 items-start">

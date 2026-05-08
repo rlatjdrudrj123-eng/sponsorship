@@ -4,9 +4,12 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState, type ComponentType, type SVGProps } from "react";
 import {
+  CalendarDays,
+  FileText,
   FolderKanban,
   Grid2x2,
   HelpCircle,
+  Handshake,
   LayoutDashboard,
   MessageSquare,
   Package,
@@ -68,7 +71,7 @@ export function AdminSidebar() {
       ],
     },
     {
-      label: "고객",
+      label: "영업",
       items: [
         {
           href: "/admin/inquiries",
@@ -76,6 +79,7 @@ export function AdminSidebar() {
           Icon: MessageSquare,
           badge: newInquiries > 0 ? newInquiries : undefined,
         },
+        { href: "/admin/sponsors", label: "스폰서 관리", Icon: Handshake },
       ],
     },
     {
@@ -83,6 +87,8 @@ export function AdminSidebar() {
       items: [
         { href: "/admin/settings", label: "사이트 설정", Icon: Settings, exact: true },
         { href: "/admin/settings/taxonomy", label: "분류·태그", Icon: Tags },
+        { href: "/admin/settings/quote", label: "견적서 설정", Icon: FileText },
+        { href: "/admin/events", label: "행사 관리", Icon: CalendarDays },
       ],
     },
   ];

@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { ArrowLeft, Check, ShoppingCart } from "lucide-react";
+import { ArrowLeft, Bookmark, BookmarkCheck, Check } from "lucide-react";
 import type { Package, SiteSettings, Slot } from "@/lib/types";
 import { ImageCarousel } from "./_shared/ImageCarousel";
 import { useCartStore } from "@/lib/cart/cartStore";
@@ -111,23 +111,26 @@ export function PackageType({ pkg, resolvedSlots, settings }: Props) {
               )}
               <button
                 type="button"
-                onClick={() =>
+                aria-pressed={inCart}
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
                   togglePackage({
                     type: "package",
                     packageId: pkg.id,
                     code: pkg.code,
                     price: pkg.discountPrice,
-                  })
-                }
+                  });
+                }}
                 className={
                   "mt-4 w-full py-3 rounded-btn font-semibold flex items-center justify-center gap-2 transition-colors " +
                   (inCart
-                    ? "bg-ink-900 text-white hover:bg-ink-700"
+                    ? "bg-ink-900 text-mint-500 hover:bg-ink-700 ring-2 ring-mint-200"
                     : "bg-mint-500 text-ink-900 hover:bg-mint-700 hover:text-white")
                 }
               >
-                <ShoppingCart className="w-4 h-4" />
-                {inCart ? "카트에서 빼기" : "카트에 담기"}
+                {inCart ? <BookmarkCheck className="w-4 h-4" /> : <Bookmark className="w-4 h-4" />}
+                {inCart ? "관심 표시됨 · 해제하기" : "관심 표시"}
               </button>
             </div>
           </div>

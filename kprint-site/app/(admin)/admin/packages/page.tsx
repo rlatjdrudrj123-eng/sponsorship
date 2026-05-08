@@ -11,6 +11,7 @@ import {
 import { Plus } from "lucide-react";
 import { getDb } from "@/lib/firebase/firestore";
 import type { Package } from "@/lib/types";
+import { PackageMigrationBanner } from "@/components/admin/PackageMigrationBanner";
 
 type Tab = "all" | "signature" | "standard";
 
@@ -61,6 +62,8 @@ export default function PackagesListPage() {
           신규 패키지
         </Link>
       </header>
+
+      <PackageMigrationBanner />
 
       <div className="flex items-center gap-3 flex-wrap">
         <div className="flex gap-1 bg-white border border-ink-100 rounded-btn p-0.5">
