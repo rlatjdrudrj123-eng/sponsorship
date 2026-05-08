@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { collection, doc, getDoc, getDocs } from "firebase/firestore";
+import { collection, doc, getDoc, getDocs, query, where } from "firebase/firestore";
 import { ArrowLeft, ArrowRight, Bookmark, FileDown, Trash2, X } from "lucide-react";
 import { getDb } from "@/lib/firebase/firestore";
 import { useCartStore } from "@/lib/cart/cartStore";
@@ -37,10 +37,11 @@ export default function CartPage() {
     (async () => {
       try {
         const db = getDb();
+        // 공개 사이트는 isPublished=true만 읽을 수 있음 — 필터 누락 시 permission-denied
         const [catSnap, subSnap, pkgSnap, settingsSnap] = await Promise.all([
-          getDocs(collection(db, "categories")),
+          getDocs(query(collection(db, "categories"), where("isPublished", "==", true))),
           getDocs(collection(db, "subcategories")),
-          getDocs(collection(db, "packages")),
+          getDocs(query(collection(db, "packages"), where("isPublished", "==", true))),
           getDoc(doc(db, "siteSettings", "main")),
         ]);
         const cm = new Map<string, Category>();

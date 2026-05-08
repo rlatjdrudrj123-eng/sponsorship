@@ -2,7 +2,7 @@
 
 import { Suspense, useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
-import { collection, doc, getDoc, getDocs } from "firebase/firestore";
+import { collection, doc, getDoc, getDocs, query, where } from "firebase/firestore";
 import { Printer } from "lucide-react";
 import { getDb } from "@/lib/firebase/firestore";
 import { useCartStore } from "@/lib/cart/cartStore";
@@ -51,11 +51,12 @@ function CartPrintContent() {
     (async () => {
       try {
         const db = getDb();
+        // 공개 사이트 — isPublished=true만 읽기 가능 (firestore rules)
         const [c, s, sl, p, st] = await Promise.all([
-          getDocs(collection(db, "categories")),
+          getDocs(query(collection(db, "categories"), where("isPublished", "==", true))),
           getDocs(collection(db, "subcategories")),
           getDocs(collection(db, "slots")),
-          getDocs(collection(db, "packages")),
+          getDocs(query(collection(db, "packages"), where("isPublished", "==", true))),
           getDoc(doc(db, "siteSettings", "main")),
         ]);
         const cm = new Map<string, Category>();
