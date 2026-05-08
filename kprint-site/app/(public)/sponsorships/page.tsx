@@ -36,10 +36,10 @@ const CHANNEL_LABELS: Record<Channel | "all", string> = {
 type PriceRange = "all" | "u1m" | "1to3m" | "3to7m" | "o7m";
 const PRICE_RANGES: Array<{ id: PriceRange; label: string }> = [
   { id: "all", label: "전체" },
-  { id: "u1m", label: "1M 이하" },
-  { id: "1to3m", label: "1 — 3M" },
-  { id: "3to7m", label: "3 — 7M" },
-  { id: "o7m", label: "7M 이상" },
+  { id: "u1m", label: "100만원 미만" },
+  { id: "1to3m", label: "100만 — 300만원" },
+  { id: "3to7m", label: "300만 — 700만원" },
+  { id: "o7m", label: "700만원 이상" },
 ];
 
 function priceMatches(minPrice: number, range: PriceRange): boolean {
