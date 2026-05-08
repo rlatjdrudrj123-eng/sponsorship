@@ -7,6 +7,7 @@ import {
   collection,
   deleteDoc,
   doc,
+  getDocs,
   onSnapshot,
   orderBy,
   query,
@@ -19,8 +20,9 @@ import {
   EMPTY_FORM_VALUES,
   SponsorForm,
   type SponsorFormValues,
+  type SponsorItemLibraryEntry,
 } from "@/components/admin/SponsorForm";
-import type { Event, Sponsor } from "@/lib/types";
+import type { Category, Event, Package, Slot, Sponsor } from "@/lib/types";
 
 export default function SponsorDetailPage() {
   const params = useParams<{ id: string }>();
@@ -29,6 +31,9 @@ export default function SponsorDetailPage() {
 
   const [sponsor, setSponsor] = useState<Sponsor | null>(null);
   const [events, setEvents] = useState<Event[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [packages, setPackages] = useState<Package[]>([]);
+  const [slots, setSlots] = useState<Slot[]>([]);
   const [notFound, setNotFound] = useState(false);
 
   useEffect(() => {
@@ -51,6 +56,68 @@ export default function SponsorDetailPage() {
     );
     return () => u();
   }, []);
+
+  // 품목 라이브러리용 데이터
+  useEffect(() => {
+    (async () => {
+      try {
+        const db = getDb();
+        const [c, p, s] = await Promise.all([
+          getDocs(collection(db, "categories")),
+          getDocs(collection(db, "packages")),
+          getDocs(collection(db, "slots")),
+        ]);
+        setCategories(c.docs.map((d) => ({ ...(d.data() as Category), id: d.id })));
+        setPackages(p.docs.map((d) => ({ ...(d.data() as Package), id: d.id })));
+        setSlots(s.docs.map((d) => ({ ...(d.data() as Slot), id: d.id })));
+      } catch (e) {
+        console.error("library load failed", e);
+      }
+    })();
+  }, []);
+
+  const library = useMemo<SponsorItemLibraryEntry[]>(() => {
+    const entries: SponsorItemLibraryEntry[] = [];
+    const catMap = new Map(categories.map((c) => [c.id, c]));
+    packages
+      .slice()
+      .sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
+      .forEach((p) =>
+        entries.push({
+          key: `pkg:${p.id}`,
+          label: p.name.ko,
+          group: "패키지",
+          packageId: p.id,
+          hint: p.code,
+        })
+      );
+    categories
+      .slice()
+      .sort((a, b) => a.order - b.order)
+      .forEach((c) =>
+        entries.push({
+          key: `cat:${c.id}`,
+          label: c.name.ko,
+          group: "카테고리",
+          categoryId: c.id,
+          hint: c.code,
+        })
+      );
+    slots.forEach((s) => {
+      const cat = catMap.get(s.categoryId);
+      if (!cat) return;
+      entries.push({
+        key: `slot:${s.id}`,
+        label: `${cat.name.ko} ${s.code}`,
+        group: "슬롯",
+        slotId: s.id,
+        categoryId: s.categoryId,
+        subcategoryId: s.subcategoryId,
+        hint: s.code,
+      });
+    });
+    return entries;
+  }, [categories, packages, slots]);
 
   const initial = useMemo<SponsorFormValues | null>(() => {
     if (!sponsor) return null;
@@ -166,6 +233,7 @@ export default function SponsorDetailPage() {
       <SponsorForm
         initial={initial}
         events={events}
+        library={library}
         onSubmit={handleSubmit}
         onDelete={handleDelete}
         submitLabel="변경사항 저장"

@@ -1,12 +1,13 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
   collection,
   doc,
   getDoc,
+  getDocs,
   onSnapshot,
   orderBy,
   query,
@@ -21,8 +22,9 @@ import {
   EMPTY_FORM_VALUES,
   SponsorForm,
   type SponsorFormValues,
+  type SponsorItemLibraryEntry,
 } from "@/components/admin/SponsorForm";
-import type { Event, Inquiry, Sponsor } from "@/lib/types";
+import type { Category, Event, Inquiry, Package, Slot, Sponsor } from "@/lib/types";
 
 export default function NewSponsorPage() {
   const router = useRouter();
@@ -32,6 +34,9 @@ export default function NewSponsorPage() {
 
   const [events, setEvents] = useState<Event[]>([]);
   const [initial, setInitial] = useState<SponsorFormValues | null>(null);
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [packages, setPackages] = useState<Package[]>([]);
+  const [slots, setSlots] = useState<Slot[]>([]);
 
   useEffect(() => {
     const u = onSnapshot(
@@ -42,6 +47,30 @@ export default function NewSponsorPage() {
     );
     return () => u();
   }, []);
+
+  // 품목 라이브러리용 데이터 (카테고리/패키지/슬롯)
+  useEffect(() => {
+    (async () => {
+      try {
+        const db = getDb();
+        const [c, p, s] = await Promise.all([
+          getDocs(collection(db, "categories")),
+          getDocs(collection(db, "packages")),
+          getDocs(collection(db, "slots")),
+        ]);
+        setCategories(c.docs.map((d) => ({ ...(d.data() as Category), id: d.id })));
+        setPackages(p.docs.map((d) => ({ ...(d.data() as Package), id: d.id })));
+        setSlots(s.docs.map((d) => ({ ...(d.data() as Slot), id: d.id })));
+      } catch (e) {
+        console.error("library load failed", e);
+      }
+    })();
+  }, []);
+
+  const library = useMemo<SponsorItemLibraryEntry[]>(
+    () => buildLibrary(categories, packages, slots),
+    [categories, packages, slots]
+  );
 
   // 초기값 설정 — inquiry로부터 변환 또는 빈값
   useEffect(() => {
@@ -165,10 +194,58 @@ export default function NewSponsorPage() {
         <SponsorForm
           initial={initial}
           events={events}
+          library={library}
           onSubmit={handleSubmit}
           submitLabel="스폰서 등록"
         />
       )}
     </div>
   );
+}
+
+function buildLibrary(
+  categories: Category[],
+  packages: Package[],
+  slots: Slot[]
+): SponsorItemLibraryEntry[] {
+  const entries: SponsorItemLibraryEntry[] = [];
+  const catMap = new Map(categories.map((c) => [c.id, c]));
+  packages
+    .slice()
+    .sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
+    .forEach((p) =>
+      entries.push({
+        key: `pkg:${p.id}`,
+        label: p.name.ko,
+        group: "패키지",
+        packageId: p.id,
+        hint: p.code,
+      })
+    );
+  categories
+    .slice()
+    .sort((a, b) => a.order - b.order)
+    .forEach((c) =>
+      entries.push({
+        key: `cat:${c.id}`,
+        label: c.name.ko,
+        group: "카테고리",
+        categoryId: c.id,
+        hint: c.code,
+      })
+    );
+  slots.forEach((s) => {
+    const cat = catMap.get(s.categoryId);
+    if (!cat) return;
+    entries.push({
+      key: `slot:${s.id}`,
+      label: `${cat.name.ko} ${s.code}`,
+      group: "슬롯",
+      slotId: s.id,
+      categoryId: s.categoryId,
+      subcategoryId: s.subcategoryId,
+      hint: s.code,
+    });
+  });
+  return entries;
 }

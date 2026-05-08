@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import { Plus, Trash2 } from "lucide-react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { ChevronDown, Library, Plus, Trash2 } from "lucide-react";
 import type {
   DesignItem,
   Event,
@@ -10,6 +10,18 @@ import type {
   SponsorItem,
   SponsorStatus,
 } from "@/lib/types";
+
+// 품목 라이브러리 항목 (카테고리/패키지/슬롯에서 선택해서 채울 수 있도록)
+export type SponsorItemLibraryEntry = {
+  key: string;                                    // 고유키
+  label: string;                                  // 표시 라벨
+  group: "패키지" | "카테고리" | "슬롯";
+  categoryId?: string;
+  subcategoryId?: string;
+  slotId?: string;
+  packageId?: string;
+  hint?: string;                                  // 보조 설명 (예: 코드, 가격)
+};
 
 const STATUS_LABELS: Record<SponsorStatus, string> = {
   in_progress: "진행중",
@@ -68,12 +80,14 @@ export const EMPTY_FORM_VALUES: SponsorFormValues = {
 export function SponsorForm({
   initial,
   events,
+  library,
   onSubmit,
   onDelete,
   submitLabel = "저장",
 }: {
   initial: SponsorFormValues;
   events: Event[];
+  library?: SponsorItemLibraryEntry[];
   onSubmit: (values: SponsorFormValues) => Promise<void>;
   onDelete?: () => Promise<void>;
   submitLabel?: string;
@@ -145,23 +159,24 @@ export function SponsorForm({
           </div>
         </Section>
 
-        <Section title="품목" right={<AddButton onClick={() => update("items", [...v.items, { label: "" }])} />}>
+        <Section
+          title="품목"
+          right={<AddButton onClick={() => update("items", [...v.items, { label: "" }])} />}
+        >
           {v.items.length === 0 ? (
             <EmptyHint>아직 품목이 없습니다. + 버튼으로 추가하세요.</EmptyHint>
           ) : (
             <div className="space-y-2">
               {v.items.map((it, i) => (
                 <div key={i} className="flex items-center gap-2">
-                  <input
-                    type="text"
-                    value={it.label}
-                    onChange={(e) => {
-                      const next = [...v.items];
-                      next[i] = { ...next[i], label: e.target.value };
-                      update("items", next);
+                  <ItemCombo
+                    value={it}
+                    library={library ?? []}
+                    onChange={(next) => {
+                      const arr = [...v.items];
+                      arr[i] = next;
+                      update("items", arr);
                     }}
-                    placeholder="예: A홀 천장배너 1, XPACE 패키지 A"
-                    className="flex-1 px-3 py-2 text-sm border border-ink-100 rounded-btn focus:outline-none focus:border-mint-500"
                   />
                   <input
                     type="text"
@@ -183,6 +198,11 @@ export function SponsorForm({
                 </div>
               ))}
             </div>
+          )}
+          {library && library.length > 0 && (
+            <p className="text-[10.5px] text-ink-500 mt-2">
+              💡 품목 입력란을 클릭하면 등록된 카테고리·패키지·슬롯에서 선택할 수 있습니다. 자유 입력도 가능해요.
+            </p>
           )}
         </Section>
 
@@ -326,7 +346,10 @@ export function SponsorForm({
           </div>
         </Section>
 
-        <Section title="로고 / 배너">
+        <Section title="추가 혜택 — 로고/배너 상세">
+          <p className="text-[10.5px] text-ink-500 mb-2 -mt-1">
+            제공할 로고·배너의 종류와 상세 메모입니다.
+          </p>
           <div className="space-y-2">
             <div>
               <span className="text-[11px] text-ink-700 font-semibold mb-1 block">유형</span>
@@ -445,6 +468,159 @@ export function SponsorForm({
           )}
         </div>
       </div>
+    </div>
+  );
+}
+
+// ============================================================================
+// ItemCombo — 자유 입력 + 라이브러리 선택 콤보
+// ============================================================================
+
+function ItemCombo({
+  value,
+  library,
+  onChange,
+}: {
+  value: SponsorItem;
+  library: SponsorItemLibraryEntry[];
+  onChange: (next: SponsorItem) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const [text, setText] = useState(value.label);
+  const wrapRef = useRef<HTMLDivElement>(null);
+
+  // 외부 value 변경 시 동기화
+  useEffect(() => {
+    setText(value.label);
+  }, [value.label]);
+
+  // 외부 클릭 시 닫기
+  useEffect(() => {
+    if (!open) return;
+    const onDoc = (e: MouseEvent) => {
+      if (!wrapRef.current?.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener("mousedown", onDoc);
+    return () => document.removeEventListener("mousedown", onDoc);
+  }, [open]);
+
+  const filtered = useMemo(() => {
+    const q = text.trim().toLowerCase();
+    const list = q
+      ? library.filter(
+          (it) =>
+            it.label.toLowerCase().includes(q) ||
+            (it.hint ?? "").toLowerCase().includes(q)
+        )
+      : library;
+    // 그룹별 상한 적용 (전체 12개)
+    return list.slice(0, 12);
+  }, [text, library]);
+
+  const select = (it: SponsorItemLibraryEntry) => {
+    onChange({
+      label: it.label,
+      categoryId: it.categoryId,
+      subcategoryId: it.subcategoryId,
+      slotId: it.slotId,
+      packageId: it.packageId,
+      note: value.note,
+    });
+    setText(it.label);
+    setOpen(false);
+  };
+
+  const setFreeText = (s: string) => {
+    onChange({
+      label: s,
+      // 자유 입력으로 바뀌면 ID 참조는 제거
+      categoryId: undefined,
+      subcategoryId: undefined,
+      slotId: undefined,
+      packageId: undefined,
+      note: value.note,
+    });
+  };
+
+  const linkedTag = value.packageId
+    ? "패키지"
+    : value.slotId
+      ? "슬롯"
+      : value.categoryId
+        ? "카테고리"
+        : null;
+
+  return (
+    <div ref={wrapRef} className="relative flex-1 min-w-0">
+      <div className="relative">
+        <input
+          type="text"
+          value={text}
+          onChange={(e) => {
+            setText(e.target.value);
+            setFreeText(e.target.value);
+            if (!open) setOpen(true);
+          }}
+          onFocus={() => setOpen(true)}
+          placeholder="예: A홀 천장배너 1, XPACE 패키지 A"
+          className="w-full pl-3 pr-16 py-2 text-sm border border-ink-100 rounded-btn focus:outline-none focus:border-mint-500"
+        />
+        <div className="absolute right-1 top-1/2 -translate-y-1/2 flex items-center gap-1">
+          {linkedTag && (
+            <span className="text-[10px] px-1.5 py-0.5 rounded bg-mint-50 text-mint-700 border border-mint-100 font-semibold">
+              {linkedTag}
+            </span>
+          )}
+          <button
+            type="button"
+            onClick={() => setOpen((p) => !p)}
+            className="p-1 rounded hover:bg-ink-100 text-ink-500"
+            title="라이브러리에서 선택"
+            aria-label="라이브러리"
+          >
+            {library.length > 0 ? (
+              <Library className="w-3.5 h-3.5" />
+            ) : (
+              <ChevronDown className="w-3.5 h-3.5" />
+            )}
+          </button>
+        </div>
+      </div>
+      {open && filtered.length > 0 && (
+        <div className="absolute z-20 left-0 right-0 mt-1 bg-white border border-ink-100 rounded-card shadow-xl max-h-72 overflow-y-auto">
+          {(["패키지", "카테고리", "슬롯"] as const).map((g) => {
+            const group = filtered.filter((it) => it.group === g);
+            if (group.length === 0) return null;
+            return (
+              <div key={g}>
+                <div className="px-3 py-1 bg-ink-50 text-[10px] uppercase tracking-wider text-ink-500 font-semibold sticky top-0">
+                  {g}
+                </div>
+                {group.map((it) => (
+                  <button
+                    key={it.key}
+                    type="button"
+                    onClick={() => select(it)}
+                    className="w-full text-left px-3 py-1.5 text-[12.5px] hover:bg-mint-50 flex items-center justify-between gap-2"
+                  >
+                    <span className="text-ink-900 truncate">{it.label}</span>
+                    {it.hint && (
+                      <span className="text-[10px] text-ink-500 font-mono shrink-0">
+                        {it.hint}
+                      </span>
+                    )}
+                  </button>
+                ))}
+              </div>
+            );
+          })}
+        </div>
+      )}
+      {open && filtered.length === 0 && text.trim() && (
+        <div className="absolute z-20 left-0 right-0 mt-1 bg-white border border-ink-100 rounded-card shadow-xl px-3 py-2 text-[11.5px] text-ink-500">
+          매칭되는 항목 없음 — 자유 입력으로 저장됩니다.
+        </div>
+      )}
     </div>
   );
 }

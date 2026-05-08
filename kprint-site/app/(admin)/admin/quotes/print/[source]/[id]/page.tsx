@@ -12,15 +12,17 @@ import { Printer } from "lucide-react";
 import { getDb } from "@/lib/firebase/firestore";
 import type {
   Category,
+  Event,
   Inquiry,
   Package,
   QuoteSettings,
+  Slot,
   Sponsor,
   Subcategory,
 } from "@/lib/types";
 
 type QuoteLine = {
-  category: string;       // "스폰서십" / "추가 제공" 등
+  category: string;       // "스폰서십" / "추가 제공"
   label: string;
   quantity?: string;
   unit?: string;
@@ -37,10 +39,12 @@ export default function QuotePrintPage() {
   const [settings, setSettings] = useState<QuoteSettings | null>(null);
   const [target, setTarget] = useState<{
     receiver: string;
-    contactName?: string;
     items: QuoteLine[];
     extraItems: QuoteLine[];
-    paid?: number;          // 입금액
+    totalOverride?: number;   // sponsor의 amount처럼 명시적 합계가 있을 때
+    paid?: number;
+    eventName?: string;
+    eventBrand?: string;      // 좌상단 큰 텍스트 (예: "KIMES 2026")
   } | null>(null);
   const [serial, setSerial] = useState<string>("");
   const [loading, setLoading] = useState(true);
@@ -57,8 +61,35 @@ export default function QuotePrintPage() {
         const s = settingsSnap.data() as QuoteSettings;
         setSettings(s);
 
-        // 일련번호 조립 — 단순 prefix + nextNumber (실제 발행 시 수동 증가)
+        // 일련번호 (간단히 prefix + nextNumber, 발급 시 admin이 직접 증가)
         setSerial(`${s.serialPrefix ?? ""}${String(s.serialNextNumber ?? 1).padStart(3, "0")}`);
+
+        // 카테고리/소분류/슬롯/패키지/이벤트 일괄 로드 (단가 조회용)
+        const [catSnap, subSnap, slotSnap, pkgSnap, evSnap] = await Promise.all([
+          getDocs(collection(db, "categories")),
+          getDocs(collection(db, "subcategories")),
+          getDocs(collection(db, "slots")),
+          getDocs(collection(db, "packages")),
+          getDocs(collection(db, "events")),
+        ]);
+        const catMap = new Map<string, Category>();
+        catSnap.docs.forEach((d) => catMap.set(d.id, { ...(d.data() as Category), id: d.id }));
+        const subMap = new Map<string, Subcategory>();
+        subSnap.docs.forEach((d) => subMap.set(d.id, { ...(d.data() as Subcategory), id: d.id }));
+        const slotMap = new Map<string, Slot>();
+        slotSnap.docs.forEach((d) => slotMap.set(d.id, { ...(d.data() as Slot), id: d.id }));
+        const pkgMap = new Map<string, Package>();
+        pkgSnap.docs.forEach((d) => pkgMap.set(d.id, { ...(d.data() as Package), id: d.id }));
+        const events = evSnap.docs.map((d) => ({ ...(d.data() as Event), id: d.id }));
+
+        // 추가 제공 — 항상 settings의 기본 4종 사용 (스폰서별 토글 무시)
+        const defaultExtras: QuoteLine[] = (s.defaultBenefitItems ?? []).map((b) => ({
+          category: "추가 제공",
+          label: b.label,
+          quantity: "1.0",
+          unit: "제공",
+          note: b.note,
+        }));
 
         if (source === "inquiry") {
           const inqSnap = await getDoc(doc(db, "inquiries", id));
@@ -68,18 +99,6 @@ export default function QuotePrintPage() {
           }
           const inq = inqSnap.data() as Inquiry;
 
-          const [c, sub, p] = await Promise.all([
-            getDocs(collection(db, "categories")),
-            getDocs(collection(db, "subcategories")),
-            getDocs(collection(db, "packages")),
-          ]);
-          const catMap = new Map<string, Category>();
-          c.docs.forEach((d) => catMap.set(d.id, { ...(d.data() as Category), id: d.id }));
-          const subMap = new Map<string, Subcategory>();
-          sub.docs.forEach((d) => subMap.set(d.id, { ...(d.data() as Subcategory), id: d.id }));
-          const pkgMap = new Map<string, Package>();
-          p.docs.forEach((d) => pkgMap.set(d.id, { ...(d.data() as Package), id: d.id }));
-
           const items: QuoteLine[] = inq.cartItems.map((ci) => {
             if (ci.type === "slot") {
               const cat = catMap.get(ci.categoryId);
@@ -87,10 +106,8 @@ export default function QuotePrintPage() {
               return {
                 category: "스폰서십",
                 label: `${cat?.name.ko ?? ""}${sb?.name.ko ? ` · ${sb.name.ko}` : ""}`.trim() || ci.code,
-                quantity: "1.0",
                 unit: "구좌",
                 unitPrice: ci.price,
-                amount: ci.price,
                 note: ci.code,
               };
             }
@@ -98,28 +115,20 @@ export default function QuotePrintPage() {
             return {
               category: "스폰서십",
               label: pkg?.name.ko ?? ci.code,
-              quantity: "1.0",
               unit: "패키지",
               unitPrice: ci.price,
-              amount: ci.price,
               note: ci.code,
             };
           });
 
-          // 추가 제공 — 견적서 설정의 기본값
-          const extraItems: QuoteLine[] = (s.defaultBenefitItems ?? []).map((b) => ({
-            category: "추가 제공",
-            label: b.label,
-            quantity: "1.0",
-            unit: "제공",
-            note: b.note,
-          }));
-
+          // 활성 행사를 brand로 사용
+          const activeEvent = events.find((e) => e.isActive) ?? events[0];
           setTarget({
             receiver: inq.companyName,
-            contactName: inq.contactName,
             items,
-            extraItems,
+            extraItems: defaultExtras,
+            eventName: activeEvent?.name,
+            eventBrand: activeEvent ? `${activeEvent.shortName} ${activeEvent.year}` : undefined,
           });
         } else if (source === "sponsor") {
           const spSnap = await getDoc(doc(db, "sponsors", id));
@@ -128,53 +137,44 @@ export default function QuotePrintPage() {
             return;
           }
           const sp = spSnap.data() as Sponsor;
+          const event = events.find((e) => e.id === sp.eventId);
 
-          // 단가 미산출 — 합계만 표시 가능
-          const total = sp.amount ?? 0;
-          const items: QuoteLine[] = (sp.items ?? []).map((it) => ({
-            category: "스폰서십",
-            label: it.label,
-            unit: it.note ? undefined : "구좌",
-            note: it.note,
-          }));
-          // 합계 라인 (마지막 행에 비용 표기)
-          if (items.length > 0 && total > 0) {
-            items[items.length - 1] = {
-              ...items[items.length - 1],
-              amount: total,
-            };
-          } else if (total > 0) {
-            items.push({
+          const items: QuoteLine[] = (sp.items ?? []).map((it) => {
+            // 슬롯 연결이 있으면 소분류에서 단가 조회
+            let unitPrice: number | undefined;
+            let unit = "구좌";
+            if (it.slotId) {
+              const slot = slotMap.get(it.slotId);
+              if (slot) {
+                const sb = subMap.get(slot.subcategoryId);
+                if (sb && sb.priceKRW > 0) unitPrice = sb.priceKRW;
+              }
+            } else if (it.packageId) {
+              const pkg = pkgMap.get(it.packageId);
+              if (pkg) {
+                unitPrice = pkg.discountPrice || pkg.originalPrice;
+                unit = "패키지";
+              }
+            } else if (it.subcategoryId) {
+              const sb = subMap.get(it.subcategoryId);
+              if (sb && sb.priceKRW > 0) unitPrice = sb.priceKRW;
+            }
+            return {
               category: "스폰서십",
-              label: sp.companyName,
-              quantity: "1.0",
-              unit: "건",
-              amount: total,
-            });
-          }
-
-          // 혜택 → 추가 제공
-          const extraItems: QuoteLine[] = [];
-          if (sp.benefits?.topPin)
-            extraItems.push({ category: "추가 제공", label: "상위 고정", quantity: "1.0", unit: "제공", note: "참가업체 검색 페이지 내 상위 고정" });
-          if (sp.benefits?.badge)
-            extraItems.push({ category: "추가 제공", label: "뱃지 표기", quantity: "1.0", unit: "제공", note: "주요 참가기업 뱃지" });
-          if (sp.benefits?.logoBanner)
-            extraItems.push({ category: "추가 제공", label: "도면 내 로고/배너", quantity: "1.0", unit: "제공" });
-          if (sp.benefits?.eventNotice)
-            extraItems.push({ category: "추가 제공", label: "이벤트 안내", quantity: "1.0", unit: "제공" });
-          if (extraItems.length === 0) {
-            // fallback to defaults
-            (s.defaultBenefitItems ?? []).forEach((b) =>
-              extraItems.push({ category: "추가 제공", label: b.label, quantity: "1.0", unit: "제공", note: b.note })
-            );
-          }
+              label: it.label,
+              unit,
+              unitPrice,
+              note: it.note,
+            };
+          });
 
           setTarget({
             receiver: sp.companyName,
-            contactName: sp.contacts?.[0]?.name,
             items,
-            extraItems,
+            extraItems: defaultExtras,
+            totalOverride: sp.amount > 0 ? sp.amount : undefined,
+            eventName: event?.name,
+            eventBrand: event ? `${event.shortName} ${event.year}` : undefined,
           });
         }
       } catch (e) {
@@ -192,20 +192,30 @@ export default function QuotePrintPage() {
     return () => clearTimeout(t);
   }, [loading, target, settings]);
 
+  // 합계 계산: items의 unitPrice 합 (수량 1.0 가정) 또는 totalOverride
   const subtotal = useMemo(() => {
     if (!target) return 0;
-    return target.items.reduce((sum, it) => sum + (it.amount ?? 0), 0);
+    if (target.totalOverride !== undefined) {
+      // sponsor.amount는 부가세 포함 합계로 가정 (관리자 확인 필요시 추후 분기)
+      // 단순화: VAT 별도로 본다 → totalOverride를 소계로 취급
+      return Math.round(target.totalOverride / 1.1);
+    }
+    return target.items.reduce((sum, it) => sum + (it.unitPrice ?? 0), 0);
   }, [target]);
   const vat = Math.round(subtotal * 0.1);
   const total = subtotal + vat;
   const paid = target?.paid ?? 0;
   const remaining = total - paid;
 
-  const today = new Date().toLocaleDateString("ko-KR", {
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-  }).replace(/\./g, "-").replace(/ /g, "").replace(/-$/, "");
+  const today = new Date()
+    .toLocaleDateString("ko-KR", {
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+    })
+    .replace(/\./g, "-")
+    .replace(/ /g, "")
+    .replace(/-$/, "");
 
   if (loading) {
     return <div className="p-12 text-center text-sm text-ink-500">불러오는 중…</div>;
@@ -242,16 +252,21 @@ export default function QuotePrintPage() {
         <header className="flex items-start justify-between gap-6 pb-2">
           <div>
             {settings.logoUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element
               <img src={settings.logoUrl} alt="로고" className="h-12 mb-2" />
             ) : (
-              <div className="text-[28px] font-black text-red-600 leading-none">
-                {settings.eventSubtitle?.split(" ")[0] || "EVENT"}
+              <div className="text-[28px] font-black text-red-600 leading-none tracking-tight">
+                {target.eventBrand ?? target.eventName ?? "EVENT"}
               </div>
             )}
-            <div className="text-[10px] text-ink-700 mt-1">{settings.eventSubtitle}</div>
+            <div className="text-[10px] text-ink-700 mt-1.5">
+              {settings.eventSubtitle}
+            </div>
           </div>
           <div className="text-right">
-            <div className="text-[24px] font-bold tracking-[0.3em] text-ink-900">스폰서십 견적서</div>
+            <div className="text-[24px] font-bold tracking-[0.3em] text-ink-900">
+              스폰서십 견적서
+            </div>
           </div>
         </header>
 
@@ -269,7 +284,7 @@ export default function QuotePrintPage() {
         <div className="mt-3 grid grid-cols-2 gap-6">
           <table className="w-full border-collapse">
             <tbody className="text-[10.5px]">
-              <MetaRow label="수    신" value={target.contactName ?? target.receiver} />
+              <MetaRow label="수    신" value={target.receiver} />
               <MetaRow label="견적일자" value={today} />
               <MetaRow label="지불조건" value={settings.defaultPaymentTerms} />
               <MetaRow label="입 금 액" value={paid > 0 ? `${paid.toLocaleString()}원` : "- 원"} />
@@ -355,59 +370,46 @@ export default function QuotePrintPage() {
                 <td className="border border-ink-300 px-2 py-1 text-[10px]">{it.note ?? "-"}</td>
               </tr>
             ))}
-            {/* Spacer rows */}
-            {Array.from({ length: Math.max(0, 4 - target.items.length - target.extraItems.length) }).map((_, i) => (
-              <tr key={`sp-${i}`}>
-                <td className="border border-ink-300 px-2 py-2.5"></td>
-                <td className="border border-ink-300"></td>
-                <td className="border border-ink-300"></td>
-                <td className="border border-ink-300"></td>
-                <td className="border border-ink-300"></td>
-                <td className="border border-ink-300 text-right">-</td>
-                <td className="border border-ink-300 text-right">-</td>
-                <td className="border border-ink-300"></td>
-              </tr>
-            ))}
             {/* Totals */}
             <tr>
-              <td colSpan={5}></td>
+              <td colSpan={5} className="border-0"></td>
               <td className="border border-ink-300 px-2 py-1 text-center bg-ink-50 font-semibold">소계</td>
               <td className="border border-ink-300 px-2 py-1 text-right font-mono">
                 {subtotal > 0 ? subtotal.toLocaleString() : "-"}
               </td>
-              <td className="border border-ink-300"></td>
+              <td className="border-0"></td>
             </tr>
             <tr>
-              <td colSpan={5}></td>
+              <td colSpan={5} className="border-0"></td>
               <td className="border border-ink-300 px-2 py-1 text-center bg-ink-50 font-semibold">부가세</td>
               <td className="border border-ink-300 px-2 py-1 text-right font-mono">
                 {vat > 0 ? vat.toLocaleString() : "-"}
               </td>
-              <td className="border border-ink-300"></td>
+              <td className="border-0"></td>
             </tr>
             <tr>
-              <td colSpan={5}></td>
+              <td colSpan={5} className="border-0"></td>
               <td className="border border-ink-300 px-2 py-1 text-center bg-ink-50 font-bold">합계</td>
               <td className="border border-ink-300 px-2 py-1 text-right font-mono font-bold">
                 {total > 0 ? total.toLocaleString() : "-"}
               </td>
-              <td className="border border-ink-300"></td>
+              <td className="border-0"></td>
             </tr>
             <tr>
-              <td colSpan={5}></td>
+              <td colSpan={5} className="border-0"></td>
               <td className="border border-ink-300 px-2 py-1 text-center bg-ink-50 font-semibold">입금총액</td>
               <td className="border border-ink-300 px-2 py-1 text-right font-mono">
                 {paid > 0 ? paid.toLocaleString() : "-"}
               </td>
-              <td className="border border-ink-300"></td>
+              <td className="border-0"></td>
             </tr>
             <tr>
-              <td colSpan={5}></td>
+              <td colSpan={5} className="border-0"></td>
               <td className="border border-ink-300 px-2 py-1 text-center bg-ink-50 font-semibold">잔액</td>
               <td className="border border-ink-300 px-2 py-1 text-right font-mono">
                 {remaining > 0 ? remaining.toLocaleString() : "-"}
               </td>
-              <td className="border border-ink-300"></td>
+              <td className="border-0"></td>
             </tr>
           </tbody>
         </table>
@@ -424,7 +426,7 @@ export default function QuotePrintPage() {
         </section>
 
         {/* Footer slogan */}
-        <footer className="absolute-print mt-12 pt-6 border-t border-ink-200 text-center text-[11px] text-ink-700">
+        <footer className="mt-12 pt-6 border-t border-ink-200 text-center text-[11px] text-ink-700">
           {settings.footerSlogan}
         </footer>
       </div>
