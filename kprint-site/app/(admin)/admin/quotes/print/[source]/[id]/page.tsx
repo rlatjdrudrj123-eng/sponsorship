@@ -99,27 +99,55 @@ export default function QuotePrintPage() {
           }
           const inq = inqSnap.data() as Inquiry;
 
-          const items: QuoteLine[] = inq.cartItems.map((ci) => {
+          // 같은 (카테고리+소분류) 슬롯은 한 줄로 묶고 수량 카운트
+          const aggregated = new Map<
+            string,
+            { line: QuoteLine; count: number; codes: string[] }
+          >();
+          inq.cartItems.forEach((ci) => {
             if (ci.type === "slot") {
               const cat = catMap.get(ci.categoryId);
               const sb = subMap.get(ci.subcategoryId);
-              return {
-                category: "스폰서십",
-                label: `${cat?.name.ko ?? ""}${sb?.name.ko ? ` · ${sb.name.ko}` : ""}`.trim() || ci.code,
-                unit: "구좌",
-                unitPrice: ci.price,
-                note: ci.code,
-              };
+              const key = `slot:${ci.categoryId}:${ci.subcategoryId}`;
+              const existing = aggregated.get(key);
+              if (existing) {
+                existing.count++;
+                existing.codes.push(ci.code);
+              } else {
+                aggregated.set(key, {
+                  line: {
+                    category: "스폰서십",
+                    label: `${cat?.name.ko ?? ""}${sb?.name.ko ? ` · ${sb.name.ko}` : ""}`.trim() || ci.code,
+                    unit: "구좌",
+                    unitPrice: ci.price,
+                  },
+                  count: 1,
+                  codes: [ci.code],
+                });
+              }
+            } else {
+              const pkg = pkgMap.get(ci.packageId);
+              aggregated.set(`pkg:${ci.packageId}:${aggregated.size}`, {
+                line: {
+                  category: "스폰서십",
+                  label: pkg?.name.ko ?? ci.code,
+                  unit: "패키지",
+                  unitPrice: ci.price,
+                },
+                count: 1,
+                codes: [ci.code],
+              });
             }
-            const pkg = pkgMap.get(ci.packageId);
-            return {
-              category: "스폰서십",
-              label: pkg?.name.ko ?? ci.code,
-              unit: "패키지",
-              unitPrice: ci.price,
-              note: ci.code,
-            };
           });
+
+          const items: QuoteLine[] = Array.from(aggregated.values()).map(
+            ({ line, count, codes }) => ({
+              ...line,
+              quantity: count.toFixed(1),
+              amount: (line.unitPrice ?? 0) * count,
+              note: codes.join(", "),
+            })
+          );
 
           // 활성 행사를 brand로 사용
           const activeEvent = events.find((e) => e.isActive) ?? events[0];
@@ -139,34 +167,76 @@ export default function QuotePrintPage() {
           const sp = spSnap.data() as Sponsor;
           const event = events.find((e) => e.id === sp.eventId);
 
-          const items: QuoteLine[] = (sp.items ?? []).map((it) => {
-            // 슬롯 연결이 있으면 소분류에서 단가 조회
+          // 같은 (카테고리+소분류) 슬롯은 한 줄로 묶고 수량 카운트
+          const aggregated = new Map<
+            string,
+            { line: QuoteLine; count: number; codes: string[] }
+          >();
+          (sp.items ?? []).forEach((it) => {
             let unitPrice: number | undefined;
             let unit = "구좌";
+            let key: string;
+            let label = it.label;
+            let code: string | undefined;
+
             if (it.slotId) {
               const slot = slotMap.get(it.slotId);
+              code = slot?.code;
               if (slot) {
                 const sb = subMap.get(slot.subcategoryId);
                 if (sb && sb.priceKRW > 0) unitPrice = sb.priceKRW;
+                // 라벨 정리 — 슬롯 코드가 라벨 끝에 붙어있으면 떼어내고 카테고리·소분류 기준으로 묶기
+                const cat = catMap.get(slot.categoryId);
+                if (cat && sb) {
+                  label = `${cat.name.ko}${sb.name.ko ? ` · ${sb.name.ko}` : ""}`;
+                }
               }
+              key = `slot:${slot?.categoryId ?? "?"}:${slot?.subcategoryId ?? "?"}`;
             } else if (it.packageId) {
               const pkg = pkgMap.get(it.packageId);
               if (pkg) {
                 unitPrice = pkg.discountPrice || pkg.originalPrice;
                 unit = "패키지";
+                label = pkg.name.ko;
               }
+              key = `pkg:${it.packageId}`;
             } else if (it.subcategoryId) {
               const sb = subMap.get(it.subcategoryId);
               if (sb && sb.priceKRW > 0) unitPrice = sb.priceKRW;
+              key = `sub:${it.subcategoryId}`;
+            } else {
+              // 자유 입력 — 묶지 않음
+              key = `free:${it.label}:${aggregated.size}`;
+              unit = it.note ? "" : "구좌";
             }
-            return {
-              category: "스폰서십",
-              label: it.label,
-              unit,
-              unitPrice,
-              note: it.note,
-            };
+
+            const existing = aggregated.get(key);
+            if (existing) {
+              existing.count++;
+              if (code) existing.codes.push(code);
+            } else {
+              aggregated.set(key, {
+                line: {
+                  category: "스폰서십",
+                  label,
+                  unit,
+                  unitPrice,
+                  note: it.note,
+                },
+                count: 1,
+                codes: code ? [code] : [],
+              });
+            }
           });
+
+          const items: QuoteLine[] = Array.from(aggregated.values()).map(
+            ({ line, count, codes }) => ({
+              ...line,
+              quantity: count.toFixed(1),
+              amount: line.unitPrice ? line.unitPrice * count : undefined,
+              note: codes.length > 0 ? codes.join(", ") : line.note,
+            })
+          );
 
           setTarget({
             receiver: sp.companyName,
@@ -192,15 +262,16 @@ export default function QuotePrintPage() {
     return () => clearTimeout(t);
   }, [loading, target, settings]);
 
-  // 합계 계산: items의 unitPrice 합 (수량 1.0 가정) 또는 totalOverride
+  // 합계 계산: items의 amount 합 (수량 × 단가) 또는 totalOverride
   const subtotal = useMemo(() => {
     if (!target) return 0;
+    const itemsTotal = target.items.reduce((sum, it) => sum + (it.amount ?? 0), 0);
+    if (itemsTotal > 0) return itemsTotal;
+    // sponsor의 amount만 명시되어 있고 단가 합산이 0이면 totalOverride를 소계로 사용 (VAT 별도)
     if (target.totalOverride !== undefined) {
-      // sponsor.amount는 부가세 포함 합계로 가정 (관리자 확인 필요시 추후 분기)
-      // 단순화: VAT 별도로 본다 → totalOverride를 소계로 취급
       return Math.round(target.totalOverride / 1.1);
     }
-    return target.items.reduce((sum, it) => sum + (it.unitPrice ?? 0), 0);
+    return 0;
   }, [target]);
   const vat = Math.round(subtotal * 0.1);
   const total = subtotal + vat;

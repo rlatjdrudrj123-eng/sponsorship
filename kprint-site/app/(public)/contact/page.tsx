@@ -12,7 +12,9 @@ import {
   doc,
   getDoc,
   getDocs,
+  query,
   Timestamp,
+  where,
 } from "firebase/firestore";
 import { ArrowLeft, X } from "lucide-react";
 import { getDb } from "@/lib/firebase/firestore";
@@ -62,10 +64,11 @@ export default function ContactPage() {
     (async () => {
       try {
         const db = getDb();
+        // 공개 사이트 — isPublished=true만 읽기 가능 (firestore rules)
         const [catSnap, subSnap, pkgSnap, settingsSnap] = await Promise.all([
-          getDocs(collection(db, "categories")),
+          getDocs(query(collection(db, "categories"), where("isPublished", "==", true))),
           getDocs(collection(db, "subcategories")),
-          getDocs(collection(db, "packages")),
+          getDocs(query(collection(db, "packages"), where("isPublished", "==", true))),
           getDoc(doc(db, "siteSettings", "main")),
         ]);
         const cm = new Map<string, Category>();
