@@ -274,6 +274,7 @@ export type SponsorItem = {
   label: string;          // 자유 텍스트 (예: "옥외광고 패키지", "C홀 천장배너 1")
   slotId?: string;        // 옵션 — 슬롯 연결
   categoryId?: string;    // 옵션 — 카테고리 연결
+  subcategoryId?: string; // 옵션 — 소분류 연결 (단가 조회용)
   packageId?: string;     // 옵션 — 패키지 연결
   note?: string;
 };
