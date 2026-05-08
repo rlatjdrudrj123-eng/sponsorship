@@ -8,8 +8,18 @@ import {
   onSnapshot,
   Timestamp,
   updateDoc,
+  writeBatch,
 } from "firebase/firestore";
-import { ArrowDown, ArrowUp, Palette, Search, Upload, X } from "lucide-react";
+import {
+  ArrowDown,
+  ArrowUp,
+  ChevronDown,
+  ChevronUp,
+  Palette,
+  Search,
+  Upload,
+  X,
+} from "lucide-react";
 import { getDb } from "@/lib/firebase/firestore";
 import { seedSampleImages, type SeedResult } from "@/lib/admin/seedSamples";
 import type {
@@ -132,6 +142,29 @@ export default function CategoriesListPage() {
       alert(`시드 실패: ${e instanceof Error ? e.message : String(e)}`);
     } finally {
       setSeeding(false);
+    }
+  };
+
+  const moveOrder = async (cat: EnrichedCategory, dir: -1 | 1) => {
+    // order 오름차순으로 sorting된 list에서 인접 카테고리와 swap
+    const sortedByOrder = [...enriched].sort((a, b) => a.order - b.order);
+    const idx = sortedByOrder.findIndex((c) => c.id === cat.id);
+    const targetIdx = idx + dir;
+    if (targetIdx < 0 || targetIdx >= sortedByOrder.length) return;
+    const target = sortedByOrder[targetIdx];
+    try {
+      const batch = writeBatch(getDb());
+      batch.update(doc(getDb(), "categories", cat.id), {
+        order: target.order,
+        updatedAt: Timestamp.fromDate(new Date()),
+      });
+      batch.update(doc(getDb(), "categories", target.id), {
+        order: cat.order,
+        updatedAt: Timestamp.fromDate(new Date()),
+      });
+      await batch.commit();
+    } catch (e) {
+      alert(`순서 변경 실패: ${e instanceof Error ? e.message : String(e)}`);
     }
   };
 
@@ -357,7 +390,35 @@ export default function CategoriesListPage() {
                 <td className="px-4 py-2.5 text-center">
                   <Switch checked={c.isPublished} onChange={() => togglePublish(c)} />
                 </td>
-                <td className="px-4 py-2.5 text-right font-mono text-[11px] text-ink-500">{c.order}</td>
+                <td className="px-4 py-2.5 text-right">
+                  <div className="inline-flex items-center gap-1">
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        moveOrder(c, -1);
+                      }}
+                      className="w-6 h-6 grid place-items-center text-ink-500 hover:text-ink-900 hover:bg-ink-100 rounded"
+                      title="위로"
+                    >
+                      <ChevronUp className="w-3.5 h-3.5" />
+                    </button>
+                    <span className="font-mono text-[11px] text-ink-500 w-7 text-center">
+                      {c.order}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        moveOrder(c, 1);
+                      }}
+                      className="w-6 h-6 grid place-items-center text-ink-500 hover:text-ink-900 hover:bg-ink-100 rounded"
+                      title="아래로"
+                    >
+                      <ChevronDown className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                </td>
               </tr>
             ))}
           </tbody>

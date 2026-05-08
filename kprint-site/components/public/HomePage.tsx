@@ -263,18 +263,21 @@ function CategoriesSection({
               한눈에 보기
             </h2>
           </div>
-          <Link
-            href="/sponsorships"
-            className="text-[13px] text-mint-700 font-semibold hover:underline flex items-center gap-1"
-          >
-            전체 보기 <ArrowRight className="w-3.5 h-3.5" />
-          </Link>
+          {enriched.length > 0 && (
+            <Link
+              href="/sponsorships"
+              className="px-4 py-2 rounded-full bg-ink-900 text-white hover:bg-mint-500 hover:text-ink-900 transition-colors text-[13px] font-semibold flex items-center gap-1.5"
+            >
+              전체 {enriched.length}개 보기
+              <ArrowRight className="w-3.5 h-3.5" />
+            </Link>
+          )}
         </div>
 
         {enriched.length === 0 ? (
           <p className="text-ink-500 text-sm">스폰서십 항목은 곧 공개됩니다.</p>
         ) : (
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4 overflow-y-auto max-h-[60vh] [scrollbar-gutter:stable]">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4 overflow-y-auto max-h-[55vh] [scrollbar-gutter:stable]">
             {enriched.slice(0, 8).map((c) => {
               const hero = c.heroImages?.images?.[0]?.url;
               return (
@@ -317,6 +320,21 @@ function CategoriesSection({
                 </Link>
               );
             })}
+          </div>
+        )}
+
+        {enriched.length > 8 && (
+          <div className="mt-6 text-center">
+            <Link
+              href="/sponsorships"
+              className="inline-flex items-center gap-2 px-7 py-3.5 rounded-full bg-mint-500 text-ink-900 hover:bg-mint-700 hover:text-white transition-colors text-[15px] font-bold shadow-sm hover:shadow"
+            >
+              스폰서십 {enriched.length}개 전체 둘러보기
+              <ArrowRight className="w-4 h-4" />
+            </Link>
+            <p className="text-[11px] text-ink-500 mt-2">
+              필터·검색·슬라이드 보기는 전체 페이지에서 가능합니다
+            </p>
           </div>
         )}
       </div>

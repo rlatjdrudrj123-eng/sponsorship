@@ -11,7 +11,18 @@ import {
   Timestamp,
   where,
 } from "firebase/firestore";
-import { ArrowLeft, Filter, RotateCcw, Search, X } from "lucide-react";
+import {
+  ArrowLeft,
+  ArrowRight,
+  ChevronLeft,
+  ChevronRight,
+  Filter,
+  LayoutGrid,
+  Maximize2,
+  RotateCcw,
+  Search,
+  X,
+} from "lucide-react";
 import { getDb } from "@/lib/firebase/firestore";
 import type {
   Category,
@@ -63,6 +74,12 @@ function isDeadlineSoon(
   return t >= now && t <= now + windowMs;
 }
 
+type EnrichedCategory = Category & {
+  slotTotal: number;
+  slotAvailable: number;
+  minPrice: number;
+};
+
 export default function SponsorshipsPage() {
   const [categories, setCategories] = useState<Category[]>([]);
   const [subcategories, setSubcategories] = useState<Subcategory[]>([]);
@@ -76,6 +93,8 @@ export default function SponsorshipsPage() {
   const [deadlineSoon, setDeadlineSoon] = useState(false);
   const [search, setSearch] = useState("");
   const [sheetOpen, setSheetOpen] = useState(false);
+  const [viewMode, setViewMode] = useState<"card" | "slide">("card");
+  const [slideIdx, setSlideIdx] = useState(0);
 
   useEffect(() => {
     (async () => {
@@ -166,6 +185,27 @@ export default function SponsorshipsPage() {
     deadlineSoon,
     search,
   ]);
+
+  // 필터 변경 시 슬라이드 인덱스 0으로 리셋
+  useEffect(() => {
+    setSlideIdx(0);
+  }, [filterChannel, activePurposes, priceRange, deadlineSoon, search]);
+
+  // 키보드 좌우 화살표로 슬라이드 이동 (slide 모드일 때만)
+  useEffect(() => {
+    if (viewMode !== "slide") return;
+    const onKey = (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement;
+      if (target?.tagName === "INPUT" || target?.tagName === "TEXTAREA") return;
+      if (e.key === "ArrowLeft") {
+        setSlideIdx((i) => Math.max(0, i - 1));
+      } else if (e.key === "ArrowRight") {
+        setSlideIdx((i) => i + 1);
+      }
+    };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [viewMode]);
 
   const togglePurpose = (id: string) =>
     setActivePurposes((prev) => {
@@ -301,8 +341,21 @@ export default function SponsorshipsPage() {
             </div>
           )}
 
-          {/* Grid */}
+          {/* Grid / Slide */}
           <section>
+            {/* 뷰 모드 토글 */}
+            <div className="hidden lg:flex items-center justify-between mb-4">
+              <div className="text-[12px] text-ink-500">
+                전체 <strong className="text-ink-900">{totalCount}</strong>개 중{" "}
+                <strong className="text-mint-700">{filtered.length}</strong>개
+              </div>
+              <ViewModeToggle viewMode={viewMode} setViewMode={setViewMode} />
+            </div>
+            {/* 모바일에선 토글만 단독 노출 (필터 카운트는 상단 모바일바에 이미 있음) */}
+            <div className="lg:hidden mb-4 flex justify-end">
+              <ViewModeToggle viewMode={viewMode} setViewMode={setViewMode} />
+            </div>
+
             {filtered.length === 0 ? (
               <div className="bg-ink-50 rounded-card py-16 text-center text-sm text-ink-500">
                 조건에 맞는 항목이 없어요.
@@ -316,58 +369,14 @@ export default function SponsorshipsPage() {
                   </button>
                 )}
               </div>
+            ) : viewMode === "card" ? (
+              <CardGrid items={filtered} />
             ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-                {filtered.map((c) => {
-                  const hero = c.heroImages?.images?.[0]?.url;
-                  return (
-                    <Link
-                      key={c.id}
-                      href={`/sponsorships/${c.slug}`}
-                      className="group bg-white border border-ink-100 rounded-card overflow-hidden hover:border-mint-500 transition-colors flex flex-col h-full"
-                    >
-                      <div className="aspect-[4/3] bg-ink-100 relative shrink-0">
-                        {hero ? (
-                          // eslint-disable-next-line @next/next/no-img-element
-                          <img
-                            src={hero}
-                            alt={c.name.ko}
-                            className="absolute inset-0 w-full h-full object-cover"
-                          />
-                        ) : (
-                          <div className="w-full h-full grid place-items-center text-ink-300 text-xs">
-                            이미지 없음
-                          </div>
-                        )}
-                        <div className="absolute top-3 left-3 flex gap-1">
-                          <span className="text-[10px] uppercase tracking-wider bg-white/90 text-ink-900 px-2 py-0.5 rounded font-semibold">
-                            {CHANNEL_LABELS[c.channel]}
-                          </span>
-                        </div>
-                      </div>
-                      <div className="p-4 flex-1 flex flex-col">
-                        <div className="font-bold text-[15px] text-ink-900 group-hover:text-mint-700 leading-tight">
-                          {c.name.ko}
-                        </div>
-                        {c.shortDesc && (
-                          <p className="text-[12px] text-ink-500 mt-1.5 line-clamp-2 leading-snug">
-                            {c.shortDesc}
-                          </p>
-                        )}
-                        <div className="mt-auto pt-3 flex items-center justify-between text-[11px] font-mono">
-                          <span>
-                            <span className="text-mint-700 font-bold">
-                              {c.slotAvailable}
-                            </span>
-                            <span className="text-ink-500"> / {c.slotTotal} 가능</span>
-                          </span>
-                          <span className="text-ink-300">→</span>
-                        </div>
-                      </div>
-                    </Link>
-                  );
-                })}
-              </div>
+              <SlideView
+                items={filtered}
+                idx={Math.min(slideIdx, filtered.length - 1)}
+                setIdx={setSlideIdx}
+              />
             )}
           </section>
         </div>
@@ -539,6 +548,237 @@ function FilterSection({
         {title}
       </div>
       {children}
+    </div>
+  );
+}
+
+// ============================================================================
+// View mode toggle (Card / Slide)
+// ============================================================================
+
+function ViewModeToggle({
+  viewMode,
+  setViewMode,
+}: {
+  viewMode: "card" | "slide";
+  setViewMode: (m: "card" | "slide") => void;
+}) {
+  return (
+    <div className="inline-flex items-center bg-ink-50 rounded-btn p-0.5 border border-ink-100">
+      <button
+        type="button"
+        onClick={() => setViewMode("card")}
+        className={
+          "px-2.5 py-1.5 rounded text-[12px] font-semibold flex items-center gap-1.5 transition-colors " +
+          (viewMode === "card"
+            ? "bg-white shadow-sm text-ink-900"
+            : "text-ink-500 hover:text-ink-900")
+        }
+        title="카드형 보기"
+      >
+        <LayoutGrid className="w-3.5 h-3.5" />
+        카드형
+      </button>
+      <button
+        type="button"
+        onClick={() => setViewMode("slide")}
+        className={
+          "px-2.5 py-1.5 rounded text-[12px] font-semibold flex items-center gap-1.5 transition-colors " +
+          (viewMode === "slide"
+            ? "bg-white shadow-sm text-ink-900"
+            : "text-ink-500 hover:text-ink-900")
+        }
+        title="슬라이드형 보기 (피트페이퍼 스타일)"
+      >
+        <Maximize2 className="w-3.5 h-3.5" />
+        슬라이드
+      </button>
+    </div>
+  );
+}
+
+// ============================================================================
+// Card grid view (default)
+// ============================================================================
+
+function CardGrid({ items }: { items: EnrichedCategory[] }) {
+  return (
+    <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+      {items.map((c) => {
+        const hero = c.heroImages?.images?.[0]?.url;
+        return (
+          <Link
+            key={c.id}
+            href={`/sponsorships/${c.slug}`}
+            className="group bg-white border border-ink-100 rounded-card overflow-hidden hover:border-mint-500 transition-colors flex flex-col h-full"
+          >
+            <div className="aspect-[4/3] bg-ink-100 relative shrink-0">
+              {hero ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={hero}
+                  alt={c.name.ko}
+                  className="absolute inset-0 w-full h-full object-cover"
+                />
+              ) : (
+                <div className="w-full h-full grid place-items-center text-ink-300 text-xs">
+                  이미지 없음
+                </div>
+              )}
+              <div className="absolute top-3 left-3 flex gap-1">
+                <span className="text-[10px] uppercase tracking-wider bg-white/90 text-ink-900 px-2 py-0.5 rounded font-semibold">
+                  {CHANNEL_LABELS[c.channel]}
+                </span>
+              </div>
+            </div>
+            <div className="p-4 flex-1 flex flex-col">
+              <div className="font-bold text-[15px] text-ink-900 group-hover:text-mint-700 leading-tight">
+                {c.name.ko}
+              </div>
+              {c.shortDesc && (
+                <p className="text-[12px] text-ink-500 mt-1.5 line-clamp-2 leading-snug">
+                  {c.shortDesc}
+                </p>
+              )}
+              <div className="mt-auto pt-3 flex items-center justify-between text-[11px] font-mono">
+                <span>
+                  <span className="text-mint-700 font-bold">{c.slotAvailable}</span>
+                  <span className="text-ink-500"> / {c.slotTotal} 가능</span>
+                </span>
+                <span className="text-ink-300">→</span>
+              </div>
+            </div>
+          </Link>
+        );
+      })}
+    </div>
+  );
+}
+
+// ============================================================================
+// Slide view (브로셔 스타일 — 한 화면에 한 카테고리)
+// ============================================================================
+
+function SlideView({
+  items,
+  idx,
+  setIdx,
+}: {
+  items: EnrichedCategory[];
+  idx: number;
+  setIdx: (n: number) => void;
+}) {
+  const safeIdx = Math.max(0, Math.min(idx, items.length - 1));
+  const c = items[safeIdx];
+  if (!c) return null;
+  const hero = c.heroImages?.images?.[0]?.url;
+  const canPrev = safeIdx > 0;
+  const canNext = safeIdx < items.length - 1;
+
+  return (
+    <div>
+      <Link
+        href={`/sponsorships/${c.slug}`}
+        className="group block bg-white border border-ink-100 rounded-card overflow-hidden hover:border-mint-500 transition-colors"
+      >
+        <div className="aspect-[16/10] bg-ink-100 relative">
+          {hero ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={hero}
+              alt={c.name.ko}
+              className="absolute inset-0 w-full h-full object-cover"
+            />
+          ) : (
+            <div className="w-full h-full grid place-items-center text-ink-300 text-sm">
+              이미지 없음
+            </div>
+          )}
+          <div className="absolute top-4 left-4 flex gap-1.5">
+            <span className="text-[11px] uppercase tracking-wider bg-white/95 text-ink-900 px-2.5 py-1 rounded font-semibold">
+              {CHANNEL_LABELS[c.channel]}
+            </span>
+          </div>
+          <div className="absolute bottom-0 inset-x-0 bg-gradient-to-t from-ink-900/85 via-ink-900/40 to-transparent p-6 md:p-8">
+            <div className="text-[11px] tracking-widest uppercase text-mint-500 mb-2 font-mono">
+              {c.code}
+            </div>
+            <h2 className="text-[22px] md:text-[32px] font-bold text-white leading-tight group-hover:text-mint-500 transition-colors">
+              {c.name.ko}
+            </h2>
+            {c.shortDesc && (
+              <p className="text-[13px] md:text-[15px] text-white/80 mt-2 leading-relaxed max-w-3xl">
+                {c.shortDesc}
+              </p>
+            )}
+            <div className="mt-4 flex items-center gap-4 text-[12px] text-white/70">
+              <span className="font-mono">
+                <strong className="text-mint-500">{c.slotAvailable}</strong>
+                {" / "}
+                {c.slotTotal} 가능
+              </span>
+              {c.minPrice > 0 && (
+                <span className="font-mono">
+                  최저 {c.minPrice.toLocaleString()}원
+                </span>
+              )}
+              <span className="ml-auto inline-flex items-center gap-1 text-mint-500 font-semibold">
+                자세히 보기
+                <ArrowRight className="w-3.5 h-3.5" />
+              </span>
+            </div>
+          </div>
+        </div>
+      </Link>
+
+      <div className="mt-6 flex items-center justify-between gap-3">
+        <button
+          type="button"
+          onClick={() => canPrev && setIdx(safeIdx - 1)}
+          disabled={!canPrev}
+          className="flex items-center gap-2 px-4 py-2.5 rounded-btn border border-ink-100 text-[13px] font-semibold text-ink-900 hover:bg-ink-50 disabled:opacity-30 disabled:cursor-not-allowed"
+        >
+          <ChevronLeft className="w-4 h-4" />
+          이전
+        </button>
+        <div className="text-center">
+          <div className="font-mono text-[15px] text-ink-900">
+            <strong>{safeIdx + 1}</strong>
+            <span className="text-ink-300 mx-1">/</span>
+            <span className="text-ink-500">{items.length}</span>
+          </div>
+          <div className="text-[10px] text-ink-500 mt-0.5">← / → 키로 이동</div>
+        </div>
+        <button
+          type="button"
+          onClick={() => canNext && setIdx(safeIdx + 1)}
+          disabled={!canNext}
+          className="flex items-center gap-2 px-4 py-2.5 rounded-btn bg-mint-500 text-ink-900 hover:bg-mint-700 hover:text-white text-[13px] font-semibold disabled:opacity-30 disabled:cursor-not-allowed"
+        >
+          다음
+          <ChevronRight className="w-4 h-4" />
+        </button>
+      </div>
+
+      {/* 작은 인디케이터 점들 (10개 넘으면 생략) */}
+      {items.length <= 12 && (
+        <div className="mt-4 flex justify-center gap-1.5 flex-wrap">
+          {items.map((_, i) => (
+            <button
+              key={i}
+              type="button"
+              onClick={() => setIdx(i)}
+              className={
+                "w-2 h-2 rounded-full transition-colors " +
+                (i === safeIdx
+                  ? "bg-mint-500"
+                  : "bg-ink-100 hover:bg-ink-300")
+              }
+              aria-label={`슬라이드 ${i + 1}`}
+            />
+          ))}
+        </div>
+      )}
     </div>
   );
 }
