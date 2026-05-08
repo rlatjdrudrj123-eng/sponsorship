@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { Suspense, useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { collection, doc, getDoc, getDocs } from "firebase/firestore";
 import { Printer } from "lucide-react";
@@ -14,6 +14,18 @@ import type {
 } from "@/lib/types";
 
 export default function CartPrintPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="p-12 text-center text-sm text-ink-500">불러오는 중…</div>
+      }
+    >
+      <CartPrintContent />
+    </Suspense>
+  );
+}
+
+function CartPrintContent() {
   const search = useSearchParams();
   const idsParam = search.get("ids") ?? "";
   const items = useCartStore((s) => s.items);
