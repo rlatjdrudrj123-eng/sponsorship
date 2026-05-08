@@ -14,8 +14,6 @@ import {
 import {
   ArrowLeft,
   ArrowRight,
-  ChevronLeft,
-  ChevronRight,
   Filter,
   LayoutGrid,
   Maximize2,
@@ -94,7 +92,6 @@ export default function SponsorshipsPage() {
   const [search, setSearch] = useState("");
   const [sheetOpen, setSheetOpen] = useState(false);
   const [viewMode, setViewMode] = useState<"card" | "slide">("card");
-  const [slideIdx, setSlideIdx] = useState(0);
 
   useEffect(() => {
     (async () => {
@@ -186,27 +183,6 @@ export default function SponsorshipsPage() {
     search,
   ]);
 
-  // 필터 변경 시 슬라이드 인덱스 0으로 리셋
-  useEffect(() => {
-    setSlideIdx(0);
-  }, [filterChannel, activePurposes, priceRange, deadlineSoon, search]);
-
-  // 키보드 좌우 화살표로 슬라이드 이동 (slide 모드일 때만)
-  useEffect(() => {
-    if (viewMode !== "slide") return;
-    const onKey = (e: KeyboardEvent) => {
-      const target = e.target as HTMLElement;
-      if (target?.tagName === "INPUT" || target?.tagName === "TEXTAREA") return;
-      if (e.key === "ArrowLeft") {
-        setSlideIdx((i) => Math.max(0, i - 1));
-      } else if (e.key === "ArrowRight") {
-        setSlideIdx((i) => i + 1);
-      }
-    };
-    document.addEventListener("keydown", onKey);
-    return () => document.removeEventListener("keydown", onKey);
-  }, [viewMode]);
-
   const togglePurpose = (id: string) =>
     setActivePurposes((prev) => {
       const next = new Set(prev);
@@ -232,78 +208,54 @@ export default function SponsorshipsPage() {
 
   return (
     <>
-      <main className="min-h-screen bg-white">
-        <header className="px-6 md:px-16 pt-12 pb-6 border-b border-ink-100">
-          <Link
-            href="/"
-            className="inline-flex items-center gap-1.5 text-[12px] text-ink-500 hover:text-ink-900 mb-3"
-          >
-            <ArrowLeft className="w-3.5 h-3.5" />
-            홈
-          </Link>
-          <h1 className="text-[28px] md:text-[40px] font-bold tracking-tight leading-tight">
-            전체 스폰서십
-          </h1>
-          <p className="text-[13px] text-ink-700 mt-2">
-            구좌 단위로 둘러보고, 카트에 담은 뒤, 한 번에 문의하세요.
-          </p>
-        </header>
+      {viewMode === "slide" ? (
+        <SlideStream
+          items={filtered}
+          totalCount={totalCount}
+          onCardMode={() => setViewMode("card")}
+          onOpenFilter={() => setSheetOpen(true)}
+          hasActiveFilter={hasActiveFilter}
+        />
+      ) : (
+        <>
+          <main className="min-h-screen bg-white">
+            <header className="px-6 md:px-16 pt-12 pb-6 border-b border-ink-100">
+              <Link
+                href="/"
+                className="inline-flex items-center gap-1.5 text-[12px] text-ink-500 hover:text-ink-900 mb-3"
+              >
+                <ArrowLeft className="w-3.5 h-3.5" />홈
+              </Link>
+              <h1 className="text-[28px] md:text-[40px] font-bold tracking-tight leading-tight">
+                전체 스폰서십
+              </h1>
+              <p className="text-[13px] text-ink-700 mt-2">
+                구좌 단위로 둘러보고, 카트에 담은 뒤, 한 번에 문의하세요.
+              </p>
+            </header>
 
-        <div className="lg:grid lg:grid-cols-[260px_1fr] lg:gap-8 px-6 md:px-16 py-10 max-w-7xl mx-auto">
-          {/* Mobile filter bar */}
-          <div className="lg:hidden flex items-center justify-between mb-4 sticky top-0 z-10 bg-white py-2 border-b border-ink-100">
-            <button
-              type="button"
-              onClick={() => setSheetOpen(true)}
-              className="px-3 py-1.5 rounded-btn border border-ink-100 text-[13px] font-semibold flex items-center gap-1.5"
-            >
-              <Filter className="w-3.5 h-3.5" />
-              필터
-              {hasActiveFilter && (
-                <span className="w-1.5 h-1.5 rounded-full bg-mint-500 ml-0.5" />
-              )}
-            </button>
-            <div className="text-[12px] text-ink-500">
-              <strong className="text-ink-900">{filtered.length}</strong> /{" "}
-              {totalCount}
-            </div>
-          </div>
-
-          {/* Desktop sidebar */}
-          <aside className="hidden lg:block lg:sticky lg:top-6 lg:self-start">
-            <FilterPanel
-              search={search}
-              setSearch={setSearch}
-              filterChannel={filterChannel}
-              setFilterChannel={setFilterChannel}
-              purposeTags={purposeTags}
-              activePurposes={activePurposes}
-              togglePurpose={togglePurpose}
-              priceRange={priceRange}
-              setPriceRange={setPriceRange}
-              deadlineSoon={deadlineSoon}
-              setDeadlineSoon={setDeadlineSoon}
-              totalCount={totalCount}
-              resultCount={filtered.length}
-              hasActiveFilter={hasActiveFilter}
-              onReset={resetFilters}
-            />
-          </aside>
-
-          {/* Mobile sheet */}
-          {sheetOpen && (
-            <div className="lg:hidden fixed inset-0 z-50 bg-white flex flex-col">
-              <header className="px-5 py-4 border-b border-ink-100 flex items-center justify-between">
-                <h2 className="font-bold text-[15px]">필터</h2>
+            <div className="lg:grid lg:grid-cols-[260px_1fr] lg:gap-8 px-6 md:px-16 py-10 max-w-7xl mx-auto">
+              {/* Mobile filter bar */}
+              <div className="lg:hidden flex items-center justify-between mb-4 sticky top-0 z-10 bg-white py-2 border-b border-ink-100">
                 <button
                   type="button"
-                  onClick={() => setSheetOpen(false)}
-                  className="w-8 h-8 grid place-items-center rounded-btn hover:bg-ink-50"
+                  onClick={() => setSheetOpen(true)}
+                  className="px-3 py-1.5 rounded-btn border border-ink-100 text-[13px] font-semibold flex items-center gap-1.5"
                 >
-                  <X className="w-4 h-4" />
+                  <Filter className="w-3.5 h-3.5" />
+                  필터
+                  {hasActiveFilter && (
+                    <span className="w-1.5 h-1.5 rounded-full bg-mint-500 ml-0.5" />
+                  )}
                 </button>
-              </header>
-              <div className="flex-1 overflow-y-auto px-5 py-4">
+                <div className="text-[12px] text-ink-500">
+                  <strong className="text-ink-900">{filtered.length}</strong> /{" "}
+                  {totalCount}
+                </div>
+              </div>
+
+              {/* Desktop sidebar */}
+              <aside className="hidden lg:block lg:sticky lg:top-6 lg:self-start">
                 <FilterPanel
                   search={search}
                   setSearch={setSearch}
@@ -321,67 +273,109 @@ export default function SponsorshipsPage() {
                   hasActiveFilter={hasActiveFilter}
                   onReset={resetFilters}
                 />
-              </div>
-              <footer className="px-5 py-3 border-t border-ink-100 grid grid-cols-2 gap-2">
-                <button
-                  type="button"
-                  onClick={resetFilters}
-                  className="px-4 py-2.5 rounded-btn border border-ink-100 text-[13px] font-semibold"
-                >
-                  초기화
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setSheetOpen(false)}
-                  className="px-4 py-2.5 rounded-btn bg-mint-500 text-ink-900 hover:bg-mint-700 hover:text-white text-[13px] font-semibold"
-                >
-                  {filtered.length}개 결과 보기
-                </button>
-              </footer>
-            </div>
-          )}
+              </aside>
 
-          {/* Grid / Slide */}
-          <section>
-            {/* 뷰 모드 토글 */}
-            <div className="hidden lg:flex items-center justify-between mb-4">
-              <div className="text-[12px] text-ink-500">
-                전체 <strong className="text-ink-900">{totalCount}</strong>개 중{" "}
-                <strong className="text-mint-700">{filtered.length}</strong>개
-              </div>
-              <ViewModeToggle viewMode={viewMode} setViewMode={setViewMode} />
-            </div>
-            {/* 모바일에선 토글만 단독 노출 (필터 카운트는 상단 모바일바에 이미 있음) */}
-            <div className="lg:hidden mb-4 flex justify-end">
-              <ViewModeToggle viewMode={viewMode} setViewMode={setViewMode} />
-            </div>
+              {/* Grid */}
+              <section>
+                {/* 뷰 모드 토글 */}
+                <div className="hidden lg:flex items-center justify-between mb-4">
+                  <div className="text-[12px] text-ink-500">
+                    전체 <strong className="text-ink-900">{totalCount}</strong>개 중{" "}
+                    <strong className="text-mint-700">{filtered.length}</strong>개
+                  </div>
+                  <ViewModeToggle viewMode={viewMode} setViewMode={setViewMode} />
+                </div>
+                <div className="lg:hidden mb-4 flex justify-end">
+                  <ViewModeToggle viewMode={viewMode} setViewMode={setViewMode} />
+                </div>
 
-            {filtered.length === 0 ? (
-              <div className="bg-ink-50 rounded-card py-16 text-center text-sm text-ink-500">
-                조건에 맞는 항목이 없어요.
-                {hasActiveFilter && (
-                  <button
-                    type="button"
-                    onClick={resetFilters}
-                    className="block mx-auto mt-3 text-mint-700 font-semibold hover:underline"
-                  >
-                    필터 초기화 →
-                  </button>
+                {filtered.length === 0 ? (
+                  <div className="bg-ink-50 rounded-card py-16 text-center text-sm text-ink-500">
+                    조건에 맞는 항목이 없어요.
+                    {hasActiveFilter && (
+                      <button
+                        type="button"
+                        onClick={resetFilters}
+                        className="block mx-auto mt-3 text-mint-700 font-semibold hover:underline"
+                      >
+                        필터 초기화 →
+                      </button>
+                    )}
+                  </div>
+                ) : (
+                  <CardGrid items={filtered} />
                 )}
-              </div>
-            ) : viewMode === "card" ? (
-              <CardGrid items={filtered} />
-            ) : (
-              <SlideView
-                items={filtered}
-                idx={Math.min(slideIdx, filtered.length - 1)}
-                setIdx={setSlideIdx}
-              />
-            )}
-          </section>
+              </section>
+            </div>
+          </main>
+          <Footer settings={settings} />
+        </>
+      )}
+
+      {/* 필터 시트 — 카드/슬라이드 모드 둘 다에서 사용 */}
+      {sheetOpen && (
+        <div className="fixed inset-0 z-50 bg-white flex flex-col">
+          <header className="px-5 py-4 border-b border-ink-100 flex items-center justify-between">
+            <h2 className="font-bold text-[15px]">필터</h2>
+            <button
+              type="button"
+              onClick={() => setSheetOpen(false)}
+              className="w-8 h-8 grid place-items-center rounded-btn hover:bg-ink-50"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </header>
+          <div className="flex-1 overflow-y-auto px-5 py-4">
+            <FilterPanel
+              search={search}
+              setSearch={setSearch}
+              filterChannel={filterChannel}
+              setFilterChannel={setFilterChannel}
+              purposeTags={purposeTags}
+              activePurposes={activePurposes}
+              togglePurpose={togglePurpose}
+              priceRange={priceRange}
+              setPriceRange={setPriceRange}
+              deadlineSoon={deadlineSoon}
+              setDeadlineSoon={setDeadlineSoon}
+              totalCount={totalCount}
+              resultCount={filtered.length}
+              hasActiveFilter={hasActiveFilter}
+              onReset={resetFilters}
+            />
+          </div>
+          <footer className="px-5 py-3 border-t border-ink-100 grid grid-cols-2 gap-2">
+            <button
+              type="button"
+              onClick={resetFilters}
+              className="px-4 py-2.5 rounded-btn border border-ink-100 text-[13px] font-semibold"
+            >
+              초기화
+            </button>
+            <button
+              type="button"
+              onClick={() => setSheetOpen(false)}
+              className="px-4 py-2.5 rounded-btn bg-mint-500 text-ink-900 hover:bg-mint-700 hover:text-white text-[13px] font-semibold"
+            >
+              {filtered.length}개 결과 보기
+            </button>
+          </footer>
         </div>
-      </main>
-      <Footer settings={settings} />
+      )}
+
+      {/* 슬라이드 모드에서도 토글 보이도록 floating 버튼 (모바일 대응) */}
+      {viewMode === "slide" && (
+        <div className="fixed bottom-6 right-6 z-30 lg:hidden">
+          <button
+            type="button"
+            onClick={() => setViewMode("card")}
+            className="px-3 py-2 rounded-full bg-ink-900 text-white shadow-lg text-[12px] font-semibold flex items-center gap-1.5"
+          >
+            <LayoutGrid className="w-3.5 h-3.5" />
+            카드형
+          </button>
+        </div>
+      )}
     </>
   );
 }
@@ -656,129 +650,161 @@ function CardGrid({ items }: { items: EnrichedCategory[] }) {
 }
 
 // ============================================================================
-// Slide view (브로셔 스타일 — 한 화면에 한 카테고리)
+// Slide stream (전체 화면 — 휠 스크롤로 한 화면씩 스냅)
 // ============================================================================
 
-function SlideView({
+function SlideStream({
   items,
-  idx,
-  setIdx,
+  totalCount,
+  onCardMode,
+  onOpenFilter,
+  hasActiveFilter,
 }: {
   items: EnrichedCategory[];
-  idx: number;
-  setIdx: (n: number) => void;
+  totalCount: number;
+  onCardMode: () => void;
+  onOpenFilter: () => void;
+  hasActiveFilter: boolean;
 }) {
-  const safeIdx = Math.max(0, Math.min(idx, items.length - 1));
-  const c = items[safeIdx];
-  if (!c) return null;
-  const hero = c.heroImages?.images?.[0]?.url;
-  const canPrev = safeIdx > 0;
-  const canNext = safeIdx < items.length - 1;
-
   return (
-    <div>
-      <Link
-        href={`/sponsorships/${c.slug}`}
-        className="group block bg-white border border-ink-100 rounded-card overflow-hidden hover:border-mint-500 transition-colors"
-      >
-        <div className="aspect-[16/10] bg-ink-100 relative">
-          {hero ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
-              src={hero}
-              alt={c.name.ko}
-              className="absolute inset-0 w-full h-full object-cover"
-            />
-          ) : (
-            <div className="w-full h-full grid place-items-center text-ink-300 text-sm">
-              이미지 없음
-            </div>
+    <>
+      {/* 상단 고정 바 */}
+      <div className="fixed top-0 inset-x-0 z-20 bg-white/90 backdrop-blur border-b border-ink-100 px-4 md:px-8 h-14 flex items-center gap-3">
+        <Link
+          href="/"
+          className="text-[12px] text-ink-500 hover:text-ink-900 flex items-center gap-1"
+        >
+          <ArrowLeft className="w-3.5 h-3.5" />홈
+        </Link>
+        <span className="text-ink-300">/</span>
+        <span className="text-[13px] font-bold text-ink-900">스폰서십 슬라이드</span>
+        <span className="text-[12px] text-ink-500">
+          전체 <strong className="text-ink-900">{totalCount}</strong>개 중{" "}
+          <strong className="text-mint-700">{items.length}</strong>개
+        </span>
+        <span className="ml-auto" />
+        <button
+          type="button"
+          onClick={onOpenFilter}
+          className="px-2.5 py-1.5 rounded-btn border border-ink-100 text-[12px] font-semibold flex items-center gap-1"
+          title="필터"
+        >
+          <Filter className="w-3.5 h-3.5" />
+          필터
+          {hasActiveFilter && (
+            <span className="w-1.5 h-1.5 rounded-full bg-mint-500 ml-0.5" />
           )}
-          <div className="absolute top-4 left-4 flex gap-1.5">
-            <span className="text-[11px] uppercase tracking-wider bg-white/95 text-ink-900 px-2.5 py-1 rounded font-semibold">
-              {CHANNEL_LABELS[c.channel]}
-            </span>
-          </div>
-          <div className="absolute bottom-0 inset-x-0 bg-gradient-to-t from-ink-900/85 via-ink-900/40 to-transparent p-6 md:p-8">
-            <div className="text-[11px] tracking-widest uppercase text-mint-500 mb-2 font-mono">
-              {c.code}
-            </div>
-            <h2 className="text-[22px] md:text-[32px] font-bold text-white leading-tight group-hover:text-mint-500 transition-colors">
-              {c.name.ko}
-            </h2>
-            {c.shortDesc && (
-              <p className="text-[13px] md:text-[15px] text-white/80 mt-2 leading-relaxed max-w-3xl">
-                {c.shortDesc}
-              </p>
-            )}
-            <div className="mt-4 flex items-center gap-4 text-[12px] text-white/70">
-              <span className="font-mono">
-                <strong className="text-mint-500">{c.slotAvailable}</strong>
-                {" / "}
-                {c.slotTotal} 가능
-              </span>
-              {c.minPrice > 0 && (
-                <span className="font-mono">
-                  최저 {c.minPrice.toLocaleString()}원
-                </span>
-              )}
-              <span className="ml-auto inline-flex items-center gap-1 text-mint-500 font-semibold">
-                자세히 보기
-                <ArrowRight className="w-3.5 h-3.5" />
-              </span>
-            </div>
-          </div>
-        </div>
-      </Link>
-
-      <div className="mt-6 flex items-center justify-between gap-3">
-        <button
-          type="button"
-          onClick={() => canPrev && setIdx(safeIdx - 1)}
-          disabled={!canPrev}
-          className="flex items-center gap-2 px-4 py-2.5 rounded-btn border border-ink-100 text-[13px] font-semibold text-ink-900 hover:bg-ink-50 disabled:opacity-30 disabled:cursor-not-allowed"
-        >
-          <ChevronLeft className="w-4 h-4" />
-          이전
         </button>
-        <div className="text-center">
-          <div className="font-mono text-[15px] text-ink-900">
-            <strong>{safeIdx + 1}</strong>
-            <span className="text-ink-300 mx-1">/</span>
-            <span className="text-ink-500">{items.length}</span>
-          </div>
-          <div className="text-[10px] text-ink-500 mt-0.5">← / → 키로 이동</div>
-        </div>
         <button
           type="button"
-          onClick={() => canNext && setIdx(safeIdx + 1)}
-          disabled={!canNext}
-          className="flex items-center gap-2 px-4 py-2.5 rounded-btn bg-mint-500 text-ink-900 hover:bg-mint-700 hover:text-white text-[13px] font-semibold disabled:opacity-30 disabled:cursor-not-allowed"
+          onClick={onCardMode}
+          className="px-2.5 py-1.5 rounded-btn bg-ink-900 text-white hover:bg-mint-500 hover:text-ink-900 text-[12px] font-semibold flex items-center gap-1"
+          title="카드형으로 돌아가기"
         >
-          다음
-          <ChevronRight className="w-4 h-4" />
+          <LayoutGrid className="w-3.5 h-3.5" />
+          카드형
         </button>
       </div>
 
-      {/* 작은 인디케이터 점들 (10개 넘으면 생략) */}
-      {items.length <= 12 && (
-        <div className="mt-4 flex justify-center gap-1.5 flex-wrap">
-          {items.map((_, i) => (
-            <button
-              key={i}
-              type="button"
-              onClick={() => setIdx(i)}
-              className={
-                "w-2 h-2 rounded-full transition-colors " +
-                (i === safeIdx
-                  ? "bg-mint-500"
-                  : "bg-ink-100 hover:bg-ink-300")
-              }
-              aria-label={`슬라이드 ${i + 1}`}
-            />
+      {items.length === 0 ? (
+        <main className="h-screen pt-14 grid place-items-center bg-white">
+          <div className="text-center text-sm text-ink-500">
+            조건에 맞는 항목이 없어요.
+          </div>
+        </main>
+      ) : (
+        <main className="h-screen overflow-y-scroll snap-y snap-mandatory bg-white scroll-smooth">
+          {items.map((c, i) => (
+            <SlideSection key={c.id} item={c} index={i} total={items.length} />
           ))}
+        </main>
+      )}
+    </>
+  );
+}
+
+function SlideSection({
+  item,
+  index,
+  total,
+}: {
+  item: EnrichedCategory;
+  index: number;
+  total: number;
+}) {
+  const hero = item.heroImages?.images?.[0]?.url;
+  return (
+    <section className="h-screen snap-start snap-always relative bg-ink-900 text-white overflow-hidden">
+      {hero ? (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          src={hero}
+          alt={item.name.ko}
+          className="absolute inset-0 w-full h-full object-cover"
+        />
+      ) : (
+        <div className="absolute inset-0 grid place-items-center text-ink-700">
+          이미지 없음
         </div>
       )}
-    </div>
+      {/* 어두운 그라디언트 오버레이로 텍스트 가독성 확보 */}
+      <div className="absolute inset-0 bg-gradient-to-t from-ink-900 via-ink-900/55 to-ink-900/15" />
+
+      {/* 좌상단: 인덱스 */}
+      <div className="absolute top-20 left-6 md:left-12 text-[11px] tracking-widest uppercase font-mono text-mint-500">
+        {String(index + 1).padStart(2, "0")} / {String(total).padStart(2, "0")}
+      </div>
+
+      {/* 우상단: 채널 */}
+      <div className="absolute top-20 right-6 md:right-12 flex gap-1.5">
+        <span className="text-[11px] uppercase tracking-wider bg-white/95 text-ink-900 px-2.5 py-1 rounded font-semibold">
+          {CHANNEL_LABELS[item.channel]}
+        </span>
+      </div>
+
+      {/* 본문 */}
+      <Link
+        href={`/sponsorships/${item.slug}`}
+        className="relative z-10 h-full flex flex-col justify-end px-6 md:px-12 pb-12 md:pb-16 max-w-5xl mx-auto group"
+      >
+        <div className="text-[11px] tracking-widest uppercase font-mono text-mint-500 mb-3">
+          {item.code}
+        </div>
+        <h2 className="text-[36px] md:text-[64px] font-bold leading-[1.05] tracking-tight group-hover:text-mint-500 transition-colors">
+          {item.name.ko}
+        </h2>
+        {item.shortDesc && (
+          <p className="text-[15px] md:text-[18px] text-white/80 mt-4 leading-relaxed max-w-3xl">
+            {item.shortDesc}
+          </p>
+        )}
+        <div className="mt-6 flex items-center gap-6 text-[13px] text-white/70 flex-wrap">
+          <span className="font-mono">
+            <strong className="text-mint-500">{item.slotAvailable}</strong>
+            <span className="mx-1">/</span>
+            {item.slotTotal} 가능
+          </span>
+          {item.minPrice > 0 && (
+            <span className="font-mono">
+              최저{" "}
+              <strong className="text-white">
+                {item.minPrice.toLocaleString()}원
+              </strong>
+            </span>
+          )}
+          <span className="ml-auto inline-flex items-center gap-1.5 px-4 py-2 rounded-full bg-mint-500 text-ink-900 font-bold text-[13px] group-hover:bg-white">
+            자세히 보기
+            <ArrowRight className="w-4 h-4" />
+          </span>
+        </div>
+      </Link>
+
+      {/* 하단 스크롤 안내 (마지막 슬라이드 빼고) */}
+      {index < total - 1 && (
+        <div className="absolute bottom-4 left-1/2 -translate-x-1/2 text-[10px] text-white/40 font-mono uppercase tracking-widest animate-pulse pointer-events-none">
+          ↓ scroll
+        </div>
+      )}
+    </section>
   );
 }
