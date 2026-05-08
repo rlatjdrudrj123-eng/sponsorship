@@ -207,66 +207,113 @@ export function SponsorForm({
         </Section>
 
         <Section
-          title="디자인물"
+          title="디자인물 수령 체크리스트"
           right={
-            <AddButton
-              onClick={() =>
-                update("designItems", [...v.designItems, { label: "", status: "pending" }])
-              }
-            />
+            <div className="flex items-center gap-1.5">
+              <button
+                type="button"
+                onClick={() => fillDesignFromItems(v, update)}
+                disabled={v.items.length === 0}
+                className="px-2.5 py-1 rounded-btn border border-mint-200 bg-mint-50 text-[11px] font-semibold text-mint-700 hover:bg-mint-100 disabled:opacity-40 disabled:cursor-not-allowed"
+                title={v.items.length === 0 ? "먼저 품목을 추가해주세요" : "품목에서 디자인물 항목 자동 추가"}
+              >
+                품목에서 자동 추가
+              </button>
+              <AddButton
+                onClick={() =>
+                  update("designItems", [...v.designItems, { label: "", status: "pending" }])
+                }
+              />
+            </div>
           }
         >
           {v.designItems.length === 0 ? (
-            <EmptyHint>디자인물 항목이 없습니다.</EmptyHint>
+            <EmptyHint>
+              참가업체로부터 받아야 할 디자인 파일 목록입니다. 우측 [품목에서 자동 추가] 버튼을 누르면 신청한 품목에서 자동으로 채워집니다.
+            </EmptyHint>
           ) : (
-            <div className="space-y-2">
-              {v.designItems.map((it, i) => (
-                <div key={i} className="grid grid-cols-[1fr_140px_100px_auto] gap-2 items-center">
-                  <input
-                    type="text"
-                    value={it.label}
-                    onChange={(e) => {
-                      const next = [...v.designItems];
-                      next[i] = { ...next[i], label: e.target.value };
-                      update("designItems", next);
-                    }}
-                    placeholder="예: 천장배너, 쇼가이드"
-                    className="px-3 py-2 text-sm border border-ink-100 rounded-btn focus:outline-none focus:border-mint-500"
-                  />
-                  <input
-                    type="text"
-                    value={it.deadline ?? ""}
-                    onChange={(e) => {
-                      const next = [...v.designItems];
-                      next[i] = { ...next[i], deadline: e.target.value };
-                      update("designItems", next);
-                    }}
-                    placeholder="마감 (예: 3월 4일)"
-                    className="px-3 py-2 text-sm border border-ink-100 rounded-btn focus:outline-none focus:border-mint-500"
-                  />
-                  <select
-                    value={it.status ?? "pending"}
-                    onChange={(e) => {
-                      const next = [...v.designItems];
-                      next[i] = { ...next[i], status: e.target.value as DesignItem["status"] };
-                      update("designItems", next);
-                    }}
-                    className="px-2 py-2 text-sm border border-ink-100 rounded-btn bg-white focus:outline-none focus:border-mint-500"
+            <div className="space-y-1.5">
+              {v.designItems.map((it, i) => {
+                const done = it.status === "done";
+                return (
+                  <div
+                    key={i}
+                    className={
+                      "grid grid-cols-[auto_1fr_140px_100px_auto] gap-2 items-center px-2 py-1.5 rounded-btn border " +
+                      (done
+                        ? "border-mint-200 bg-mint-50"
+                        : "border-transparent hover:bg-ink-50")
+                    }
                   >
-                    {Object.entries(DESIGN_STATUS_LABELS).map(([k, l]) => (
-                      <option key={k} value={k}>
-                        {l}
-                      </option>
-                    ))}
-                  </select>
-                  <RemoveButton
-                    onClick={() => {
-                      const next = v.designItems.filter((_, idx) => idx !== i);
-                      update("designItems", next);
-                    }}
-                  />
-                </div>
-              ))}
+                    <input
+                      type="checkbox"
+                      checked={done}
+                      onChange={(e) => {
+                        const next = [...v.designItems];
+                        next[i] = {
+                          ...next[i],
+                          status: e.target.checked ? "done" : "pending",
+                        };
+                        update("designItems", next);
+                      }}
+                      className="w-4 h-4 accent-mint-500 cursor-pointer"
+                      title={done ? "수령 완료 — 클릭해 미수령으로 변경" : "체크하면 수령 완료"}
+                    />
+                    <input
+                      type="text"
+                      value={it.label}
+                      onChange={(e) => {
+                        const next = [...v.designItems];
+                        next[i] = { ...next[i], label: e.target.value };
+                        update("designItems", next);
+                      }}
+                      placeholder="디자인물 이름"
+                      className={
+                        "px-3 py-1.5 text-sm border rounded-btn focus:outline-none focus:border-mint-500 bg-white " +
+                        (done ? "line-through text-ink-500 border-mint-100" : "border-ink-100")
+                      }
+                    />
+                    <input
+                      type="text"
+                      value={it.deadline ?? ""}
+                      onChange={(e) => {
+                        const next = [...v.designItems];
+                        next[i] = { ...next[i], deadline: e.target.value };
+                        update("designItems", next);
+                      }}
+                      placeholder="마감 (예: 3월 4일)"
+                      className="px-3 py-1.5 text-sm border border-ink-100 rounded-btn focus:outline-none focus:border-mint-500 bg-white"
+                    />
+                    <select
+                      value={it.status ?? "pending"}
+                      onChange={(e) => {
+                        const next = [...v.designItems];
+                        next[i] = {
+                          ...next[i],
+                          status: e.target.value as DesignItem["status"],
+                        };
+                        update("designItems", next);
+                      }}
+                      className="px-2 py-1.5 text-sm border border-ink-100 rounded-btn bg-white focus:outline-none focus:border-mint-500"
+                    >
+                      {Object.entries(DESIGN_STATUS_LABELS).map(([k, l]) => (
+                        <option key={k} value={k}>
+                          {l}
+                        </option>
+                      ))}
+                    </select>
+                    <RemoveButton
+                      onClick={() => {
+                        const next = v.designItems.filter((_, idx) => idx !== i);
+                        update("designItems", next);
+                      }}
+                    />
+                  </div>
+                );
+              })}
+              <p className="text-[10.5px] text-ink-500 mt-1">
+                💡 체크박스로 수령 완료 여부를 표시합니다. 신청한 품목이 추가/제거되면 [품목에서 자동 추가] 버튼으로 다시 동기화하세요.
+              </p>
             </div>
           )}
         </Section>
@@ -470,6 +517,53 @@ export function SponsorForm({
       </div>
     </div>
   );
+}
+
+// ============================================================================
+// fillDesignFromItems — 품목에서 디자인물 체크리스트 자동 추가
+// 같은 카테고리/패키지의 슬롯들은 하나로 묶고, 슬롯 코드(예: " XPA-1")는 제거
+// ============================================================================
+
+function fillDesignFromItems(
+  v: SponsorFormValues,
+  update: <K extends keyof SponsorFormValues>(k: K, val: SponsorFormValues[K]) => void
+) {
+  const seen = new Set<string>();
+  const additions: DesignItem[] = [];
+  const existing = new Set(
+    v.designItems.map((d) => d.label.trim().toLowerCase())
+  );
+
+  v.items.forEach((it) => {
+    let label = "";
+    let key = "";
+
+    if (it.packageId) {
+      key = `pkg:${it.packageId}`;
+      label = it.label.trim();
+    } else if (it.categoryId) {
+      key = `cat:${it.categoryId}`;
+      // "XPACE 브릿지+빅브릿지 XPA-1" → "XPACE 브릿지+빅브릿지"
+      label = it.label.replace(/\s+[A-Z]{1,5}-?\d+\s*$/i, "").trim();
+    } else {
+      key = `free:${it.label.trim().toLowerCase()}`;
+      label = it.label.replace(/\s+[A-Z]{1,5}-?\d+\s*$/i, "").trim();
+    }
+
+    if (!label) return;
+    if (seen.has(key)) return;
+    if (existing.has(label.toLowerCase())) return;
+
+    seen.add(key);
+    additions.push({ label, status: "pending" });
+  });
+
+  if (additions.length === 0) {
+    alert("추가할 새 디자인물 항목이 없습니다.\n(이미 모든 품목이 체크리스트에 있거나, 품목에 라벨이 비어있습니다.)");
+    return;
+  }
+
+  update("designItems", [...v.designItems, ...additions]);
 }
 
 // ============================================================================
