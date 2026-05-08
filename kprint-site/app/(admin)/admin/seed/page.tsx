@@ -13,11 +13,14 @@ import {
 } from "lucide-react";
 import { seedSampleImages, type SeedResult } from "@/lib/admin/seedSamples";
 import {
+  clearAllContent,
   clearDemoInquiries,
   clearDemoSponsors,
   seedDemoInquiries,
   seedDemoPackages,
   seedDemoSponsors,
+  type ClearAllOptions,
+  type ClearAllResult,
   type InquirySeedResult,
   type PackageSeedResult,
   type SponsorSeedResult,
@@ -29,11 +32,20 @@ type AnyResult =
   | { kind: "inquiry"; data: InquirySeedResult }
   | { kind: "sponsor"; data: SponsorSeedResult }
   | { kind: "clear-inquiry"; count: number }
-  | { kind: "clear-sponsor"; count: number };
+  | { kind: "clear-sponsor"; count: number }
+  | { kind: "clear-all"; data: ClearAllResult };
 
 export default function SeedPage() {
   const [running, setRunning] = useState<string | null>(null);
   const [results, setResults] = useState<AnyResult[]>([]);
+  const [purgeOpts, setPurgeOpts] = useState<ClearAllOptions>({
+    categories: true,
+    packages: true,
+    inquiries: true,
+    sponsors: true,
+    events: false,
+    importHistory: false,
+  });
 
   const run = async (
     label: string,
@@ -147,7 +159,7 @@ export default function SeedPage() {
         </p>
         <div className="space-y-2">
           <ClearButton
-            label="데모 문의 삭제"
+            label="데모 문의 삭제 (5건)"
             running={running === "clear-inquiry"}
             disabled={!!running}
             onClick={() =>
@@ -162,7 +174,7 @@ export default function SeedPage() {
             }
           />
           <ClearButton
-            label="데모 스폰서 삭제"
+            label="데모 스폰서 삭제 (~17건)"
             running={running === "clear-sponsor"}
             disabled={!!running}
             onClick={() =>
@@ -177,6 +189,76 @@ export default function SeedPage() {
             }
           />
         </div>
+      </section>
+
+      <hr className="border-ink-100" />
+
+      {/* 위험 구역 — 전체 삭제 */}
+      <section className="bg-red-50 border-2 border-red-300 rounded-card p-4">
+        <h2 className="text-[15px] font-bold text-red-800 mb-2 flex items-center gap-2">
+          <AlertTriangle className="w-4 h-4" />
+          위험 구역 — 전체 콘텐츠 삭제
+        </h2>
+        <p className="text-[12px] text-red-700 leading-relaxed">
+          체크한 컬렉션의 <strong>모든 도큐먼트</strong>를 일괄 삭제합니다. 데모/시드 여부 무관, 직접 입력한 데이터까지 모두 삭제되니 주의하세요. 이미지·도면 핀·잠금 등 일체 보존 안 됩니다. 되돌릴 수 없습니다.
+        </p>
+        <div className="mt-3 grid grid-cols-2 gap-2">
+          <PurgeCheckbox
+            label="카테고리 + 소분류 + 슬롯"
+            checked={purgeOpts.categories ?? false}
+            onChange={(b) => setPurgeOpts((p) => ({ ...p, categories: b }))}
+          />
+          <PurgeCheckbox
+            label="패키지"
+            checked={purgeOpts.packages ?? false}
+            onChange={(b) => setPurgeOpts((p) => ({ ...p, packages: b }))}
+          />
+          <PurgeCheckbox
+            label="문의"
+            checked={purgeOpts.inquiries ?? false}
+            onChange={(b) => setPurgeOpts((p) => ({ ...p, inquiries: b }))}
+          />
+          <PurgeCheckbox
+            label="스폰서"
+            checked={purgeOpts.sponsors ?? false}
+            onChange={(b) => setPurgeOpts((p) => ({ ...p, sponsors: b }))}
+          />
+          <PurgeCheckbox
+            label="행사 (events)"
+            checked={purgeOpts.events ?? false}
+            onChange={(b) => setPurgeOpts((p) => ({ ...p, events: b }))}
+          />
+          <PurgeCheckbox
+            label="임포트 이력"
+            checked={purgeOpts.importHistory ?? false}
+            onChange={(b) => setPurgeOpts((p) => ({ ...p, importHistory: b }))}
+          />
+        </div>
+        <button
+          type="button"
+          onClick={() => {
+            const checked = Object.entries(purgeOpts)
+              .filter(([, v]) => v)
+              .map(([k]) => k);
+            if (checked.length === 0) {
+              alert("삭제할 컬렉션을 하나 이상 선택해주세요.");
+              return;
+            }
+            run(
+              "clear-all",
+              async () => ({
+                kind: "clear-all",
+                data: await clearAllContent(purgeOpts),
+              }),
+              `다음 컬렉션의 모든 데이터를 삭제합니다:\n\n${checked.join(", ")}\n\n되돌릴 수 없습니다. 정말 진행할까요?`
+            );
+          }}
+          disabled={!!running}
+          className="mt-4 w-full px-4 py-2.5 rounded-btn bg-red-600 text-white text-[13px] font-bold hover:bg-red-700 disabled:opacity-50 flex items-center justify-center gap-2"
+        >
+          <Trash2 className="w-4 h-4" />
+          {running === "clear-all" ? "삭제 중…" : "선택한 컬렉션 전체 삭제"}
+        </button>
       </section>
 
       {results.length > 0 && (
@@ -325,12 +407,57 @@ function ResultCard({ result }: { result: AnyResult }) {
       </div>
     );
   }
+  if (result.kind === "clear-sponsor") {
+    return (
+      <div className={cardClass}>
+        <div className="font-bold text-red-700 flex items-center gap-1.5">
+          <Trash2 className="w-3.5 h-3.5" />
+          데모 스폰서 {result.count}건 삭제됨
+        </div>
+      </div>
+    );
+  }
+  // clear-all
+  const r = result.data;
+  const total = Object.values(r.deleted).reduce((s, n) => s + n, 0);
   return (
-    <div className={cardClass}>
+    <div className="bg-red-50 border border-red-200 rounded-card p-3 text-[12px]">
       <div className="font-bold text-red-700 flex items-center gap-1.5">
         <Trash2 className="w-3.5 h-3.5" />
-        데모 스폰서 {result.count}건 삭제됨
+        전체 삭제 — 총 {total}건 처리
       </div>
+      <ul className="mt-1 text-red-700">
+        {Object.entries(r.deleted).map(([k, v]) => (
+          <li key={k}>· {k}: {v}건</li>
+        ))}
+      </ul>
+      {r.errors.length > 0 && (
+        <div className="mt-1 text-red-800">
+          실패: {r.errors.map((e) => `${e.collection} (${e.reason})`).join("; ")}
+        </div>
+      )}
     </div>
+  );
+}
+
+function PurgeCheckbox({
+  label,
+  checked,
+  onChange,
+}: {
+  label: string;
+  checked: boolean;
+  onChange: (b: boolean) => void;
+}) {
+  return (
+    <label className="flex items-center gap-2 px-3 py-2 rounded-btn bg-white border border-red-200 cursor-pointer hover:bg-red-100/50">
+      <input
+        type="checkbox"
+        checked={checked}
+        onChange={(e) => onChange(e.target.checked)}
+        className="w-4 h-4 accent-red-600"
+      />
+      <span className="text-[12.5px] text-ink-900 font-semibold">{label}</span>
+    </label>
   );
 }

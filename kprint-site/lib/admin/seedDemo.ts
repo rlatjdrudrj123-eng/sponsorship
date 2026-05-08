@@ -821,3 +821,74 @@ export async function clearDemoSponsors(): Promise<number> {
   return count;
 }
 
+// ============================================================================
+// CLEAR ALL — 전체 콘텐츠 일괄 삭제 (카테고리/슬롯/패키지/문의/스폰서)
+// ⚠️ 매우 파괴적입니다. 라이브 운영 데이터 손실 위험.
+// ============================================================================
+
+export type ClearAllOptions = {
+  categories?: boolean;     // 카테고리·소분류·슬롯
+  packages?: boolean;       // 패키지
+  inquiries?: boolean;      // 문의
+  sponsors?: boolean;       // 스폰서
+  events?: boolean;         // 행사
+  importHistory?: boolean;  // 임포트 이력
+};
+
+export type ClearAllResult = {
+  deleted: Record<string, number>;
+  errors: Array<{ collection: string; reason: string }>;
+};
+
+async function deleteAllInCollection(
+  db: ReturnType<typeof getDb>,
+  collectionName: string
+): Promise<number> {
+  const snap = await getDocs(collection(db, collectionName));
+  if (snap.empty) return 0;
+
+  // Firestore writeBatch는 최대 500 ops — 청크 단위로 나눠서 처리
+  const docs = snap.docs;
+  let deleted = 0;
+  for (let i = 0; i < docs.length; i += 450) {
+    const batch = writeBatch(db);
+    const slice = docs.slice(i, i + 450);
+    slice.forEach((d) => batch.delete(d.ref));
+    await batch.commit();
+    deleted += slice.length;
+  }
+  return deleted;
+}
+
+export async function clearAllContent(opts: ClearAllOptions): Promise<ClearAllResult> {
+  const db = getDb();
+  const result: ClearAllResult = { deleted: {}, errors: [] };
+
+  const targets: Array<{ flag: boolean | undefined; name: string; label: string }> = [
+    // 순서 — 참조 관계 고려: slots → subcategories → categories
+    { flag: opts.categories, name: "slots", label: "슬롯" },
+    { flag: opts.categories, name: "subcategories", label: "소분류" },
+    { flag: opts.categories, name: "categories", label: "카테고리" },
+    { flag: opts.packages, name: "packages", label: "패키지" },
+    { flag: opts.inquiries, name: "inquiries", label: "문의" },
+    { flag: opts.sponsors, name: "sponsors", label: "스폰서" },
+    { flag: opts.events, name: "events", label: "행사" },
+    { flag: opts.importHistory, name: "importHistory", label: "임포트 이력" },
+  ];
+
+  for (const t of targets) {
+    if (!t.flag) continue;
+    try {
+      const n = await deleteAllInCollection(db, t.name);
+      result.deleted[t.label] = n;
+    } catch (e) {
+      result.errors.push({
+        collection: t.label,
+        reason: e instanceof Error ? e.message : String(e),
+      });
+    }
+  }
+
+  return result;
+}
+
