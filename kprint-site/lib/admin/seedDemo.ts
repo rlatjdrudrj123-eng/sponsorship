@@ -668,11 +668,10 @@ export async function seedDemoSponsors(): Promise<SponsorSeedResult> {
     return result;
   }
 
-  // 카테고리·슬롯·패키지 로드
-  const [catSnap, slotSnap, subSnap, pkgSnap, existingSpSnap] = await Promise.all([
+  // 카테고리·슬롯·패키지 로드 (subcategories는 sponsor seed에서 직접 사용 안 함 — 슬롯 도큐먼트의 subcategoryId 참조)
+  const [catSnap, slotSnap, pkgSnap, existingSpSnap] = await Promise.all([
     getDocs(collection(db, "categories")),
     getDocs(collection(db, "slots")),
-    getDocs(collection(db, "subcategories")),
     getDocs(collection(db, "packages")),
     getDocs(collection(db, "sponsors")),
   ]);
