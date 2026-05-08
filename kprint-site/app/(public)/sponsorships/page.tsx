@@ -733,78 +733,169 @@ function SlideSection({
   total: number;
 }) {
   const hero = item.heroImages?.images?.[0]?.url;
+  const deadlineStr = item.deadline
+    ? item.deadline.toDate().toLocaleDateString("ko-KR", {
+        year: "numeric",
+        month: "long",
+        day: "numeric",
+      })
+    : null;
+
+  // 해시태그 — 채널 + 카테고리.tags 중 첫 2개
+  const hashTags: string[] = [
+    CHANNEL_LABELS[item.channel],
+    ...(item.tags ?? []).slice(0, 2),
+  ];
+
   return (
-    <section className="h-screen snap-start snap-always relative bg-ink-900 text-white overflow-hidden">
-      {hero ? (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img
-          src={hero}
-          alt={item.name.ko}
-          className="absolute inset-0 w-full h-full object-cover"
-        />
-      ) : (
-        <div className="absolute inset-0 grid place-items-center text-ink-700">
-          이미지 없음
-        </div>
-      )}
-      {/* 어두운 그라디언트 오버레이로 텍스트 가독성 확보 */}
-      <div className="absolute inset-0 bg-gradient-to-t from-ink-900 via-ink-900/55 to-ink-900/15" />
+    <section className="h-screen snap-start snap-always bg-white pt-14 overflow-hidden relative">
+      <div className="h-full max-w-7xl mx-auto px-6 md:px-12 py-6 md:py-10 grid lg:grid-cols-[1.1fr_1fr] gap-8 lg:gap-14 items-stretch">
+        {/* LEFT: 정보 */}
+        <div className="flex flex-col min-w-0">
+          {/* 해시태그 */}
+          <div className="flex flex-wrap gap-x-4 gap-y-1 text-[13px] md:text-[14px] tracking-wide text-mint-700 font-semibold mb-5 md:mb-7">
+            {hashTags.map((t, i) => (
+              <span key={i}>#{t}</span>
+            ))}
+          </div>
 
-      {/* 좌상단: 인덱스 */}
-      <div className="absolute top-20 left-6 md:left-12 text-[11px] tracking-widest uppercase font-mono text-mint-500">
-        {String(index + 1).padStart(2, "0")} / {String(total).padStart(2, "0")}
-      </div>
-
-      {/* 우상단: 채널 */}
-      <div className="absolute top-20 right-6 md:right-12 flex gap-1.5">
-        <span className="text-[11px] uppercase tracking-wider bg-white/95 text-ink-900 px-2.5 py-1 rounded font-semibold">
-          {CHANNEL_LABELS[item.channel]}
-        </span>
-      </div>
-
-      {/* 본문 */}
-      <Link
-        href={`/sponsorships/${item.slug}`}
-        className="relative z-10 h-full flex flex-col justify-end px-6 md:px-12 pb-12 md:pb-16 max-w-5xl mx-auto group"
-      >
-        <div className="text-[11px] tracking-widest uppercase font-mono text-mint-500 mb-3">
-          {item.code}
-        </div>
-        <h2 className="text-[36px] md:text-[64px] font-bold leading-[1.05] tracking-tight group-hover:text-mint-500 transition-colors">
-          {item.name.ko}
-        </h2>
-        {item.shortDesc && (
-          <p className="text-[15px] md:text-[18px] text-white/80 mt-4 leading-relaxed max-w-3xl">
-            {item.shortDesc}
-          </p>
-        )}
-        <div className="mt-6 flex items-center gap-6 text-[13px] text-white/70 flex-wrap">
-          <span className="font-mono">
-            <strong className="text-mint-500">{item.slotAvailable}</strong>
-            <span className="mx-1">/</span>
-            {item.slotTotal} 가능
-          </span>
-          {item.minPrice > 0 && (
-            <span className="font-mono">
-              최저{" "}
-              <strong className="text-white">
-                {item.minPrice.toLocaleString()}원
-              </strong>
+          {/* 거대한 카테고리 명 + 코드 */}
+          <div className="flex items-baseline gap-3 flex-wrap">
+            <h2 className="text-[40px] md:text-[64px] font-bold leading-[0.95] tracking-tight text-ink-900">
+              {item.name.ko}
+            </h2>
+            <span className="text-[14px] md:text-[18px] text-ink-300 font-mono">
+              #{item.code}
             </span>
-          )}
-          <span className="ml-auto inline-flex items-center gap-1.5 px-4 py-2 rounded-full bg-mint-500 text-ink-900 font-bold text-[13px] group-hover:bg-white">
-            자세히 보기
-            <ArrowRight className="w-4 h-4" />
-          </span>
-        </div>
-      </Link>
+          </div>
 
-      {/* 하단 스크롤 안내 (마지막 슬라이드 빼고) */}
+          {/* 한 줄 설명 */}
+          {item.shortDesc && (
+            <p className="text-[13px] md:text-[15px] text-ink-700 mt-3 leading-relaxed max-w-xl">
+              {item.shortDesc}
+            </p>
+          )}
+
+          {/* 구분선 */}
+          <hr className="border-ink-100 my-6 md:my-8" />
+
+          {/* 스펙 표 */}
+          <dl className="space-y-3 md:space-y-4 flex-1">
+            {item.size && <SpecRow label="사이즈" value={item.size} />}
+            {item.fileFormat && (
+              <SpecRow label="파일 형식" value={item.fileFormat} />
+            )}
+            {deadlineStr && <SpecRow label="제출 마감" value={deadlineStr} />}
+            <SpecRow
+              label="구좌"
+              value={
+                <>
+                  <span className="text-mint-700 font-bold">
+                    {item.slotAvailable}
+                  </span>
+                  <span className="text-ink-500"> / {item.slotTotal} 가능</span>
+                </>
+              }
+            />
+          </dl>
+
+          {/* 액션 버튼 */}
+          <div className="mt-6 md:mt-8 flex flex-wrap gap-2">
+            {item.designGuideFileUrl && (
+              <a
+                href={item.designGuideFileUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="px-5 py-2.5 rounded-btn bg-ink-900 text-white hover:bg-mint-500 hover:text-ink-900 font-semibold text-[13px] transition-colors"
+              >
+                디자인 가이드 다운로드
+              </a>
+            )}
+            <Link
+              href={`/sponsorships/${item.slug}`}
+              className="px-5 py-2.5 rounded-btn border border-ink-100 text-ink-900 hover:border-mint-500 hover:text-mint-700 font-semibold text-[13px] transition-colors"
+            >
+              자세히 보기 · 카트 담기
+            </Link>
+          </div>
+
+          {/* 가격 (우측 정렬, 큰 텍스트) */}
+          <hr className="border-ink-100 mt-6 mb-4" />
+          <div className="flex items-baseline justify-end gap-2 mb-2">
+            <div className="text-right">
+              {item.minPrice > 0 ? (
+                <>
+                  <div className="text-[28px] md:text-[40px] font-bold text-ink-900 leading-none tracking-tight">
+                    {item.minPrice.toLocaleString()}
+                    <span className="text-[16px] md:text-[20px] ml-1 font-semibold">원</span>
+                  </div>
+                  <div className="text-[11px] text-ink-500 mt-1.5">
+                    (부가세 별도)
+                  </div>
+                </>
+              ) : (
+                <div className="text-[14px] text-ink-500">가격 협의</div>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* RIGHT: 큰 hero 이미지 */}
+        <div className="relative flex flex-col min-h-0">
+          <div className="aspect-[4/3] lg:aspect-auto lg:flex-1 rounded-card bg-ink-100 overflow-hidden border border-ink-100 relative">
+            {hero ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={hero}
+                alt={item.name.ko}
+                className="absolute inset-0 w-full h-full object-cover"
+              />
+            ) : (
+              <div className="w-full h-full grid place-items-center text-ink-300 text-sm">
+                이미지 준비 중
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* 페이지 번호 (우하단, 강조) */}
+      <div className="absolute bottom-3 right-6 md:right-12 font-mono tracking-widest text-ink-300 text-[12px]">
+        <span className="text-ink-700 font-bold">
+          {String(index + 1).padStart(2, "0")}
+        </span>
+        <span className="mx-1">/</span>
+        {String(total).padStart(2, "0")}
+      </div>
+
+      {/* 스크롤 안내 (마지막 빼고) */}
       {index < total - 1 && (
-        <div className="absolute bottom-4 left-1/2 -translate-x-1/2 text-[10px] text-white/40 font-mono uppercase tracking-widest animate-pulse pointer-events-none">
-          ↓ scroll
+        <div className="absolute bottom-3 left-1/2 -translate-x-1/2 text-[10px] text-ink-300 font-mono uppercase tracking-widest pointer-events-none flex items-center gap-1.5">
+          <span className="w-4 h-px bg-ink-300" />
+          scroll
+          <ArrowRight className="w-3 h-3 rotate-90" />
+          <span className="w-4 h-px bg-ink-300" />
         </div>
       )}
     </section>
+  );
+}
+
+function SpecRow({
+  label,
+  value,
+}: {
+  label: string;
+  value: React.ReactNode;
+}) {
+  return (
+    <div className="flex gap-6 md:gap-8">
+      <dt className="text-[13px] md:text-[14px] font-bold text-ink-900 w-20 md:w-24 shrink-0">
+        {label}
+      </dt>
+      <dd className="text-[13px] md:text-[14px] text-ink-700 flex-1 min-w-0 break-words">
+        {value}
+      </dd>
+    </div>
   );
 }
