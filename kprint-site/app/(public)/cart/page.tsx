@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { collection, doc, getDoc, getDocs } from "firebase/firestore";
 import { ArrowLeft, ArrowRight, Bookmark, FileDown, Trash2, X } from "lucide-react";
