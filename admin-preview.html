@@ -1,0 +1,869 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>K-PRINT Admin Preview</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Pretendard:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --mint:#00bfa6;
+    --mint-50:#e6faf6;
+    --mint-100:#ccf5ed;
+    --mint-700:#00917f;
+    --bg:#f5f6f7;
+    --panel:#ffffff;
+    --border:#e5e7eb;
+    --border-strong:#d1d5db;
+    --text:#0f172a;
+    --text-2:#475569;
+    --text-3:#94a3b8;
+    --danger:#ef4444;
+    --warn:#f59e0b;
+    --ok:#10b981;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--text);font-family:'Pretendard',-apple-system,system-ui,sans-serif;font-size:14px;line-height:1.5;-webkit-font-smoothing:antialiased}
+  .mono{font-family:'JetBrains Mono',monospace}
+
+  /* TOC */
+  .toc{position:sticky;top:0;z-index:100;background:#0f172a;color:#fff;padding:10px 20px;display:flex;gap:8px;align-items:center;flex-wrap:wrap;font-size:12px}
+  .toc strong{color:var(--mint);margin-right:8px}
+  .toc a{color:#cbd5e1;text-decoration:none;padding:4px 10px;border-radius:6px;border:1px solid #334155}
+  .toc a:hover{background:#1e293b;color:#fff}
+
+  /* Page wrap */
+  .screen{padding:40px 20px;min-height:100vh}
+  .screen-label{max-width:1280px;margin:0 auto 12px;font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--text-3);font-weight:600}
+  .app{max-width:1280px;margin:0 auto;background:var(--panel);border:1px solid var(--border);border-radius:14px;overflow:hidden;display:grid;grid-template-columns:220px 1fr;min-height:780px;box-shadow:0 1px 3px rgba(0,0,0,.04)}
+
+  /* Sidebar */
+  .sb{background:#0f172a;color:#cbd5e1;padding:18px 12px;display:flex;flex-direction:column;gap:2px}
+  .sb-brand{display:flex;align-items:center;gap:8px;padding:6px 10px 18px;border-bottom:1px solid #1e293b;margin-bottom:14px}
+  .sb-brand .dot{width:8px;height:8px;border-radius:50%;background:var(--mint)}
+  .sb-brand .name{color:#fff;font-weight:700;letter-spacing:.02em}
+  .sb-brand .sub{color:#64748b;font-size:11px;margin-left:auto}
+  .sb-section{font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:#64748b;padding:14px 10px 6px}
+  .sb a{display:flex;align-items:center;gap:10px;padding:9px 10px;border-radius:8px;color:#cbd5e1;text-decoration:none;font-size:13px}
+  .sb a:hover{background:#1e293b;color:#fff}
+  .sb a.active{background:var(--mint);color:#0f172a;font-weight:600}
+  .sb a .ic{width:16px;height:16px;display:inline-grid;place-items:center;font-size:14px;opacity:.9}
+  .sb a .badge{margin-left:auto;background:var(--danger);color:#fff;font-size:10px;padding:1px 6px;border-radius:99px;font-weight:600}
+
+  /* Topbar */
+  .top{display:flex;align-items:center;gap:14px;padding:14px 22px;border-bottom:1px solid var(--border);background:#fff;position:sticky;top:0;z-index:5}
+  .breadcrumb{display:flex;align-items:center;gap:6px;font-size:13px;color:var(--text-2)}
+  .breadcrumb b{color:var(--text)}
+  .breadcrumb svg{width:12px;height:12px;color:var(--text-3)}
+  .top .spacer{flex:1}
+  .iconbtn{width:32px;height:32px;border-radius:8px;border:1px solid var(--border);background:#fff;display:grid;place-items:center;cursor:pointer;color:var(--text-2)}
+  .avatar{width:32px;height:32px;border-radius:50%;background:var(--mint);color:#0f172a;display:grid;place-items:center;font-weight:700;font-size:13px}
+
+  /* Content body */
+  .body{padding:24px 28px}
+  .h1{font-size:22px;font-weight:700;letter-spacing:-.01em;margin:0 0 4px}
+  .h2{font-size:15px;font-weight:700;margin:0 0 10px}
+  .muted{color:var(--text-2);font-size:13px}
+  .btn{display:inline-flex;align-items:center;gap:6px;padding:8px 14px;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;border:1px solid var(--border);background:#fff;color:var(--text);text-decoration:none}
+  .btn:hover{background:#f8fafc}
+  .btn.primary{background:var(--mint);border-color:var(--mint);color:#0f172a}
+  .btn.primary:hover{background:var(--mint-700);color:#fff}
+  .btn.ghost{background:transparent;border-color:transparent;color:var(--text-2)}
+  .btn.danger{color:var(--danger);border-color:#fecaca}
+  .btn.sm{padding:5px 10px;font-size:12px}
+  .row{display:flex;gap:12px;align-items:center}
+  .grow{flex:1}
+
+  .pill{display:inline-flex;align-items:center;gap:5px;padding:3px 9px;border-radius:99px;font-size:11px;font-weight:600;background:var(--mint-50);color:var(--mint-700);border:1px solid var(--mint-100)}
+  .pill.gray{background:#f1f5f9;color:var(--text-2);border-color:#e2e8f0}
+  .pill.red{background:#fef2f2;color:var(--danger);border-color:#fecaca}
+  .pill.amber{background:#fffbeb;color:#b45309;border-color:#fde68a}
+
+  .card{background:#fff;border:1px solid var(--border);border-radius:12px;padding:18px}
+  .card+.card{margin-top:14px}
+
+  /* ============= EXCEL UPLOAD ============= */
+  .upload-grid{display:grid;grid-template-columns:1fr 320px;gap:18px;margin-top:18px}
+  .dropzone{
+    border:2px dashed var(--mint);background:linear-gradient(180deg,var(--mint-50),#fff);
+    border-radius:14px;padding:38px;display:flex;flex-direction:column;align-items:center;gap:10px;text-align:center;
+  }
+  .dropzone .big{font-size:34px;line-height:1}
+  .dropzone h3{margin:6px 0 0;font-size:16px}
+  .dropzone p{margin:0;color:var(--text-2);font-size:13px}
+  .dropzone .file{display:inline-flex;gap:10px;align-items:center;padding:10px 14px;background:#fff;border:1px solid var(--mint-100);border-radius:10px;margin-top:8px}
+  .dropzone .file .name{font-weight:600;font-family:'JetBrains Mono',monospace;font-size:12px}
+  .dropzone .file .size{color:var(--text-3);font-size:11px}
+
+  .checks{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:14px}
+  .check{display:flex;gap:10px;align-items:flex-start;padding:10px 12px;background:#fff;border:1px solid var(--border);border-radius:10px;font-size:13px}
+  .check .ic{flex:0 0 22px;height:22px;border-radius:50%;display:grid;place-items:center;font-size:12px;font-weight:700}
+  .check.ok .ic{background:#dcfce7;color:#166534}
+  .check.err .ic{background:#fee2e2;color:#991b1b}
+  .check.warn .ic{background:#fef3c7;color:#92400e}
+  .check .num{font-weight:700}
+  .check small{display:block;color:var(--text-2);margin-top:1px}
+
+  .side h3{margin:0 0 8px;font-size:13px;font-weight:700}
+  .side ul{margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:6px}
+  .side li{font-size:12px;color:var(--text-2);display:flex;gap:8px}
+  .side li::before{content:"";flex:0 0 4px;height:4px;border-radius:50%;background:var(--mint);margin-top:7px}
+  .side .cta{margin-top:14px;padding:12px;border-radius:10px;background:#0f172a;color:#fff}
+  .side .cta a{color:var(--mint);text-decoration:none;font-weight:600;font-size:13px}
+
+  /* Mode radios */
+  .modes{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:14px}
+  .mode{padding:14px;border:1px solid var(--border);border-radius:10px;cursor:pointer}
+  .mode.active{border-color:var(--mint);background:var(--mint-50);box-shadow:inset 0 0 0 1px var(--mint)}
+  .mode .t{font-weight:600;font-size:13px;margin-bottom:2px;display:flex;align-items:center;gap:6px}
+  .mode .t .r{width:14px;height:14px;border-radius:50%;border:2px solid var(--border-strong);position:relative}
+  .mode.active .t .r{border-color:var(--mint)}
+  .mode.active .t .r::after{content:"";position:absolute;inset:2px;border-radius:50%;background:var(--mint)}
+  .mode .d{font-size:11px;color:var(--text-2)}
+
+  /* Preview table */
+  .table{width:100%;border-collapse:collapse;font-size:12px;margin-top:14px}
+  .table th{text-align:left;background:#f8fafc;padding:9px 10px;font-weight:600;color:var(--text-2);border-bottom:1px solid var(--border);font-size:11px;letter-spacing:.04em;text-transform:uppercase}
+  .table td{padding:9px 10px;border-bottom:1px solid #f1f5f9}
+  .table tr:hover td{background:#fafbfc}
+  .table .err{background:#fef2f2 !important}
+  .table .err td{border-color:#fecaca}
+  .table .mono{font-family:'JetBrains Mono',monospace;font-size:11px}
+
+  .actions{display:flex;justify-content:space-between;align-items:center;margin-top:16px;padding-top:16px;border-top:1px solid var(--border)}
+
+  /* ============= CATEGORY EDIT ============= */
+  .form-grid{display:grid;grid-template-columns:1fr 320px;gap:18px}
+  .field{display:flex;flex-direction:column;gap:6px;margin-bottom:14px}
+  .field label{font-size:12px;font-weight:600;color:var(--text-2)}
+  .input,.textarea,.select{
+    border:1px solid var(--border);background:#fff;padding:9px 12px;border-radius:8px;font-size:13px;font-family:inherit;color:var(--text)
+  }
+  .input:focus,.textarea:focus,.select:focus{outline:none;border-color:var(--mint);box-shadow:0 0 0 3px var(--mint-50)}
+  .input.locked{background:#f8fafc;color:var(--text-2)}
+  .textarea{min-height:64px;resize:vertical}
+  .field-row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .field-row.three{grid-template-columns:1fr 1fr 1fr}
+  .help{font-size:11px;color:var(--text-3)}
+  .lock-row{display:flex;align-items:center;gap:8px}
+  .lock-row .lock{font-size:11px;color:var(--text-3);display:inline-flex;align-items:center;gap:4px}
+
+  .tag-chip{display:inline-flex;align-items:center;gap:4px;padding:5px 10px;border-radius:99px;font-size:12px;border:1px solid var(--border);background:#fff;cursor:pointer;color:var(--text-2)}
+  .tag-chip.on{background:var(--mint-50);border-color:var(--mint);color:var(--mint-700);font-weight:600}
+  .tag-row{display:flex;flex-wrap:wrap;gap:6px}
+
+  /* image slot */
+  .imgslot{border:1px solid var(--border);border-radius:12px;padding:14px;background:#fafbfc}
+  .imgslot+.imgslot{margin-top:12px}
+  .imgslot-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
+  .imgslot-head h4{margin:0;font-size:13px;font-weight:700;display:flex;align-items:center;gap:8px}
+  .imgslot-head .req{font-size:10px;background:var(--mint);color:#0f172a;padding:1px 6px;border-radius:99px;font-weight:700}
+  .imgs{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+  .img-tile{aspect-ratio:4/3;border-radius:8px;border:1px solid var(--border);background:#e2e8f0;position:relative;overflow:hidden;display:grid;place-items:center;color:#94a3b8;font-size:11px}
+  .img-tile.has{background:linear-gradient(135deg,#a5d8ff 0%,#84e1c5 50%,#fbbf24 100%);color:transparent}
+  .img-tile .cap{position:absolute;left:0;right:0;bottom:0;padding:5px 7px;background:rgba(15,23,42,.78);color:#fff;font-size:10px;line-height:1.3;text-align:left}
+  .img-tile .x{position:absolute;top:5px;right:5px;width:20px;height:20px;border-radius:50%;background:rgba(15,23,42,.7);color:#fff;display:grid;place-items:center;font-size:11px;cursor:pointer;border:none}
+  .img-tile .pinbtn{position:absolute;top:5px;left:5px;background:#fff;color:var(--text);padding:2px 7px;border-radius:99px;font-size:10px;font-weight:600;border:none;cursor:pointer}
+  .img-tile.add{background:#fff;border:1.5px dashed var(--border-strong);color:var(--text-3);cursor:pointer}
+  .img-tile.add:hover{border-color:var(--mint);color:var(--mint);background:var(--mint-50)}
+  .img-tile.add .plus{font-size:22px;line-height:1;margin-bottom:4px}
+
+  /* right pane (preview / sticky) */
+  .preview{position:sticky;top:78px;align-self:start}
+  .preview-card{border:1px solid var(--border);border-radius:14px;overflow:hidden;background:#fff}
+  .preview-head{padding:10px 14px;background:#f8fafc;border-bottom:1px solid var(--border);font-size:11px;color:var(--text-2);display:flex;justify-content:space-between;align-items:center}
+  .preview-frame{aspect-ratio:16/10;background:#0f172a;color:#fff;padding:14px;font-size:10px;position:relative;overflow:hidden}
+  .preview-frame::before{content:"";position:absolute;inset:0;background:radial-gradient(ellipse at 70% 30%,rgba(0,191,166,.18),transparent 60%)}
+  .pf-title{font-size:18px;font-weight:700;margin-bottom:4px;letter-spacing:-.01em}
+  .pf-meta{font-size:10px;color:#94a3b8;display:flex;gap:6px;flex-wrap:wrap}
+  .pf-meta span{padding:1px 6px;border:1px solid #334155;border-radius:99px}
+  .pf-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px;height:120px}
+  .pf-img{background:linear-gradient(135deg,#1e293b,#334155);border-radius:6px;display:grid;place-items:center;color:#475569;font-size:9px}
+  .pf-img.hero{background:linear-gradient(135deg,#a5d8ff 0%,#84e1c5 50%,#fbbf24 100%);color:transparent}
+  .pf-slots{margin-top:8px;display:grid;grid-template-columns:repeat(7,1fr);gap:3px}
+  .pf-slots .s{aspect-ratio:1;border-radius:3px;background:#1e293b;display:grid;place-items:center;font-size:8px;color:#64748b}
+  .pf-slots .s.ok{background:#fff;color:#0f172a}
+  .pf-slots .s.sel{background:var(--mint);color:#0f172a;font-weight:700}
+
+  /* ============= PIN EDITOR ============= */
+  .pin-modal{background:#0f172a;border-radius:14px;padding:0;overflow:hidden}
+  .pin-modal-head{background:#1e293b;color:#fff;padding:14px 20px;display:flex;align-items:center;gap:14px;border-bottom:1px solid #334155}
+  .pin-modal-head h3{margin:0;font-size:15px;font-weight:700}
+  .pin-modal-head .file{color:#94a3b8;font-family:'JetBrains Mono',monospace;font-size:11px}
+  .pin-modal-head .x{margin-left:auto;width:30px;height:30px;border-radius:8px;background:#334155;border:none;color:#fff;cursor:pointer}
+  .pin-grid{display:grid;grid-template-columns:1fr 320px;min-height:520px}
+
+  .pin-canvas{background:#0a0f1c;padding:24px;display:flex;align-items:center;justify-content:center;position:relative}
+  .pin-floor{
+    width:100%;max-width:640px;aspect-ratio:4/3;border-radius:8px;position:relative;
+    background:
+      linear-gradient(180deg,#fefefe,#f1f5f9);
+    overflow:hidden;
+    box-shadow:0 10px 30px rgba(0,0,0,.3);
+    cursor:crosshair;
+  }
+  /* fake floorplan lines */
+  .pin-floor::before{
+    content:"";position:absolute;inset:0;
+    background-image:
+      linear-gradient(0deg,rgba(15,23,42,.05) 1px,transparent 1px),
+      linear-gradient(90deg,rgba(15,23,42,.05) 1px,transparent 1px);
+    background-size:40px 40px;
+  }
+  .pin-floor .room{position:absolute;border:2px solid #94a3b8;background:rgba(255,255,255,.6)}
+  .pin-floor .label{position:absolute;font-size:10px;color:#64748b;font-weight:600;letter-spacing:.1em;text-transform:uppercase}
+  .pin{
+    position:absolute;width:28px;height:28px;border-radius:50%;
+    background:var(--mint);color:#0f172a;display:grid;place-items:center;
+    font-weight:700;font-size:11px;
+    border:3px solid #fff;
+    box-shadow:0 4px 12px rgba(0,0,0,.25);
+    transform:translate(-50%,-50%);
+    cursor:move;
+  }
+  .pin.ghost{background:#fff;color:var(--text-3);border:2px dashed var(--border-strong);box-shadow:none}
+  .pin.sel{background:#0f172a;color:var(--mint);border-color:var(--mint);transform:translate(-50%,-50%) scale(1.15)}
+  .pin .tip{position:absolute;left:50%;top:-26px;transform:translateX(-50%);background:#0f172a;color:#fff;padding:2px 7px;border-radius:4px;font-size:10px;white-space:nowrap;font-weight:500}
+
+  .pin-floor .crosshair{position:absolute;width:1px;background:rgba(0,191,166,.4);pointer-events:none}
+  .pin-floor .crosshair.h{height:1px;width:100%}
+
+  .pin-coords{position:absolute;top:14px;right:14px;background:rgba(15,23,42,.85);color:#fff;padding:6px 10px;border-radius:6px;font-family:'JetBrains Mono',monospace;font-size:11px}
+  .pin-coords span{color:var(--mint)}
+
+  .pin-side{background:#fff;border-left:1px solid #1e293b;padding:18px;display:flex;flex-direction:column;gap:10px;max-height:520px;overflow-y:auto}
+  .pin-side h4{margin:0 0 4px;font-size:12px;color:var(--text-2);text-transform:uppercase;letter-spacing:.08em}
+  .pin-side .hint{font-size:11px;color:var(--text-3);background:var(--mint-50);border:1px solid var(--mint-100);padding:8px 10px;border-radius:8px;color:var(--mint-700)}
+  .pin-list{display:flex;flex-direction:column;gap:6px;margin-top:6px}
+  .pin-row{display:flex;align-items:center;gap:8px;padding:8px;border-radius:8px;border:1px solid var(--border);font-size:12px;cursor:pointer}
+  .pin-row.sel{border-color:var(--mint);background:var(--mint-50)}
+  .pin-row .num{width:22px;height:22px;border-radius:50%;background:var(--mint);color:#0f172a;display:grid;place-items:center;font-weight:700;font-size:11px;flex:0 0 22px}
+  .pin-row .num.empty{background:#e2e8f0;color:var(--text-3)}
+  .pin-row .info{flex:1;min-width:0}
+  .pin-row .code{font-family:'JetBrains Mono',monospace;font-weight:600}
+  .pin-row .note{font-size:11px;color:var(--text-3);margin-top:1px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .pin-row .coord{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--text-3)}
+  .pin-row .x{width:22px;height:22px;border-radius:6px;border:none;background:transparent;color:var(--text-3);cursor:pointer}
+  .pin-row .x:hover{background:#fef2f2;color:var(--danger)}
+
+  .pin-detail{background:#f8fafc;padding:14px;border-radius:10px;margin-top:8px}
+  .pin-detail .row{display:flex;justify-content:space-between;font-size:11px;color:var(--text-2);margin-bottom:6px}
+  .pin-detail input{width:100%;padding:7px 9px;font-size:12px;border:1px solid var(--border);border-radius:6px;background:#fff}
+  .pin-detail .lbl{display:block;font-size:11px;color:var(--text-2);margin-bottom:4px;font-weight:600}
+
+  .pin-foot{padding:12px 18px;border-top:1px solid #334155;background:#1e293b;display:flex;justify-content:space-between;align-items:center}
+  .pin-foot .hint-text{color:#94a3b8;font-size:11px}
+
+  /* spacer between sections */
+  .gap{height:60px}
+
+  @media (max-width:980px){
+    .upload-grid,.form-grid,.pin-grid{grid-template-columns:1fr}
+    .preview{position:static}
+  }
+</style>
+</head>
+<body>
+
+<div class="toc">
+  <strong>K-PRINT ADMIN</strong>
+  <a href="#screen-1">1. 엑셀 일괄 업로드</a>
+  <a href="#screen-2">2. 카테고리 편집 (이미지)</a>
+  <a href="#screen-3">3. 핀 좌표 편집기</a>
+</div>
+
+<!-- ================================================
+     SCREEN 1: EXCEL UPLOAD
+================================================ -->
+<section id="screen-1" class="screen">
+  <div class="screen-label">SCREEN 1 · 엑셀 일괄 업로드</div>
+  <div class="app">
+
+    <!-- sidebar -->
+    <nav class="sb">
+      <div class="sb-brand">
+        <span class="dot"></span>
+        <span class="name">k·print</span>
+        <span class="sub">admin</span>
+      </div>
+      <div class="sb-section">메인</div>
+      <a href="#"><span class="ic">▦</span> 대시보드</a>
+      <a href="#" class="active"><span class="ic">⇪</span> 엑셀 업로드</a>
+      <div class="sb-section">콘텐츠</div>
+      <a href="#"><span class="ic">≡</span> 카테고리</a>
+      <a href="#"><span class="ic">◎</span> 패키지</a>
+      <a href="#"><span class="ic">◰</span> 슬롯 관리</a>
+      <div class="sb-section">고객</div>
+      <a href="#"><span class="ic">✉</span> 문의<span class="badge">3</span></a>
+      <div class="sb-section">설정</div>
+      <a href="#"><span class="ic">⚙</span> 사이트 설정</a>
+      <a href="#"><span class="ic">#</span> 분류·태그</a>
+    </nav>
+
+    <!-- main -->
+    <main>
+      <div class="top">
+        <div class="breadcrumb">
+          <span>K-PRINT 2026</span>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg>
+          <b>엑셀 업로드</b>
+        </div>
+        <div class="spacer"></div>
+        <button class="iconbtn">↻</button>
+        <button class="iconbtn">?</button>
+        <div class="avatar">K</div>
+      </div>
+
+      <div class="body">
+        <div class="row" style="align-items:flex-start;margin-bottom:6px">
+          <div class="grow">
+            <h1 class="h1">엑셀 일괄 업로드</h1>
+            <p class="muted">기존 사무국 엑셀 양식 그대로 올리면 카테고리·소분류·구좌가 자동 생성돼요.</p>
+          </div>
+          <a href="#" class="btn">⬇ 엑셀 양식 다운로드</a>
+        </div>
+
+        <div class="upload-grid">
+          <!-- LEFT -->
+          <div>
+            <div class="dropzone">
+              <div class="big">⇪</div>
+              <h3>엑셀 파일을 여기에 끌어다 놓으세요</h3>
+              <p>또는 <a href="#" style="color:var(--mint-700);font-weight:600">파일 선택</a> · .xlsx / .xls 지원, 최대 20MB</p>
+              <div class="file">
+                <span style="color:var(--mint)">▣</span>
+                <span class="name">kprint_2026_sponsorships_v3.xlsx</span>
+                <span class="size">142 KB</span>
+                <button class="btn ghost sm">×</button>
+              </div>
+            </div>
+
+            <div class="card" style="margin-top:18px">
+              <div class="row" style="margin-bottom:6px">
+                <h2 class="h2" style="margin:0">파싱 결과</h2>
+                <div class="spacer"></div>
+                <span class="pill">✓ 인식 완료</span>
+              </div>
+              <div class="checks">
+                <div class="check ok">
+                  <div class="ic">✓</div>
+                  <div><div><span class="num">12</span>개 대분류</div><small>천장배너, 등록대, 목걸이…</small></div>
+                </div>
+                <div class="check ok">
+                  <div class="ic">✓</div>
+                  <div><div><span class="num">28</span>개 소분류</div><small>Hall A·B·C, 표4·표2…</small></div>
+                </div>
+                <div class="check ok">
+                  <div class="ic">✓</div>
+                  <div><div><span class="num">100</span>개 구좌</div><small>CBA-1 ~ XPB-4</small></div>
+                </div>
+                <div class="check warn">
+                  <div class="ic">!</div>
+                  <div><div><span class="num">2</span>개 행 경고</div><small>아래 표에서 빨간 행 확인</small></div>
+                </div>
+              </div>
+
+              <h2 class="h2" style="margin-top:20px">동기화 모드</h2>
+              <div class="modes">
+                <div class="mode active">
+                  <div class="t"><span class="r"></span> 덮어쓰기</div>
+                  <div class="d">엑셀 내용으로 전체 교체. 권장.</div>
+                </div>
+                <div class="mode">
+                  <div class="t"><span class="r"></span> 병합</div>
+                  <div class="d">기존 데이터 유지, 가격·마감만 갱신</div>
+                </div>
+                <div class="mode">
+                  <div class="t"><span class="r"></span> 신규만 추가</div>
+                  <div class="d">새 코드만 추가, 기존은 안 건드림</div>
+                </div>
+              </div>
+
+              <h2 class="h2" style="margin-top:20px">미리보기 (먼저 10행)</h2>
+              <table class="table">
+                <thead>
+                  <tr>
+                    <th>채널</th><th>대분류</th><th>코드</th><th>유형</th><th>소분류</th><th>항목</th><th>단가(KRW)</th><th>마감</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr><td>오프</td><td>천장 배너</td><td class="mono">CBA</td><td>도면형</td><td>Hall A</td><td class="mono">CBA-1</td><td>3,000,000</td><td><span class="pill gray">마감</span></td></tr>
+                  <tr><td>오프</td><td>천장 배너</td><td class="mono">CBA</td><td>도면형</td><td>Hall A</td><td class="mono">CBA-2</td><td>3,000,000</td><td><span class="pill gray">마감</span></td></tr>
+                  <tr><td>오프</td><td>천장 배너</td><td class="mono">CBA</td><td>도면형</td><td>Hall A</td><td class="mono">CBA-6</td><td>3,000,000</td><td><span class="pill">가능</span></td></tr>
+                  <tr class="err"><td>오프</td><td>등록대</td><td class="mono">RGA</td><td>도면형</td><td>Hall A1</td><td class="mono">RGA-1-1</td><td><span style="color:var(--danger);font-weight:600">— 누락</span></td><td><span class="pill red">오류</span></td></tr>
+                  <tr><td>오프</td><td>참관객 목걸이</td><td class="mono">BGE</td><td>수량형</td><td>—</td><td class="mono">BGE-1</td><td>7,000,000</td><td><span class="pill">가능</span></td></tr>
+                  <tr><td>오프</td><td>옥외 XPACE</td><td class="mono">XPA</td><td>XPACE</td><td>브릿지/엣지</td><td class="mono">XPA-1</td><td>11,000,000</td><td><span class="pill">가능</span></td></tr>
+                  <tr><td>온라</td><td>통합검색 배너</td><td class="mono">TTS</td><td>디지털배너</td><td>—</td><td class="mono">TTS-1</td><td>2,000,000</td><td><span class="pill">가능</span></td></tr>
+                  <tr class="err"><td>온라</td><td>뉴스레터(국내)</td><td class="mono">NLD</td><td>발송형</td><td>—</td><td class="mono">NLD-1</td><td>3,000,000</td><td><span class="pill amber">중복코드</span></td></tr>
+                  <tr><td>온라</td><td>SNS 인터뷰</td><td class="mono">SNI</td><td>콘텐츠형</td><td>—</td><td class="mono">SNI-1</td><td>4,000,000</td><td><span class="pill">가능</span></td></tr>
+                  <tr><td>패키</td><td>참관객 A to Z</td><td class="mono">PC-2</td><td>패키지</td><td>—</td><td class="mono">PC-2</td><td>17,000,000</td><td><span class="pill">가능</span></td></tr>
+                </tbody>
+              </table>
+
+              <div class="actions">
+                <span class="muted">전체 100개 중 10개 표시. <a href="#" style="color:var(--mint-700)">전체 보기</a></span>
+                <div class="row">
+                  <button class="btn">취소</button>
+                  <button class="btn primary">100개 항목 업로드 →</button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- RIGHT -->
+          <aside class="side">
+            <div class="card">
+              <h3>📋 엑셀 양식 가이드</h3>
+              <ul>
+                <li>1행은 헤더 (수정 금지)</li>
+                <li>대분류 코드는 영문 3자리 (CBA, BGE…)</li>
+                <li>유형은 9가지 중 하나만 (도면형/수량형/미디어형/디지털배너/발송형/지면형/콘텐츠형/XPACE/패키지)</li>
+                <li>마감 컬럼은 TRUE/FALSE 또는 마감/가능</li>
+                <li>가격은 숫자만 (콤마 OK)</li>
+                <li>이미지는 별도로 업로드</li>
+              </ul>
+              <div class="cta">
+                <div style="font-size:12px;color:#94a3b8;margin-bottom:4px">매년 행사 마감 후</div>
+                <div style="font-weight:600;margin-bottom:8px">엑셀만 새로 받아 재업로드하면 끝.</div>
+                <a href="#">샘플 양식 다운로드 →</a>
+              </div>
+            </div>
+
+            <div class="card">
+              <h3>⏱ 최근 업로드</h3>
+              <ul style="gap:10px">
+                <li style="flex-direction:column;gap:2px"><b style="color:var(--text)">v3 — kprint_2026.xlsx</b><span style="font-size:11px">2026.05.07 14:22 · 100건 · 김지원</span></li>
+                <li style="flex-direction:column;gap:2px"><b style="color:var(--text)">v2 — kprint_2026_draft.xlsx</b><span style="font-size:11px">2026.05.04 09:31 · 95건 · 김지원</span></li>
+                <li style="flex-direction:column;gap:2px"><b style="color:var(--text)">v1 — initial.xlsx</b><span style="font-size:11px">2026.04.28 17:00 · 88건 · 박민수</span></li>
+              </ul>
+            </div>
+          </aside>
+        </div>
+      </div>
+    </main>
+  </div>
+</section>
+
+<div class="gap"></div>
+
+<!-- ================================================
+     SCREEN 2: CATEGORY EDIT
+================================================ -->
+<section id="screen-2" class="screen" style="background:#eef0f2">
+  <div class="screen-label">SCREEN 2 · 카테고리 편집 (이미지·텍스트)</div>
+  <div class="app">
+
+    <nav class="sb">
+      <div class="sb-brand">
+        <span class="dot"></span>
+        <span class="name">k·print</span>
+        <span class="sub">admin</span>
+      </div>
+      <div class="sb-section">메인</div>
+      <a href="#"><span class="ic">▦</span> 대시보드</a>
+      <a href="#"><span class="ic">⇪</span> 엑셀 업로드</a>
+      <div class="sb-section">콘텐츠</div>
+      <a href="#" class="active"><span class="ic">≡</span> 카테고리</a>
+      <a href="#"><span class="ic">◎</span> 패키지</a>
+      <a href="#"><span class="ic">◰</span> 슬롯 관리</a>
+      <div class="sb-section">고객</div>
+      <a href="#"><span class="ic">✉</span> 문의<span class="badge">3</span></a>
+      <div class="sb-section">설정</div>
+      <a href="#"><span class="ic">⚙</span> 사이트 설정</a>
+      <a href="#"><span class="ic">#</span> 분류·태그</a>
+    </nav>
+
+    <main>
+      <div class="top">
+        <div class="breadcrumb">
+          <span>K-PRINT 2026</span>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg>
+          <span>카테고리</span>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg>
+          <b>천장 배너</b>
+          <span class="pill" style="margin-left:4px">도면형</span>
+        </div>
+        <div class="spacer"></div>
+        <span class="muted" style="font-size:12px">자동 저장 · 14:23</span>
+        <button class="btn">미리보기 ↗</button>
+        <button class="btn primary">저장</button>
+      </div>
+
+      <div class="body">
+        <div class="form-grid">
+          <!-- LEFT: form -->
+          <div>
+            <!-- basics -->
+            <div class="card">
+              <div class="row" style="margin-bottom:14px">
+                <h2 class="h2" style="margin:0">기본 정보</h2>
+                <span class="pill gray" style="margin-left:8px">엑셀 동기화</span>
+                <div class="spacer"></div>
+                <span class="help">엑셀에서 자동 입력된 항목은 <span class="lock">🔒 잠금</span> 상태</span>
+              </div>
+              <div class="field-row">
+                <div class="field">
+                  <label>이름 (KO)</label>
+                  <div class="lock-row">
+                    <input class="input locked grow" value="천장 배너" />
+                    <button class="btn ghost sm">🔒</button>
+                  </div>
+                </div>
+                <div class="field">
+                  <label>Name (EN)</label>
+                  <div class="lock-row">
+                    <input class="input locked grow" value="Ceiling Banner" />
+                    <button class="btn ghost sm">🔒</button>
+                  </div>
+                </div>
+              </div>
+              <div class="field-row three">
+                <div class="field">
+                  <label>코드</label>
+                  <input class="input locked mono" value="CBA" />
+                </div>
+                <div class="field">
+                  <label>채널</label>
+                  <input class="input locked" value="오프라인" />
+                </div>
+                <div class="field">
+                  <label>유형</label>
+                  <select class="select"><option>도면형</option></select>
+                </div>
+              </div>
+              <div class="field">
+                <label>한 줄 설명 (페이지 상단 strip에 노출)</label>
+                <input class="input" value="전시장 진입 동선의 대형 사인 — 시야가 가장 먼저 닿는 자리." />
+              </div>
+              <div class="field" style="margin-bottom:0">
+                <label>본문 설명 (선택)</label>
+                <textarea class="textarea" placeholder="비워두면 페이지에서 노출되지 않아요.">Hall A·B·C 천장에 설치되는 대형 배너. 라이팅으로 가독성 확보, 멀리서도 식별 가능. 브랜드 인지 확산형 광고로 가장 많이 선택되는 항목.</textarea>
+              </div>
+            </div>
+
+            <!-- images -->
+            <div class="card">
+              <div class="row" style="margin-bottom:14px">
+                <h2 class="h2" style="margin:0">이미지</h2>
+                <div class="spacer"></div>
+                <button class="btn sm">📁 폴더 일괄 업로드</button>
+              </div>
+
+              <!-- hero -->
+              <div class="imgslot">
+                <div class="imgslot-head">
+                  <h4>① 히어로 이미지 <span class="req">필수</span></h4>
+                  <div class="row">
+                    <select class="select" style="font-size:12px;padding:5px 8px"><option>캐러셀</option><option>단일</option><option>갤러리</option></select>
+                    <button class="btn sm">+ 이미지 추가</button>
+                  </div>
+                </div>
+                <div class="imgs">
+                  <div class="img-tile has">
+                    <button class="x">×</button>
+                    <span class="cap">정면 컷 / 라이팅 ON</span>
+                  </div>
+                  <div class="img-tile has">
+                    <button class="x">×</button>
+                    <span class="cap">측면 — 동선 진입 시점</span>
+                  </div>
+                  <div class="img-tile has">
+                    <button class="x">×</button>
+                    <span class="cap">야간 컷</span>
+                  </div>
+                  <div class="img-tile add">
+                    <span class="plus">+</span>
+                    <span>드래그 또는 클릭</span>
+                  </div>
+                </div>
+              </div>
+
+              <!-- floor (도면형 전용) -->
+              <div class="imgslot" style="border-color:var(--mint);background:var(--mint-50)">
+                <div class="imgslot-head">
+                  <h4>② 도면 이미지 <span class="req">도면형 전용</span></h4>
+                  <span class="muted" style="font-size:12px">소분류별로 도면 1장씩 (Hall A, B, C)</span>
+                </div>
+                <div class="imgs">
+                  <div class="img-tile has">
+                    <button class="pinbtn">📍 핀 7개</button>
+                    <button class="x">×</button>
+                    <span class="cap">Hall A · floor-A.jpg</span>
+                  </div>
+                  <div class="img-tile has">
+                    <button class="pinbtn">📍 핀 6개</button>
+                    <button class="x">×</button>
+                    <span class="cap">Hall B · floor-B.jpg</span>
+                  </div>
+                  <div class="img-tile has">
+                    <button class="pinbtn" style="background:#fef2f2;color:var(--danger)">⚠ 핀 0개</button>
+                    <button class="x">×</button>
+                    <span class="cap">Hall C · floor-C.jpg</span>
+                  </div>
+                  <div class="img-tile add">
+                    <span class="plus">+</span>
+                    <span>도면 추가</span>
+                  </div>
+                </div>
+              </div>
+
+              <!-- detail -->
+              <div class="imgslot">
+                <div class="imgslot-head">
+                  <h4>③ 디테일 이미지 <span style="font-size:10px;color:var(--text-3);font-weight:500;background:transparent">선택</span></h4>
+                  <div class="row">
+                    <select class="select" style="font-size:12px;padding:5px 8px"><option>캐러셀</option></select>
+                    <button class="btn sm">+ 이미지 추가</button>
+                  </div>
+                </div>
+                <div class="imgs">
+                  <div class="img-tile has"><button class="x">×</button><span class="cap">설치 디테일</span></div>
+                  <div class="img-tile add"><span class="plus">+</span><span>드래그 또는 클릭</span></div>
+                  <div class="img-tile add" style="background:transparent;border:none"></div>
+                  <div class="img-tile add" style="background:transparent;border:none"></div>
+                </div>
+              </div>
+            </div>
+
+            <!-- spec / meta -->
+            <div class="card">
+              <h2 class="h2">스펙 · 가이드</h2>
+              <div class="field-row three">
+                <div class="field">
+                  <label>사이즈</label>
+                  <input class="input locked" value="1,800mm × 3,500mm" />
+                </div>
+                <div class="field">
+                  <label>파일 형식</label>
+                  <input class="input locked" value="eps, ai, pdf" />
+                </div>
+                <div class="field">
+                  <label>제출 마감</label>
+                  <input class="input locked" value="2026.06.30" />
+                </div>
+              </div>
+              <div class="field">
+                <label>디자인 가이드 PDF</label>
+                <div class="row">
+                  <div class="input grow row" style="background:#f8fafc">
+                    <span style="color:var(--mint)">📄</span>
+                    <span class="mono" style="font-size:12px">cba_design_guide_v2.pdf</span>
+                    <span class="muted" style="font-size:11px;margin-left:auto">2.4 MB</span>
+                  </div>
+                  <button class="btn sm">교체</button>
+                  <button class="btn sm danger">제거</button>
+                </div>
+              </div>
+              <div class="field" style="margin-bottom:0">
+                <label>태그 (다중 선택)</label>
+                <div class="tag-row">
+                  <span class="tag-chip on">✓ 브랜드_확산형</span>
+                  <span class="tag-chip on">✓ 온사이트</span>
+                  <span class="tag-chip">신제품_홍보</span>
+                  <span class="tag-chip">맞춤형_타겟팅</span>
+                  <span class="tag-chip">현장_방문객_유도</span>
+                  <span class="tag-chip" style="border-style:dashed">+ 태그 추가</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- subcategories summary -->
+            <div class="card">
+              <div class="row" style="margin-bottom:10px">
+                <h2 class="h2" style="margin:0">소분류 · 구좌</h2>
+                <span class="pill gray" style="margin-left:8px">엑셀 동기화</span>
+                <div class="spacer"></div>
+                <a href="#" class="btn sm">슬롯 마감 일괄 처리 →</a>
+              </div>
+              <table class="table" style="margin-top:0">
+                <thead><tr><th>소분류</th><th>구좌 수</th><th>가능</th><th>마감</th><th>단가</th><th></th></tr></thead>
+                <tbody>
+                  <tr><td>Hall A</td><td>7</td><td><span class="pill">1</span></td><td><span class="pill gray">6</span></td><td>3,000,000원</td><td><a href="#" style="color:var(--mint-700);font-size:12px">관리 →</a></td></tr>
+                  <tr><td>Hall B</td><td>6</td><td><span class="pill">2</span></td><td><span class="pill gray">4</span></td><td>3,000,000원</td><td><a href="#" style="color:var(--mint-700);font-size:12px">관리 →</a></td></tr>
+                  <tr><td>Hall C</td><td>5</td><td><span class="pill">3</span></td><td><span class="pill gray">2</span></td><td>3,000,000원</td><td><a href="#" style="color:var(--mint-700);font-size:12px">관리 →</a></td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- RIGHT: live preview -->
+          <aside class="preview">
+            <div class="preview-card">
+              <div class="preview-head">
+                <span>실시간 미리보기</span>
+                <span class="row" style="gap:6px"><span class="pill">데스크톱</span><span class="pill gray">모바일</span></span>
+              </div>
+              <div class="preview-frame">
+                <div class="pf-title">천장 배너</div>
+                <div class="pf-meta">
+                  <span>도면형</span>
+                  <span>3,000,000원/구좌</span>
+                  <span>2026.06.30 마감</span>
+                </div>
+                <div class="pf-grid">
+                  <div class="pf-img hero">hero</div>
+                  <div class="pf-img">floor-A · 7 pins</div>
+                </div>
+                <div style="font-size:9px;color:#94a3b8;margin-top:8px">Hall A · 7구좌 1가능</div>
+                <div class="pf-slots">
+                  <div class="s">1</div><div class="s">2</div><div class="s">3</div><div class="s">4</div><div class="s">5</div><div class="s ok sel">6</div><div class="s">7</div>
+                </div>
+              </div>
+            </div>
+
+            <div class="card" style="padding:14px;margin-top:12px">
+              <h3 style="margin:0 0 6px;font-size:12px;font-weight:700">완성도 체크</h3>
+              <div style="display:flex;flex-direction:column;gap:6px;font-size:12px">
+                <div style="display:flex;justify-content:space-between"><span>✓ 기본 정보</span><span style="color:var(--ok);font-weight:600">완료</span></div>
+                <div style="display:flex;justify-content:space-between"><span>✓ 히어로 이미지</span><span style="color:var(--ok);font-weight:600">3장</span></div>
+                <div style="display:flex;justify-content:space-between"><span>! 도면 핀</span><span style="color:var(--warn);font-weight:600">2/3 완료</span></div>
+                <div style="display:flex;justify-content:space-between"><span>✓ 가이드 PDF</span><span style="color:var(--ok);font-weight:600">업로드됨</span></div>
+                <div style="display:flex;justify-content:space-between"><span>✓ 태그</span><span style="color:var(--ok);font-weight:600">2개</span></div>
+              </div>
+              <div style="margin-top:10px;padding:8px 10px;background:#fffbeb;border:1px solid #fde68a;border-radius:8px;font-size:11px;color:#92400e">
+                Hall C 도면에 핀 좌표가 없어요. <a href="#screen-3" style="color:#92400e;font-weight:600">핀 편집 →</a>
+              </div>
+            </div>
+          </aside>
+        </div>
+      </div>
+    </main>
+  </div>
+</section>
+
+<div class="gap"></div>
+
+<!-- ================================================
+     SCREEN 3: PIN EDITOR (modal-style)
+================================================ -->
+<section id="screen-3" class="screen" style="background:#0a0f1c">
+  <div class="screen-label" style="color:#64748b">SCREEN 3 · 핀 좌표 편집기 (도면형 전용)</div>
+  <div style="max-width:1280px;margin:0 auto;background:#0a0f1c;padding:30px;border-radius:14px">
+
+    <div class="pin-modal">
+      <div class="pin-modal-head">
+        <h3>핀 좌표 편집</h3>
+        <span class="file">천장 배너 / Hall A · floor-A.jpg</span>
+        <button class="x">×</button>
+      </div>
+
+      <div class="pin-grid">
+
+        <!-- canvas -->
+        <div class="pin-canvas">
+          <div class="pin-floor">
+            <!-- fake floor plan -->
+            <div class="room" style="left:8%;top:10%;width:38%;height:35%"></div>
+            <div class="room" style="left:54%;top:10%;width:38%;height:35%"></div>
+            <div class="room" style="left:8%;top:55%;width:84%;height:35%"></div>
+            <div class="label" style="left:22%;top:25%">A1 GATE</div>
+            <div class="label" style="left:68%;top:25%">A2 GATE</div>
+            <div class="label" style="left:46%;top:70%">CENTER AISLE</div>
+
+            <!-- crosshair when hovering -->
+            <div class="crosshair" style="left:62%;top:0;height:100%"></div>
+            <div class="crosshair h" style="left:0;top:38%"></div>
+
+            <!-- pins -->
+            <div class="pin" style="left:18%;top:22%">1</div>
+            <div class="pin" style="left:35%;top:22%">2</div>
+            <div class="pin sel" style="left:62%;top:38%">3<span class="tip">CBA-3 · 선택중</span></div>
+            <div class="pin" style="left:78%;top:22%">4</div>
+            <div class="pin" style="left:25%;top:65%">5</div>
+            <div class="pin" style="left:50%;top:72%">6</div>
+            <div class="pin" style="left:75%;top:72%">7</div>
+
+            <!-- ghost preview where cursor would drop next -->
+            <div class="pin ghost" style="left:62%;top:38%;display:none">+</div>
+          </div>
+
+          <div class="pin-coords">
+            X: <span>62.0%</span>  ·  Y: <span>38.0%</span>
+          </div>
+        </div>
+
+        <!-- side -->
+        <div class="pin-side">
+          <div class="hint">
+            도면을 클릭하면 다음 미배치 구좌가 자동 배정돼요. 핀을 드래그해서 위치 조정 가능.
+          </div>
+
+          <h4>구좌 목록 (7)</h4>
+          <div class="pin-list">
+            <div class="pin-row">
+              <div class="num">1</div>
+              <div class="info"><div class="code">CBA-1</div><div class="note">A1 출입구 좌측</div></div>
+              <div class="coord">18, 22</div>
+              <button class="x">×</button>
+            </div>
+            <div class="pin-row">
+              <div class="num">2</div>
+              <div class="info"><div class="code">CBA-2</div><div class="note">A1 출입구 우측</div></div>
+              <div class="coord">35, 22</div>
+              <button class="x">×</button>
+            </div>
+            <div class="pin-row sel">
+              <div class="num">3</div>
+              <div class="info"><div class="code">CBA-3</div><div class="note">중앙 동선 진입</div></div>
+              <div class="coord">62, 38</div>
+              <button class="x">×</button>
+            </div>
+            <div class="pin-row">
+              <div class="num">4</div>
+              <div class="info"><div class="code">CBA-4</div><div class="note">A2 출입구 우측</div></div>
+              <div class="coord">78, 22</div>
+              <button class="x">×</button>
+            </div>
+            <div class="pin-row">
+              <div class="num">5</div>
+              <div class="info"><div class="code">CBA-5</div><div class="note">중앙홀 좌측</div></div>
+              <div class="coord">25, 65</div>
+              <button class="x">×</button>
+            </div>
+            <div class="pin-row">
+              <div class="num">6</div>
+              <div class="info"><div class="code">CBA-6</div><div class="note">중앙홀 중앙</div></div>
+              <div class="coord">50, 72</div>
+              <button class="x">×</button>
+            </div>
+            <div class="pin-row">
+              <div class="num">7</div>
+              <div class="info"><div class="code">CBA-7</div><div class="note">중앙홀 우측</div></div>
+              <div class="coord">75, 72</div>
+              <button class="x">×</button>
+            </div>
+          </div>
+
+          <!-- selected pin detail -->
+          <div class="pin-detail">
+            <div class="row" style="margin-bottom:8px"><b style="font-size:12px">선택: CBA-3</b><span class="spacer"></span><span class="pill">가능</span></div>
+            <div>
+              <span class="lbl">위치 메모 (고객 페이지 노출)</span>
+              <input value="중앙 동선 진입" />
+            </div>
+            <div style="margin-top:8px">
+              <span class="lbl">좌표 (% 단위)</span>
+              <div class="row" style="gap:6px">
+                <input value="62.0" style="text-align:center" />
+                <input value="38.0" style="text-align:center" />
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="pin-foot">
+        <span class="hint-text">클릭으로 핀 추가 · 드래그로 이동 · 우측 목록에서 ×로 삭제</span>
+        <div class="row">
+          <button class="btn">취소</button>
+          <button class="btn primary">저장 (7개 핀)</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+</body>
+</html>
