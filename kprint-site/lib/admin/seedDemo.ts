@@ -1,0 +1,824 @@
+/**
+ * 데모/테스트 데이터 시드 — 패키지·문의·스폰서.
+ *
+ * ⚠️ 테스트용입니다. 라이브 운영 전 데이터 정리 필요.
+ *
+ * - seedDemoPackages(): 8종 패키지 (시그니처 2 + 스탠다드 6)
+ * - seedDemoInquiries(): 5건의 샘플 문의 (cart items 포함)
+ * - seedDemoSponsors(): Slack 데이터 기반 ~15개 스폰서
+ *
+ * 모든 함수는 멱등(idempotent) 시도 — 같은 코드/companyName이면 덮어씀.
+ */
+
+"use client";
+
+import {
+  addDoc,
+  collection,
+  doc,
+  getDocs,
+  serverTimestamp,
+  setDoc,
+  Timestamp,
+  writeBatch,
+} from "firebase/firestore";
+import { getDb } from "../firebase/firestore";
+import type {
+  CartItem,
+  Category,
+  Event as EventDoc,
+  Inquiry,
+  Package,
+  Slot,
+  Sponsor,
+  Subcategory,
+} from "../types";
+
+// ============================================================================
+// PACKAGES
+// ============================================================================
+
+type PackageSeed = Omit<Package, "id"> & { id: string };
+
+const PACKAGE_SEEDS: PackageSeed[] = [
+  {
+    id: "pkg-atoz",
+    code: "PKG-ATOZ",
+    name: { ko: "A to Z 패키지", en: "A to Z Package" },
+    tier: "signature",
+    tagline: "참관객의 모든 방문 경로에서 기업의 영향력을 알리는 시그니처 패키지",
+    includedItems: [
+      { label: "Hall A 등록대 5구좌" },
+      { label: "참관등록 페이지 배너 (단독)" },
+      { label: "참관객 목걸이 5,000매" },
+    ],
+    originalPrice: 19_500_000,
+    discountPrice: 17_000_000,
+    unit: "패키지",
+    priceNote: "정가 19,500,000원 → 할인가 17,000,000원 (12.8% 할인)",
+    isPublished: true,
+    order: 0,
+  },
+  {
+    id: "pkg-outdoor",
+    code: "PKG-OUTDOOR",
+    name: { ko: "옥외광고 통합 패키지", en: "Outdoor Total Package" },
+    tier: "signature",
+    tagline: "월평균 120만 명 유동인구 대상 디지털 사이니지 패키지",
+    includedItems: [
+      { label: "XPACE 브릿지+빅브릿지 (XPA)" },
+      { label: "XPACE 와이드+스퀘어 (XPB)" },
+      { label: "XPACE 엣지컬럼 (XPE)" },
+    ],
+    originalPrice: 24_000_000,
+    discountPrice: 20_000_000,
+    unit: "패키지",
+    priceNote: "정가 24,000,000원 → 할인가 20,000,000원 (16.7% 할인). XPACE 2종만 선택 시 10% 할인.",
+    isPublished: true,
+    order: 1,
+  },
+  {
+    id: "pkg-prime",
+    code: "PKG-PRIME",
+    name: { ko: "프라임 노출 패키지", en: "Prime Exposure Package" },
+    tier: "standard",
+    tagline: "노출에 가장 효과적인 온·오프라인 플랫폼 결합",
+    includedItems: [
+      { label: "천장배너 1구좌" },
+      { label: "라이팅월 1구좌" },
+      { label: "참가업체 검색 페이지 배너" },
+      { label: "전시품 검색 페이지 배너" },
+    ],
+    originalPrice: 9_000_000,
+    discountPrice: 8_000_000,
+    unit: "패키지",
+    priceNote: "정가 9,000,000원 → 할인가 8,000,000원",
+    isPublished: true,
+    order: 2,
+  },
+  {
+    id: "pkg-early",
+    code: "PKG-EARLY",
+    name: { ko: "얼리 노출 패키지", en: "Early Exposure Package" },
+    tier: "standard",
+    tagline: "국내외 핵심 타깃에게 브랜드를 가장 먼저 각인",
+    includedItems: [
+      { label: "초대장 삽지 (10만매)" },
+      { label: "국내 뉴스레터 (2월·3월)" },
+      { label: "해외 뉴스레터 (2월·3월)" },
+    ],
+    originalPrice: 19_000_000,
+    discountPrice: 15_000_000,
+    unit: "패키지",
+    priceNote: "정가 19,000,000원 → 할인가 15,000,000원",
+    isPublished: true,
+    order: 3,
+  },
+  {
+    id: "pkg-onsite",
+    code: "PKG-ONSITE",
+    name: { ko: "온사이트 실속 패키지", en: "On-site Essentials" },
+    tier: "standard",
+    tagline: "전시장 주요 동선을 활용해 기본 노출을 확보",
+    includedItems: [
+      { label: "천장배너 1구좌" },
+      { label: "전시장 내부 바닥 스티커 2구좌" },
+    ],
+    originalPrice: 6_000_000,
+    discountPrice: 5_000_000,
+    unit: "패키지",
+    priceNote: "정가 6,000,000원 → 할인가 5,000,000원",
+    isPublished: true,
+    order: 4,
+  },
+  {
+    id: "pkg-seminar",
+    code: "PKG-SEMINAR",
+    name: { ko: "세미나 타겟 패키지", en: "Seminar Target Package" },
+    tier: "standard",
+    tagline: "산업 종사자 집중 타겟 — 세미나·교육 영역",
+    includedItems: [
+      { label: "세미나 페이지 상단 배너" },
+      { label: "APP 푸시 알림 1회" },
+      { label: "국내 뉴스레터 (3월 1회)" },
+    ],
+    originalPrice: 5_000_000,
+    discountPrice: 4_000_000,
+    unit: "패키지",
+    priceNote: "정가 5,000,000원 → 할인가 4,000,000원",
+    isPublished: true,
+    order: 5,
+  },
+  {
+    id: "pkg-app",
+    code: "PKG-APP",
+    name: { ko: "APP 디지털 패키지", en: "APP Digital Package" },
+    tier: "standard",
+    tagline: "공식 어플리케이션을 활용한 디지털 광고",
+    includedItems: [
+      { label: "APP 메인 팝업" },
+      { label: "APP 메인 하단 배너" },
+      { label: "APP 푸시 알림 2회" },
+    ],
+    originalPrice: 7_500_000,
+    discountPrice: 6_000_000,
+    unit: "패키지",
+    priceNote: "정가 7,500,000원 → 할인가 6,000,000원",
+    isPublished: true,
+    order: 6,
+  },
+  {
+    id: "pkg-sns",
+    code: "PKG-SNS",
+    name: { ko: "SNS 콘텐츠 패키지", en: "SNS Content Package" },
+    tier: "standard",
+    tagline: "콘텐츠로 온라인 확산을 유도",
+    includedItems: [
+      { label: "참가업체 사전 인터뷰" },
+      { label: "참가업체 현장 인터뷰" },
+      { label: "인스타그램 카드뉴스" },
+    ],
+    originalPrice: 6_500_000,
+    discountPrice: 5_000_000,
+    unit: "패키지",
+    priceNote: "정가 6,500,000원 → 할인가 5,000,000원",
+    isPublished: true,
+    order: 7,
+  },
+];
+
+export type PackageSeedResult = {
+  created: string[];
+  errors: Array<{ id: string; reason: string }>;
+};
+
+export async function seedDemoPackages(): Promise<PackageSeedResult> {
+  const db = getDb();
+  const result: PackageSeedResult = { created: [], errors: [] };
+  const batch = writeBatch(db);
+
+  PACKAGE_SEEDS.forEach((p) => {
+    try {
+      batch.set(doc(db, "packages", p.id), {
+        ...p,
+        // heroImages는 별도 시드 또는 어드민에서 업로드
+      });
+      result.created.push(p.id);
+    } catch (e) {
+      result.errors.push({
+        id: p.id,
+        reason: e instanceof Error ? e.message : String(e),
+      });
+    }
+  });
+
+  await batch.commit();
+  return result;
+}
+
+// ============================================================================
+// INQUIRIES
+// ============================================================================
+
+type InquirySeed = {
+  companyName: string;
+  contactName: string;
+  email: string;
+  phone: string;
+  message: string;
+  cartItemHints: Array<
+    | { type: "slot"; categoryCode: string; slotIndex?: number }
+    | { type: "package"; packageId: string }
+  >;
+  status: Inquiry["status"];
+  daysAgo: number;
+};
+
+const INQUIRY_SEEDS: InquirySeed[] = [
+  {
+    companyName: "메디컬코리아",
+    contactName: "이수진",
+    email: "sjlee@medicalkorea.kr",
+    phone: "010-2345-1111",
+    message: "XPACE 브릿지 영상 광고에 관심 있습니다. 작년 KIMES 영상 사례 확인 가능할까요?",
+    cartItemHints: [
+      { type: "slot", categoryCode: "XPA" },
+      { type: "slot", categoryCode: "XPA", slotIndex: 1 },
+      { type: "slot", categoryCode: "CBA", slotIndex: 2 },
+    ],
+    status: "new",
+    daysAgo: 0,
+  },
+  {
+    companyName: "헬스플러스",
+    contactName: "박민준",
+    email: "minjun@healthplus.co.kr",
+    phone: "010-3456-2222",
+    message: "옥외광고 통합 패키지 견적과 일정 안내 부탁드립니다.",
+    cartItemHints: [{ type: "package", packageId: "pkg-outdoor" }],
+    status: "new",
+    daysAgo: 1,
+  },
+  {
+    companyName: "베스트바이오",
+    contactName: "김하늘",
+    email: "haneul@bestbio.kr",
+    phone: "010-4567-3333",
+    message: "Hall B 위주로 노출하고 싶습니다. 천장배너 + 등록대 조합 협의 가능할까요?",
+    cartItemHints: [
+      { type: "slot", categoryCode: "CBB" },
+      { type: "slot", categoryCode: "RGB" },
+    ],
+    status: "in_progress",
+    daysAgo: 3,
+  },
+  {
+    companyName: "글로벌메드",
+    contactName: "최서연",
+    email: "syc@globalmed.com",
+    phone: "010-5678-4444",
+    message: "해외 바이어 타겟이라 영문 쇼가이드 + 해외 뉴스레터 견적 부탁드립니다.",
+    cartItemHints: [
+      { type: "slot", categoryCode: "GDB", slotIndex: 5 },
+      { type: "slot", categoryCode: "INL" },
+      { type: "slot", categoryCode: "INL", slotIndex: 1 },
+    ],
+    status: "in_progress",
+    daysAgo: 5,
+  },
+  {
+    companyName: "에이지스헬스케어",
+    contactName: "정유진",
+    email: "yj.jeong@aegis.kr",
+    phone: "010-6789-5555",
+    message: "참가업체 검색 배너 5구좌 한 번에 가능한가요?",
+    cartItemHints: [
+      { type: "slot", categoryCode: "EXS" },
+      { type: "slot", categoryCode: "EXS", slotIndex: 1 },
+      { type: "slot", categoryCode: "EXS", slotIndex: 2 },
+    ],
+    status: "closed",
+    daysAgo: 12,
+  },
+];
+
+export type InquirySeedResult = {
+  created: string[];
+  skipped: string[];
+  errors: Array<{ company: string; reason: string }>;
+};
+
+export async function seedDemoInquiries(): Promise<InquirySeedResult> {
+  const db = getDb();
+  const result: InquirySeedResult = { created: [], skipped: [], errors: [] };
+
+  // 카테고리/소분류/슬롯/패키지 로드 (cart 매핑용)
+  const [catSnap, subSnap, slotSnap, pkgSnap, existingInq] = await Promise.all([
+    getDocs(collection(db, "categories")),
+    getDocs(collection(db, "subcategories")),
+    getDocs(collection(db, "slots")),
+    getDocs(collection(db, "packages")),
+    getDocs(collection(db, "inquiries")),
+  ]);
+
+  const catByCode = new Map<string, Category>();
+  catSnap.docs.forEach((d) => {
+    const c = { ...(d.data() as Category), id: d.id };
+    catByCode.set(c.code, c);
+  });
+  const subByCategoryId = new Map<string, Subcategory[]>();
+  subSnap.docs.forEach((d) => {
+    const s = { ...(d.data() as Subcategory), id: d.id };
+    const arr = subByCategoryId.get(s.categoryId) ?? [];
+    arr.push(s);
+    subByCategoryId.set(s.categoryId, arr);
+  });
+  const slotsByCategory = new Map<string, Slot[]>();
+  slotSnap.docs.forEach((d) => {
+    const s = { ...(d.data() as Slot), id: d.id };
+    const arr = slotsByCategory.get(s.categoryId) ?? [];
+    arr.push(s);
+    slotsByCategory.set(s.categoryId, arr);
+  });
+  const pkgById = new Map<string, Package>();
+  pkgSnap.docs.forEach((d) =>
+    pkgById.set(d.id, { ...(d.data() as Package), id: d.id })
+  );
+
+  const existingCompanies = new Set(
+    existingInq.docs.map((d) => (d.data() as Inquiry).companyName)
+  );
+
+  for (const seed of INQUIRY_SEEDS) {
+    if (existingCompanies.has(seed.companyName)) {
+      result.skipped.push(seed.companyName);
+      continue;
+    }
+
+    try {
+      // cart items 매핑
+      const cartItems: CartItem[] = [];
+      for (const hint of seed.cartItemHints) {
+        if (hint.type === "package") {
+          const pkg = pkgById.get(hint.packageId);
+          if (!pkg) continue;
+          cartItems.push({
+            type: "package",
+            packageId: pkg.id,
+            code: pkg.code,
+            price: pkg.discountPrice,
+          });
+        } else {
+          const cat = catByCode.get(hint.categoryCode);
+          if (!cat) continue;
+          const slots = (slotsByCategory.get(cat.id) ?? []).sort(
+            (a, b) => a.order - b.order
+          );
+          const slot = slots[hint.slotIndex ?? 0];
+          if (!slot) continue;
+          const subs = subByCategoryId.get(cat.id) ?? [];
+          const sub = subs.find((s) => s.id === slot.subcategoryId);
+          cartItems.push({
+            type: "slot",
+            slotId: slot.id,
+            categoryId: cat.id,
+            subcategoryId: slot.subcategoryId,
+            code: slot.code,
+            price: sub?.priceKRW ?? 0,
+          });
+        }
+      }
+
+      const subtotal = cartItems.reduce((s, it) => s + it.price, 0);
+      const vat = Math.round(subtotal * 0.1);
+      const total = subtotal + vat;
+      const createdAt = Timestamp.fromDate(
+        new Date(Date.now() - seed.daysAgo * 24 * 60 * 60 * 1000)
+      );
+
+      await addDoc(collection(db, "inquiries"), {
+        companyName: seed.companyName,
+        contactName: seed.contactName,
+        email: seed.email,
+        phone: seed.phone,
+        message: seed.message,
+        cartItems,
+        cartSubtotal: subtotal,
+        cartVat: vat,
+        cartTotal: total,
+        status: seed.status,
+        createdAt,
+        updatedAt: createdAt,
+      });
+      result.created.push(seed.companyName);
+    } catch (e) {
+      result.errors.push({
+        company: seed.companyName,
+        reason: e instanceof Error ? e.message : String(e),
+      });
+    }
+  }
+
+  return result;
+}
+
+// ============================================================================
+// SPONSORS
+// ============================================================================
+
+type SponsorSeed = {
+  companyName: string;
+  amount: number;
+  amountNote?: string;
+  itemHints: Array<
+    | { type: "slot"; categoryCode: string; label: string; slotIndex?: number }
+    | { type: "free"; label: string }
+    | { type: "package"; packageId: string; label: string }
+  >;
+  benefits?: Partial<Sponsor["benefits"]>;
+  bannerType?: string;
+  bannerNote?: string;
+  contacts: Array<{ name: string; email?: string; phone?: string }>;
+  status: Sponsor["status"];
+  notes?: string;
+};
+
+// Slack 시트 데이터 기반 (테스트 데이터 — 실명 회사 이름은 가공된 데모용)
+const SPONSOR_SEEDS: SponsorSeed[] = [
+  {
+    companyName: "유비케어",
+    amount: 19_500_000,
+    itemHints: [
+      { type: "slot", categoryCode: "RGA", label: "Hall A 등록대 7구좌", slotIndex: 0 },
+      { type: "slot", categoryCode: "RGC", label: "Hall C 등록대 3구좌", slotIndex: 0 },
+      { type: "free", label: "Hall A 천장배너 1구좌" },
+      { type: "free", label: "Hall C 천장배너 1구좌" },
+    ],
+    benefits: { eventNotice: true, topPin: true, badge: true, logoBanner: true },
+    bannerType: "참가업체 배너",
+    bannerNote: "준현조",
+    contacts: [{ name: "명정호", email: "astrohippo@ubcare.co.kr" }],
+    status: "in_progress",
+    notes: "천장배너·등록대·라이팅월 디자인물 수령 진행 중",
+  },
+  {
+    companyName: "텐텍",
+    amount: 20_000_000,
+    itemHints: [{ type: "package", packageId: "pkg-outdoor", label: "옥외광고 통합 패키지" }],
+    benefits: { topPin: true, badge: true, logoBanner: true },
+    bannerType: "로고",
+    bannerNote: "3월 4일 마감",
+    contacts: [{ name: "김은희", email: "keh@tenlaser.com" }],
+    status: "in_progress",
+  },
+  {
+    companyName: "제이시스 대행사",
+    amount: 20_000_000,
+    itemHints: [{ type: "package", packageId: "pkg-outdoor", label: "옥외광고 통합 패키지" }],
+    benefits: { topPin: true, badge: true, logoBanner: true },
+    bannerType: "로고",
+    bannerNote: "준현 요청 / 3월 9일",
+    contacts: [{ name: "김무늬", email: "mnkim@alliswell.co.kr" }],
+    status: "in_progress",
+  },
+  {
+    companyName: "테크노짐",
+    amount: 16_000_000,
+    itemHints: [
+      { type: "free", label: "라이팅월 LTW-2" },
+      { type: "free", label: "천장배너 B3" },
+      { type: "free", label: "XPACE - A" },
+    ],
+    benefits: { topPin: true, badge: true, logoBanner: true },
+    bannerType: "로고",
+    contacts: [{ name: "이학선", email: "hslee@galaxiasme.com" }],
+    status: "in_progress",
+  },
+  {
+    companyName: "더블세이프",
+    amount: 11_000_000,
+    itemHints: [
+      { type: "slot", categoryCode: "XPA", label: "XPACE 패키지 A", slotIndex: 0 },
+    ],
+    benefits: { topPin: true, badge: true, logoBanner: true },
+    bannerType: "참가업체 배너",
+    bannerNote: "이미지 — 15초 교차 노출",
+    contacts: [{ name: "염래이", email: "raeyi@papers.co.kr" }],
+    status: "in_progress",
+  },
+  {
+    companyName: "리메드",
+    amount: 11_000_000,
+    itemHints: [
+      { type: "slot", categoryCode: "XPA", label: "XPACE 패키지 A", slotIndex: 1 },
+    ],
+    benefits: { topPin: true, badge: true, logoBanner: true },
+    bannerType: "전시품 배너",
+    bannerNote: "성경김 / 3월 6일 오전 중",
+    contacts: [{ name: "장혜윤", email: "gpdbs3744@remed.kr" }],
+    status: "in_progress",
+  },
+  {
+    companyName: "피아모리프팅",
+    amount: 20_000_000,
+    amountNote: "(할인가)",
+    itemHints: [
+      { type: "package", packageId: "pkg-outdoor", label: "옥외광고 통합 패키지" },
+      { type: "free", label: "Hall A 천장배너 3구좌" },
+      { type: "free", label: "해외 뉴스레터 1회" },
+    ],
+    benefits: { topPin: true, badge: true, logoBanner: true },
+    bannerType: "로고",
+    bannerNote: "해외 뉴스레터 2월 27일",
+    contacts: [
+      { name: "유승원", email: "mana@piamolifting.co.kr" },
+      { name: "—", email: "des@piamolifting.co.kr" },
+    ],
+    status: "in_progress",
+  },
+  {
+    companyName: "이지스헬스케어",
+    amount: 9_000_000,
+    itemHints: [
+      { type: "slot", categoryCode: "CBC", label: "C홀 천장배너 2구좌" },
+      { type: "slot", categoryCode: "GDB", label: "쇼가이드 표4 (국문)" },
+    ],
+    benefits: { topPin: true, badge: true, logoBanner: true },
+    bannerType: "참가업체 배너",
+    contacts: [{ name: "고우리", email: "u.ko@eghishc.co.kr" }],
+    status: "in_progress",
+  },
+  {
+    companyName: "아스테라시스",
+    amount: 6_000_000,
+    itemHints: [{ type: "slot", categoryCode: "PLA", label: "1층 기둥광고 4구좌" }],
+    benefits: { topPin: true, badge: true, logoBanner: true },
+    bannerType: "전시품 배너",
+    contacts: [{ name: "하철호", email: "chha@asterasys.co.kr" }],
+    status: "in_progress",
+  },
+  {
+    companyName: "미라셀",
+    amount: 6_000_000,
+    itemHints: [{ type: "slot", categoryCode: "CBA", label: "Hall A 천장배너 2구좌" }],
+    benefits: { topPin: true, badge: true, logoBanner: true },
+    bannerType: "로고",
+    contacts: [{ name: "박지용", email: "parkjiyong@miracell.co.kr" }],
+    status: "in_progress",
+  },
+  {
+    companyName: "Ayida (Xiamen) P&C Technology",
+    amount: 3000,
+    amountNote: "USD",
+    itemHints: [
+      { type: "slot", categoryCode: "OIC", label: "현장 인터뷰" },
+      { type: "slot", categoryCode: "PRS", label: "전시품 검색 페이지 배너" },
+      { type: "slot", categoryCode: "EXS", label: "참가업체 검색 페이지 배너" },
+    ],
+    benefits: { topPin: true, badge: true, logoBanner: true },
+    bannerType: "해당없음",
+    contacts: [{ name: "정해연", email: "sales06@ayida.onaliyun.com" }],
+    status: "reviewing",
+    notes: "USD 결제 — 일정 안내 진행 중",
+  },
+  {
+    companyName: "제노레이",
+    amount: 3_000_000,
+    itemHints: [{ type: "slot", categoryCode: "CBC", label: "C홀 천장배너 1구좌" }],
+    benefits: { topPin: true, badge: true, logoBanner: true },
+    bannerType: "참가업체 배너",
+    contacts: [{ name: "심이한", email: "ih.sim@papers.co.kr" }],
+    status: "in_progress",
+  },
+  {
+    companyName: "디케이메디칼",
+    amount: 3_000_000,
+    itemHints: [{ type: "slot", categoryCode: "CBC", label: "C홀 천장배너 1구좌", slotIndex: 1 }],
+    benefits: { topPin: true, badge: true, logoBanner: true },
+    bannerType: "참가업체 배너",
+    contacts: [{ name: "허자경", email: "jin.huh@dk.co.kr" }],
+    status: "in_progress",
+  },
+  {
+    companyName: "서울바이오허브",
+    amount: 3_000_000,
+    itemHints: [{ type: "slot", categoryCode: "CBB", label: "B홀 천장배너 1구좌" }],
+    benefits: { topPin: true, badge: true, logoBanner: true },
+    bannerType: "로고",
+    contacts: [{ name: "김신영", email: "sy.kim@kist.re.kr" }],
+    status: "in_progress",
+  },
+  {
+    companyName: "마리스그룹코리아",
+    amount: 3_000_000,
+    itemHints: [{ type: "slot", categoryCode: "RGA", label: "A2 등록대 2구좌", slotIndex: 5 }],
+    benefits: { topPin: true, badge: true, logoBanner: true },
+    bannerType: "전시품 배너",
+    bannerNote: "2/11까지 회신",
+    contacts: [{ name: "김현령", email: "mariskorea@maris-reg.com" }],
+    status: "in_progress",
+  },
+  {
+    companyName: "MTI khidi",
+    amount: 14_000_000,
+    amountNote: "(11M + 세미나 3M)",
+    itemHints: [
+      { type: "package", packageId: "pkg-atoz", label: "A to Z 패키지" },
+      { type: "free", label: "세미나 배너" },
+      { type: "free", label: "라이팅월 + 만찬 피칭" },
+    ],
+    contacts: [{ name: "—" }],
+    status: "in_kind",
+    notes: "참가업체X — 협찬 (합계 제외)",
+  },
+  {
+    companyName: "의사이야기",
+    amount: 4_000_000,
+    itemHints: [
+      { type: "free", label: "세미나 패키지 (3/9)" },
+      { type: "free", label: "푸시 알림 1회 추가" },
+    ],
+    contacts: [{ name: "—" }],
+    status: "in_kind",
+    notes: "참가업체X — 세미나 주관사 협찬",
+  },
+];
+
+export type SponsorSeedResult = {
+  created: string[];
+  skipped: string[];
+  errors: Array<{ company: string; reason: string }>;
+};
+
+export async function seedDemoSponsors(): Promise<SponsorSeedResult> {
+  const db = getDb();
+  const result: SponsorSeedResult = { created: [], skipped: [], errors: [] };
+
+  // 활성 행사 찾기 (없으면 첫 행사)
+  const eventsSnap = await getDocs(collection(db, "events"));
+  const events = eventsSnap.docs.map(
+    (d) => ({ ...(d.data() as EventDoc), id: d.id })
+  );
+  const activeEvent = events.find((e) => e.isActive) ?? events[0];
+  if (!activeEvent) {
+    result.errors.push({
+      company: "(none)",
+      reason: "행사가 없습니다. 먼저 /admin/events에서 행사를 생성해주세요.",
+    });
+    return result;
+  }
+
+  // 카테고리·슬롯·패키지 로드
+  const [catSnap, slotSnap, subSnap, pkgSnap, existingSpSnap] = await Promise.all([
+    getDocs(collection(db, "categories")),
+    getDocs(collection(db, "slots")),
+    getDocs(collection(db, "subcategories")),
+    getDocs(collection(db, "packages")),
+    getDocs(collection(db, "sponsors")),
+  ]);
+
+  const catByCode = new Map<string, Category>();
+  catSnap.docs.forEach((d) => {
+    const c = { ...(d.data() as Category), id: d.id };
+    catByCode.set(c.code, c);
+  });
+  const slotsByCategory = new Map<string, Slot[]>();
+  slotSnap.docs.forEach((d) => {
+    const s = { ...(d.data() as Slot), id: d.id };
+    const arr = slotsByCategory.get(s.categoryId) ?? [];
+    arr.push(s);
+    slotsByCategory.set(s.categoryId, arr);
+  });
+  const pkgById = new Map<string, Package>();
+  pkgSnap.docs.forEach((d) =>
+    pkgById.set(d.id, { ...(d.data() as Package), id: d.id })
+  );
+
+  const existing = new Set(
+    existingSpSnap.docs.map(
+      (d) => `${(d.data() as Sponsor).eventId}:${(d.data() as Sponsor).companyName}`
+    )
+  );
+
+  for (const seed of SPONSOR_SEEDS) {
+    const dedupeKey = `${activeEvent.id}:${seed.companyName}`;
+    if (existing.has(dedupeKey)) {
+      result.skipped.push(seed.companyName);
+      continue;
+    }
+
+    try {
+      const items = seed.itemHints.map((hint) => {
+        if (hint.type === "package") {
+          const pkg = pkgById.get(hint.packageId);
+          return {
+            label: hint.label,
+            packageId: pkg?.id,
+          };
+        }
+        if (hint.type === "slot") {
+          const cat = catByCode.get(hint.categoryCode);
+          if (!cat) return { label: hint.label };
+          const slots = (slotsByCategory.get(cat.id) ?? []).sort(
+            (a, b) => a.order - b.order
+          );
+          const slot = slots[hint.slotIndex ?? 0];
+          return {
+            label: hint.label,
+            categoryId: cat.id,
+            subcategoryId: slot?.subcategoryId,
+            slotId: slot?.id,
+          };
+        }
+        return { label: hint.label };
+      });
+
+      const id = `sp-${slugify(seed.companyName)}-${Date.now().toString(36).slice(-4)}`;
+      const docData: Omit<Sponsor, "createdAt" | "updatedAt"> & {
+        createdAt: unknown;
+        updatedAt: unknown;
+      } = {
+        id,
+        eventId: activeEvent.id,
+        companyName: seed.companyName,
+        amount: seed.amount,
+        currency: seed.amountNote === "USD" ? "USD" : "KRW",
+        amountNote: seed.amountNote,
+        items,
+        benefits: {
+          eventNotice: seed.benefits?.eventNotice ?? false,
+          topPin: seed.benefits?.topPin ?? false,
+          badge: seed.benefits?.badge ?? false,
+          logoBanner: seed.benefits?.logoBanner ?? false,
+        },
+        bannerType: seed.bannerType,
+        bannerNote: seed.bannerNote,
+        designItems: [],
+        contacts: seed.contacts.map((c) => ({
+          name: c.name,
+          email: c.email,
+          phone: c.phone,
+        })),
+        status: seed.status,
+        notes: seed.notes,
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+      };
+
+      await setDoc(doc(db, "sponsors", id), docData);
+      result.created.push(seed.companyName);
+    } catch (e) {
+      result.errors.push({
+        company: seed.companyName,
+        reason: e instanceof Error ? e.message : String(e),
+      });
+    }
+  }
+
+  return result;
+}
+
+function slugify(s: string): string {
+  return s
+    .toLowerCase()
+    .replace(/[^a-z0-9가-힣]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 30);
+}
+
+// ============================================================================
+// CLEAR HELPERS — 데모 데이터 정리용
+// ============================================================================
+
+export async function clearDemoInquiries(): Promise<number> {
+  const db = getDb();
+  const seedNames = new Set(INQUIRY_SEEDS.map((s) => s.companyName));
+  const snap = await getDocs(collection(db, "inquiries"));
+  const batch = writeBatch(db);
+  let count = 0;
+  snap.docs.forEach((d) => {
+    if (seedNames.has((d.data() as Inquiry).companyName)) {
+      batch.delete(d.ref);
+      count++;
+    }
+  });
+  if (count > 0) await batch.commit();
+  return count;
+}
+
+export async function clearDemoSponsors(): Promise<number> {
+  const db = getDb();
+  const seedNames = new Set(SPONSOR_SEEDS.map((s) => s.companyName));
+  const snap = await getDocs(collection(db, "sponsors"));
+  const batch = writeBatch(db);
+  let count = 0;
+  snap.docs.forEach((d) => {
+    if (seedNames.has((d.data() as Sponsor).companyName)) {
+      batch.delete(d.ref);
+      count++;
+    }
+  });
+  if (count > 0) await batch.commit();
+  return count;
+}
+

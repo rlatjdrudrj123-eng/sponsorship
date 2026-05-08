@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { useEffect, useState, type ComponentType, type SVGProps } from "react";
 import {
   CalendarDays,
+  Database,
   FileText,
   FolderKanban,
   Grid2x2,
@@ -60,6 +61,7 @@ export function AdminSidebar() {
       items: [
         { href: "/admin", label: "대시보드", Icon: LayoutDashboard, exact: true },
         { href: "/admin/import", label: "엑셀 업로드", Icon: Upload },
+        { href: "/admin/seed", label: "데모 시드 (테스트)", Icon: Database },
       ],
     },
     {
