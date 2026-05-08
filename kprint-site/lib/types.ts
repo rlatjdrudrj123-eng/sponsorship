@@ -229,8 +229,19 @@ export type SiteSettings = {
 };
 
 // ============= TAXONOMY =============
+export type TagKind = "purpose" | "package" | "custom";
+
+export type Tag = {
+  id: string;
+  label: string;
+  kind: TagKind;        // 사이드바 필터 그룹 결정 ('purpose'만 광고목적 필터에 노출)
+  color?: string;
+  order: number;        // kind별 독립 정렬
+  isActive?: boolean;   // 기본 true. false면 필터에서 숨김 (카테고리 데이터에는 유지)
+};
+
 export type Taxonomy = {
-  tags: Array<{ id: string; label: string; color?: string }>;
+  tags: Tag[];
   channels: Array<{ id: Channel; label: string }>;
 };
 

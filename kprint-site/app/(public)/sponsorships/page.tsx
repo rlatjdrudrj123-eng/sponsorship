@@ -19,6 +19,8 @@ import type {
   SiteSettings,
   Slot,
   Subcategory,
+  Tag,
+  Taxonomy,
 } from "@/lib/types";
 import { Footer } from "@/components/public/Footer";
 
@@ -29,23 +31,7 @@ const CHANNEL_LABELS: Record<Channel | "all", string> = {
   package: "패키지",
 };
 
-const PURPOSE_TAGS = [
-  { id: "브랜드 확산형", label: "브랜드 확산형" },
-  { id: "현장 방문객 유도형", label: "현장 방문객 유도형" },
-  { id: "신제품 홍보형", label: "신제품 홍보형" },
-  { id: "맞춤형 타겟팅 광고", label: "맞춤형 타겟팅 광고" },
-] as const;
-
-const PACKAGE_TAGS = [
-  { id: "참관객_AtoZ_패키지", label: "참관객 A to Z" },
-  { id: "옥외광고_패키지", label: "옥외광고" },
-  { id: "프라임_스팟_패키지", label: "프라임 스팟" },
-  { id: "얼리브랜딩_패키지", label: "얼리브랜딩" },
-  { id: "온사이트_패키지", label: "온사이트" },
-  { id: "세미나_컨퍼런스_패키지", label: "세미나·컨퍼런스" },
-  { id: "APP_광고_패키지", label: "APP 광고" },
-  { id: "SNS_패키지", label: "SNS" },
-] as const;
+// 광고 목적 태그는 taxonomy/main 도큐먼트에서 동적으로 로드 (kind === 'purpose')
 
 type PriceRange = "all" | "u1m" | "1to3m" | "3to7m" | "o7m";
 const PRICE_RANGES: Array<{ id: PriceRange; label: string }> = [
@@ -83,9 +69,9 @@ export default function SponsorshipsPage() {
   const [slots, setSlots] = useState<Slot[]>([]);
   const [settings, setSettings] = useState<SiteSettings | null>(null);
 
+  const [purposeTags, setPurposeTags] = useState<Tag[]>([]);
   const [filterChannel, setFilterChannel] = useState<Channel | "all">("all");
   const [activePurposes, setActivePurposes] = useState<Set<string>>(new Set());
-  const [activePackages, setActivePackages] = useState<Set<string>>(new Set());
   const [priceRange, setPriceRange] = useState<PriceRange>("all");
   const [deadlineSoon, setDeadlineSoon] = useState(false);
   const [search, setSearch] = useState("");
@@ -95,13 +81,14 @@ export default function SponsorshipsPage() {
     (async () => {
       try {
         const db = getDb();
-        const [catSnap, subSnap, slotSnap, settingsSnap] = await Promise.all([
+        const [catSnap, subSnap, slotSnap, settingsSnap, taxSnap] = await Promise.all([
           getDocs(
             query(collection(db, "categories"), where("isPublished", "==", true))
           ),
           getDocs(collection(db, "subcategories")),
           getDocs(collection(db, "slots")),
           getDoc(doc(db, "siteSettings", "main")),
+          getDoc(doc(db, "taxonomy", "main")),
         ]);
         setCategories(
           catSnap.docs.map((d) => ({ ...(d.data() as Category), id: d.id }))
@@ -111,6 +98,13 @@ export default function SponsorshipsPage() {
         );
         setSlots(slotSnap.docs.map((d) => ({ ...(d.data() as Slot), id: d.id })));
         if (settingsSnap.exists()) setSettings(settingsSnap.data() as SiteSettings);
+        if (taxSnap.exists()) {
+          const tax = taxSnap.data() as Taxonomy;
+          const purposes = (tax.tags ?? [])
+            .filter((t) => t.kind === "purpose" && t.isActive !== false)
+            .sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
+          setPurposeTags(purposes);
+        }
       } catch (e) {
         console.error(e);
       }
@@ -141,13 +135,9 @@ export default function SponsorshipsPage() {
       rows = rows.filter((r) => r.channel === filterChannel);
     }
     if (activePurposes.size > 0) {
+      // category.tags 배열은 라벨 문자열을 담고 있음 (엑셀 입력 그대로)
       rows = rows.filter((r) =>
         Array.from(activePurposes).some((t) => (r.tags ?? []).includes(t))
-      );
-    }
-    if (activePackages.size > 0) {
-      rows = rows.filter((r) =>
-        Array.from(activePackages).some((t) => (r.tags ?? []).includes(t))
       );
     }
     if (priceRange !== "all") {
@@ -172,7 +162,6 @@ export default function SponsorshipsPage() {
     enriched,
     filterChannel,
     activePurposes,
-    activePackages,
     priceRange,
     deadlineSoon,
     search,
@@ -186,18 +175,9 @@ export default function SponsorshipsPage() {
       return next;
     });
 
-  const togglePackage = (id: string) =>
-    setActivePackages((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      return next;
-    });
-
   const resetFilters = () => {
     setFilterChannel("all");
     setActivePurposes(new Set());
-    setActivePackages(new Set());
     setPriceRange("all");
     setDeadlineSoon(false);
     setSearch("");
@@ -206,7 +186,6 @@ export default function SponsorshipsPage() {
   const hasActiveFilter =
     filterChannel !== "all" ||
     activePurposes.size > 0 ||
-    activePackages.size > 0 ||
     priceRange !== "all" ||
     deadlineSoon ||
     search.trim() !== "";
@@ -257,10 +236,9 @@ export default function SponsorshipsPage() {
               setSearch={setSearch}
               filterChannel={filterChannel}
               setFilterChannel={setFilterChannel}
+              purposeTags={purposeTags}
               activePurposes={activePurposes}
               togglePurpose={togglePurpose}
-              activePackages={activePackages}
-              togglePackage={togglePackage}
               priceRange={priceRange}
               setPriceRange={setPriceRange}
               deadlineSoon={deadlineSoon}
@@ -291,10 +269,9 @@ export default function SponsorshipsPage() {
                   setSearch={setSearch}
                   filterChannel={filterChannel}
                   setFilterChannel={setFilterChannel}
+                  purposeTags={purposeTags}
                   activePurposes={activePurposes}
                   togglePurpose={togglePurpose}
-                  activePackages={activePackages}
-                  togglePackage={togglePackage}
                   priceRange={priceRange}
                   setPriceRange={setPriceRange}
                   deadlineSoon={deadlineSoon}
@@ -409,10 +386,9 @@ function FilterPanel({
   setSearch,
   filterChannel,
   setFilterChannel,
+  purposeTags,
   activePurposes,
   togglePurpose,
-  activePackages,
-  togglePackage,
   priceRange,
   setPriceRange,
   deadlineSoon,
@@ -426,10 +402,9 @@ function FilterPanel({
   setSearch: (s: string) => void;
   filterChannel: Channel | "all";
   setFilterChannel: (c: Channel | "all") => void;
+  purposeTags: Tag[];
   activePurposes: Set<string>;
   togglePurpose: (id: string) => void;
-  activePackages: Set<string>;
-  togglePackage: (id: string) => void;
   priceRange: PriceRange;
   setPriceRange: (r: PriceRange) => void;
   deadlineSoon: boolean;
@@ -493,45 +468,28 @@ function FilterPanel({
         </div>
       </FilterSection>
 
-      {/* (C) 광고 목적 */}
-      <FilterSection title="광고 목적">
-        <ul className="space-y-1.5">
-          {PURPOSE_TAGS.map((t) => (
-            <li key={t.id}>
-              <label className="flex items-center gap-2 text-[13px] text-ink-700 cursor-pointer hover:text-ink-900">
-                <input
-                  type="checkbox"
-                  checked={activePurposes.has(t.id)}
-                  onChange={() => togglePurpose(t.id)}
-                  className="accent-mint-500 w-3.5 h-3.5"
-                />
-                <span>{t.label}</span>
-              </label>
-            </li>
-          ))}
-        </ul>
-      </FilterSection>
+      {/* (C) 광고 목적 — taxonomy 기반 동적 (kind === 'purpose' && isActive) */}
+      {purposeTags.length > 0 && (
+        <FilterSection title="광고 목적">
+          <ul className="space-y-1.5">
+            {purposeTags.map((t) => (
+              <li key={t.id}>
+                <label className="flex items-center gap-2 text-[13px] text-ink-700 cursor-pointer hover:text-ink-900">
+                  <input
+                    type="checkbox"
+                    checked={activePurposes.has(t.label)}
+                    onChange={() => togglePurpose(t.label)}
+                    className="accent-mint-500 w-3.5 h-3.5"
+                  />
+                  <span>{t.label}</span>
+                </label>
+              </li>
+            ))}
+          </ul>
+        </FilterSection>
+      )}
 
-      {/* (D) 패키지 */}
-      <FilterSection title="패키지에 포함된 항목">
-        <ul className="space-y-1.5">
-          {PACKAGE_TAGS.map((t) => (
-            <li key={t.id}>
-              <label className="flex items-center gap-2 text-[13px] text-ink-700 cursor-pointer hover:text-ink-900">
-                <input
-                  type="checkbox"
-                  checked={activePackages.has(t.id)}
-                  onChange={() => togglePackage(t.id)}
-                  className="accent-mint-500 w-3.5 h-3.5"
-                />
-                <span>{t.label}</span>
-              </label>
-            </li>
-          ))}
-        </ul>
-      </FilterSection>
-
-      {/* (E) 가격대 */}
+      {/* (D) 가격대 */}
       <FilterSection title="가격대 (최저가 기준)">
         <div className="flex flex-wrap lg:flex-col gap-1">
           {PRICE_RANGES.map((p) => (
@@ -552,7 +510,7 @@ function FilterPanel({
         </div>
       </FilterSection>
 
-      {/* (F) 마감 임박 */}
+      {/* (E) 마감 임박 */}
       <FilterSection title="마감">
         <label className="flex items-center gap-2 text-[13px] text-ink-700 cursor-pointer hover:text-ink-900">
           <input

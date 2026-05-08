@@ -66,13 +66,13 @@ export const dummyTaxonomy: Taxonomy = {
     { id: "package", label: "패키지" },
   ],
   tags: [
-    { id: "brand_diffusion", label: "브랜드 확산형", color: "#00bfa6" },
-    { id: "onsite", label: "온사이트", color: "#0ea5e9" },
-    { id: "digital", label: "디지털" },
-    { id: "global", label: "글로벌" },
-    { id: "outdoor", label: "옥외" },
-    { id: "registration_path", label: "등록경로" },
-    { id: "navigation", label: "동선" },
+    { id: "brand_diffusion", label: "브랜드 확산형", kind: "purpose", order: 0, isActive: true, color: "#00bfa6" },
+    { id: "onsite", label: "온사이트", kind: "custom", order: 0, isActive: true, color: "#0ea5e9" },
+    { id: "digital", label: "디지털", kind: "custom", order: 1, isActive: true },
+    { id: "global", label: "글로벌", kind: "custom", order: 2, isActive: true },
+    { id: "outdoor", label: "옥외", kind: "custom", order: 3, isActive: true },
+    { id: "registration_path", label: "등록경로", kind: "custom", order: 4, isActive: true },
+    { id: "navigation", label: "동선", kind: "custom", order: 5, isActive: true },
   ],
 };
 
