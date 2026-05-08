@@ -27,6 +27,8 @@ export default function CartPage() {
   );
   const [packages, setPackages] = useState<Map<string, Package>>(new Map());
   const [settings, setSettings] = useState<SiteSettings | null>(null);
+  const [dataLoaded, setDataLoaded] = useState(false);
+  const [cleanedCount, setCleanedCount] = useState(0);
 
   // 선택된 항목 (PDF 출력용) — 기본 전체 선택
   const [selected, setSelected] = useState<Set<string>>(new Set());
@@ -60,9 +62,35 @@ export default function CartPage() {
           setSettings(settingsSnap.data() as SiteSettings);
       } catch (e) {
         console.error(e);
+      } finally {
+        setDataLoaded(true);
       }
     })();
   }, []);
+
+  // 데이터 로드 후 더 이상 존재하지 않는 카트 항목 자동 정리
+  useEffect(() => {
+    if (!hydrated || !dataLoaded) return;
+    if (items.length === 0) return;
+
+    let removed = 0;
+    items.forEach((it) => {
+      if (it.type === "slot") {
+        // 카테고리 자체가 없어진 경우만 정리 (slots는 별도 콜렉션이라 cart는 categoryId 기준)
+        if (!categories.has(it.categoryId)) {
+          removeSlot(it.slotId);
+          removed++;
+        }
+      } else {
+        if (!packages.has(it.packageId)) {
+          removePackage(it.packageId);
+          removed++;
+        }
+      }
+    });
+    if (removed > 0) setCleanedCount(removed);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hydrated, dataLoaded, categories, packages]);
 
   // 카트 변경 시 선택을 전체로 동기화
   useEffect(() => {
@@ -112,7 +140,22 @@ export default function CartPage() {
         </header>
 
         <div className="max-w-4xl mx-auto px-6 md:px-12 py-10">
-          {!hydrated ? (
+          {cleanedCount > 0 && (
+            <div className="bg-amber-50 border border-amber-200 rounded-card p-3 mb-4 flex items-center justify-between gap-3">
+              <p className="text-[12.5px] text-amber-800">
+                ⓘ 더 이상 제공되지 않는 항목 <strong>{cleanedCount}개</strong>가 자동으로 정리되었습니다.
+              </p>
+              <button
+                type="button"
+                onClick={() => setCleanedCount(0)}
+                className="p-1 rounded hover:bg-amber-100 text-amber-700"
+                aria-label="알림 닫기"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          )}
+          {!hydrated || !dataLoaded ? (
             <div className="text-center text-sm text-ink-500 py-16">불러오는 중…</div>
           ) : items.length === 0 ? (
             <div className="bg-ink-50 rounded-card py-16 text-center">
