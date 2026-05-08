@@ -1,20 +1,27 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { doc, onSnapshot, setDoc } from "firebase/firestore";
+import {
+  collection,
+  doc,
+  getDocs,
+  onSnapshot,
+  setDoc,
+} from "firebase/firestore";
 import { useFieldArray, useForm } from "react-hook-form";
 import {
   AlertCircle,
   ArrowDown,
   ArrowUp,
   Check,
+  Download,
   Plus,
   Save,
   Wand2,
   X,
 } from "lucide-react";
 import { getDb } from "@/lib/firebase/firestore";
-import type { Tag, TagKind, Taxonomy } from "@/lib/types";
+import type { Category, Tag, TagKind, Taxonomy } from "@/lib/types";
 
 const TAXONOMY_DOC_ID = "main";
 
@@ -36,6 +43,22 @@ function inferKind(label: string): TagKind {
   const t = label.trim();
   if (t.endsWith("_패키지") || t.endsWith(" 패키지")) return "package";
   return "custom";
+}
+
+/** 라벨에서 ID 자동 생성. 영문/숫자는 그대로, 공백·특수문자는 언더바로. */
+function labelToId(label: string): string {
+  const base = label
+    .trim()
+    .toLowerCase()
+    .replace(/[^\w가-힣]+/g, "_")
+    .replace(/^_+|_+$/g, "");
+  return base || "tag";
+}
+
+function defaultColorForKind(kind: TagKind): string {
+  if (kind === "purpose") return "#00bfa6"; // mint
+  if (kind === "package") return "#0f172a"; // ink-900
+  return "#94a3b8"; // ink-500
 }
 
 const KIND_META: Record<TagKind, { label: string; desc: string }> = {
@@ -178,6 +201,62 @@ export default function TaxonomyPage() {
     });
   };
 
+  /** categories 컬렉션 전체를 스캔해서 사용 중인 태그 라벨을 수집 → 중복 제거 → 누락된 것만 폼에 추가 */
+  const handleImportFromCategories = async () => {
+    try {
+      const snap = await getDocs(collection(getDb(), "categories"));
+      const labelSet = new Set<string>();
+      snap.docs.forEach((d) => {
+        const cat = d.data() as Category;
+        (cat.tags ?? []).forEach((t) => {
+          const trimmed = String(t).trim();
+          if (trimmed) labelSet.add(trimmed);
+        });
+      });
+
+      const existing = new Set(
+        form
+          .getValues("tags")
+          .map((t) => t.label.trim())
+          .filter(Boolean)
+      );
+      const newLabels = Array.from(labelSet).filter((l) => !existing.has(l));
+
+      if (newLabels.length === 0) {
+        setMigrationNote(
+          `카테고리에서 사용 중인 ${labelSet.size}개 태그 모두 이미 등록되어 있습니다.`
+        );
+        setTimeout(() => setMigrationNote(null), 5000);
+        return;
+      }
+
+      const ok = confirm(
+        `카테고리에서 ${labelSet.size}개의 태그를 발견했어요.\n그 중 ${newLabels.length}개가 새로 추가됩니다 (kind 자동 분류).\n저장하기 전엔 폼에만 반영되니 검토 후 [저장] 누르세요.\n\n계속?`
+      );
+      if (!ok) return;
+
+      newLabels.forEach((label) => {
+        const id = labelToId(label);
+        fields.append({
+          id,
+          label,
+          color: defaultColorForKind(inferKind(label)),
+          kind: inferKind(label),
+          isActive: true,
+        });
+      });
+
+      setMigrationNote(
+        `${newLabels.length}개 태그가 폼에 추가됐어요. 검토 후 [저장]을 눌러주세요.`
+      );
+      setTimeout(() => setMigrationNote(null), 8000);
+    } catch (e) {
+      alert(
+        `카테고리 스캔 실패: ${e instanceof Error ? e.message : String(e)}`
+      );
+    }
+  };
+
   // 그룹 내에서 위/아래 이동
   const moveWithinGroup = (currentIdx: number, kind: TagKind, dir: -1 | 1) => {
     const groupIdxs = grouped[kind];
@@ -210,8 +289,17 @@ export default function TaxonomyPage() {
             카테고리에 붙일 태그를 종류별로 관리합니다. 채널은 고정입니다.
           </p>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3 flex-wrap">
           <SaveStatusBadge status={saveStatus} error={saveError} />
+          <button
+            type="button"
+            onClick={handleImportFromCategories}
+            className="px-3 py-2 rounded-btn border border-mint-200 bg-mint-50 text-[12px] font-semibold text-mint-700 hover:bg-mint-100 flex items-center gap-1.5"
+            title="카테고리 컬렉션에서 사용 중인 태그를 자동 수집"
+          >
+            <Download className="w-3.5 h-3.5" />
+            카테고리에서 가져오기
+          </button>
           <button
             type="button"
             onClick={handleAutoClassify}
