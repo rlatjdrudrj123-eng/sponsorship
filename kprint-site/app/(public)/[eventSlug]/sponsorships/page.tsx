@@ -279,14 +279,8 @@ export default function SponsorshipsPage() {
       rows = rows.filter((r) => r.minPrice > 0 && r.minPrice <= budget);
     }
     if (selectedPersona) {
-      rows = rows.filter((r) => {
-        if (!matchesPersona(r, selectedPersona)) return false;
-        if (selectedPersona.budgetMax && r.minPrice > selectedPersona.budgetMax)
-          return false;
-        if (selectedPersona.budgetMin && r.minPrice < selectedPersona.budgetMin)
-          return false;
-        return true;
-      });
+      // 페르소나는 태그·맥락 기반 추천만. 예산은 슬라이더에서 별도로 제어.
+      rows = rows.filter((r) => matchesPersona(r, selectedPersona));
     }
     if (activeMediaTypes.size > 0) {
       rows = rows.filter((r) => {
@@ -354,6 +348,20 @@ export default function SponsorshipsPage() {
     activeMediaTypes.size > 0 ||
     activeTimings.size > 0 ||
     activeLocations.size > 0;
+
+  // 패키지 노출 규칙:
+  //  - 필터 없음 → 전체 패키지
+  //  - 페르소나 + packageTier 일치 → 해당 tier 만
+  //  - 그 외 필터(채널·예산·검색…) → 숨김
+  const packagesToShow = useMemo<Package[]>(() => {
+    if (packages.length === 0) return [];
+    if (selectedPersona) {
+      if (!selectedPersona.packageTier) return [];
+      return packages.filter((p) => p.tier === selectedPersona.packageTier);
+    }
+    if (hasActiveFilter) return [];
+    return packages;
+  }, [packages, selectedPersona, hasActiveFilter]);
 
   return (
     <>
@@ -454,9 +462,9 @@ export default function SponsorshipsPage() {
                   <ViewModeToggle viewMode={viewMode} setViewMode={setViewMode} />
                 </div>
 
-                {/* 패키지 전용 섹션 (필터 미적용 — 항상 노출) */}
-                {packages.length > 0 && !hasActiveFilter && (
-                  <PackageSection packages={packages} eventId={eventId} />
+                {/* 패키지 전용 섹션 */}
+                {packagesToShow.length > 0 && (
+                  <PackageSection packages={packagesToShow} eventId={eventId} />
                 )}
 
                 {filtered.length === 0 ? (
@@ -474,7 +482,7 @@ export default function SponsorshipsPage() {
                   </div>
                 ) : (
                   <>
-                    {packages.length > 0 && !hasActiveFilter && (
+                    {packagesToShow.length > 0 && (
                       <div className="mt-8 mb-4 flex items-center gap-3">
                         <span className="text-[10px] uppercase tracking-[0.2em] text-mint-700 font-bold">
                           개별 구좌
