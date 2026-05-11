@@ -1,15 +1,17 @@
 /**
- * 엑셀 양식 동적 생성 — 40개 카테고리(패키지 제외) 샘플 행 포함.
+ * 엑셀 양식 동적 생성 — exceljs 기반, 운영자 친화적.
  *
- * - generateTemplateBuffer(): Uint8Array
- * - downloadTemplate(): 브라우저 다운로드 트리거
- *
- * 시트 구성:
- *   - "data": 헤더 + 32개 카테고리의 슬롯 행 (패키지 type 제거 — 통합됨)
- *   - "안내": 사용법 + 컬럼 설명표 + 카테고리 유형 표
+ * 강화 포인트:
+ *  - 헤더 mint 배경 · 흰색 굵은 글자 · 동결 (Hover-friendly)
+ *  - 컬럼별 입력 검증 (channel · category_type · is_sold 드롭다운)
+ *  - 필수 컬럼 헤더에 빨간 별표 + 셀 노트
+ *  - 가격 컬럼 천단위 콤마 포맷
+ *  - 마감일 컬럼 yyyy-mm-dd 포맷
+ *  - 한 행 = 한 슬롯, 같은 카테고리 슬롯은 카테고리 정보 반복
+ *  - 안내 시트에 컬럼 설명·유형 키·예시 종합 정리
  */
 
-import * as XLSX from "xlsx";
+import ExcelJS from "exceljs";
 import { ALL_HEADERS, REQUIRED_HEADERS, type ExcelHeader } from "./parser";
 import type { CategoryType } from "../types";
 
@@ -1006,123 +1008,270 @@ const CATEGORY_TYPE_GUIDES: Array<[string, string, string]> = [
 ];
 
 // ----------------------------------------------------------------------------
-// 시트 빌더
+// 시트 빌더 (exceljs)
 // ----------------------------------------------------------------------------
 
-function buildDataSheet(): XLSX.WorkSheet {
-  const headerRow: string[] = ALL_HEADERS.slice();
-  const aoa: Array<Array<string | number | Date | boolean>> = [headerRow];
-  for (const row of EXAMPLE_ROWS) {
-    aoa.push(ALL_HEADERS.map((h) => row[h]));
+const COL_WIDTHS: Partial<Record<ExcelHeader, number>> = {
+  channel: 10,
+  category_code: 14,
+  category_name_ko: 26,
+  category_name_en: 26,
+  category_type: 14,
+  slot_code: 12,
+  price_krw: 14,
+  subcategory_name_ko: 18,
+  subcategory_name_en: 18,
+  size: 22,
+  file_format: 18,
+  deadline: 13,
+  price_usd: 11,
+  unit_ko: 12,
+  unit_en: 14,
+  is_sold: 10,
+  note: 24,
+  tags: 32,
+};
+
+const CATEGORY_TYPE_KEYS = CATEGORY_TYPE_GUIDES.map((g) => g[0]);
+const CHANNEL_VALUES = ["offline", "online"];
+const IS_SOLD_VALUES = ["FALSE", "TRUE"];
+
+function buildDataSheet(wb: ExcelJS.Workbook): ExcelJS.Worksheet {
+  const ws = wb.addWorksheet(DATA_SHEET_NAME, {
+    views: [{ state: "frozen", ySplit: 1 }],  // 헤더 행 동결
+  });
+
+  // 컬럼 너비
+  ws.columns = ALL_HEADERS.map((h) => ({
+    header: h,
+    key: h,
+    width: COL_WIDTHS[h] ?? 14,
+  }));
+
+  // 헤더 스타일
+  const headerRow = ws.getRow(1);
+  headerRow.height = 28;
+  ALL_HEADERS.forEach((h, idx) => {
+    const cell = headerRow.getCell(idx + 1);
+    const required = (REQUIRED_HEADERS as readonly ExcelHeader[]).includes(h);
+    cell.value = required ? `* ${h}` : h;
+    cell.font = {
+      bold: true,
+      color: { argb: "FFFFFFFF" },
+      size: 11,
+      name: "Pretendard",
+    };
+    cell.fill = {
+      type: "pattern",
+      pattern: "solid",
+      fgColor: { argb: required ? "FF0A6F5A" : "FF1F2937" }, // 필수=mint dark, 옵션=ink-900
+    };
+    cell.alignment = { vertical: "middle", horizontal: "center" };
+    cell.border = {
+      bottom: { style: "thin", color: { argb: "FFE5E7EB" } },
+    };
+  });
+
+  // 데이터 행
+  EXAMPLE_ROWS.forEach((row) => {
+    const r = ws.addRow(ALL_HEADERS.map((h) => row[h]));
+    r.height = 20;
+    r.font = { name: "Pretendard", size: 10 };
+  });
+
+  // 가격 컬럼 천단위 콤마
+  ["price_krw", "price_usd"].forEach((key) => {
+    const colIdx = ALL_HEADERS.indexOf(key as ExcelHeader);
+    if (colIdx >= 0) {
+      ws.getColumn(colIdx + 1).numFmt = '#,##0';
+    }
+  });
+
+  // 마감일 yyyy-mm-dd
+  const deadlineIdx = ALL_HEADERS.indexOf("deadline");
+  if (deadlineIdx >= 0) {
+    ws.getColumn(deadlineIdx + 1).numFmt = "yyyy-mm-dd";
   }
 
-  const sheet = XLSX.utils.aoa_to_sheet(aoa, { cellDates: true });
+  // ─── 데이터 검증 (드롭다운) ───
+  // 200행까지 미리 검증 적용 (운영자가 행 추가해도 적용됨)
+  const validationRows = Math.max(EXAMPLE_ROWS.length + 100, 200);
 
-  const widths: Partial<Record<ExcelHeader, number>> = {
-    channel: 10,
-    category_code: 14,
-    category_name_ko: 26,
-    category_name_en: 26,
-    category_type: 14,
-    slot_code: 12,
-    price_krw: 12,
-    subcategory_name_ko: 18,
-    subcategory_name_en: 18,
-    size: 22,
-    file_format: 18,
-    deadline: 12,
-    price_usd: 10,
-    unit_ko: 12,
-    unit_en: 14,
-    is_sold: 10,
-    note: 24,
-    tags: 32,
-  };
-  sheet["!cols"] = ALL_HEADERS.map((h) => ({ wch: widths[h] ?? 14 }));
-
-  const deadlineColIdx = ALL_HEADERS.indexOf("deadline");
-  if (deadlineColIdx >= 0) {
-    for (let r = 1; r <= EXAMPLE_ROWS.length; r++) {
-      const addr = XLSX.utils.encode_cell({ r, c: deadlineColIdx });
-      const cell = sheet[addr];
-      if (cell) cell.z = "yyyy-mm-dd";
+  // channel: offline / online
+  const channelIdx = ALL_HEADERS.indexOf("channel");
+  if (channelIdx >= 0) {
+    for (let r = 2; r <= validationRows + 1; r++) {
+      ws.getCell(r, channelIdx + 1).dataValidation = {
+        type: "list",
+        allowBlank: false,
+        formulae: [`"${CHANNEL_VALUES.join(",")}"`],
+        showErrorMessage: true,
+        errorTitle: "잘못된 값",
+        error: "offline 또는 online 만 입력 가능합니다.",
+      };
     }
   }
 
-  return sheet;
+  // category_type: 8개 키
+  const typeIdx = ALL_HEADERS.indexOf("category_type");
+  if (typeIdx >= 0) {
+    for (let r = 2; r <= validationRows + 1; r++) {
+      ws.getCell(r, typeIdx + 1).dataValidation = {
+        type: "list",
+        allowBlank: false,
+        formulae: [`"${CATEGORY_TYPE_KEYS.join(",")}"`],
+        showErrorMessage: true,
+        errorTitle: "잘못된 값",
+        error: "허용된 카테고리 유형 키만 입력 가능합니다 (안내 시트 참조).",
+      };
+    }
+  }
+
+  // is_sold: TRUE / FALSE
+  const soldIdx = ALL_HEADERS.indexOf("is_sold");
+  if (soldIdx >= 0) {
+    for (let r = 2; r <= validationRows + 1; r++) {
+      ws.getCell(r, soldIdx + 1).dataValidation = {
+        type: "list",
+        allowBlank: true,
+        formulae: [`"${IS_SOLD_VALUES.join(",")}"`],
+      };
+    }
+  }
+
+  // 필수 컬럼 헤더에 셀 노트 (마우스 오버 시 표시)
+  ALL_HEADERS.forEach((h, idx) => {
+    if (!(REQUIRED_HEADERS as readonly ExcelHeader[]).includes(h)) return;
+    const cell = headerRow.getCell(idx + 1);
+    cell.note = {
+      texts: [
+        { font: { bold: true }, text: "필수 컬럼\n" },
+        { text: "비워두면 임포트가 실패합니다." },
+      ],
+    };
+  });
+
+  return ws;
 }
 
-function buildGuideSheet(): XLSX.WorkSheet {
-  const aoa: Array<Array<string | number>> = [];
+function buildGuideSheet(wb: ExcelJS.Workbook): ExcelJS.Worksheet {
+  const ws = wb.addWorksheet(GUIDE_SHEET_NAME);
 
-  aoa.push(["K-PRINT 스폰서십 엑셀 양식 안내"]);
-  aoa.push([""]);
+  ws.columns = [
+    { width: 26 },
+    { width: 12 },
+    { width: 50 },
+    { width: 28 },
+    { width: 50 },
+  ];
 
-  aoa.push(["■ 이 양식 사용법"]);
-  aoa.push(["1. \"data\" 시트의 행을 한 줄씩 채우세요. 한 행 = 한 슬롯입니다."]);
-  aoa.push(["2. 같은 카테고리의 여러 슬롯은 카테고리·소분류 정보를 매 행에 반복 입력하세요."]);
-  aoa.push(["3. 별표(*) 표시된 컬럼은 필수입니다."]);
-  aoa.push(["4. 비워둘 수 있는 컬럼은 빈 셀로 두면 됩니다."]);
-  aoa.push(["5. 업로드 시 동기화 모드를 선택할 수 있습니다 (덮어쓰기 / 병합 / 신규만)."]);
-  aoa.push(["6. 도면형/XPACE의 핀 좌표는 이 양식에 없습니다. 어드민 화면에서 직접 찍습니다."]);
-  aoa.push(["7. 패키지(시그니처/스탠다드)는 어드민 [패키지] 메뉴에서 별도 관리합니다."]);
-  aoa.push([""]);
+  // ─── 타이틀 ───
+  const titleRow = ws.addRow(["K-PRINT 스폰서십 엑셀 양식 안내"]);
+  titleRow.font = { bold: true, size: 16, name: "Pretendard" };
+  titleRow.height = 28;
+  ws.addRow([]);
 
-  aoa.push(["■ 컬럼별 설명"]);
-  aoa.push(["컬럼명", "필수/선택", "설명", "입력 예시", "비고"]);
+  // ─── 사용법 ───
+  const sectionHeader = (text: string) => {
+    const r = ws.addRow([text]);
+    r.font = { bold: true, size: 12, color: { argb: "FF0A6F5A" }, name: "Pretendard" };
+    r.height = 22;
+  };
+
+  sectionHeader("■ 이 양식 사용법");
+  [
+    "1. \"data\" 시트의 행을 한 줄씩 채우세요. 한 행 = 한 슬롯입니다.",
+    "2. 같은 카테고리의 여러 슬롯은 카테고리·소분류 정보를 매 행에 반복 입력하세요.",
+    "3. 별표(*) 표시된 컬럼은 필수입니다.",
+    "4. 비워둘 수 있는 컬럼은 빈 셀로 두면 됩니다.",
+    "5. channel · category_type · is_sold 셀은 드롭다운으로 선택할 수 있습니다.",
+    "6. 업로드 시 동기화 모드를 선택할 수 있습니다 (덮어쓰기 / 병합 / 신규만).",
+    "7. 도면형/XPACE의 핀 좌표는 이 양식에 없습니다. 어드민 화면에서 직접 찍습니다.",
+    "8. 패키지(시그니처/스탠다드)는 어드민 [패키지] 메뉴에서 별도 관리합니다.",
+  ].forEach((line) => ws.addRow([line]));
+  ws.addRow([]);
+
+  // ─── 컬럼별 설명 ───
+  sectionHeader("■ 컬럼별 설명");
+  const colHeader = ws.addRow(["컬럼명", "필수/선택", "설명", "입력 예시", "비고"]);
+  colHeader.font = { bold: true, name: "Pretendard" };
+  colHeader.fill = {
+    type: "pattern",
+    pattern: "solid",
+    fgColor: { argb: "FFF3F4F6" },
+  };
   for (const g of COLUMN_GUIDES) {
-    aoa.push([
+    const r = ws.addRow([
       g.required ? `* ${g.key}` : g.key,
       g.required ? "필수" : "선택",
       g.desc,
       g.example,
       g.note,
     ]);
+    if (g.required) {
+      r.getCell(1).font = { bold: true, color: { argb: "FFB91C1C" } };
+      r.getCell(2).font = { bold: true, color: { argb: "FFB91C1C" } };
+    }
   }
-  aoa.push([""]);
+  ws.addRow([]);
 
-  aoa.push(["■ 카테고리 유형 (category_type) 영문 키"]);
-  aoa.push(["영문 키", "한글 명칭", "설명"]);
+  // ─── 카테고리 유형 키 ───
+  sectionHeader("■ 카테고리 유형 (category_type) 영문 키");
+  const typeHeader = ws.addRow(["영문 키", "한글 명칭", "설명"]);
+  typeHeader.font = { bold: true, name: "Pretendard" };
+  typeHeader.fill = {
+    type: "pattern",
+    pattern: "solid",
+    fgColor: { argb: "FFF3F4F6" },
+  };
   for (const [en, ko, desc] of CATEGORY_TYPE_GUIDES) {
-    aoa.push([en, ko, desc]);
+    ws.addRow([en, ko, desc]);
   }
-  aoa.push([""]);
+  ws.addRow([]);
 
-  aoa.push(["■ 특수 컬럼 입력 형식"]);
-  aoa.push(["• is_sold:", "TRUE / FALSE / 마감 / 가능 / Y / N (대소문자 무관, 빈 칸 = 가능)"]);
-  aoa.push(["• tags:", "콤마(,)로 구분  예) 온사이트, 브랜드_확산형, 등록경로"]);
-  aoa.push(["• deadline:", "yyyy-mm-dd 권장  예) 2026-02-15"]);
-  aoa.push(["• price_krw / price_usd:", "콤마 무방  예) \"3,000,000\" — 숫자만으로도 OK"]);
-  aoa.push([""]);
+  // ─── 특수 입력 형식 ───
+  sectionHeader("■ 특수 컬럼 입력 형식");
+  [
+    ["• is_sold:", "TRUE / FALSE / 마감 / 가능 / Y / N (대소문자 무관, 빈 칸 = 가능)"],
+    ["• tags:", "콤마(,)로 구분  예) 온사이트, 브랜드_확산형, 등록경로"],
+    ["• deadline:", "yyyy-mm-dd 권장  예) 2026-02-15"],
+    ["• price_krw / price_usd:", "콤마 무방  예) \"3,000,000\" — 숫자만으로도 OK"],
+  ].forEach((cols) => ws.addRow(cols));
+  ws.addRow([]);
 
-  aoa.push(["■ 동기화 모드"]);
-  aoa.push(["덮어쓰기:", "엑셀에 있는 카테고리들을 전부 교체. 이미지·도면 핀·잠금 해제 필드는 보존."]);
-  aoa.push(["병합:", "기존 데이터 유지하면서 가격·마감·사이즈만 갱신. 이미지·텍스트 안 건드림."]);
-  aoa.push(["신규만:", "기존 코드는 무시, 새 코드만 추가. 가장 안전."]);
+  // ─── 동기화 모드 ───
+  sectionHeader("■ 동기화 모드");
+  [
+    ["덮어쓰기:", "엑셀에 있는 카테고리들을 전부 교체. 이미지·도면 핀·잠금 해제 필드는 보존."],
+    ["병합:", "기존 데이터 유지하면서 가격·마감·사이즈만 갱신. 이미지·텍스트 안 건드림."],
+    ["신규만:", "기존 코드는 무시, 새 코드만 추가. 가장 안전."],
+  ].forEach((cols) => ws.addRow(cols));
 
-  const sheet = XLSX.utils.aoa_to_sheet(aoa);
-  sheet["!cols"] = [{ wch: 26 }, { wch: 12 }, { wch: 50 }, { wch: 28 }, { wch: 50 }];
-  return sheet;
+  return ws;
 }
 
 // ----------------------------------------------------------------------------
 // 공개 API
 // ----------------------------------------------------------------------------
 
-export function generateTemplateBuffer(): Uint8Array {
-  const wb = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb, buildDataSheet(), DATA_SHEET_NAME);
-  XLSX.utils.book_append_sheet(wb, buildGuideSheet(), GUIDE_SHEET_NAME);
-  const out = XLSX.write(wb, { type: "array", bookType: "xlsx" });
-  return out instanceof Uint8Array ? out : new Uint8Array(out as ArrayBuffer);
+export async function generateTemplateBuffer(): Promise<Uint8Array> {
+  const wb = new ExcelJS.Workbook();
+  wb.creator = "K-PRINT Admin";
+  wb.created = new Date();
+  buildDataSheet(wb);
+  buildGuideSheet(wb);
+  const buf = await wb.xlsx.writeBuffer();
+  return new Uint8Array(buf as ArrayBuffer);
 }
 
-export function downloadTemplate(filename: string = TEMPLATE_FILENAME_DEFAULT): void {
+export async function downloadTemplate(
+  filename: string = TEMPLATE_FILENAME_DEFAULT
+): Promise<void> {
   if (typeof window === "undefined" || typeof document === "undefined") {
     throw new Error("downloadTemplate은 브라우저에서만 호출할 수 있습니다.");
   }
 
-  const buffer = generateTemplateBuffer();
+  const buffer = await generateTemplateBuffer();
   const blob = new Blob([buffer as BlobPart], {
     type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
   });

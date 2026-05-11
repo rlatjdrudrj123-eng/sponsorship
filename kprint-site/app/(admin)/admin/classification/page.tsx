@@ -9,20 +9,22 @@ import {
   query,
   Timestamp,
   updateDoc,
-  setDoc,
   where,
 } from "firebase/firestore";
 import {
   AlertCircle,
   CheckCircle2,
+  Edit2,
   Layers,
   Plus,
+  Sparkles,
   Trash2,
   X,
 } from "lucide-react";
 import { getDb } from "@/lib/firebase/firestore";
 import { useEventFilter } from "@/lib/admin/useEventFilter";
-import { seedDefaultPersonas } from "@/lib/admin/seedDemo";
+import { populateClassifications, seedDefaultPersonas } from "@/lib/admin/seedDemo";
+import { PersonaEditModal } from "@/components/admin/PersonaEditModal";
 import type { Category, CategoryType, Persona } from "@/lib/types";
 
 type Tab = "persona" | "media" | "timing" | "location";
@@ -65,6 +67,9 @@ export default function ClassificationPage() {
   const [personas, setPersonas] = useState<Persona[]>([]);
   const [activeBucket, setActiveBucket] = useState<string | null>(null);
   const [draggingCatId, setDraggingCatId] = useState<string | null>(null);
+  const [editPersona, setEditPersona] = useState<Persona | null>(null);
+  const [addingPersona, setAddingPersona] = useState(false);
+  const [populating, setPopulating] = useState(false);
 
   useEffect(() => {
     if (!ready || !eventId) return;
@@ -146,6 +151,27 @@ export default function ClassificationPage() {
     }
   };
 
+  const populateCurrent = async () => {
+    if (!eventId) return;
+    if (
+      !confirm(
+        "기본 페르소나 5개를 시드하고, 현재 카테고리들의 태그·이름에 따라 페르소나·시점·위치를 일괄 자동 배정합니다. 기존 명시 지정이 덮어쓰여집니다. 진행할까요?"
+      )
+    )
+      return;
+    setPopulating(true);
+    try {
+      const r = await populateClassifications(eventId);
+      alert(
+        `완료\n· 페르소나 ${r.personasSeeded}개 시드\n· 카테고리 ${r.categoriesUpdated}개 갱신`
+      );
+    } catch (e) {
+      alert(`실행 실패: ${e instanceof Error ? e.message : String(e)}`);
+    } finally {
+      setPopulating(false);
+    }
+  };
+
   if (!ready || !eventId) {
     return (
       <div className="bg-white border border-ink-100 rounded-card p-8 text-center">
@@ -156,14 +182,26 @@ export default function ClassificationPage() {
 
   return (
     <div className="space-y-5">
-      <header>
-        <h1 className="text-[22px] font-bold text-ink-900 leading-tight flex items-center gap-2">
-          <Layers className="w-5 h-5 text-mint-700" />
-          분류 관리
-        </h1>
-        <p className="text-[13px] text-ink-700 mt-1">
-          페르소나·매체 유형·시점·위치를 그룹별로 보고 드래그로 카테고리를 이동하세요.
-        </p>
+      <header className="flex items-start justify-between gap-3 flex-wrap">
+        <div>
+          <h1 className="text-[22px] font-bold text-ink-900 leading-tight flex items-center gap-2">
+            <Layers className="w-5 h-5 text-mint-700" />
+            분류 관리
+          </h1>
+          <p className="text-[13px] text-ink-700 mt-1">
+            페르소나·매체 유형·시점·위치를 그룹별로 보고 드래그로 카테고리를 이동하세요.
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={populateCurrent}
+          disabled={populating}
+          className="px-3.5 py-2 rounded-btn bg-mint-500 text-ink-900 text-[12.5px] font-bold hover:bg-mint-700 hover:text-white disabled:opacity-50 flex items-center gap-1.5"
+          title="현재 카테고리 태그·이름·type에 따라 페르소나·시점·위치를 한 번에 채워넣습니다"
+        >
+          <Sparkles className="w-3.5 h-3.5" />
+          {populating ? "채우는 중…" : "현재 설정대로 일괄 채우기"}
+        </button>
       </header>
 
       <div className="flex items-center gap-1 bg-white border border-ink-100 rounded-btn p-1 w-fit">
@@ -254,8 +292,61 @@ export default function ClassificationPage() {
               })}
             </ul>
             {tab === "persona" && (
-              <div className="p-2 border-t border-ink-100">
-                <PersonaEditor eventId={eventId} personas={personas} />
+              <div className="p-2 border-t border-ink-100 space-y-1">
+                <button
+                  type="button"
+                  onClick={() => setAddingPersona(true)}
+                  className="w-full px-2 py-1.5 rounded-btn border border-dashed border-ink-200 text-[11px] text-ink-500 hover:border-mint-500 hover:text-mint-700 flex items-center justify-center gap-1"
+                >
+                  <Plus className="w-3 h-3" />새 페르소나
+                </button>
+                {personas.length > 0 && (
+                  <div className="pt-2 space-y-0.5">
+                    {personas
+                      .slice()
+                      .sort((a, b) => a.order - b.order)
+                      .map((p) => (
+                        <div
+                          key={p.id}
+                          className="flex items-center gap-1 px-1.5 py-1 hover:bg-ink-50 rounded"
+                        >
+                          <span className="text-[10px] text-ink-500 truncate flex-1">
+                            {p.emoji} {p.title}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => setEditPersona(p)}
+                            className="p-0.5 text-ink-300 hover:text-mint-700"
+                            title="편집"
+                          >
+                            <Edit2 className="w-3 h-3" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={async () => {
+                              if (
+                                !confirm(
+                                  "페르소나를 삭제할까요? 이미 카테고리에 적용된 매칭은 풀립니다."
+                                )
+                              )
+                                return;
+                              try {
+                                await deleteDoc(doc(getDb(), "personas", p.id));
+                              } catch (e) {
+                                alert(
+                                  `삭제 실패: ${e instanceof Error ? e.message : String(e)}`
+                                );
+                              }
+                            }}
+                            className="p-0.5 text-ink-300 hover:text-red-700"
+                            title="삭제"
+                          >
+                            <Trash2 className="w-3 h-3" />
+                          </button>
+                        </div>
+                      ))}
+                  </div>
+                )}
               </div>
             )}
           </aside>
@@ -368,108 +459,19 @@ export default function ClassificationPage() {
           </aside>
         </div>
       )}
-    </div>
-  );
-}
 
-// ============================================================================
-// PersonaEditor — 페르소나 추가·삭제
-// ============================================================================
-
-function PersonaEditor({ eventId, personas }: { eventId: string; personas: Persona[] }) {
-  const [adding, setAdding] = useState(false);
-  const [title, setTitle] = useState("");
-
-  const addPersona = async () => {
-    const t = title.trim();
-    if (!t) return;
-    const id = `${eventId}-${slugify(t)}-${Date.now().toString(36).slice(-4)}`;
-    await setDoc(doc(getDb(), "personas", id), {
-      id,
-      eventId,
-      emoji: "🎯",
-      title: t,
-      description: "",
-      targetTags: [],
-      order: personas.length,
-      isActive: true,
-    });
-    setTitle("");
-    setAdding(false);
-  };
-
-  const removePersona = async (id: string) => {
-    if (!confirm("페르소나를 삭제할까요? 이미 카테고리에 적용된 매칭은 풀립니다.")) return;
-    try {
-      await deleteDoc(doc(getDb(), "personas", id));
-    } catch (e) {
-      alert(`삭제 실패: ${e instanceof Error ? e.message : String(e)}`);
-    }
-  };
-
-  if (adding) {
-    return (
-      <div className="space-y-2">
-        <input
-          type="text"
-          value={title}
-          onChange={(e) => setTitle(e.target.value)}
-          placeholder="페르소나 제목"
-          autoFocus
-          className="w-full px-2.5 py-1.5 text-[12px] border border-ink-100 rounded-btn focus:outline-none focus:border-mint-500"
+      {addingPersona && (
+        <PersonaEditModal
+          mode={{ kind: "new", eventId, order: personas.length }}
+          onClose={() => setAddingPersona(false)}
         />
-        <div className="flex gap-1">
-          <button
-            type="button"
-            onClick={addPersona}
-            className="flex-1 px-2 py-1.5 rounded-btn bg-mint-500 text-ink-900 text-[11px] font-bold hover:bg-mint-700"
-          >
-            추가
-          </button>
-          <button
-            type="button"
-            onClick={() => {
-              setAdding(false);
-              setTitle("");
-            }}
-            className="px-2 py-1.5 rounded-btn border border-ink-100 text-[11px] text-ink-700"
-          >
-            취소
-          </button>
-        </div>
-      </div>
-    );
-  }
-  return (
-    <div className="space-y-1">
-      <button
-        type="button"
-        onClick={() => setAdding(true)}
-        className="w-full px-2 py-1.5 rounded-btn border border-dashed border-ink-200 text-[11px] text-ink-500 hover:border-mint-500 hover:text-mint-700 flex items-center justify-center gap-1"
-      >
-        <Plus className="w-3 h-3" />새 페르소나
-      </button>
-      {personas.length > 0 && (
-        <div className="text-[10px] text-ink-300 mt-2 px-1">
-          삭제하려면 우측에서 ✕
-        </div>
       )}
-      {personas.map((p) => (
-        <div
-          key={p.id}
-          className="flex items-center justify-between gap-1 px-1.5 py-0.5"
-        >
-          <span className="text-[10px] text-ink-500 truncate">{p.title}</span>
-          <button
-            type="button"
-            onClick={() => removePersona(p.id)}
-            className="p-0.5 text-ink-300 hover:text-red-700"
-            title="페르소나 삭제"
-          >
-            <Trash2 className="w-3 h-3" />
-          </button>
-        </div>
-      ))}
+      {editPersona && (
+        <PersonaEditModal
+          mode={{ kind: "edit", persona: editPersona }}
+          onClose={() => setEditPersona(null)}
+        />
+      )}
     </div>
   );
 }
@@ -528,12 +530,4 @@ function computeBucketUpdate(
   else
     next.delete(bucketId as "hall_a" | "hall_b" | "hall_c" | "hall_d" | "outdoor" | "online");
   return { locationOverride: Array.from(next) };
-}
-
-function slugify(s: string): string {
-  return s
-    .toLowerCase()
-    .replace(/[^a-z0-9가-힣]+/g, "-")
-    .replace(/^-+|-+$/g, "")
-    .slice(0, 30);
 }

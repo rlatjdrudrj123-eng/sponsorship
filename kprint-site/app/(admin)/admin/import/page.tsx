@@ -45,7 +45,20 @@ export default function ImportPage() {
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [adminEmail, setAdminEmail] = useState<string>("");
   const [historyKey, setHistoryKey] = useState(0);
+  const [downloadingTemplate, setDownloadingTemplate] = useState(false);
   const { eventId } = useEventFilter();
+
+  const handleDownloadTemplate = async () => {
+    if (downloadingTemplate) return;
+    setDownloadingTemplate(true);
+    try {
+      await downloadTemplate();
+    } catch (e) {
+      alert(`엑셀 양식 생성 실패: ${e instanceof Error ? e.message : String(e)}`);
+    } finally {
+      setDownloadingTemplate(false);
+    }
+  };
 
   // 어드민 이메일 (importHistory.uploadedBy 용)
   useEffect(() => {
@@ -148,11 +161,12 @@ export default function ImportPage() {
         </div>
         <button
           type="button"
-          onClick={() => downloadTemplate()}
-          className="px-3.5 py-2 rounded-btn border border-ink-100 text-[13px] font-semibold text-ink-900 hover:bg-ink-50 flex items-center gap-1.5 shrink-0"
+          onClick={handleDownloadTemplate}
+          disabled={downloadingTemplate}
+          className="px-3.5 py-2 rounded-btn border border-ink-100 text-[13px] font-semibold text-ink-900 hover:bg-ink-50 flex items-center gap-1.5 shrink-0 disabled:opacity-50"
         >
           <Download className="w-4 h-4" />
-          엑셀 양식 다운로드
+          {downloadingTemplate ? "생성 중…" : "엑셀 양식 다운로드"}
         </button>
       </header>
 
@@ -295,10 +309,11 @@ export default function ImportPage() {
               매년 행사 마감 후 엑셀만 새로 받아 재업로드하면 끝.
               <button
                 type="button"
-                onClick={() => downloadTemplate()}
-                className="block mt-1.5 text-mint-500 font-semibold hover:underline"
+                onClick={handleDownloadTemplate}
+                disabled={downloadingTemplate}
+                className="block mt-1.5 text-mint-500 font-semibold hover:underline disabled:opacity-50"
               >
-                양식 다운로드 →
+                {downloadingTemplate ? "생성 중…" : "양식 다운로드 →"}
               </button>
             </div>
           </div>

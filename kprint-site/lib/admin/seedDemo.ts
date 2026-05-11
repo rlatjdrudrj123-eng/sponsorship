@@ -17,9 +17,11 @@ import {
   collection,
   doc,
   getDocs,
+  query,
   serverTimestamp,
   setDoc,
   Timestamp,
+  where,
   writeBatch,
 } from "firebase/firestore";
 import { getDb } from "../firebase/firestore";
@@ -908,6 +910,117 @@ export async function seedDefaultPersonas(eventId: string): Promise<PersonaSeedR
     result.created.push(docId);
   }
   await batch.commit();
+  return result;
+}
+
+// ============================================================================
+// POPULATE CLASSIFICATIONS — 현재 휴리스틱·태그 매칭 결과를 카테고리 도큐먼트에 일괄 저장
+// (페르소나 자동 배정 + 시점/위치 override 채움)
+// ============================================================================
+
+type Timing = "pre" | "onsite" | "post";
+type LocationTag = "hall_a" | "hall_b" | "hall_c" | "hall_d" | "outdoor" | "online";
+
+function deriveTiming(c: Category): Timing[] {
+  const out: Timing[] = [];
+  if (c.type === "mailing") out.push("pre");
+  if (c.type === "digital_banner") out.push("pre");
+  if (c.type === "content") {
+    if (c.code === "OIC" || c.name.ko.includes("현장")) out.push("onsite", "post");
+    else out.push("pre");
+  }
+  if (
+    c.type === "floor_plan" ||
+    c.type === "xpace" ||
+    c.type === "quantity" ||
+    c.type === "media" ||
+    c.type === "print_page"
+  ) {
+    out.push("onsite");
+  }
+  return Array.from(new Set(out));
+}
+
+function deriveLocations(c: Category): LocationTag[] {
+  const out: LocationTag[] = [];
+  const n = c.name.ko;
+  if (c.channel === "online") out.push("online");
+  if (n.includes("Hall A") || /A\b/.test(c.code)) out.push("hall_a");
+  if (n.includes("Hall B") || /B\b/.test(c.code)) out.push("hall_b");
+  if (n.includes("Hall C") || /C\b/.test(c.code)) out.push("hall_c");
+  if (n.includes("Hall D") || /D\b/.test(c.code)) out.push("hall_d");
+  if (c.type === "xpace" || n.includes("옥외")) out.push("outdoor");
+  return Array.from(new Set(out));
+}
+
+export type PopulateResult = {
+  personasSeeded: number;
+  categoriesUpdated: number;
+  personaMatches: Record<string, number>;
+};
+
+export async function populateClassifications(eventId: string): Promise<PopulateResult> {
+  const db = getDb();
+  const result: PopulateResult = {
+    personasSeeded: 0,
+    categoriesUpdated: 0,
+    personaMatches: {},
+  };
+
+  // 1) 페르소나 시드 (이미 있으면 덮어쓰기)
+  const personaBatch = writeBatch(db);
+  for (const p of DEFAULT_PERSONAS) {
+    const docId = `${eventId}-${p.id}`;
+    personaBatch.set(doc(db, "personas", docId), {
+      ...p,
+      id: docId,
+      eventId,
+    });
+    result.personasSeeded++;
+  }
+  await personaBatch.commit();
+
+  // 2) 카테고리 로드 (해당 행사)
+  const catSnap = await getDocs(
+    query(collection(db, "categories"), where("eventId", "==", eventId))
+  );
+  const categories = catSnap.docs.map((d) => ({
+    ...(d.data() as Category),
+    id: d.id,
+  }));
+
+  // 3) 각 카테고리에 personas/timingOverride/locationOverride 일괄 저장
+  for (let i = 0; i < categories.length; i += 400) {
+    const slice = categories.slice(i, i + 400);
+    const batch = writeBatch(db);
+    for (const c of slice) {
+      // 페르소나 매칭 (targetTags vs category.tags)
+      const matchedPersonas: string[] = [];
+      for (const p of DEFAULT_PERSONAS) {
+        const personaDocId = `${eventId}-${p.id}`;
+        if (!p.targetTags || p.targetTags.length === 0) continue;
+        const hasTag = p.targetTags.some((t) => (c.tags ?? []).includes(t));
+        if (!hasTag) continue;
+        // 예산 힌트도 체크 (있을 때만)
+        matchedPersonas.push(personaDocId);
+        result.personaMatches[personaDocId] =
+          (result.personaMatches[personaDocId] ?? 0) + 1;
+      }
+
+      const timing = deriveTiming(c);
+      const locations = deriveLocations(c);
+
+      batch.update(doc(db, "categories", c.id), {
+        personas: matchedPersonas,
+        timingOverride: timing,
+        locationOverride: locations,
+        updatedAt: Timestamp.fromDate(new Date()),
+      });
+      result.categoriesUpdated++;
+    }
+    await batch.commit();
+  }
+
   return result;
 }
 

@@ -6,7 +6,8 @@
 import { generateTemplateBuffer } from "../lib/excel/template";
 import { parseExcelBuffer } from "../lib/excel/parser";
 
-const buf = generateTemplateBuffer();
+async function main() {
+const buf = await generateTemplateBuffer();
 console.log(`✓ generateTemplateBuffer() → ${buf.length} bytes\n`);
 
 const result = parseExcelBuffer(buf);
@@ -55,3 +56,9 @@ if (result.ok) {
   console.log("✗ Round-trip FAILED");
   process.exit(1);
 }
+}
+
+main().catch((e) => {
+  console.error(e);
+  process.exit(1);
+});
