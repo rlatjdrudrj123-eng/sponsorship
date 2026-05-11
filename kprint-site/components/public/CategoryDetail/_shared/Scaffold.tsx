@@ -5,6 +5,7 @@ import type { Category, SiteSettings, Slot, Subcategory } from "@/lib/types";
 import { CategoryHero } from "./CategoryHero";
 import { SpecCard } from "./SpecCard";
 import { CategoryPageNav } from "./CategoryPageNav";
+import { CaseStudies } from "./CaseStudies";
 import { Footer } from "@/components/public/Footer";
 
 type Props = {
@@ -38,6 +39,9 @@ export function Scaffold({
         <div className="max-w-6xl mx-auto px-6 md:px-12 py-10 space-y-10">
           {children}
           <SpecCard category={category} />
+          {category.caseStudies && category.caseStudies.length > 0 && (
+            <CaseStudies items={category.caseStudies} />
+          )}
         </div>
         <CategoryPageNav current={category} all={allCategories} />
       </main>

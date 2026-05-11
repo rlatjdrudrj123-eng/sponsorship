@@ -146,6 +146,7 @@ export function PackageType({ pkg, resolvedSlots, settings }: Props) {
           onAdd={() => {
             addPackage({
               type: "package",
+              eventId: pkg.eventId,
               packageId: pkg.id,
               code: pkg.code,
               price: pkg.discountPrice,

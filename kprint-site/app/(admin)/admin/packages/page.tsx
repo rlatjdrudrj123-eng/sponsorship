@@ -6,10 +6,13 @@ import {
   collection,
   doc,
   onSnapshot,
+  query,
   updateDoc,
+  where,
 } from "firebase/firestore";
 import { Plus } from "lucide-react";
 import { getDb } from "@/lib/firebase/firestore";
+import { useEventFilter } from "@/lib/admin/useEventFilter";
 import type { Package } from "@/lib/types";
 import { PackageMigrationBanner } from "@/components/admin/PackageMigrationBanner";
 
@@ -20,12 +23,16 @@ export default function PackagesListPage() {
   const [tab, setTab] = useState<Tab>("all");
   const [filterPublished, setFilterPublished] = useState<"all" | "published" | "draft">("all");
 
+  const { eventId, ready } = useEventFilter();
+
   useEffect(() => {
-    const u = onSnapshot(collection(getDb(), "packages"), (s) =>
-      setPackages(s.docs.map((d) => ({ ...(d.data() as Package), id: d.id })))
+    if (!ready || !eventId) return;
+    const u = onSnapshot(
+      query(collection(getDb(), "packages"), where("eventId", "==", eventId)),
+      (s) => setPackages(s.docs.map((d) => ({ ...(d.data() as Package), id: d.id })))
     );
     return () => u();
-  }, []);
+  }, [ready, eventId]);
 
   const filtered = useMemo(() => {
     let rows = packages;

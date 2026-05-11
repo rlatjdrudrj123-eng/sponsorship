@@ -37,6 +37,7 @@ export function QuantityType({
         <div>
           <SlotPicker
             categoryId={category.id}
+              eventId={category.eventId}
             subcategories={subcategories}
             slots={slots}
           />

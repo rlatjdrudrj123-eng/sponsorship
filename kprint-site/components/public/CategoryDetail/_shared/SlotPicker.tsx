@@ -7,13 +7,14 @@ import type { Slot, Subcategory } from "@/lib/types";
 
 type Props = {
   categoryId: string;
+  eventId: string;
   subcategories: Subcategory[];
   slots: Slot[];
 };
 
 type SelectedSlot = { slot: Slot; sub: Subcategory } | null;
 
-export function SlotPicker({ categoryId, subcategories, slots }: Props) {
+export function SlotPicker({ categoryId, eventId, subcategories, slots }: Props) {
   const hasSlot = useCartStore((s) => s.hasSlot);
   const addSlot = useCartStore((s) => s.addSlot);
   const removeSlot = useCartStore((s) => s.removeSlot);
@@ -110,6 +111,7 @@ export function SlotPicker({ categoryId, subcategories, slots }: Props) {
           onAdd={() => {
             addSlot({
               type: "slot",
+              eventId,
               slotId: picked.slot.id,
               categoryId,
               subcategoryId: picked.sub.id,

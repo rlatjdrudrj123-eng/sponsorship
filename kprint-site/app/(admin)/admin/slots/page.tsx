@@ -2,27 +2,33 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { collection, onSnapshot } from "firebase/firestore";
+import { collection, onSnapshot, query, where } from "firebase/firestore";
 import { ChevronRight } from "lucide-react";
 import { getDb } from "@/lib/firebase/firestore";
+import { useEventFilter } from "@/lib/admin/useEventFilter";
 import type { Category, Slot } from "@/lib/types";
 
 export default function SlotsHubPage() {
   const [categories, setCategories] = useState<Category[]>([]);
   const [slots, setSlots] = useState<Slot[]>([]);
+  const { eventId, ready } = useEventFilter();
 
   useEffect(() => {
-    const u1 = onSnapshot(collection(getDb(), "categories"), (s) =>
-      setCategories(s.docs.map((d) => ({ ...(d.data() as Category), id: d.id })))
+    if (!ready || !eventId) return;
+    const u1 = onSnapshot(
+      query(collection(getDb(), "categories"), where("eventId", "==", eventId)),
+      (s) =>
+        setCategories(s.docs.map((d) => ({ ...(d.data() as Category), id: d.id })))
     );
-    const u2 = onSnapshot(collection(getDb(), "slots"), (s) =>
-      setSlots(s.docs.map((d) => ({ ...(d.data() as Slot), id: d.id })))
+    const u2 = onSnapshot(
+      query(collection(getDb(), "slots"), where("eventId", "==", eventId)),
+      (s) => setSlots(s.docs.map((d) => ({ ...(d.data() as Slot), id: d.id })))
     );
     return () => {
       u1();
       u2();
     };
-  }, []);
+  }, [ready, eventId]);
 
   const rows = useMemo(() => {
     return [...categories]

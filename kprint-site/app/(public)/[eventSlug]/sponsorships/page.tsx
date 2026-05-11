@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import { useParams } from "next/navigation";
 import {
   collection,
   doc,
@@ -22,6 +23,7 @@ import {
   X,
 } from "lucide-react";
 import { getDb } from "@/lib/firebase/firestore";
+import { PersonaCourses, type PersonaId, type Persona } from "@/components/public/PersonaCourses";
 import type {
   Category,
   Channel,
@@ -29,8 +31,6 @@ import type {
   SiteSettings,
   Slot,
   Subcategory,
-  Tag,
-  Taxonomy,
 } from "@/lib/types";
 import { Footer } from "@/components/public/Footer";
 
@@ -48,26 +48,75 @@ const CHANNEL_FILTER_OPTIONS: Array<{ id: Channel | "all"; label: string }> = [
   { id: "online", label: "온라인" },
 ];
 
-// 광고 목적 태그는 taxonomy/main 도큐먼트에서 동적으로 로드 (kind === 'purpose')
+// ============================================================================
+// 매체 유형 / 노출 시점 / 위치 — 실무 필터
+// ============================================================================
 
-type PriceRange = "all" | "u1m" | "1to3m" | "3to7m" | "o7m";
-const PRICE_RANGES: Array<{ id: PriceRange; label: string }> = [
-  { id: "all", label: "전체" },
-  { id: "u1m", label: "100만원 미만" },
-  { id: "1to3m", label: "100만 — 300만원" },
-  { id: "3to7m", label: "300만 — 700만원" },
-  { id: "o7m", label: "700만원 이상" },
+type MediaType = Exclude<Category["type"], "package">;
+type Timing = "pre" | "onsite" | "post";
+type LocationTag = "hall_a" | "hall_b" | "hall_c" | "hall_d" | "outdoor" | "online";
+
+// 'floor_plan' 옵션은 media 도 같이 매칭 (LDL 같은 실내 LED 영상도 전시장 설치물에 속함)
+const MEDIA_TYPE_OPTIONS: Array<{ id: MediaType; label: string }> = [
+  { id: "floor_plan", label: "전시장 내부 설치" },
+  { id: "xpace", label: "LED 영상 광고" },
+  { id: "digital_banner", label: "사이트·앱 배너" },
+  { id: "mailing", label: "뉴스레터·푸시" },
+  { id: "print_page", label: "쇼가이드 인쇄" },
+  { id: "content", label: "SNS 콘텐츠" },
+  { id: "quantity", label: "참관객 배포물" },
 ];
 
-function priceMatches(minPrice: number, range: PriceRange): boolean {
-  if (range === "all") return true;
-  if (minPrice <= 0) return false;
-  if (range === "u1m") return minPrice < 1_000_000;
-  if (range === "1to3m") return minPrice >= 1_000_000 && minPrice < 3_000_000;
-  if (range === "3to7m") return minPrice >= 3_000_000 && minPrice < 7_000_000;
-  if (range === "o7m") return minPrice >= 7_000_000;
-  return true;
+const TIMING_OPTIONS: Array<{ id: Timing; label: string }> = [
+  { id: "pre", label: "사전 (행사 전)" },
+  { id: "onsite", label: "현장 (행사 중)" },
+  { id: "post", label: "사후 (행사 후)" },
+];
+
+const LOCATION_OPTIONS: Array<{ id: LocationTag; label: string }> = [
+  { id: "hall_a", label: "Hall A" },
+  { id: "hall_b", label: "Hall B" },
+  { id: "hall_c", label: "Hall C" },
+  { id: "hall_d", label: "Hall D" },
+  { id: "outdoor", label: "옥외" },
+  { id: "online", label: "온라인" },
+];
+
+function getTiming(c: Category): Timing[] {
+  const out: Timing[] = [];
+  if (c.type === "mailing") out.push("pre");
+  if (c.type === "digital_banner") out.push("pre");
+  if (c.type === "content") {
+    if (c.code === "OIC" || c.name.ko.includes("현장")) out.push("onsite", "post");
+    else out.push("pre");
+  }
+  if (
+    c.type === "floor_plan" ||
+    c.type === "xpace" ||
+    c.type === "quantity" ||
+    c.type === "media" ||
+    c.type === "print_page"
+  ) {
+    out.push("onsite");
+  }
+  return out;
 }
+
+function getLocations(c: Category): LocationTag[] {
+  const out: LocationTag[] = [];
+  const n = c.name.ko;
+  if (c.channel === "online") out.push("online");
+  if (n.includes("Hall A") || /A\b/.test(c.code)) out.push("hall_a");
+  if (n.includes("Hall B") || /B\b/.test(c.code)) out.push("hall_b");
+  if (n.includes("Hall C") || /C\b/.test(c.code)) out.push("hall_c");
+  if (n.includes("Hall D") || /D\b/.test(c.code)) out.push("hall_d");
+  if (c.type === "xpace" || n.includes("옥외")) out.push("outdoor");
+  return out;
+}
+
+// 광고 목적 태그는 taxonomy/main 도큐먼트에서 동적으로 로드 (kind === 'purpose')
+
+// 예산 슬라이더 — 0이면 필터 미적용. 양수면 그 금액 이하 카테고리만.
 
 function isDeadlineSoon(
   deadline: Timestamp | undefined,
@@ -84,39 +133,77 @@ type EnrichedCategory = Category & {
   slotTotal: number;
   slotAvailable: number;
   minPrice: number;
+  badges: Badge[];
 };
 
+type Badge = "popular" | "closing" | "solo" | "limited" | "sold_out";
+
+function computeBadges(c: Category, slotAvailable: number, slotTotal: number): Badge[] {
+  const badges: Badge[] = [];
+  if (c.isFeatured) badges.push("popular");
+  if (slotTotal === 0) {
+    // no slots — skip
+  } else if (slotAvailable === 0) {
+    badges.push("sold_out");
+  } else if (slotTotal === 1) {
+    badges.push("solo");
+  } else if (slotAvailable === 1) {
+    badges.push("limited");
+  } else if (slotAvailable / slotTotal <= 0.3) {
+    badges.push("closing");
+  }
+  return badges;
+}
+
 export default function SponsorshipsPage() {
+  const params = useParams<{ eventSlug: string }>();
+  const eventId = params.eventSlug;
+
   const [categories, setCategories] = useState<Category[]>([]);
   const [subcategories, setSubcategories] = useState<Subcategory[]>([]);
   const [slots, setSlots] = useState<Slot[]>([]);
   const [packages, setPackages] = useState<Package[]>([]);
   const [settings, setSettings] = useState<SiteSettings | null>(null);
 
-  const [purposeTags, setPurposeTags] = useState<Tag[]>([]);
   const [filterChannel, setFilterChannel] = useState<Channel | "all">("all");
-  const [activePurposes, setActivePurposes] = useState<Set<string>>(new Set());
-  const [priceRange, setPriceRange] = useState<PriceRange>("all");
+  const [budget, setBudget] = useState<number>(0); // 0 = 필터 X
+  const [persona, setPersona] = useState<PersonaId | null>(null);
+  const [personaConfig, setPersonaConfig] = useState<Persona | null>(null);
+  const [activeMediaTypes, setActiveMediaTypes] = useState<Set<MediaType>>(new Set());
+  const [activeTimings, setActiveTimings] = useState<Set<Timing>>(new Set());
+  const [activeLocations, setActiveLocations] = useState<Set<LocationTag>>(new Set());
   const [deadlineSoon, setDeadlineSoon] = useState(false);
   const [search, setSearch] = useState("");
   const [sheetOpen, setSheetOpen] = useState(false);
   const [viewMode, setViewMode] = useState<"card" | "slide">("card");
 
   useEffect(() => {
+    if (!eventId) return;
     (async () => {
       try {
         const db = getDb();
-        const [catSnap, subSnap, slotSnap, pkgSnap, settingsSnap, taxSnap] = await Promise.all([
+        const [catSnap, subSnap, slotSnap, pkgSnap, settingsSnap] = await Promise.all([
           getDocs(
-            query(collection(db, "categories"), where("isPublished", "==", true))
+            query(
+              collection(db, "categories"),
+              where("eventId", "==", eventId),
+              where("isPublished", "==", true)
+            )
           ),
-          getDocs(collection(db, "subcategories")),
-          getDocs(collection(db, "slots")),
           getDocs(
-            query(collection(db, "packages"), where("isPublished", "==", true))
+            query(collection(db, "subcategories"), where("eventId", "==", eventId))
           ),
-          getDoc(doc(db, "siteSettings", "main")),
-          getDoc(doc(db, "taxonomy", "main")),
+          getDocs(
+            query(collection(db, "slots"), where("eventId", "==", eventId))
+          ),
+          getDocs(
+            query(
+              collection(db, "packages"),
+              where("eventId", "==", eventId),
+              where("isPublished", "==", true)
+            )
+          ),
+          getDoc(doc(db, "siteSettings", eventId)),
         ]);
         setCategories(
           // type='package'인 카테고리는 통합 후 별도 섹션에 표시되므로 그리드에서 제외
@@ -132,18 +219,11 @@ export default function SponsorshipsPage() {
           pkgSnap.docs.map((d) => ({ ...(d.data() as Package), id: d.id }))
         );
         if (settingsSnap.exists()) setSettings(settingsSnap.data() as SiteSettings);
-        if (taxSnap.exists()) {
-          const tax = taxSnap.data() as Taxonomy;
-          const purposes = (tax.tags ?? [])
-            .filter((t) => t.kind === "purpose" && t.isActive !== false)
-            .sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
-          setPurposeTags(purposes);
-        }
       } catch (e) {
         console.error(e);
       }
     })();
-  }, []);
+  }, [eventId]);
 
   const enriched = useMemo(() => {
     return [...categories]
@@ -152,30 +232,73 @@ export default function SponsorshipsPage() {
         const cs = slots.filter((s) => s.categoryId === c.id);
         const subs = subcategories.filter((s) => s.categoryId === c.id);
         const prices = subs.map((s) => s.priceKRW).filter((p) => p > 0);
+        const slotTotal = cs.length;
+        const slotAvailable = cs.filter((s) => s.status === "available").length;
         return {
           ...c,
-          slotTotal: cs.length,
-          slotAvailable: cs.filter((s) => s.status === "available").length,
+          slotTotal,
+          slotAvailable,
           minPrice: prices.length > 0 ? Math.min(...prices) : 0,
+          badges: computeBadges(c, slotAvailable, slotTotal),
         };
       });
   }, [categories, subcategories, slots]);
 
   const totalCount = enriched.length;
 
+  // 예산 슬라이더 최대값 (전체 카테고리 minPrice 중 가장 큰 값을 100만 단위로 올림)
+  const budgetMax = useMemo(() => {
+    const max = enriched.reduce((m, c) => Math.max(m, c.minPrice), 0);
+    if (max <= 0) return 100_000_000;
+    return Math.ceil(max / 1_000_000) * 1_000_000;
+  }, [enriched]);
+
+  // 현재 예산 안에 들어오는 카테고리 수 (슬라이더 옆 라이브 카운트)
+  const inBudgetCount = useMemo(() => {
+    if (budget <= 0) return enriched.length;
+    return enriched.filter((c) => c.minPrice > 0 && c.minPrice <= budget).length;
+  }, [enriched, budget]);
+
   const filtered = useMemo(() => {
     let rows = enriched;
     if (filterChannel !== "all") {
       rows = rows.filter((r) => r.channel === filterChannel);
     }
-    if (activePurposes.size > 0) {
-      // category.tags 배열은 라벨 문자열을 담고 있음 (엑셀 입력 그대로)
-      rows = rows.filter((r) =>
-        Array.from(activePurposes).some((t) => (r.tags ?? []).includes(t))
-      );
+    if (budget > 0) {
+      rows = rows.filter((r) => r.minPrice > 0 && r.minPrice <= budget);
     }
-    if (priceRange !== "all") {
-      rows = rows.filter((r) => priceMatches(r.minPrice, priceRange));
+    if (personaConfig) {
+      rows = rows.filter((r) => {
+        // 페르소나 targetTags 와 카테고리 tags 교집합 (적어도 하나)
+        const matched = personaConfig.targetTags.some((t) =>
+          (r.tags ?? []).includes(t)
+        );
+        if (!matched) return false;
+        if (personaConfig.budgetMax && r.minPrice > personaConfig.budgetMax)
+          return false;
+        if (personaConfig.budgetMin && r.minPrice < personaConfig.budgetMin)
+          return false;
+        return true;
+      });
+    }
+    if (activeMediaTypes.size > 0) {
+      rows = rows.filter((r) => {
+        // floor_plan 선택 시 media(이벤트 LED)도 같이 포함
+        if (r.type === "media" && activeMediaTypes.has("floor_plan")) return true;
+        return activeMediaTypes.has(r.type as MediaType);
+      });
+    }
+    if (activeTimings.size > 0) {
+      rows = rows.filter((r) => {
+        const t = getTiming(r);
+        return t.some((x) => activeTimings.has(x));
+      });
+    }
+    if (activeLocations.size > 0) {
+      rows = rows.filter((r) => {
+        const l = getLocations(r);
+        return l.some((x) => activeLocations.has(x));
+      });
     }
     if (deadlineSoon) {
       const now = Date.now();
@@ -195,34 +318,36 @@ export default function SponsorshipsPage() {
   }, [
     enriched,
     filterChannel,
-    activePurposes,
-    priceRange,
+    budget,
     deadlineSoon,
     search,
+    personaConfig,
+    activeMediaTypes,
+    activeTimings,
+    activeLocations,
   ]);
-
-  const togglePurpose = (id: string) =>
-    setActivePurposes((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      return next;
-    });
 
   const resetFilters = () => {
     setFilterChannel("all");
-    setActivePurposes(new Set());
-    setPriceRange("all");
+    setBudget(0);
+    setPersona(null);
+    setPersonaConfig(null);
+    setActiveMediaTypes(new Set());
+    setActiveTimings(new Set());
+    setActiveLocations(new Set());
     setDeadlineSoon(false);
     setSearch("");
   };
 
   const hasActiveFilter =
     filterChannel !== "all" ||
-    activePurposes.size > 0 ||
-    priceRange !== "all" ||
+    budget > 0 ||
     deadlineSoon ||
-    search.trim() !== "";
+    search.trim() !== "" ||
+    !!persona ||
+    activeMediaTypes.size > 0 ||
+    activeTimings.size > 0 ||
+    activeLocations.size > 0;
 
   return (
     <>
@@ -233,24 +358,40 @@ export default function SponsorshipsPage() {
           onCardMode={() => setViewMode("card")}
           onOpenFilter={() => setSheetOpen(true)}
           hasActiveFilter={hasActiveFilter}
+          eventId={eventId}
         />
       ) : (
         <>
           <main className="min-h-screen bg-white">
             <header className="px-6 md:px-16 pt-12 pb-6 border-b border-ink-100">
-              <Link
-                href="/"
-                className="inline-flex items-center gap-1.5 text-[12px] text-ink-500 hover:text-ink-900 mb-3"
-              >
-                <ArrowLeft className="w-3.5 h-3.5" />홈
-              </Link>
-              <h1 className="text-[28px] md:text-[40px] font-bold tracking-tight leading-tight">
-                전체 스폰서십
-              </h1>
-              <p className="text-[13px] text-ink-700 mt-2">
-                구좌 단위로 둘러보고 관심 표시한 뒤, 사무국에 한 번에 문의하세요.
-              </p>
+              <div className="max-w-7xl mx-auto">
+                <div className="text-[10px] uppercase tracking-[0.25em] text-mint-700 font-bold mb-2">
+                  {settings?.event.nameKo ?? eventId}
+                </div>
+                <h1 className="text-[28px] md:text-[40px] font-bold tracking-tight leading-tight">
+                  스폰서십 전체 보기
+                </h1>
+                <p className="text-[13px] text-ink-700 mt-2">
+                  구좌 단위로 둘러보고 관심 표시한 뒤, 사무국에 한 번에 문의하세요.
+                </p>
+
+              </div>
             </header>
+
+            {/* 페르소나 추천 코스 */}
+            <PersonaCourses
+              categories={categories}
+              packages={packages}
+              selectedPersona={persona}
+              onPick={(id, cfg) => {
+                setPersona(id);
+                setPersonaConfig(cfg);
+              }}
+              onClear={() => {
+                setPersona(null);
+                setPersonaConfig(null);
+              }}
+            />
 
             <div className="lg:grid lg:grid-cols-[260px_1fr] lg:gap-8 px-6 md:px-16 py-10 max-w-7xl mx-auto">
               {/* Mobile filter bar */}
@@ -279,11 +420,16 @@ export default function SponsorshipsPage() {
                   setSearch={setSearch}
                   filterChannel={filterChannel}
                   setFilterChannel={setFilterChannel}
-                  purposeTags={purposeTags}
-                  activePurposes={activePurposes}
-                  togglePurpose={togglePurpose}
-                  priceRange={priceRange}
-                  setPriceRange={setPriceRange}
+                  budget={budget}
+                  setBudget={setBudget}
+                  budgetMax={budgetMax}
+                  inBudgetCount={inBudgetCount}
+                  activeMediaTypes={activeMediaTypes}
+                  setActiveMediaTypes={setActiveMediaTypes}
+                  activeTimings={activeTimings}
+                  setActiveTimings={setActiveTimings}
+                  activeLocations={activeLocations}
+                  setActiveLocations={setActiveLocations}
                   deadlineSoon={deadlineSoon}
                   setDeadlineSoon={setDeadlineSoon}
                   totalCount={totalCount}
@@ -309,7 +455,7 @@ export default function SponsorshipsPage() {
 
                 {/* 패키지 전용 섹션 (필터 미적용 — 항상 노출) */}
                 {packages.length > 0 && !hasActiveFilter && (
-                  <PackageSection packages={packages} />
+                  <PackageSection packages={packages} eventId={eventId} />
                 )}
 
                 {filtered.length === 0 ? (
@@ -335,7 +481,7 @@ export default function SponsorshipsPage() {
                         <div className="flex-1 h-px bg-ink-100" />
                       </div>
                     )}
-                    <CardGrid items={filtered} />
+                    <CardGrid items={filtered} eventId={eventId} />
                   </>
                 )}
               </section>
@@ -373,11 +519,16 @@ export default function SponsorshipsPage() {
                 setSearch={setSearch}
                 filterChannel={filterChannel}
                 setFilterChannel={setFilterChannel}
-                purposeTags={purposeTags}
-                activePurposes={activePurposes}
-                togglePurpose={togglePurpose}
-                priceRange={priceRange}
-                setPriceRange={setPriceRange}
+                budget={budget}
+                setBudget={setBudget}
+                budgetMax={budgetMax}
+                inBudgetCount={inBudgetCount}
+                activeMediaTypes={activeMediaTypes}
+                setActiveMediaTypes={setActiveMediaTypes}
+                activeTimings={activeTimings}
+                setActiveTimings={setActiveTimings}
+                activeLocations={activeLocations}
+                setActiveLocations={setActiveLocations}
                 deadlineSoon={deadlineSoon}
                 setDeadlineSoon={setDeadlineSoon}
                 totalCount={totalCount}
@@ -432,11 +583,16 @@ function FilterPanel({
   setSearch,
   filterChannel,
   setFilterChannel,
-  purposeTags,
-  activePurposes,
-  togglePurpose,
-  priceRange,
-  setPriceRange,
+  budget,
+  setBudget,
+  budgetMax,
+  inBudgetCount,
+  activeMediaTypes,
+  setActiveMediaTypes,
+  activeTimings,
+  setActiveTimings,
+  activeLocations,
+  setActiveLocations,
   deadlineSoon,
   setDeadlineSoon,
   totalCount,
@@ -448,11 +604,16 @@ function FilterPanel({
   setSearch: (s: string) => void;
   filterChannel: Channel | "all";
   setFilterChannel: (c: Channel | "all") => void;
-  purposeTags: Tag[];
-  activePurposes: Set<string>;
-  togglePurpose: (id: string) => void;
-  priceRange: PriceRange;
-  setPriceRange: (r: PriceRange) => void;
+  budget: number;
+  setBudget: (n: number) => void;
+  budgetMax: number;
+  inBudgetCount: number;
+  activeMediaTypes: Set<MediaType>;
+  setActiveMediaTypes: (s: Set<MediaType>) => void;
+  activeTimings: Set<Timing>;
+  setActiveTimings: (s: Set<Timing>) => void;
+  activeLocations: Set<LocationTag>;
+  setActiveLocations: (s: Set<LocationTag>) => void;
   deadlineSoon: boolean;
   setDeadlineSoon: (v: boolean) => void;
   totalCount: number;
@@ -517,46 +678,56 @@ function FilterPanel({
         </p>
       </FilterSection>
 
-      {/* (C) 광고 목적 — taxonomy 기반 동적 (kind === 'purpose' && isActive) */}
-      {purposeTags.length > 0 && (
-        <FilterSection title="광고 목적">
-          <ul className="space-y-1.5">
-            {purposeTags.map((t) => (
-              <li key={t.id}>
-                <label className="flex items-center gap-2 text-[13px] text-ink-700 cursor-pointer hover:text-ink-900">
-                  <input
-                    type="checkbox"
-                    checked={activePurposes.has(t.label)}
-                    onChange={() => togglePurpose(t.label)}
-                    className="accent-mint-500 w-3.5 h-3.5"
-                  />
-                  <span>{t.label}</span>
-                </label>
-              </li>
-            ))}
-          </ul>
-        </FilterSection>
-      )}
+      {/* (C-1) 매체 유형 */}
+      <FilterSection title="매체 유형">
+        <CheckboxList
+          options={MEDIA_TYPE_OPTIONS}
+          active={activeMediaTypes}
+          onToggle={(id) => {
+            const next = new Set(activeMediaTypes);
+            if (next.has(id)) next.delete(id);
+            else next.add(id);
+            setActiveMediaTypes(next);
+          }}
+        />
+      </FilterSection>
 
-      {/* (D) 가격대 */}
-      <FilterSection title="가격대 (최저가 기준)">
-        <div className="flex flex-wrap lg:flex-col gap-1">
-          {PRICE_RANGES.map((p) => (
-            <button
-              key={p.id}
-              type="button"
-              onClick={() => setPriceRange(p.id)}
-              className={
-                "text-left px-3 py-1.5 rounded-btn text-[13px] transition-colors " +
-                (priceRange === p.id
-                  ? "bg-ink-900 text-white font-semibold"
-                  : "text-ink-700 hover:bg-ink-50")
-              }
-            >
-              {p.label}
-            </button>
-          ))}
-        </div>
+      {/* (C-2) 노출 시점 */}
+      <FilterSection title="노출 시점">
+        <CheckboxList
+          options={TIMING_OPTIONS}
+          active={activeTimings}
+          onToggle={(id) => {
+            const next = new Set(activeTimings);
+            if (next.has(id)) next.delete(id);
+            else next.add(id);
+            setActiveTimings(next);
+          }}
+        />
+      </FilterSection>
+
+      {/* (C-3) 위치 */}
+      <FilterSection title="위치">
+        <CheckboxList
+          options={LOCATION_OPTIONS}
+          active={activeLocations}
+          onToggle={(id) => {
+            const next = new Set(activeLocations);
+            if (next.has(id)) next.delete(id);
+            else next.add(id);
+            setActiveLocations(next);
+          }}
+        />
+      </FilterSection>
+
+      {/* (D) 예산 슬라이더 */}
+      <FilterSection title="예산 (최저가 기준)">
+        <BudgetSlider
+          budget={budget}
+          setBudget={setBudget}
+          budgetMax={budgetMax}
+          inBudgetCount={inBudgetCount}
+        />
       </FilterSection>
 
       {/* (E) 마감 임박 */}
@@ -642,10 +813,140 @@ function ViewModeToggle({
 // ============================================================================
 
 // ============================================================================
+// CheckboxList — 사이드바 필터의 공용 체크박스 리스트
+// ============================================================================
+
+function CheckboxList<T extends string>({
+  options,
+  active,
+  onToggle,
+}: {
+  options: Array<{ id: T; label: string }>;
+  active: Set<T>;
+  onToggle: (id: T) => void;
+}) {
+  return (
+    <ul className="space-y-1.5">
+      {options.map((o) => (
+        <li key={o.id}>
+          <label className="flex items-center gap-2 text-[13px] text-ink-700 cursor-pointer hover:text-ink-900">
+            <input
+              type="checkbox"
+              checked={active.has(o.id)}
+              onChange={() => onToggle(o.id)}
+              className="accent-mint-500 w-3.5 h-3.5"
+            />
+            <span>{o.label}</span>
+          </label>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+// ============================================================================
+// BudgetSlider — 예산 슬라이더 + 라이브 카운트
+// ============================================================================
+
+function BudgetSlider({
+  budget,
+  setBudget,
+  budgetMax,
+  inBudgetCount,
+}: {
+  budget: number;
+  setBudget: (n: number) => void;
+  budgetMax: number;
+  inBudgetCount: number;
+}) {
+  const active = budget > 0;
+  const display =
+    budget >= 10_000_000
+      ? `${(budget / 10_000_000).toFixed(1).replace(/\.0$/, "")}억`
+      : budget >= 1_000_000
+        ? `${(budget / 10_000).toFixed(0)}만`
+        : "전체";
+
+  return (
+    <div className="space-y-2.5">
+      <div className="flex items-baseline justify-between gap-2">
+        <span className={"font-mono text-[15px] font-bold " + (active ? "text-mint-700" : "text-ink-500")}>
+          {active ? `${display}원 이하` : "예산 미정"}
+        </span>
+        {active && (
+          <button
+            type="button"
+            onClick={() => setBudget(0)}
+            className="text-[10.5px] text-ink-500 hover:text-ink-900"
+          >
+            초기화
+          </button>
+        )}
+      </div>
+      <input
+        type="range"
+        min={0}
+        max={budgetMax}
+        step={500_000}
+        value={budget}
+        onChange={(e) => setBudget(parseInt(e.target.value, 10))}
+        className="w-full accent-mint-500 cursor-pointer"
+        aria-label="예산 슬라이더"
+      />
+      <div className="flex items-center justify-between text-[10.5px] text-ink-500 font-mono">
+        <span>0</span>
+        <span>{(budgetMax / 10_000_000).toFixed(1).replace(/\.0$/, "")}억</span>
+      </div>
+      <div
+        className={
+          "mt-2 px-3 py-2 rounded-btn text-[11.5px] border " +
+          (active
+            ? "bg-mint-50 border-mint-100 text-mint-700 font-semibold"
+            : "bg-ink-50 border-ink-100 text-ink-500")
+        }
+      >
+        {active ? (
+          <>
+            이 예산으로 <strong className="text-[14px]">{inBudgetCount}</strong>개 채널 가능
+          </>
+        ) : (
+          <>슬라이더를 끌면 예산 내 채널만 보입니다</>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ============================================================================
+// BadgePill — 카드 뱃지 (인기/마감임박/단독/한정/매진)
+// ============================================================================
+
+function BadgePill({ badge }: { badge: Badge }) {
+  const config: Record<
+    Badge,
+    { label: string; bg: string; text: string }
+  > = {
+    popular: { label: "인기", bg: "bg-mint-500", text: "text-ink-900" },
+    closing: { label: "마감 임박", bg: "bg-amber-500", text: "text-white" },
+    solo: { label: "단독", bg: "bg-ink-900", text: "text-mint-500" },
+    limited: { label: "1석 남음", bg: "bg-red-600", text: "text-white" },
+    sold_out: { label: "매진", bg: "bg-ink-300", text: "text-white" },
+  };
+  const c = config[badge];
+  return (
+    <span
+      className={`text-[10px] uppercase tracking-wider px-2 py-0.5 rounded font-bold ${c.bg} ${c.text}`}
+    >
+      {c.label}
+    </span>
+  );
+}
+
+// ============================================================================
 // Package section (상단 전용)
 // ============================================================================
 
-function PackageSection({ packages }: { packages: Package[] }) {
+function PackageSection({ packages, eventId }: { packages: Package[]; eventId: string }) {
   const sorted = [...packages].sort((a, b) => {
     // 시그니처 먼저, 그다음 order
     if (a.tier !== b.tier) return a.tier === "signature" ? -1 : 1;
@@ -668,7 +969,7 @@ function PackageSection({ packages }: { packages: Package[] }) {
           return (
             <Link
               key={pkg.id}
-              href={`/packages/${pkg.id}`}
+              href={`/${eventId}/packages/${pkg.id}`}
               className={
                 "group bg-white border-2 rounded-card overflow-hidden flex flex-col h-full transition-colors " +
                 (isSignature
@@ -753,7 +1054,7 @@ function PackageSection({ packages }: { packages: Package[] }) {
   );
 }
 
-function CardGrid({ items }: { items: EnrichedCategory[] }) {
+function CardGrid({ items, eventId }: { items: EnrichedCategory[]; eventId: string }) {
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
       {items.map((c) => {
@@ -761,7 +1062,7 @@ function CardGrid({ items }: { items: EnrichedCategory[] }) {
         return (
           <Link
             key={c.id}
-            href={`/sponsorships/${c.slug}`}
+            href={`/${eventId}/sponsorships/${c.slug}`}
             className="group bg-white border border-ink-100 rounded-card overflow-hidden hover:border-mint-500 transition-colors flex flex-col h-full"
           >
             <div className="aspect-[4/3] bg-ink-100 relative shrink-0">
@@ -777,10 +1078,13 @@ function CardGrid({ items }: { items: EnrichedCategory[] }) {
                   이미지 없음
                 </div>
               )}
-              <div className="absolute top-3 left-3 flex gap-1">
+              <div className="absolute top-3 left-3 flex gap-1 flex-wrap max-w-[calc(100%-1.5rem)]">
                 <span className="text-[10px] uppercase tracking-wider bg-white/90 text-ink-900 px-2 py-0.5 rounded font-semibold">
                   {CHANNEL_LABELS[c.channel]}
                 </span>
+                {c.badges.map((b) => (
+                  <BadgePill key={b} badge={b} />
+                ))}
               </div>
             </div>
             <div className="p-4 flex-1 flex flex-col">
@@ -817,12 +1121,14 @@ function SlideStream({
   onCardMode,
   onOpenFilter,
   hasActiveFilter,
+  eventId,
 }: {
   items: EnrichedCategory[];
   totalCount: number;
   onCardMode: () => void;
   onOpenFilter: () => void;
   hasActiveFilter: boolean;
+  eventId: string;
 }) {
   return (
     <>
@@ -873,7 +1179,7 @@ function SlideStream({
       ) : (
         <main className="h-screen overflow-y-scroll snap-y snap-mandatory bg-white scroll-smooth">
           {items.map((c, i) => (
-            <SlideSection key={c.id} item={c} index={i} total={items.length} />
+            <SlideSection key={c.id} item={c} index={i} total={items.length} eventId={eventId} />
           ))}
         </main>
       )}
@@ -885,9 +1191,11 @@ function SlideSection({
   item,
   index,
   total,
+  eventId,
 }: {
   item: EnrichedCategory;
   index: number;
+  eventId: string;
   total: number;
 }) {
   const hero = item.heroImages?.images?.[0]?.url;
@@ -970,7 +1278,7 @@ function SlideSection({
               </a>
             )}
             <Link
-              href={`/sponsorships/${item.slug}`}
+              href={`/${eventId}/sponsorships/${item.slug}`}
               className="px-5 py-2.5 rounded-btn border border-ink-100 text-ink-900 hover:border-mint-500 hover:text-mint-700 font-semibold text-[13px] transition-colors"
             >
               자세히 보기

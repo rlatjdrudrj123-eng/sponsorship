@@ -38,7 +38,7 @@ import type {
 // PACKAGES
 // ============================================================================
 
-type PackageSeed = Omit<Package, "id"> & { id: string };
+type PackageSeed = Omit<Package, "id" | "eventId"> & { id: string };
 
 const PACKAGE_SEEDS: PackageSeed[] = [
   {
@@ -192,18 +192,20 @@ export type PackageSeedResult = {
   errors: Array<{ id: string; reason: string }>;
 };
 
-export async function seedDemoPackages(): Promise<PackageSeedResult> {
+export async function seedDemoPackages(eventId: string): Promise<PackageSeedResult> {
   const db = getDb();
   const result: PackageSeedResult = { created: [], errors: [] };
   const batch = writeBatch(db);
 
   PACKAGE_SEEDS.forEach((p) => {
     try {
-      batch.set(doc(db, "packages", p.id), {
+      batch.set(doc(db, "packages", `${eventId}-${p.id}`), {
         ...p,
+        id: `${eventId}-${p.id}`,
+        eventId,
         // heroImages는 별도 시드 또는 어드민에서 업로드
       });
-      result.created.push(p.id);
+      result.created.push(`${eventId}-${p.id}`);
     } catch (e) {
       result.errors.push({
         id: p.id,
@@ -308,7 +310,7 @@ export type InquirySeedResult = {
   errors: Array<{ company: string; reason: string }>;
 };
 
-export async function seedDemoInquiries(): Promise<InquirySeedResult> {
+export async function seedDemoInquiries(eventId: string): Promise<InquirySeedResult> {
   const db = getDb();
   const result: InquirySeedResult = { created: [], skipped: [], errors: [] };
 
@@ -364,6 +366,7 @@ export async function seedDemoInquiries(): Promise<InquirySeedResult> {
           if (!pkg) continue;
           cartItems.push({
             type: "package",
+            eventId,
             packageId: pkg.id,
             code: pkg.code,
             price: pkg.discountPrice,
@@ -380,6 +383,7 @@ export async function seedDemoInquiries(): Promise<InquirySeedResult> {
           const sub = subs.find((s) => s.id === slot.subcategoryId);
           cartItems.push({
             type: "slot",
+            eventId,
             slotId: slot.id,
             categoryId: cat.id,
             subcategoryId: slot.subcategoryId,
@@ -397,6 +401,7 @@ export async function seedDemoInquiries(): Promise<InquirySeedResult> {
       );
 
       await addDoc(collection(db, "inquiries"), {
+        eventId,
         companyName: seed.companyName,
         contactName: seed.contactName,
         email: seed.email,
@@ -819,6 +824,103 @@ export async function clearDemoSponsors(): Promise<number> {
   });
   if (count > 0) await batch.commit();
   return count;
+}
+
+// ============================================================================
+// MIGRATION — 기존 데이터(eventId 없음)에 K-PRINT 2026 태깅
+// ============================================================================
+
+const DEFAULT_EVENT_ID = "kprint-2026";
+
+export type TagMigrationResult = {
+  collections: Record<string, { tagged: number; skipped: number }>;
+  errors: Array<{ collection: string; reason: string }>;
+};
+
+async function tagCollection(
+  db: ReturnType<typeof getDb>,
+  name: string,
+  eventId: string
+): Promise<{ tagged: number; skipped: number }> {
+  const snap = await getDocs(collection(db, name));
+  if (snap.empty) return { tagged: 0, skipped: 0 };
+
+  const docs = snap.docs;
+  let tagged = 0;
+  let skipped = 0;
+  for (let i = 0; i < docs.length; i += 450) {
+    const batch = writeBatch(db);
+    let inBatch = 0;
+    const slice = docs.slice(i, i + 450);
+    slice.forEach((d) => {
+      const data = d.data() as Record<string, unknown>;
+      if (data.eventId) {
+        skipped++;
+        return;
+      }
+      batch.update(d.ref, {
+        eventId,
+        updatedAt: Timestamp.fromDate(new Date()),
+      });
+      tagged++;
+      inBatch++;
+    });
+    if (inBatch > 0) await batch.commit();
+  }
+  return { tagged, skipped };
+}
+
+export async function tagAllAsKPrint2026(): Promise<TagMigrationResult> {
+  const db = getDb();
+  const result: TagMigrationResult = { collections: {}, errors: [] };
+
+  const targets = [
+    "categories",
+    "subcategories",
+    "slots",
+    "packages",
+    "inquiries",
+  ];
+
+  for (const name of targets) {
+    try {
+      result.collections[name] = await tagCollection(db, name, DEFAULT_EVENT_ID);
+    } catch (e) {
+      result.errors.push({
+        collection: name,
+        reason: e instanceof Error ? e.message : String(e),
+      });
+    }
+  }
+
+  // Settings/Taxonomy/QuoteSettings: doc('main')을 doc('kprint-2026')으로 복사 (있을 때만)
+  const singletons = ["siteSettings", "taxonomy", "quoteSettings"];
+  for (const name of singletons) {
+    try {
+      const mainSnap = await getDocs(collection(db, name));
+      let copied = 0;
+      let skipped = 0;
+      for (const d of mainSnap.docs) {
+        if (d.id !== "main") {
+          skipped++;
+          continue;
+        }
+        // main → kprint-2026 복사 (이미 있으면 건너뜀)
+        const eventDocRef = doc(db, name, DEFAULT_EVENT_ID);
+        // 단순화: 항상 복사 (덮어쓰기)
+        await setDoc(eventDocRef, { ...d.data(), eventId: DEFAULT_EVENT_ID });
+        copied++;
+      }
+      result.collections[name] = { tagged: copied, skipped };
+    } catch (e) {
+      result.errors.push({
+        collection: name,
+        reason: e instanceof Error ? e.message : String(e),
+      });
+    }
+  }
+
+  return result;
 }
 
 // ============================================================================

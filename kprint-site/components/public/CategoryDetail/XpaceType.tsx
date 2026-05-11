@@ -77,6 +77,7 @@ export function XpaceType({
             <PinOverlay
               floorImage={floorImage}
               categoryId={category.id}
+              eventId={category.eventId}
               subcategory={tabSub}
               slots={tabSlots}
             />
@@ -88,12 +89,14 @@ export function XpaceType({
           {tabSub ? (
             <SlotPicker
               categoryId={category.id}
+              eventId={category.eventId}
               subcategories={[tabSub]}
               slots={tabSlots}
             />
           ) : (
             <SlotPicker
               categoryId={category.id}
+              eventId={category.eventId}
               subcategories={subcategories}
               slots={slots}
             />

@@ -1,8 +1,9 @@
 "use client";
 
 import { usePathname, useRouter } from "next/navigation";
-import { ChevronRight, HelpCircle, LogOut, RefreshCw } from "lucide-react";
+import { HelpCircle, LogOut, RefreshCw } from "lucide-react";
 import { signOut, type User } from "@/lib/firebase/auth";
+import { EventSelector } from "./EventSelector";
 
 const PATH_LABELS: Record<string, string> = {
   "/admin": "대시보드",
@@ -11,8 +12,12 @@ const PATH_LABELS: Record<string, string> = {
   "/admin/packages": "패키지",
   "/admin/slots": "슬롯 관리",
   "/admin/inquiries": "문의",
+  "/admin/sponsors": "스폰서",
+  "/admin/events": "행사 관리",
+  "/admin/seed": "데모 시드",
   "/admin/settings": "사이트 설정",
   "/admin/settings/taxonomy": "분류·태그",
+  "/admin/settings/quote": "견적서 설정",
 };
 
 function pageLabel(pathname: string): string {
@@ -42,12 +47,12 @@ export function AdminTopbar({ user }: { user: User | null }) {
   return (
     <header className="sticky top-0 z-10 bg-white border-b border-ink-100 px-7 h-[56px] flex items-center gap-3">
       <div className="flex items-center gap-1.5 text-[13px] text-ink-700 min-w-0">
-        <span className="text-ink-500 truncate">K-PRINT 2026</span>
-        <ChevronRight className="w-3 h-3 shrink-0 text-ink-300" />
         <span className="font-semibold text-ink-900 truncate">{pageLabel(pathname)}</span>
       </div>
 
       <div className="flex-1" />
+
+      <EventSelector />
 
       <button
         type="button"

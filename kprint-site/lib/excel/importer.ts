@@ -235,6 +235,7 @@ type BuildContext = {
   order: number;
   isPublished: boolean;
   createdAt: Timestamp;
+  eventId: string;       // 행사 분리
   preserved?: ExistingCategory;
 };
 
@@ -254,6 +255,7 @@ function buildCategory(
   // overwrite 모드는 카테고리 레벨 텍스트 필드까지 보존. merge는 여기 안 옴 (별도 경로).
   const cat: Category = {
     id: ctx.newCategoryId,
+    eventId: preserved?.eventId ?? ctx.eventId,
     code: parsed.code,
     channel: parsed.channel,
     type: parsed.type,
@@ -300,11 +302,13 @@ function buildSubcategory(
   parsed: ParsedSubcategory,
   id: string,
   categoryId: string,
+  eventId: string,
   fallbackName: { ko: string; en: string },
   order: number
 ): Subcategory {
   const sub: Subcategory = {
     id,
+    eventId,
     categoryId,
     name: {
       ko: parsed.nameKo || fallbackName.ko,
@@ -325,10 +329,12 @@ function buildSlot(
   id: string,
   categoryId: string,
   subcategoryId: string,
+  eventId: string,
   order: number
 ): Slot {
   const slot: Slot = {
     id,
+    eventId,
     subcategoryId,
     categoryId,
     code: parsed.code,
@@ -378,6 +384,7 @@ type HandlerInput = {
   state: ExistingState;
   knownTags: Set<string>;
   importHistoryId: string;
+  eventId: string;        // 행사 분리 (필수 — 모든 신규 도큐먼트에 태깅)
   onProgress: ImportProgress;
   warnings: string[]; // taxonomy mismatch 등
 };
@@ -398,7 +405,7 @@ type HandlerOutput = {
 // ----- OVERWRITE -----
 
 async function handleOverwrite(input: HandlerInput): Promise<HandlerOutput> {
-  const { parseResult, state, knownTags, importHistoryId, onProgress, warnings } = input;
+  const { parseResult, state, knownTags, importHistoryId, eventId, onProgress, warnings } = input;
   const db = getDb();
   const writeOps: WriteOp[] = [];
   const deleteOps: WriteOp[] = [];
@@ -469,6 +476,7 @@ async function handleOverwrite(input: HandlerInput): Promise<HandlerOutput> {
       order,
       isPublished: preserved?.isPublished ?? false,
       createdAt: preserved?.createdAt ?? nowTs(),
+      eventId,
       preserved,
     };
 
@@ -506,7 +514,7 @@ async function handleOverwrite(input: HandlerInput): Promise<HandlerOutput> {
     if (!cat) continue;
     subs.forEach((ps, i) => {
       const subRef = doc(collection(db, COL_SUBCATEGORIES));
-      const sub = buildSubcategory(ps, subRef.id, cat.id, cat.name, i);
+      const sub = buildSubcategory(ps, subRef.id, cat.id, eventId, cat.name, i);
       subcatIdByKey.set(`${catCode}|${ps.nameKo}`, subRef.id);
       writeOps.push({
         kind: "set",
@@ -531,7 +539,7 @@ async function handleOverwrite(input: HandlerInput): Promise<HandlerOutput> {
       const subId = subcatIdByKey.get(`${catCode}|${ps.subcategoryNameKo}`);
       if (!subId) return; // 그룹핑 누락 — 정상 흐름이면 발생 안 함
       const slotRef = doc(collection(db, COL_SLOTS));
-      const slot = buildSlot(ps, slotRef.id, cat.id, subId, i);
+      const slot = buildSlot(ps, slotRef.id, cat.id, subId, eventId, i);
       writeOps.push({
         kind: "set",
         ref: slotRef,
@@ -558,7 +566,7 @@ async function handleOverwrite(input: HandlerInput): Promise<HandlerOutput> {
 // ----- MERGE -----
 
 async function handleMerge(input: HandlerInput): Promise<HandlerOutput> {
-  const { parseResult, state, knownTags, importHistoryId, onProgress, warnings } = input;
+  const { parseResult, state, knownTags, importHistoryId, eventId, onProgress, warnings } = input;
   const db = getDb();
   const writeOps: WriteOp[] = [];
 
@@ -591,6 +599,7 @@ async function handleMerge(input: HandlerInput): Promise<HandlerOutput> {
         order: nextOrder++,
         isPublished: false,
         createdAt: nowTs(),
+        eventId,
       };
       const cat = buildCategory(parsed, ctx, importHistoryId, false);
       writeOps.push({
@@ -628,6 +637,7 @@ async function handleMerge(input: HandlerInput): Promise<HandlerOutput> {
         parsed,
         subRef.id,
         catId,
+        eventId,
         codeToCatName.get(parsed.categoryCode) ?? { ko: parsed.nameKo, en: parsed.nameEn },
         // order는 카테고리 내 순서 — 별도 카운트
         countSubsForCat(parseResult.subcategories, parsed.categoryCode, parsed.nameKo)
@@ -668,6 +678,7 @@ async function handleMerge(input: HandlerInput): Promise<HandlerOutput> {
           parsed,
           subRef.id,
           catId,
+          eventId,
           codeToCatName.get(parsed.categoryCode) ?? {
             ko: parsed.nameKo,
             en: parsed.nameEn,
@@ -708,7 +719,7 @@ async function handleMerge(input: HandlerInput): Promise<HandlerOutput> {
     } else {
       // 신규 — 카테고리 내 max order + 1
       const slotRef = doc(collection(db, COL_SLOTS));
-      const slot = buildSlot(parsed, slotRef.id, catId, subId, 0); // order는 임시 0
+      const slot = buildSlot(parsed, slotRef.id, catId, subId, eventId, 0); // order는 임시 0
       writeOps.push({
         kind: "set",
         ref: slotRef,
@@ -757,7 +768,7 @@ async function findExistingSubcategory(
 // ----- ADD_ONLY -----
 
 async function handleAddOnly(input: HandlerInput): Promise<HandlerOutput> {
-  const { parseResult, state, knownTags, importHistoryId, onProgress, warnings } = input;
+  const { parseResult, state, knownTags, importHistoryId, eventId, onProgress, warnings } = input;
   const db = getDb();
   const writeOps: WriteOp[] = [];
 
@@ -786,6 +797,7 @@ async function handleAddOnly(input: HandlerInput): Promise<HandlerOutput> {
         order: nextOrder++,
         isPublished: false,
         createdAt: nowTs(),
+        eventId,
       };
       const cat = buildCategory(parsed, ctx, importHistoryId, false);
       writeOps.push({
@@ -835,6 +847,7 @@ async function handleAddOnly(input: HandlerInput): Promise<HandlerOutput> {
           parsedSub,
           subRef.id,
           catId,
+          eventId,
           codeToCatName.get(parsed.categoryCode) ?? {
             ko: parsedSub.nameKo,
             en: parsedSub.nameEn,
@@ -876,6 +889,7 @@ async function handleAddOnly(input: HandlerInput): Promise<HandlerOutput> {
             parsedSub,
             subRef.id,
             catId,
+            eventId,
             codeToCatName.get(parsed.categoryCode) ?? {
               ko: parsedSub.nameKo,
               en: parsedSub.nameEn,
@@ -896,7 +910,7 @@ async function handleAddOnly(input: HandlerInput): Promise<HandlerOutput> {
 
     // 슬롯 생성
     const slotRef = doc(collection(db, COL_SLOTS));
-    const slot = buildSlot(parsed, slotRef.id, catId, subId, 0);
+    const slot = buildSlot(parsed, slotRef.id, catId, subId, eventId, 0);
     writeOps.push({
       kind: "set",
       ref: slotRef,
@@ -993,6 +1007,7 @@ export async function importParsedData(
   uploadedBy: string,
   fileName: string,
   fileSize: number,
+  eventId: string,         // 행사 분리 — 모든 신규 도큐먼트에 태깅
   onProgress?: ImportProgress
 ): Promise<ImportResult> {
   const errors: ImportError[] = [];
@@ -1053,6 +1068,7 @@ export async function importParsedData(
       state,
       knownTags,
       importHistoryId,
+      eventId,
       onProgress: progress,
       warnings: importerWarnings,
     };

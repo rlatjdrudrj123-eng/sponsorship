@@ -9,6 +9,7 @@ import {
   FileSpreadsheet,
 } from "lucide-react";
 import { onAuthChange } from "@/lib/firebase/auth";
+import { useEventFilter } from "@/lib/admin/useEventFilter";
 import {
   parseExcelBuffer,
   type ParseResult,
@@ -44,6 +45,7 @@ export default function ImportPage() {
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [adminEmail, setAdminEmail] = useState<string>("");
   const [historyKey, setHistoryKey] = useState(0);
+  const { eventId } = useEventFilter();
 
   // 어드민 이메일 (importHistory.uploadedBy 용)
   useEffect(() => {
@@ -90,6 +92,10 @@ export default function ImportPage() {
       setUploadError("로그인 정보가 없습니다. 다시 로그인하세요.");
       return;
     }
+    if (!eventId) {
+      setUploadError("상단 셀렉터에서 행사를 먼저 선택하세요.");
+      return;
+    }
     setUploading(true);
     setUploadError(null);
     setUploadResult(null);
@@ -102,6 +108,7 @@ export default function ImportPage() {
         adminEmail,
         file.name,
         file.size,
+        eventId,
         (phase, current, total) => setProgress({ phase, current, total })
       );
       setUploadResult(result);

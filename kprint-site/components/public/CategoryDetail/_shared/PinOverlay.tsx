@@ -7,11 +7,12 @@ import type { FloorImage, Slot, Subcategory } from "@/lib/types";
 type Props = {
   floorImage: FloorImage;
   categoryId: string;
+  eventId: string;
   subcategory: Subcategory;
   slots: Slot[];
 };
 
-export function PinOverlay({ floorImage, categoryId, subcategory, slots }: Props) {
+export function PinOverlay({ floorImage, categoryId, eventId, subcategory, slots }: Props) {
   const hasSlot = useCartStore((s) => s.hasSlot);
   const addSlot = useCartStore((s) => s.addSlot);
   const removeSlot = useCartStore((s) => s.removeSlot);
@@ -47,6 +48,7 @@ export function PinOverlay({ floorImage, categoryId, subcategory, slots }: Props
             } else {
               addSlot({
                 type: "slot",
+                eventId,
                 slotId: slot.id,
                 categoryId,
                 subcategoryId: subcategory.id,

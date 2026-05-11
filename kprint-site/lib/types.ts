@@ -48,6 +48,7 @@ export type Pin = {
 // ============= CATEGORY =============
 export type Category = {
   id: string;
+  eventId: string;  // 행사 분리 (전시회별 콘텐츠)
   code: string; // 영문 3자리
   channel: Channel;
   type: CategoryType;
@@ -93,6 +94,13 @@ export type Category = {
 
   tags: string[];
   isPublished: boolean;
+  isFeatured?: boolean;   // 인기·추천 뱃지 (어드민 수동)
+  caseStudies?: Array<{
+    company: string;
+    year?: string;
+    quote?: string;
+    logoUrl?: string;
+  }>;                     // 이전 행사 사례
   order: number;
 
   // 잠금 상태 (엑셀 동기화 필드는 잠금)
@@ -106,6 +114,7 @@ export type Category = {
 // ============= SUBCATEGORY =============
 export type Subcategory = {
   id: string;
+  eventId: string;  // 행사 분리
   categoryId: string;
   name: { ko: string; en: string };
 
@@ -122,6 +131,7 @@ export type Subcategory = {
 // ============= SLOT =============
 export type Slot = {
   id: string;
+  eventId: string;  // 행사 분리
   subcategoryId: string;
   categoryId: string; // 빠른 조회용 (denormalized)
   code: string;
@@ -133,6 +143,7 @@ export type Slot = {
 // ============= PACKAGE =============
 export type Package = {
   id: string;
+  eventId: string;  // 행사 분리
   code: string;
   name: { ko: string; en: string };
   tier: "signature" | "standard";
@@ -158,6 +169,7 @@ export type Package = {
 export type CartItem =
   | {
       type: "slot";
+      eventId: string;  // 행사 분리 — 카트는 행사별로 보기
       slotId: string;
       categoryId: string;
       subcategoryId: string;
@@ -166,6 +178,7 @@ export type CartItem =
     }
   | {
       type: "package";
+      eventId: string;
       packageId: string;
       code: string;
       price: number;
@@ -173,6 +186,7 @@ export type CartItem =
 
 export type Inquiry = {
   id: string;
+  eventId: string;  // 어느 행사를 둘러보다 문의했는지
   companyName: string;
   contactName: string;
   email: string;

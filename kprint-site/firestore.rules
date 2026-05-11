@@ -1,62 +1,147 @@
 rules_version = '2';
+
 service cloud.firestore {
   match /databases/{database}/documents {
-    // 공개 읽기 (published만)
-    match /categories/{id} {
-      allow read: if resource.data.isPublished == true || isAdmin();
+
+    // ============================================================
+    //  공통 헬퍼 (주차관리 시스템 — 기존 그대로)
+    // ============================================================
+    function isAuthed() {
+      return request.auth != null;
+    }
+    function isAdmin() {
+      return isAuthed()
+        && exists(/databases/$(database)/documents/admins/$(request.auth.uid))
+        && get(/databases/$(database)/documents/admins/$(request.auth.uid)).data.active == true;
+    }
+    function isValidCarNoStr(s) {
+      return s is string && s.size() >= 4 && s.size() <= 12;
+    }
+    function isValidPeriod(p) {
+      return p is map
+        && p.start is string && p.end is string
+        && p.days is int && p.days >= 3 && p.days <= 5;
+    }
+
+    // ============================================================
+    //  K-PRINT 어드민 헬퍼 (이메일 화이트리스트)
+    //  ⚠️ 'admin@kprint.kr'를 본인 실제 어드민 이메일로 교체
+    // ============================================================
+    function isKprintAdmin() {
+      return request.auth != null
+        && request.auth.token.email in ['admin@kprint.kr'];
+    }
+
+    // ============================================================
+    //  주차관리 시스템 (기존 그대로)
+    // ============================================================
+    match /companies/{companyId} {
+      allow read: if true;
+      allow create, update, delete: if isAdmin();
+    }
+
+    match /registrations/{regId} {
+      allow read: if true;
+      allow create: if isAdmin() || (
+        request.resource.data.status == 'pending'
+        && request.resource.data.source == 'user'
+        && request.resource.data.deletedAt == null
+        && isValidCarNoStr(request.resource.data.carNo)
+        && isValidCarNoStr(request.resource.data.carNoNormalized)
+        && isValidPeriod(request.resource.data.period)
+        && request.resource.data.companyId is string
+        && request.resource.data.bizNo is string
+        && request.resource.data.companyName is string
+        && request.resource.data.boothNo is string
+      );
+      allow update, delete: if isAdmin();
+    }
+
+    match /carNoIndex/{normalizedCarNo} {
+      allow read: if true;
+      allow create: if true;
+      allow update, delete: if isAdmin();
+    }
+
+    match /admins/{uid} {
+      allow read: if (isAuthed() && request.auth.uid == uid) || isAdmin();
+      allow create, update: if isAdmin();
+      allow delete: if false;
+    }
+
+    match /auditLog/{logId} {
+      allow read: if isAdmin();
+      allow create: if isAdmin();
+      allow update, delete: if false;
+    }
+
+    match /settings/{docId} {
+      allow read: if true;
       allow write: if isAdmin();
+    }
+
+    match /rateLimits/{id} {
+      allow read, write: if false;
+    }
+
+    // ============================================================
+    //  K-PRINT 시스템
+    // ============================================================
+    match /categories/{id} {
+      allow read: if resource.data.isPublished == true || isKprintAdmin();
+      allow write: if isKprintAdmin();
     }
     match /subcategories/{id} {
       allow read: if true;
-      allow write: if isAdmin();
+      allow write: if isKprintAdmin();
     }
     match /slots/{id} {
       allow read: if true;
-      allow write: if isAdmin();
+      allow write: if isKprintAdmin();
     }
     match /packages/{id} {
-      allow read: if resource.data.isPublished == true || isAdmin();
-      allow write: if isAdmin();
+      allow read: if resource.data.isPublished == true || isKprintAdmin();
+      allow write: if isKprintAdmin();
     }
     match /siteSettings/{id} {
       allow read: if true;
-      allow write: if isAdmin();
+      allow write: if isKprintAdmin();
     }
     match /taxonomy/{id} {
       allow read: if true;
-      allow write: if isAdmin();
+      allow write: if isKprintAdmin();
     }
-
-    // 문의 — 누구나 생성, 어드민만 읽기/수정
     match /inquiries/{id} {
       allow create: if request.resource.data.keys().hasAll(['companyName','contactName','email','phone','message'])
                     && request.resource.data.status == 'new';
-      allow read, update, delete: if isAdmin();
+      allow read, update, delete: if isKprintAdmin();
     }
-
     match /importHistory/{id} {
-      allow read, write: if isAdmin();
+      allow read, write: if isKprintAdmin();
     }
 
-    // 행사 (이벤트/에디션) — 어드민 전용
+    // 행사(이벤트/에디션) — 공개 읽기 (메타 정보만), 쓰기 어드민
     match /events/{id} {
-      allow read, write: if isAdmin();
+      allow read: if true;
+      allow write: if isKprintAdmin();
     }
 
-    // 스폰서 — 어드민 전용 (내부 트래킹)
+    // 스폰서 관리 — 어드민 전용 (내부 트래킹)
     match /sponsors/{id} {
-      allow read, write: if isAdmin();
+      allow read, write: if isKprintAdmin();
     }
 
-    // 견적서 설정 (사무국 정보, 계좌, 기본값) — 공개 읽기 가능, 쓰기 어드민
+    // 견적서 설정 (사무국 정보, 계좌, 기본값)
     match /quoteSettings/{id} {
       allow read: if true;
-      allow write: if isAdmin();
+      allow write: if isKprintAdmin();
     }
 
-    function isAdmin() {
-      return request.auth != null
-        && request.auth.token.email in ['admin@kprint.kr']; // 실제 이메일로 교체
+    // ============================================================
+    //  그 외 모든 경로 차단
+    // ============================================================
+    match /{document=**} {
+      allow read, write: if false;
     }
   }
 }

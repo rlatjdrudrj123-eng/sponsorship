@@ -6,8 +6,10 @@ import {
   collection,
   doc,
   onSnapshot,
+  query,
   Timestamp,
   updateDoc,
+  where,
   writeBatch,
 } from "firebase/firestore";
 import {
@@ -23,6 +25,7 @@ import {
 } from "lucide-react";
 import { getDb } from "@/lib/firebase/firestore";
 import { seedSampleImages, type SeedResult } from "@/lib/admin/seedSamples";
+import { useEventFilter } from "@/lib/admin/useEventFilter";
 import type {
   Category,
   CategoryType,
@@ -74,24 +77,36 @@ export default function CategoriesListPage() {
   const [draggingId, setDraggingId] = useState<string | null>(null);
   const [dragOverId, setDragOverId] = useState<string | null>(null);
 
+  const { eventId, ready } = useEventFilter();
+
   useEffect(() => {
-    const db = getDb();
-    const u1 = onSnapshot(collection(db, "categories"), (s) => {
-      setCategories(s.docs.map((d) => ({ ...(d.data() as Category), id: d.id })));
+    if (!ready || !eventId) {
       setLoading(false);
-    });
-    const u2 = onSnapshot(collection(db, "subcategories"), (s) =>
-      setSubcategories(s.docs.map((d) => ({ ...(d.data() as Subcategory), id: d.id })))
+      return;
+    }
+    const db = getDb();
+    const u1 = onSnapshot(
+      query(collection(db, "categories"), where("eventId", "==", eventId)),
+      (s) => {
+        setCategories(s.docs.map((d) => ({ ...(d.data() as Category), id: d.id })));
+        setLoading(false);
+      }
     );
-    const u3 = onSnapshot(collection(db, "slots"), (s) =>
-      setSlots(s.docs.map((d) => ({ ...(d.data() as Slot), id: d.id })))
+    const u2 = onSnapshot(
+      query(collection(db, "subcategories"), where("eventId", "==", eventId)),
+      (s) =>
+        setSubcategories(s.docs.map((d) => ({ ...(d.data() as Subcategory), id: d.id })))
+    );
+    const u3 = onSnapshot(
+      query(collection(db, "slots"), where("eventId", "==", eventId)),
+      (s) => setSlots(s.docs.map((d) => ({ ...(d.data() as Slot), id: d.id })))
     );
     return () => {
       u1();
       u2();
       u3();
     };
-  }, []);
+  }, [ready, eventId]);
 
   const enriched: EnrichedCategory[] = useMemo(() => {
     return categories.map((c) => {

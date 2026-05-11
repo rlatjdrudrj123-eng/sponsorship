@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -39,11 +39,20 @@ type FormValues = z.infer<typeof schema>;
 
 export default function ContactPage() {
   const router = useRouter();
-  const items = useCartStore((s) => s.items);
-  const subtotal = useCartStore((s) => s.subtotal());
+  const params = useParams<{ eventSlug: string }>();
+  const eventId = params.eventSlug;
+  const allItems = useCartStore((s) => s.items);
+  // 현재 행사 항목만 첨부
+  const items = useMemo(
+    () => allItems.filter((it) => it.eventId === eventId),
+    [allItems, eventId]
+  );
+  const subtotal = useMemo(
+    () => items.reduce((sum, it) => sum + it.price, 0),
+    [items]
+  );
   const removeSlot = useCartStore((s) => s.removeSlot);
   const removePackage = useCartStore((s) => s.removePackage);
-  const clear = useCartStore((s) => s.clear);
   const hydrated = useCartStore((s) => s.hasHydrated);
 
   const [categories, setCategories] = useState<Map<string, Category>>(new Map());
@@ -61,15 +70,30 @@ export default function ContactPage() {
   } = useForm<FormValues>({ resolver: zodResolver(schema) });
 
   useEffect(() => {
+    if (!eventId) return;
     (async () => {
       try {
         const db = getDb();
-        // 공개 사이트 — isPublished=true만 읽기 가능 (firestore rules)
+        // 행사·published 필터
         const [catSnap, subSnap, pkgSnap, settingsSnap] = await Promise.all([
-          getDocs(query(collection(db, "categories"), where("isPublished", "==", true))),
-          getDocs(collection(db, "subcategories")),
-          getDocs(query(collection(db, "packages"), where("isPublished", "==", true))),
-          getDoc(doc(db, "siteSettings", "main")),
+          getDocs(
+            query(
+              collection(db, "categories"),
+              where("eventId", "==", eventId),
+              where("isPublished", "==", true)
+            )
+          ),
+          getDocs(
+            query(collection(db, "subcategories"), where("eventId", "==", eventId))
+          ),
+          getDocs(
+            query(
+              collection(db, "packages"),
+              where("eventId", "==", eventId),
+              where("isPublished", "==", true)
+            )
+          ),
+          getDoc(doc(db, "siteSettings", eventId)),
         ]);
         const cm = new Map<string, Category>();
         catSnap.docs.forEach((d) =>
@@ -92,7 +116,7 @@ export default function ContactPage() {
         console.error(e);
       }
     })();
-  }, []);
+  }, [eventId]);
 
   const vat = useMemo(() => Math.round(subtotal * 0.1), [subtotal]);
   const total = subtotal + vat;
@@ -101,6 +125,7 @@ export default function ContactPage() {
     setSubmitError(null);
     try {
       await addDoc(collection(getDb(), "inquiries"), {
+        eventId,
         companyName: values.companyName,
         contactName: values.contactName,
         email: values.email,
@@ -114,8 +139,12 @@ export default function ContactPage() {
         createdAt: Timestamp.fromDate(new Date()),
         updatedAt: Timestamp.fromDate(new Date()),
       });
-      clear();
-      router.push("/contact/done");
+      // 현재 행사 항목만 카트에서 제거
+      items.forEach((it) => {
+        if (it.type === "slot") removeSlot(it.slotId);
+        else removePackage(it.packageId);
+      });
+      router.push(`/${eventId}/contact/done`);
     } catch (e) {
       setSubmitError(
         e instanceof Error ? e.message : "문의 전송에 실패했습니다."
@@ -128,7 +157,7 @@ export default function ContactPage() {
       <main className="min-h-screen bg-white">
         <header className="px-6 md:px-16 pt-12 pb-6 border-b border-ink-100">
           <Link
-            href="/cart"
+            href={`/${eventId}/cart`}
             className="inline-flex items-center gap-1.5 text-[12px] text-ink-500 hover:text-ink-900 mb-3"
           >
             <ArrowLeft className="w-3.5 h-3.5" />
@@ -193,7 +222,7 @@ export default function ContactPage() {
 
             <div className="flex items-center justify-end gap-3">
               <Link
-                href="/sponsorships"
+                href={`/${eventId}/sponsorships`}
                 className="text-[13px] text-ink-500 hover:text-ink-900"
               >
                 둘러보기로 돌아가기

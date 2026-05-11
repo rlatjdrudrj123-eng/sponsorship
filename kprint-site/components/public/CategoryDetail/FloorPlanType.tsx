@@ -63,6 +63,7 @@ export function FloorPlanType({
             <PinOverlay
               floorImage={floorImage}
               categoryId={category.id}
+              eventId={category.eventId}
               subcategory={tabSub}
               slots={tabSlots}
             />
@@ -79,6 +80,7 @@ export function FloorPlanType({
           {tabSub ? (
             <SlotPicker
               categoryId={category.id}
+              eventId={category.eventId}
               subcategories={[tabSub]}
               slots={tabSlots}
             />

@@ -3,6 +3,7 @@
 import { useState } from "react";
 import {
   AlertTriangle,
+  CalendarPlus,
   CheckCircle2,
   Database,
   Image as ImageIcon,
@@ -19,12 +20,15 @@ import {
   seedDemoInquiries,
   seedDemoPackages,
   seedDemoSponsors,
+  tagAllAsKPrint2026,
   type ClearAllOptions,
   type ClearAllResult,
   type InquirySeedResult,
   type PackageSeedResult,
   type SponsorSeedResult,
+  type TagMigrationResult,
 } from "@/lib/admin/seedDemo";
+import { useEventFilter } from "@/lib/admin/useEventFilter";
 
 type AnyResult =
   | { kind: "image"; data: SeedResult }
@@ -33,7 +37,8 @@ type AnyResult =
   | { kind: "sponsor"; data: SponsorSeedResult }
   | { kind: "clear-inquiry"; count: number }
   | { kind: "clear-sponsor"; count: number }
-  | { kind: "clear-all"; data: ClearAllResult };
+  | { kind: "clear-all"; data: ClearAllResult }
+  | { kind: "tag-migration"; data: TagMigrationResult };
 
 export default function SeedPage() {
   const [running, setRunning] = useState<string | null>(null);
@@ -46,6 +51,15 @@ export default function SeedPage() {
     events: false,
     importHistory: false,
   });
+  const { eventId } = useEventFilter();
+
+  const requireEvent = (label: string): string | null => {
+    if (!eventId) {
+      alert(`상단 셀렉터에서 행사를 먼저 선택해주세요. (${label} 시드는 선택된 행사에 적용됩니다)`);
+      return null;
+    }
+    return eventId;
+  };
 
   const run = async (
     label: string,
@@ -88,6 +102,40 @@ export default function SeedPage() {
         </div>
       </div>
 
+      {/* 마이그레이션 카드 — 첫 줄에 강조 */}
+      <div className="bg-blue-50 border-2 border-blue-200 rounded-card p-4 flex items-start gap-3">
+        <div className="w-8 h-8 rounded-btn bg-blue-100 text-blue-700 grid place-items-center shrink-0">
+          <CalendarPlus className="w-4 h-4" />
+        </div>
+        <div className="flex-1 min-w-0">
+          <div className="text-[14px] font-bold text-blue-900">
+            기존 데이터 → K-PRINT 2026 일괄 태깅
+          </div>
+          <p className="text-[12px] text-blue-800 mt-0.5 leading-relaxed">
+            행사(eventId)가 없는 카테고리·소분류·슬롯·패키지·문의에 <code className="font-mono">eventId=&quot;kprint-2026&quot;</code>을 자동으로 적용합니다.
+            siteSettings/taxonomy/quoteSettings의 <code className="font-mono">main</code> 도큐먼트는 <code className="font-mono">kprint-2026</code>으로 복사됩니다.
+            이 작업은 멱등하며, 이미 eventId가 있는 도큐먼트는 건너뜁니다.
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={() =>
+            run(
+              "tag-migration",
+              async () => ({
+                kind: "tag-migration",
+                data: await tagAllAsKPrint2026(),
+              }),
+              "기존 데이터를 K-PRINT 2026으로 일괄 태깅합니다. 진행할까요?"
+            )
+          }
+          disabled={!!running}
+          className="px-3.5 py-2 rounded-btn bg-blue-700 text-white text-[12px] font-bold hover:bg-blue-800 disabled:opacity-50 shrink-0 whitespace-nowrap"
+        >
+          {running === "tag-migration" ? "태깅 중…" : "K-PRINT 2026 태깅"}
+        </button>
+      </div>
+
       <div className="space-y-3">
         <SeedCard
           icon={<ImageIcon className="w-4 h-4" />}
@@ -108,12 +156,14 @@ export default function SeedPage() {
           buttonLabel="패키지 시드 실행"
           running={running === "package"}
           disabled={!!running}
-          onClick={() =>
+          onClick={() => {
+            const ev = requireEvent("패키지");
+            if (!ev) return;
             run("package", async () => ({
               kind: "package",
-              data: await seedDemoPackages(),
-            }))
-          }
+              data: await seedDemoPackages(ev),
+            }));
+          }}
         />
 
         <SeedCard
@@ -123,12 +173,14 @@ export default function SeedPage() {
           buttonLabel="문의 시드 실행"
           running={running === "inquiry"}
           disabled={!!running}
-          onClick={() =>
+          onClick={() => {
+            const ev = requireEvent("문의");
+            if (!ev) return;
             run("inquiry", async () => ({
               kind: "inquiry",
-              data: await seedDemoInquiries(),
-            }))
-          }
+              data: await seedDemoInquiries(ev),
+            }));
+          }}
         />
 
         <SeedCard
@@ -414,6 +466,31 @@ function ResultCard({ result }: { result: AnyResult }) {
           <Trash2 className="w-3.5 h-3.5" />
           데모 스폰서 {result.count}건 삭제됨
         </div>
+      </div>
+    );
+  }
+  if (result.kind === "tag-migration") {
+    const r = result.data;
+    const totalTagged = Object.values(r.collections).reduce(
+      (s, x) => s + x.tagged,
+      0
+    );
+    return (
+      <div className="bg-blue-50 border border-blue-200 rounded-card p-3 text-[12px]">
+        <div className="font-bold text-blue-700 flex items-center gap-1.5">
+          <CalendarPlus className="w-3.5 h-3.5" />
+          K-PRINT 2026 태깅 — 총 {totalTagged}건 태깅됨
+        </div>
+        <ul className="mt-1 text-blue-800">
+          {Object.entries(r.collections).map(([k, v]) => (
+            <li key={k}>· {k}: 태깅 {v.tagged} / 건너뜀 {v.skipped}</li>
+          ))}
+        </ul>
+        {r.errors.length > 0 && (
+          <div className="mt-1 text-red-800">
+            실패: {r.errors.map((e) => `${e.collection} (${e.reason})`).join("; ")}
+          </div>
+        )}
       </div>
     );
   }

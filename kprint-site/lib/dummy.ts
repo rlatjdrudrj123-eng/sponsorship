@@ -127,6 +127,7 @@ const CBA_HALL_C_ID = "sub-cba-c";
 
 export const dummyCategory_CeilingBanner: Category = {
   id: "cat-cba",
+    eventId: "kprint-2026",
   code: "CBA",
   channel: "offline",
   type: "floor_plan",
@@ -190,6 +191,7 @@ export const dummyCategory_CeilingBanner: Category = {
 const subcatsCBA: Subcategory[] = [
   {
     id: CBA_HALL_A_ID,
+    eventId: "kprint-2026",
     categoryId: "cat-cba",
     name: { ko: "Hall A", en: "Hall A" },
     priceKRW: 3_000_000,
@@ -200,6 +202,7 @@ const subcatsCBA: Subcategory[] = [
   },
   {
     id: CBA_HALL_B_ID,
+    eventId: "kprint-2026",
     categoryId: "cat-cba",
     name: { ko: "Hall B", en: "Hall B" },
     priceKRW: 3_000_000,
@@ -210,6 +213,7 @@ const subcatsCBA: Subcategory[] = [
   },
   {
     id: CBA_HALL_C_ID,
+    eventId: "kprint-2026",
     categoryId: "cat-cba",
     name: { ko: "Hall C", en: "Hall C" },
     priceKRW: 2_700_000,
@@ -221,14 +225,14 @@ const subcatsCBA: Subcategory[] = [
 ];
 
 const slotsCBA: Slot[] = [
-  { id: "slot-cba-a-1", subcategoryId: CBA_HALL_A_ID, categoryId: "cat-cba", code: "CBA-A-1", status: "available", note: "A1 출입구 좌측", order: 0 },
-  { id: "slot-cba-a-2", subcategoryId: CBA_HALL_A_ID, categoryId: "cat-cba", code: "CBA-A-2", status: "sold", note: "Hall A 중앙 동선", order: 1 },
-  { id: "slot-cba-a-3", subcategoryId: CBA_HALL_A_ID, categoryId: "cat-cba", code: "CBA-A-3", status: "available", note: "A1 출입구 우측", order: 2 },
-  { id: "slot-cba-b-1", subcategoryId: CBA_HALL_B_ID, categoryId: "cat-cba", code: "CBA-B-1", status: "available", order: 0 },
-  { id: "slot-cba-b-2", subcategoryId: CBA_HALL_B_ID, categoryId: "cat-cba", code: "CBA-B-2", status: "available", note: "B 핵심 동선", order: 1 },
-  { id: "slot-cba-b-3", subcategoryId: CBA_HALL_B_ID, categoryId: "cat-cba", code: "CBA-B-3", status: "sold", order: 2 },
-  { id: "slot-cba-c-1", subcategoryId: CBA_HALL_C_ID, categoryId: "cat-cba", code: "CBA-C-1", status: "available", order: 0 },
-  { id: "slot-cba-c-2", subcategoryId: CBA_HALL_C_ID, categoryId: "cat-cba", code: "CBA-C-2", status: "available", note: "C 출입구 인접", order: 1 },
+  { id: "slot-cba-a-1", eventId: "kprint-2026", subcategoryId: CBA_HALL_A_ID, categoryId: "cat-cba", code: "CBA-A-1", status: "available", note: "A1 출입구 좌측", order: 0 },
+  { id: "slot-cba-a-2", eventId: "kprint-2026", subcategoryId: CBA_HALL_A_ID, categoryId: "cat-cba", code: "CBA-A-2", status: "sold", note: "Hall A 중앙 동선", order: 1 },
+  { id: "slot-cba-a-3", eventId: "kprint-2026", subcategoryId: CBA_HALL_A_ID, categoryId: "cat-cba", code: "CBA-A-3", status: "available", note: "A1 출입구 우측", order: 2 },
+  { id: "slot-cba-b-1", eventId: "kprint-2026", subcategoryId: CBA_HALL_B_ID, categoryId: "cat-cba", code: "CBA-B-1", status: "available", order: 0 },
+  { id: "slot-cba-b-2", eventId: "kprint-2026", subcategoryId: CBA_HALL_B_ID, categoryId: "cat-cba", code: "CBA-B-2", status: "available", note: "B 핵심 동선", order: 1 },
+  { id: "slot-cba-b-3", eventId: "kprint-2026", subcategoryId: CBA_HALL_B_ID, categoryId: "cat-cba", code: "CBA-B-3", status: "sold", order: 2 },
+  { id: "slot-cba-c-1", eventId: "kprint-2026", subcategoryId: CBA_HALL_C_ID, categoryId: "cat-cba", code: "CBA-C-1", status: "available", order: 0 },
+  { id: "slot-cba-c-2", eventId: "kprint-2026", subcategoryId: CBA_HALL_C_ID, categoryId: "cat-cba", code: "CBA-C-2", status: "available", note: "C 출입구 인접", order: 1 },
 ];
 
 // ---- CATEGORY 2: 참관객 목걸이 (quantity) ----------------------------------
@@ -237,6 +241,7 @@ const LNY_SUB_ID = "sub-lny-default";
 
 export const dummyCategory_Lanyard: Category = {
   id: "cat-lny",
+    eventId: "kprint-2026",
   code: "LNY",
   channel: "offline",
   type: "quantity",
@@ -270,6 +275,7 @@ export const dummyCategory_Lanyard: Category = {
 const subcatsLNY: Subcategory[] = [
   {
     id: LNY_SUB_ID,
+    eventId: "kprint-2026",
     categoryId: "cat-lny",
     name: { ko: "5,000개 묶음", en: "5,000 ea bundle" },
     priceKRW: 15_000_000,
@@ -281,10 +287,10 @@ const subcatsLNY: Subcategory[] = [
 ];
 
 const slotsLNY: Slot[] = [
-  { id: "slot-lny-1", subcategoryId: LNY_SUB_ID, categoryId: "cat-lny", code: "LNY-1", status: "sold", order: 0 },
-  { id: "slot-lny-2", subcategoryId: LNY_SUB_ID, categoryId: "cat-lny", code: "LNY-2", status: "available", order: 1 },
-  { id: "slot-lny-3", subcategoryId: LNY_SUB_ID, categoryId: "cat-lny", code: "LNY-3", status: "available", order: 2 },
-  { id: "slot-lny-4", subcategoryId: LNY_SUB_ID, categoryId: "cat-lny", code: "LNY-4", status: "available", order: 3 },
+  { id: "slot-lny-1", eventId: "kprint-2026", subcategoryId: LNY_SUB_ID, categoryId: "cat-lny", code: "LNY-1", status: "sold", order: 0 },
+  { id: "slot-lny-2", eventId: "kprint-2026", subcategoryId: LNY_SUB_ID, categoryId: "cat-lny", code: "LNY-2", status: "available", order: 1 },
+  { id: "slot-lny-3", eventId: "kprint-2026", subcategoryId: LNY_SUB_ID, categoryId: "cat-lny", code: "LNY-3", status: "available", order: 2 },
+  { id: "slot-lny-4", eventId: "kprint-2026", subcategoryId: LNY_SUB_ID, categoryId: "cat-lny", code: "LNY-4", status: "available", order: 3 },
 ];
 
 // ---- CATEGORY 3: XPACE 옥외 LED (xpace) ------------------------------------
@@ -295,6 +301,7 @@ const XPC_WD_ID = "sub-xpc-wide";
 
 export const dummyCategory_Xpace: Category = {
   id: "cat-xpc",
+    eventId: "kprint-2026",
   code: "XPC",
   channel: "offline",
   type: "xpace",
@@ -359,6 +366,7 @@ export const dummyCategory_Xpace: Category = {
 const subcatsXPC: Subcategory[] = [
   {
     id: XPC_BR_ID,
+    eventId: "kprint-2026",
     categoryId: "cat-xpc",
     name: { ko: "브릿지", en: "Bridge" },
     priceKRW: 15_000_000,
@@ -370,6 +378,7 @@ const subcatsXPC: Subcategory[] = [
   },
   {
     id: XPC_EC_ID,
+    eventId: "kprint-2026",
     categoryId: "cat-xpc",
     name: { ko: "엣지칼럼", en: "Edge Column" },
     priceKRW: 8_000_000,
@@ -380,6 +389,7 @@ const subcatsXPC: Subcategory[] = [
   },
   {
     id: XPC_WD_ID,
+    eventId: "kprint-2026",
     categoryId: "cat-xpc",
     name: { ko: "와이드", en: "Wide" },
     priceKRW: 12_000_000,
@@ -391,10 +401,10 @@ const subcatsXPC: Subcategory[] = [
 ];
 
 const slotsXPC: Slot[] = [
-  { id: "slot-xpc-br-1", subcategoryId: XPC_BR_ID, categoryId: "cat-xpc", code: "XPC-BR-1", status: "available", note: "동측 브릿지 정면", order: 0 },
-  { id: "slot-xpc-ec-1", subcategoryId: XPC_EC_ID, categoryId: "cat-xpc", code: "XPC-EC-1", status: "available", note: "메인 출입 동선", order: 0 },
-  { id: "slot-xpc-ec-2", subcategoryId: XPC_EC_ID, categoryId: "cat-xpc", code: "XPC-EC-2", status: "sold", order: 1 },
-  { id: "slot-xpc-wd-1", subcategoryId: XPC_WD_ID, categoryId: "cat-xpc", code: "XPC-WD-1", status: "available", note: "와이드 LED", order: 0 },
+  { id: "slot-xpc-br-1", eventId: "kprint-2026", subcategoryId: XPC_BR_ID, categoryId: "cat-xpc", code: "XPC-BR-1", status: "available", note: "동측 브릿지 정면", order: 0 },
+  { id: "slot-xpc-ec-1", eventId: "kprint-2026", subcategoryId: XPC_EC_ID, categoryId: "cat-xpc", code: "XPC-EC-1", status: "available", note: "메인 출입 동선", order: 0 },
+  { id: "slot-xpc-ec-2", eventId: "kprint-2026", subcategoryId: XPC_EC_ID, categoryId: "cat-xpc", code: "XPC-EC-2", status: "sold", order: 1 },
+  { id: "slot-xpc-wd-1", eventId: "kprint-2026", subcategoryId: XPC_WD_ID, categoryId: "cat-xpc", code: "XPC-WD-1", status: "available", note: "와이드 LED", order: 0 },
 ];
 
 // ---- CATEGORY 4: 통합검색 배너 (digital_banner) ----------------------------
@@ -404,6 +414,7 @@ const ISB_SEMINAR_ID = "sub-isb-seminar";
 
 export const dummyCategory_IntegratedSearch: Category = {
   id: "cat-isb",
+    eventId: "kprint-2026",
   code: "ISB",
   channel: "online",
   type: "digital_banner",
@@ -434,6 +445,7 @@ export const dummyCategory_IntegratedSearch: Category = {
 const subcatsISB: Subcategory[] = [
   {
     id: ISB_MAIN_ID,
+    eventId: "kprint-2026",
     categoryId: "cat-isb",
     name: { ko: "메인 검색", en: "Main Search" },
     priceKRW: 1_500_000,
@@ -444,6 +456,7 @@ const subcatsISB: Subcategory[] = [
   },
   {
     id: ISB_SEMINAR_ID,
+    eventId: "kprint-2026",
     categoryId: "cat-isb",
     name: { ko: "세미나 검색", en: "Seminar Search" },
     priceKRW: 1_000_000,
@@ -455,11 +468,11 @@ const subcatsISB: Subcategory[] = [
 ];
 
 const slotsISB: Slot[] = [
-  { id: "slot-isb-m-1", subcategoryId: ISB_MAIN_ID, categoryId: "cat-isb", code: "ISB-M-1", status: "available", order: 0 },
-  { id: "slot-isb-m-2", subcategoryId: ISB_MAIN_ID, categoryId: "cat-isb", code: "ISB-M-2", status: "available", order: 1 },
-  { id: "slot-isb-m-3", subcategoryId: ISB_MAIN_ID, categoryId: "cat-isb", code: "ISB-M-3", status: "sold", order: 2 },
-  { id: "slot-isb-s-1", subcategoryId: ISB_SEMINAR_ID, categoryId: "cat-isb", code: "ISB-S-1", status: "available", order: 0 },
-  { id: "slot-isb-s-2", subcategoryId: ISB_SEMINAR_ID, categoryId: "cat-isb", code: "ISB-S-2", status: "available", order: 1 },
+  { id: "slot-isb-m-1", eventId: "kprint-2026", subcategoryId: ISB_MAIN_ID, categoryId: "cat-isb", code: "ISB-M-1", status: "available", order: 0 },
+  { id: "slot-isb-m-2", eventId: "kprint-2026", subcategoryId: ISB_MAIN_ID, categoryId: "cat-isb", code: "ISB-M-2", status: "available", order: 1 },
+  { id: "slot-isb-m-3", eventId: "kprint-2026", subcategoryId: ISB_MAIN_ID, categoryId: "cat-isb", code: "ISB-M-3", status: "sold", order: 2 },
+  { id: "slot-isb-s-1", eventId: "kprint-2026", subcategoryId: ISB_SEMINAR_ID, categoryId: "cat-isb", code: "ISB-S-1", status: "available", order: 0 },
+  { id: "slot-isb-s-2", eventId: "kprint-2026", subcategoryId: ISB_SEMINAR_ID, categoryId: "cat-isb", code: "ISB-S-2", status: "available", order: 1 },
 ];
 
 // ---- CATEGORY 5: 뉴스레터 (mailing) -----------------------------------------
@@ -469,6 +482,7 @@ const NWS_EN_ID = "sub-nws-en";
 
 export const dummyCategory_Newsletter: Category = {
   id: "cat-nws",
+    eventId: "kprint-2026",
   code: "NWS",
   channel: "online",
   type: "mailing",
@@ -509,6 +523,7 @@ export const dummyCategory_Newsletter: Category = {
 const subcatsNWS: Subcategory[] = [
   {
     id: NWS_KR_ID,
+    eventId: "kprint-2026",
     categoryId: "cat-nws",
     name: { ko: "국내", en: "Domestic" },
     priceKRW: 2_000_000,
@@ -519,6 +534,7 @@ const subcatsNWS: Subcategory[] = [
   },
   {
     id: NWS_EN_ID,
+    eventId: "kprint-2026",
     categoryId: "cat-nws",
     name: { ko: "해외", en: "Global" },
     priceKRW: 5_000_000,
@@ -530,11 +546,11 @@ const subcatsNWS: Subcategory[] = [
 ];
 
 const slotsNWS: Slot[] = [
-  { id: "slot-nws-kr-1", subcategoryId: NWS_KR_ID, categoryId: "cat-nws", code: "NWS-KR-1", status: "available", note: "2026-07-10 발송", order: 0 },
-  { id: "slot-nws-kr-2", subcategoryId: NWS_KR_ID, categoryId: "cat-nws", code: "NWS-KR-2", status: "sold", note: "2026-07-17 발송", order: 1 },
-  { id: "slot-nws-kr-3", subcategoryId: NWS_KR_ID, categoryId: "cat-nws", code: "NWS-KR-3", status: "available", note: "2026-07-24 발송", order: 2 },
-  { id: "slot-nws-en-1", subcategoryId: NWS_EN_ID, categoryId: "cat-nws", code: "NWS-EN-1", status: "available", note: "2026-07-10 발송", order: 0 },
-  { id: "slot-nws-en-2", subcategoryId: NWS_EN_ID, categoryId: "cat-nws", code: "NWS-EN-2", status: "available", note: "2026-08-07 발송", order: 1 },
+  { id: "slot-nws-kr-1", eventId: "kprint-2026", subcategoryId: NWS_KR_ID, categoryId: "cat-nws", code: "NWS-KR-1", status: "available", note: "2026-07-10 발송", order: 0 },
+  { id: "slot-nws-kr-2", eventId: "kprint-2026", subcategoryId: NWS_KR_ID, categoryId: "cat-nws", code: "NWS-KR-2", status: "sold", note: "2026-07-17 발송", order: 1 },
+  { id: "slot-nws-kr-3", eventId: "kprint-2026", subcategoryId: NWS_KR_ID, categoryId: "cat-nws", code: "NWS-KR-3", status: "available", note: "2026-07-24 발송", order: 2 },
+  { id: "slot-nws-en-1", eventId: "kprint-2026", subcategoryId: NWS_EN_ID, categoryId: "cat-nws", code: "NWS-EN-1", status: "available", note: "2026-07-10 발송", order: 0 },
+  { id: "slot-nws-en-2", eventId: "kprint-2026", subcategoryId: NWS_EN_ID, categoryId: "cat-nws", code: "NWS-EN-2", status: "available", note: "2026-08-07 발송", order: 1 },
 ];
 
 // ---- AGGREGATE EXPORTS ----------------------------------------------------
@@ -568,6 +584,7 @@ export const dummySlots: Slot[] = [
 export const dummyPackages: Package[] = [
   {
     id: "pkg-pc-1",
+    eventId: "kprint-2026",
     code: "PC-1",
     name: { ko: "시그니처 패키지", en: "Signature Package" },
     tier: "signature",
@@ -592,6 +609,7 @@ export const dummyPackages: Package[] = [
   },
   {
     id: "pkg-pc-2",
+    eventId: "kprint-2026",
     code: "PC-2",
     name: { ko: "스탠다드 패키지", en: "Standard Package" },
     tier: "standard",

@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import { useParams } from "next/navigation";
 import { collection, doc, getDoc, getDocs, query, where } from "firebase/firestore";
 import { ArrowLeft, ArrowRight, Bookmark, FileDown, Trash2, X } from "lucide-react";
 import { getDb } from "@/lib/firebase/firestore";
@@ -15,7 +16,15 @@ import type {
 import { Footer } from "@/components/public/Footer";
 
 export default function CartPage() {
-  const items = useCartStore((s) => s.items);
+  const params = useParams<{ eventSlug: string }>();
+  const eventId = params.eventSlug;
+
+  const allItems = useCartStore((s) => s.items);
+  // 현재 행사 항목만 노출
+  const items = useMemo(
+    () => allItems.filter((it) => it.eventId === eventId),
+    [allItems, eventId]
+  );
   const removeSlot = useCartStore((s) => s.removeSlot);
   const removePackage = useCartStore((s) => s.removePackage);
   const clear = useCartStore((s) => s.clear);
@@ -34,15 +43,30 @@ export default function CartPage() {
   const [selected, setSelected] = useState<Set<string>>(new Set());
 
   useEffect(() => {
+    if (!eventId) return;
     (async () => {
       try {
         const db = getDb();
-        // 공개 사이트는 isPublished=true만 읽을 수 있음 — 필터 누락 시 permission-denied
+        // 행사·published 필터
         const [catSnap, subSnap, pkgSnap, settingsSnap] = await Promise.all([
-          getDocs(query(collection(db, "categories"), where("isPublished", "==", true))),
-          getDocs(collection(db, "subcategories")),
-          getDocs(query(collection(db, "packages"), where("isPublished", "==", true))),
-          getDoc(doc(db, "siteSettings", "main")),
+          getDocs(
+            query(
+              collection(db, "categories"),
+              where("eventId", "==", eventId),
+              where("isPublished", "==", true)
+            )
+          ),
+          getDocs(
+            query(collection(db, "subcategories"), where("eventId", "==", eventId))
+          ),
+          getDocs(
+            query(
+              collection(db, "packages"),
+              where("eventId", "==", eventId),
+              where("isPublished", "==", true)
+            )
+          ),
+          getDoc(doc(db, "siteSettings", eventId)),
         ]);
         const cm = new Map<string, Category>();
         catSnap.docs.forEach((d) =>
@@ -67,7 +91,7 @@ export default function CartPage() {
         setDataLoaded(true);
       }
     })();
-  }, []);
+  }, [eventId]);
 
   // 데이터 로드 후 더 이상 존재하지 않는 카트 항목 자동 정리
   useEffect(() => {
@@ -117,7 +141,7 @@ export default function CartPage() {
   const printPdf = () => {
     if (noneSelected) return;
     const ids = Array.from(selected).join(",");
-    window.open(`/cart/print?ids=${encodeURIComponent(ids)}`, "_blank");
+    window.open(`/${eventId}/cart/print?ids=${encodeURIComponent(ids)}`, "_blank");
   };
 
   return (
@@ -164,7 +188,7 @@ export default function CartPage() {
                 아직 관심 표시한 항목이 없습니다.
               </p>
               <Link
-                href="/sponsorships"
+                href={`/${eventId}/sponsorships`}
                 className="mt-4 inline-block px-5 py-2.5 rounded-btn bg-mint-500 text-ink-900 font-semibold hover:bg-mint-700 hover:text-white"
               >
                 스폰서십 둘러보기 →
@@ -303,7 +327,7 @@ export default function CartPage() {
                   전체 비우기
                 </button>
                 <Link
-                  href="/contact"
+                  href={`/${eventId}/contact`}
                   className="px-5 py-3 rounded-btn bg-mint-500 text-ink-900 font-semibold hover:bg-mint-700 hover:text-white flex items-center gap-2"
                 >
                   관심 항목으로 문의 보내기

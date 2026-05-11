@@ -28,8 +28,9 @@ import { ContentType } from "@/components/public/CategoryDetail/ContentType";
 import { XpaceType } from "@/components/public/CategoryDetail/XpaceType";
 
 export default function CategoryDetailPage() {
-  const params = useParams<{ slug: string }>();
+  const params = useParams<{ slug: string; eventSlug: string }>();
   const slug = params.slug;
+  const eventId = params.eventSlug;
 
   const [category, setCategory] = useState<Category | null>(null);
   const [allCategories, setAllCategories] = useState<Category[]>([]);
@@ -40,12 +41,14 @@ export default function CategoryDetailPage() {
   const [notFound, setNotFound] = useState(false);
 
   useEffect(() => {
+    if (!eventId || !slug) return;
     (async () => {
       try {
         const db = getDb();
         const catSnap = await getDocs(
           query(
             collection(db, "categories"),
+            where("eventId", "==", eventId),
             where("isPublished", "==", true),
             where("slug", "==", slug)
           )
@@ -63,7 +66,11 @@ export default function CategoryDetailPage() {
 
         const [allCatSnap, subSnap, slotSnap, settingsSnap] = await Promise.all([
           getDocs(
-            query(collection(db, "categories"), where("isPublished", "==", true))
+            query(
+              collection(db, "categories"),
+              where("eventId", "==", eventId),
+              where("isPublished", "==", true)
+            )
           ),
           getDocs(
             query(
@@ -74,7 +81,7 @@ export default function CategoryDetailPage() {
           getDocs(
             query(collection(db, "slots"), where("categoryId", "==", cat.id))
           ),
-          getDoc(doc(db, "siteSettings", "main")),
+          getDoc(doc(db, "siteSettings", eventId)),
         ]);
         setAllCategories(
           allCatSnap.docs.map((d) => ({ ...(d.data() as Category), id: d.id }))
@@ -91,7 +98,7 @@ export default function CategoryDetailPage() {
         setLoaded(true);
       }
     })();
-  }, [slug]);
+  }, [slug, eventId]);
 
   if (!loaded) {
     return <div className="min-h-screen grid place-items-center text-sm text-ink-500">불러오는 중…</div>;
@@ -102,7 +109,7 @@ export default function CategoryDetailPage() {
         <div className="text-center">
           <p className="text-sm text-ink-700">카테고리를 찾을 수 없습니다.</p>
           <Link
-            href="/sponsorships"
+            href={`/${eventId}/sponsorships`}
             className="text-mint-700 font-semibold mt-3 inline-block hover:underline"
           >
             전체 보기로 →

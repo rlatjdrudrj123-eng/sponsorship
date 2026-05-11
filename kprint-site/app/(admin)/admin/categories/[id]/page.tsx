@@ -81,6 +81,8 @@ export default function CategoryEditPage() {
   const [lastSaved, setLastSaved] = useState<Date | null>(null);
   const [notFound, setNotFound] = useState(false);
   const [pinEditorSubId, setPinEditorSubId] = useState<string | null>(null);
+  const [isFeatured, setIsFeatured] = useState(false);
+  const [caseStudies, setCaseStudies] = useState<NonNullable<Category["caseStudies"]>>([]);
   const initRef = useRef(false);
 
   const form = useForm<FormValues>({
@@ -123,6 +125,8 @@ export default function CategoryEditPage() {
           deadline: data.deadline ? data.deadline.toDate().toISOString().slice(0, 10) : "",
         });
         setSelectedTags(data.tags ?? []);
+        setIsFeatured(data.isFeatured ?? false);
+        setCaseStudies(data.caseStudies ?? []);
         initRef.current = true;
       }
     });
@@ -225,6 +229,32 @@ export default function CategoryEditPage() {
     } catch (e) {
       alert(`태그 갱신 실패: ${e instanceof Error ? e.message : String(e)}`);
       setSelectedTags(prev);
+    }
+  };
+
+  const toggleFeatured = async () => {
+    const next = !isFeatured;
+    setIsFeatured(next);
+    try {
+      await updateDoc(doc(getDb(), "categories", id), {
+        isFeatured: next,
+        updatedAt: Timestamp.fromDate(new Date()),
+      });
+    } catch (e) {
+      alert(`인기 토글 실패: ${e instanceof Error ? e.message : String(e)}`);
+      setIsFeatured(!next);
+    }
+  };
+
+  const saveCaseStudies = async (next: NonNullable<Category["caseStudies"]>) => {
+    setCaseStudies(next);
+    try {
+      await updateDoc(doc(getDb(), "categories", id), {
+        caseStudies: next,
+        updatedAt: Timestamp.fromDate(new Date()),
+      });
+    } catch (e) {
+      alert(`이전 사례 저장 실패: ${e instanceof Error ? e.message : String(e)}`);
     }
   };
 
@@ -488,6 +518,115 @@ export default function CategoryEditPage() {
                 </Link>
               </div>
             )}
+          </Section>
+
+          {/* 추천·사례 */}
+          <Section title="추천·이전 사례">
+            <div className="space-y-4">
+              <label className="flex items-center gap-3 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={isFeatured}
+                  onChange={toggleFeatured}
+                  className="w-4 h-4 accent-mint-500"
+                />
+                <div>
+                  <div className="text-[13px] font-semibold text-ink-900">
+                    인기 뱃지 표시
+                  </div>
+                  <div className="text-[11px] text-ink-500">
+                    /sponsorships 카드 좌상단에 mint &quot;인기&quot; 뱃지 노출
+                  </div>
+                </div>
+              </label>
+
+              <hr className="border-ink-100" />
+
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <div>
+                    <div className="text-[13px] font-semibold text-ink-900">
+                      이전 행사 사례
+                    </div>
+                    <p className="text-[11px] text-ink-500">
+                      카테고리 상세 페이지 하단에 &quot;이 자리를 선택한 회사들&quot;로 노출
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      saveCaseStudies([
+                        ...caseStudies,
+                        { company: "", year: "", quote: "" },
+                      ])
+                    }
+                    className="px-3 py-1.5 rounded-btn border border-ink-100 text-[12px] font-semibold hover:bg-ink-50"
+                  >
+                    + 추가
+                  </button>
+                </div>
+                {caseStudies.length === 0 ? (
+                  <div className="text-[12px] text-ink-500 text-center py-4 bg-ink-50 rounded-btn">
+                    등록된 사례가 없습니다.
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    {caseStudies.map((cs, i) => (
+                      <div
+                        key={i}
+                        className="grid grid-cols-[1fr_80px_2fr_auto] gap-2 items-start p-3 border border-ink-100 rounded-btn bg-white"
+                      >
+                        <input
+                          type="text"
+                          value={cs.company}
+                          onChange={(e) => {
+                            const next = [...caseStudies];
+                            next[i] = { ...next[i], company: e.target.value };
+                            saveCaseStudies(next);
+                          }}
+                          placeholder="회사명"
+                          className="px-2.5 py-1.5 text-[12px] border border-ink-100 rounded-btn focus:outline-none focus:border-mint-500"
+                        />
+                        <input
+                          type="text"
+                          value={cs.year ?? ""}
+                          onChange={(e) => {
+                            const next = [...caseStudies];
+                            next[i] = { ...next[i], year: e.target.value };
+                            saveCaseStudies(next);
+                          }}
+                          placeholder="2025"
+                          className="px-2.5 py-1.5 text-[12px] border border-ink-100 rounded-btn focus:outline-none focus:border-mint-500"
+                        />
+                        <input
+                          type="text"
+                          value={cs.quote ?? ""}
+                          onChange={(e) => {
+                            const next = [...caseStudies];
+                            next[i] = { ...next[i], quote: e.target.value };
+                            saveCaseStudies(next);
+                          }}
+                          placeholder="한 줄 후기 (선택)"
+                          className="px-2.5 py-1.5 text-[12px] border border-ink-100 rounded-btn focus:outline-none focus:border-mint-500"
+                        />
+                        <button
+                          type="button"
+                          onClick={() =>
+                            saveCaseStudies(
+                              caseStudies.filter((_, idx) => idx !== i)
+                            )
+                          }
+                          className="p-1.5 text-ink-500 hover:text-red-700"
+                          title="삭제"
+                        >
+                          ✕
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
           </Section>
         </div>
 

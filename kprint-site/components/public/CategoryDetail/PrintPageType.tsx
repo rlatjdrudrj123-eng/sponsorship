@@ -38,6 +38,7 @@ export function PrintPageType({
         />
         <SlotPicker
           categoryId={category.id}
+              eventId={category.eventId}
           subcategories={subcategories}
           slots={slots}
         />

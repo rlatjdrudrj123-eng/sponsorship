@@ -66,6 +66,7 @@ export function ContentType({
 
           <SlotPicker
             categoryId={category.id}
+              eventId={category.eventId}
             subcategories={subcategories}
             slots={slots}
           />

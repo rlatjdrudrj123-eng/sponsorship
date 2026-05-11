@@ -7,9 +7,12 @@ import {
   onSnapshot,
   orderBy,
   query,
+  where,
 } from "firebase/firestore";
+import * as XLSX from "xlsx";
 import {
   ChevronRight,
+  Download,
   Filter,
   Handshake,
   Plus,
@@ -17,6 +20,7 @@ import {
   TrendingUp,
 } from "lucide-react";
 import { getDb } from "@/lib/firebase/firestore";
+import { useEventFilter } from "@/lib/admin/useEventFilter";
 import type { Event, Sponsor, SponsorStatus } from "@/lib/types";
 
 const STATUS_LABELS: Record<SponsorStatus, string> = {
@@ -38,49 +42,45 @@ type StatusFilter = SponsorStatus | "all";
 export default function SponsorsListPage() {
   const [events, setEvents] = useState<Event[]>([]);
   const [sponsors, setSponsors] = useState<Sponsor[]>([]);
-  const [eventId, setEventId] = useState<string>("");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
+  const { eventId: globalEventId, ready } = useEventFilter();
+  const eventId = globalEventId ?? "";
 
-  // Events 로드
+  // Events 로드 (헤더에 표시용 — 셀렉터는 글로벌 Topbar에 있음)
   useEffect(() => {
     const u = onSnapshot(
       query(collection(getDb(), "events"), orderBy("order", "asc")),
       (s) => {
-        const list = s.docs.map((d) => ({ ...(d.data() as Event), id: d.id }));
-        setEvents(list);
-        setEventId((cur) => {
-          if (cur && list.some((e) => e.id === cur)) return cur;
-          const active = list.find((e) => e.isActive) ?? list[0];
-          return active?.id ?? "";
-        });
+        setEvents(s.docs.map((d) => ({ ...(d.data() as Event), id: d.id })));
       }
     );
     return () => u();
   }, []);
 
-  // Sponsors 로드 (현재 행사)
+  // Sponsors 로드 — 글로벌 선택 행사 기준
   useEffect(() => {
-    if (!eventId) {
+    if (!ready || !eventId) {
       setSponsors([]);
       setLoading(false);
       return;
     }
     setLoading(true);
     const u = onSnapshot(
-      query(collection(getDb(), "sponsors"), orderBy("createdAt", "desc")),
+      query(
+        collection(getDb(), "sponsors"),
+        where("eventId", "==", eventId),
+        orderBy("createdAt", "desc")
+      ),
       (s) => {
-        const list = s.docs
-          .map((d) => ({ ...(d.data() as Sponsor), id: d.id }))
-          .filter((sp) => sp.eventId === eventId);
-        setSponsors(list);
+        setSponsors(s.docs.map((d) => ({ ...(d.data() as Sponsor), id: d.id })));
         setLoading(false);
       },
       () => setLoading(false)
     );
     return () => u();
-  }, [eventId]);
+  }, [ready, eventId]);
 
   const event = useMemo(() => events.find((e) => e.id === eventId), [events, eventId]);
 
@@ -137,6 +137,60 @@ export default function SponsorsListPage() {
     ? ((totals.all - event.lastYearTotal) / event.lastYearTotal) * 100
     : null;
 
+  const exportXlsx = () => {
+    if (filtered.length === 0) {
+      alert("내보낼 스폰서가 없습니다.");
+      return;
+    }
+    const rows = filtered.map((s) => ({
+      상태: STATUS_LABELS[s.status],
+      기업명: s.companyName,
+      비용: s.amount,
+      통화: s.currency,
+      비용메모: s.amountNote ?? "",
+      품목: s.items.map((it) => it.label).join(" / "),
+      "이벤트안내": s.benefits?.eventNotice ? "✓" : "",
+      "상위고정": s.benefits?.topPin ? "✓" : "",
+      "뱃지": s.benefits?.badge ? "✓" : "",
+      "로고배너": s.benefits?.logoBanner ? "✓" : "",
+      "로고배너종류": s.bannerType ?? "",
+      "로고배너메모": s.bannerNote ?? "",
+      "디자인물": s.designItems
+        .map((d) => `${d.label}${d.deadline ? ` (${d.deadline})` : ""}${d.status === "done" ? " ✓" : ""}`)
+        .join(" / "),
+      담당자: s.contacts.map((c) => c.name).join(", "),
+      이메일: s.contacts.map((c) => c.email ?? "").filter(Boolean).join(", "),
+      전화: s.contacts.map((c) => c.phone ?? "").filter(Boolean).join(", "),
+      메모: s.notes ?? "",
+    }));
+    const ws = XLSX.utils.json_to_sheet(rows);
+    // column widths
+    ws["!cols"] = [
+      { wch: 8 },
+      { wch: 20 },
+      { wch: 12 },
+      { wch: 6 },
+      { wch: 12 },
+      { wch: 36 },
+      { wch: 8 },
+      { wch: 8 },
+      { wch: 8 },
+      { wch: 8 },
+      { wch: 14 },
+      { wch: 16 },
+      { wch: 30 },
+      { wch: 14 },
+      { wch: 22 },
+      { wch: 16 },
+      { wch: 30 },
+    ];
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "스폰서");
+    const date = new Date().toISOString().slice(0, 10);
+    const fileName = `sponsors_${event?.shortName ?? eventId}_${date}.xlsx`;
+    XLSX.writeFile(wb, fileName);
+  };
+
   return (
     <div className="space-y-5">
       <header className="flex items-start justify-between gap-4 flex-wrap">
@@ -150,24 +204,15 @@ export default function SponsorsListPage() {
           </p>
         </div>
         <div className="flex items-center gap-2">
-          {events.length > 1 && (
-            <select
-              value={eventId}
-              onChange={(e) => setEventId(e.target.value)}
-              className="px-3 py-2 text-sm border border-ink-100 rounded-btn bg-white font-semibold"
-            >
-              {events.map((e) => (
-                <option key={e.id} value={e.id}>
-                  {e.name}
-                </option>
-              ))}
-            </select>
-          )}
-          {events.length === 1 && event && (
-            <span className="px-3 py-2 text-sm border border-ink-100 rounded-btn bg-white font-semibold text-ink-700">
-              {event.name}
-            </span>
-          )}
+          <button
+            type="button"
+            onClick={exportXlsx}
+            className="px-3.5 py-2 rounded-btn border border-ink-100 text-ink-900 text-[13px] font-semibold hover:bg-ink-50 flex items-center gap-1.5"
+            title="현재 필터 결과를 엑셀로 내보내기"
+          >
+            <Download className="w-4 h-4" />
+            엑셀 다운로드
+          </button>
           <Link
             href={`/admin/sponsors/new${eventId ? `?event=${eventId}` : ""}`}
             className="px-3.5 py-2 rounded-btn bg-ink-900 text-white text-[13px] font-semibold hover:bg-ink-700 flex items-center gap-1.5"

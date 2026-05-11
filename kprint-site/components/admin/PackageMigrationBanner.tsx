@@ -80,6 +80,7 @@ export function PackageMigrationBanner() {
         const newPkgId = `pkg-${cat.code.toLowerCase()}`;
         const pkgDoc: Omit<Package, "id"> & { id: string; createdAt: unknown; updatedAt: unknown } = {
           id: newPkgId,
+          eventId: cat.eventId,
           code: cat.code,
           name: cat.name,
           tier: "standard",

@@ -2,9 +2,10 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { collection, onSnapshot, orderBy, query } from "firebase/firestore";
+import { collection, onSnapshot, orderBy, query, where } from "firebase/firestore";
 import { ChevronRight, Search } from "lucide-react";
 import { getDb } from "@/lib/firebase/firestore";
+import { useEventFilter } from "@/lib/admin/useEventFilter";
 import type { Inquiry } from "@/lib/types";
 
 type StatusFilter = "all" | "new" | "in_progress" | "closed";
@@ -23,9 +24,19 @@ export default function InquiriesListPage() {
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
 
+  const { eventId, ready } = useEventFilter();
+
   useEffect(() => {
+    if (!ready || !eventId) {
+      setLoading(false);
+      return;
+    }
     const u = onSnapshot(
-      query(collection(getDb(), "inquiries"), orderBy("createdAt", "desc")),
+      query(
+        collection(getDb(), "inquiries"),
+        where("eventId", "==", eventId),
+        orderBy("createdAt", "desc")
+      ),
       (s) => {
         setInquiries(s.docs.map((d) => ({ ...(d.data() as Inquiry), id: d.id })));
         setLoading(false);
@@ -33,7 +44,7 @@ export default function InquiriesListPage() {
       () => setLoading(false)
     );
     return () => u();
-  }, []);
+  }, [ready, eventId]);
 
   const filtered = useMemo(() => {
     let rows = inquiries;
