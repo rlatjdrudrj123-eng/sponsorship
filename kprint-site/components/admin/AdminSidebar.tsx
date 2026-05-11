@@ -11,6 +11,7 @@ import {
   Grid2x2,
   HelpCircle,
   Handshake,
+  Layers,
   LayoutDashboard,
   MessageSquare,
   Package,
@@ -70,6 +71,7 @@ export function AdminSidebar() {
         { href: "/admin/categories", label: "카테고리", Icon: FolderKanban },
         { href: "/admin/packages", label: "패키지", Icon: Package },
         { href: "/admin/slots", label: "슬롯 관리", Icon: Grid2x2 },
+        { href: "/admin/classification", label: "분류 관리", Icon: Layers },
       ],
     },
     {

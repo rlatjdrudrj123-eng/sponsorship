@@ -827,6 +827,91 @@ export async function clearDemoSponsors(): Promise<number> {
 }
 
 // ============================================================================
+// PERSONAS SEED — 기본 5종 페르소나를 현재 행사에 시드
+// ============================================================================
+
+const DEFAULT_PERSONAS = [
+  {
+    id: "first-time",
+    emoji: "🌱",
+    title: "처음 참가하는 회사",
+    description:
+      "예산 부담 적게 진입 채널 확보. 500만~1500만원 사이 단품·스탠다드 패키지 위주.",
+    targetTags: ["온사이트", "프린트", "정보탐색"],
+    budgetMax: 15_000_000,
+    packageTier: "standard" as const,
+    order: 0,
+    isActive: true,
+  },
+  {
+    id: "global",
+    emoji: "🌏",
+    title: "글로벌 바이어가 주 타겟",
+    description:
+      "해외 뉴스레터, 영문 쇼가이드, 옥외 LED 등 외국인 동선·해외 채널 집중.",
+    targetTags: ["글로벌", "옥외", "정보탐색"],
+    order: 1,
+    isActive: true,
+  },
+  {
+    id: "budget-friendly",
+    emoji: "💰",
+    title: "예산 효율 최우선",
+    description:
+      "단가 낮은 디지털 배너·SNS 콘텐츠 중심. 노출량 대비 비용이 가장 낮은 조합.",
+    targetTags: ["온라인", "SNS", "콘텐츠"],
+    budgetMax: 5_000_000,
+    order: 2,
+    isActive: true,
+  },
+  {
+    id: "brand-leader",
+    emoji: "🚀",
+    title: "브랜드 인지도 강화",
+    description:
+      "전 동선 통합 노출. 시그니처 패키지 + 옥외 + 천장배너 같은 대형 자리.",
+    targetTags: ["브랜드_확산형", "온사이트", "옥외"],
+    budgetMin: 15_000_000,
+    packageTier: "signature" as const,
+    order: 3,
+    isActive: true,
+  },
+  {
+    id: "industry-target",
+    emoji: "🎯",
+    title: "산업 종사자 직접 도달",
+    description:
+      "참관등록 페이지, 세미나 배너, 직접 메일 발송 등 결정권자 타겟 채널.",
+    targetTags: ["산업종사자", "등록경로", "직접도달"],
+    order: 4,
+    isActive: true,
+  },
+];
+
+export type PersonaSeedResult = {
+  created: string[];
+  skipped: string[];
+};
+
+export async function seedDefaultPersonas(eventId: string): Promise<PersonaSeedResult> {
+  const db = getDb();
+  const result: PersonaSeedResult = { created: [], skipped: [] };
+  const batch = writeBatch(db);
+
+  for (const p of DEFAULT_PERSONAS) {
+    const docId = `${eventId}-${p.id}`;
+    batch.set(doc(db, "personas", docId), {
+      ...p,
+      id: docId,
+      eventId,
+    });
+    result.created.push(docId);
+  }
+  await batch.commit();
+  return result;
+}
+
+// ============================================================================
 // MIGRATION — 기존 데이터(eventId 없음)에 K-PRINT 2026 태깅
 // ============================================================================
 

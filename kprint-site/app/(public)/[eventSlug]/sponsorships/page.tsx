@@ -23,11 +23,12 @@ import {
   X,
 } from "lucide-react";
 import { getDb } from "@/lib/firebase/firestore";
-import { PersonaCourses, type PersonaId, type Persona } from "@/components/public/PersonaCourses";
+import { PersonaCourses, matchesPersona } from "@/components/public/PersonaCourses";
 import type {
   Category,
   Channel,
   Package,
+  Persona,
   SiteSettings,
   Slot,
   Subcategory,
@@ -83,6 +84,9 @@ const LOCATION_OPTIONS: Array<{ id: LocationTag; label: string }> = [
 ];
 
 function getTiming(c: Category): Timing[] {
+  // 어드민이 명시 설정한 값 우선
+  if (c.timingOverride && c.timingOverride.length > 0) return c.timingOverride;
+  // 휴리스틱 fallback
   const out: Timing[] = [];
   if (c.type === "mailing") out.push("pre");
   if (c.type === "digital_banner") out.push("pre");
@@ -103,6 +107,7 @@ function getTiming(c: Category): Timing[] {
 }
 
 function getLocations(c: Category): LocationTag[] {
+  if (c.locationOverride && c.locationOverride.length > 0) return c.locationOverride;
   const out: LocationTag[] = [];
   const n = c.name.ko;
   if (c.channel === "online") out.push("online");
@@ -167,8 +172,8 @@ export default function SponsorshipsPage() {
 
   const [filterChannel, setFilterChannel] = useState<Channel | "all">("all");
   const [budget, setBudget] = useState<number>(0); // 0 = 필터 X
-  const [persona, setPersona] = useState<PersonaId | null>(null);
-  const [personaConfig, setPersonaConfig] = useState<Persona | null>(null);
+  const [personas, setPersonas] = useState<Persona[]>([]);
+  const [selectedPersona, setSelectedPersona] = useState<Persona | null>(null);
   const [activeMediaTypes, setActiveMediaTypes] = useState<Set<MediaType>>(new Set());
   const [activeTimings, setActiveTimings] = useState<Set<Timing>>(new Set());
   const [activeLocations, setActiveLocations] = useState<Set<LocationTag>>(new Set());
@@ -182,7 +187,7 @@ export default function SponsorshipsPage() {
     (async () => {
       try {
         const db = getDb();
-        const [catSnap, subSnap, slotSnap, pkgSnap, settingsSnap] = await Promise.all([
+        const [catSnap, subSnap, slotSnap, pkgSnap, settingsSnap, personaSnap] = await Promise.all([
           getDocs(
             query(
               collection(db, "categories"),
@@ -204,7 +209,13 @@ export default function SponsorshipsPage() {
             )
           ),
           getDoc(doc(db, "siteSettings", eventId)),
+          getDocs(
+            query(collection(db, "personas"), where("eventId", "==", eventId))
+          ),
         ]);
+        setPersonas(
+          personaSnap.docs.map((d) => ({ ...(d.data() as Persona), id: d.id }))
+        );
         setCategories(
           // type='package'인 카테고리는 통합 후 별도 섹션에 표시되므로 그리드에서 제외
           catSnap.docs
@@ -267,16 +278,12 @@ export default function SponsorshipsPage() {
     if (budget > 0) {
       rows = rows.filter((r) => r.minPrice > 0 && r.minPrice <= budget);
     }
-    if (personaConfig) {
+    if (selectedPersona) {
       rows = rows.filter((r) => {
-        // 페르소나 targetTags 와 카테고리 tags 교집합 (적어도 하나)
-        const matched = personaConfig.targetTags.some((t) =>
-          (r.tags ?? []).includes(t)
-        );
-        if (!matched) return false;
-        if (personaConfig.budgetMax && r.minPrice > personaConfig.budgetMax)
+        if (!matchesPersona(r, selectedPersona)) return false;
+        if (selectedPersona.budgetMax && r.minPrice > selectedPersona.budgetMax)
           return false;
-        if (personaConfig.budgetMin && r.minPrice < personaConfig.budgetMin)
+        if (selectedPersona.budgetMin && r.minPrice < selectedPersona.budgetMin)
           return false;
         return true;
       });
@@ -321,7 +328,7 @@ export default function SponsorshipsPage() {
     budget,
     deadlineSoon,
     search,
-    personaConfig,
+    selectedPersona,
     activeMediaTypes,
     activeTimings,
     activeLocations,
@@ -330,8 +337,7 @@ export default function SponsorshipsPage() {
   const resetFilters = () => {
     setFilterChannel("all");
     setBudget(0);
-    setPersona(null);
-    setPersonaConfig(null);
+    setSelectedPersona(null);
     setActiveMediaTypes(new Set());
     setActiveTimings(new Set());
     setActiveLocations(new Set());
@@ -344,7 +350,7 @@ export default function SponsorshipsPage() {
     budget > 0 ||
     deadlineSoon ||
     search.trim() !== "" ||
-    !!persona ||
+    !!selectedPersona ||
     activeMediaTypes.size > 0 ||
     activeTimings.size > 0 ||
     activeLocations.size > 0;
@@ -380,17 +386,12 @@ export default function SponsorshipsPage() {
 
             {/* 페르소나 추천 코스 */}
             <PersonaCourses
+              personas={personas}
               categories={categories}
               packages={packages}
-              selectedPersona={persona}
-              onPick={(id, cfg) => {
-                setPersona(id);
-                setPersonaConfig(cfg);
-              }}
-              onClear={() => {
-                setPersona(null);
-                setPersonaConfig(null);
-              }}
+              selectedPersonaId={selectedPersona?.id ?? null}
+              onPick={({ persona }) => setSelectedPersona(persona)}
+              onClear={() => setSelectedPersona(null)}
             />
 
             <div className="lg:grid lg:grid-cols-[260px_1fr] lg:gap-8 px-6 md:px-16 py-10 max-w-7xl mx-auto">

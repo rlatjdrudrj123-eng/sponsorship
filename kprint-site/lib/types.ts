@@ -101,6 +101,9 @@ export type Category = {
     quote?: string;
     logoUrl?: string;
   }>;                     // 이전 행사 사례
+  personas?: string[];    // 이 카테고리가 어떤 페르소나에 속하는지 (Persona.id 배열)
+  timingOverride?: Array<"pre" | "onsite" | "post">;  // 어드민 수동 지정 (없으면 휴리스틱)
+  locationOverride?: Array<"hall_a" | "hall_b" | "hall_c" | "hall_d" | "outdoor" | "online">;  // 어드민 수동 지정
   order: number;
 
   // 잠금 상태 (엑셀 동기화 필드는 잠금)
@@ -331,6 +334,21 @@ export type Sponsor = {
 
   createdAt: Timestamp;
   updatedAt: Timestamp;
+};
+
+// ============= PERSONA (참가업체 페르소나) =============
+export type Persona = {
+  id: string;
+  eventId: string;       // 행사별 분리
+  emoji: string;
+  title: string;
+  description: string;
+  targetTags?: string[];   // 카테고리 자동 추천용 (옵션 — 명시적 personas 필드가 우선)
+  budgetMin?: number;
+  budgetMax?: number;
+  packageTier?: "signature" | "standard";
+  order: number;
+  isActive: boolean;
 };
 
 // ============= QUOTE SETTINGS (사무국 정보 + 견적서 기본값) =============

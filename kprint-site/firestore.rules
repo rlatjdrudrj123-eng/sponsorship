@@ -137,6 +137,12 @@ service cloud.firestore {
       allow write: if isKprintAdmin();
     }
 
+    // 페르소나 (참가업체 분류) — 공개 읽기, 쓰기 어드민
+    match /personas/{id} {
+      allow read: if true;
+      allow write: if isKprintAdmin();
+    }
+
     // ============================================================
     //  그 외 모든 경로 차단
     // ============================================================
