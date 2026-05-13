@@ -38,6 +38,8 @@ import { LocaleSwitch } from "@/components/public/LocaleSwitch";
 import { SlotPicker } from "@/components/public/CategoryDetail/_shared/SlotPicker";
 import { localized, useLocale, type Locale } from "@/lib/i18n/locale";
 import { t } from "@/lib/i18n/strings";
+import { derivePurposes } from "@/lib/purposes";
+import { PURPOSE_META, PURPOSE_ORDER, type Purpose } from "@/lib/types";
 
 function channelLabel(c: Channel | "all", locale: Locale): string {
   const key = (
@@ -189,6 +191,7 @@ export default function SponsorshipsPage() {
   const [budget, setBudget] = useState<number>(0); // 0 = 필터 X
   const [personas, setPersonas] = useState<Persona[]>([]);
   const [selectedPersona, setSelectedPersona] = useState<Persona | null>(null);
+  const [activePurposes, setActivePurposes] = useState<Set<Purpose>>(new Set());
   const [activeMediaTypes, setActiveMediaTypes] = useState<Set<MediaType>>(new Set());
   const [activeTimings, setActiveTimings] = useState<Set<Timing>>(new Set());
   const [activeLocations, setActiveLocations] = useState<Set<LocationTag>>(new Set());
@@ -196,6 +199,7 @@ export default function SponsorshipsPage() {
   const [search, setSearch] = useState("");
   const [sheetOpen, setSheetOpen] = useState(false);
   const [viewMode, setViewMode] = useState<"card" | "slide">("card");
+  const [advancedOpen, setAdvancedOpen] = useState(false);
 
   useEffect(() => {
     if (!eventId) return;
@@ -297,6 +301,13 @@ export default function SponsorshipsPage() {
       // 페르소나는 태그·맥락 기반 추천만. 예산은 슬라이더에서 별도로 제어.
       rows = rows.filter((r) => matchesPersona(r, selectedPersona));
     }
+    if (activePurposes.size > 0) {
+      // 참가업체 시점의 광고 목적 필터 (단일 진실원)
+      rows = rows.filter((r) => {
+        const purps = derivePurposes(r);
+        return purps.some((p) => activePurposes.has(p));
+      });
+    }
     if (activeMediaTypes.size > 0) {
       rows = rows.filter((r) => {
         // floor_plan 선택 시 media(이벤트 LED)도 같이 포함
@@ -338,6 +349,7 @@ export default function SponsorshipsPage() {
     deadlineSoon,
     search,
     selectedPersona,
+    activePurposes,
     activeMediaTypes,
     activeTimings,
     activeLocations,
@@ -347,11 +359,24 @@ export default function SponsorshipsPage() {
     setFilterChannel("all");
     setBudget(0);
     setSelectedPersona(null);
+    setActivePurposes(new Set());
     setActiveMediaTypes(new Set());
     setActiveTimings(new Set());
     setActiveLocations(new Set());
     setDeadlineSoon(false);
     setSearch("");
+  };
+
+  // 페르소나 선택 시 목적 필터 자동 적용 (단일 진실원)
+  const pickPersona = (p: Persona) => {
+    setSelectedPersona(p);
+    if (p.purposes && p.purposes.length > 0) {
+      setActivePurposes(new Set(p.purposes));
+    }
+  };
+  const clearPersona = () => {
+    setSelectedPersona(null);
+    setActivePurposes(new Set());
   };
 
   const hasActiveFilter =
@@ -360,6 +385,7 @@ export default function SponsorshipsPage() {
     deadlineSoon ||
     search.trim() !== "" ||
     !!selectedPersona ||
+    activePurposes.size > 0 ||
     activeMediaTypes.size > 0 ||
     activeTimings.size > 0 ||
     activeLocations.size > 0;
@@ -424,8 +450,8 @@ export default function SponsorshipsPage() {
               categories={categories}
               packages={packages}
               selectedPersonaId={selectedPersona?.id ?? null}
-              onPick={({ persona }) => setSelectedPersona(persona)}
-              onClear={() => setSelectedPersona(null)}
+              onPick={({ persona }) => pickPersona(persona)}
+              onClear={clearPersona}
             />
 
             <div className="lg:grid lg:grid-cols-[260px_1fr] lg:gap-8 px-6 md:px-16 py-10 max-w-7xl mx-auto">
@@ -459,6 +485,8 @@ export default function SponsorshipsPage() {
                   setBudget={setBudget}
                   budgetMax={budgetMax}
                   inBudgetCount={inBudgetCount}
+                  activePurposes={activePurposes}
+                  setActivePurposes={setActivePurposes}
                   activeMediaTypes={activeMediaTypes}
                   setActiveMediaTypes={setActiveMediaTypes}
                   activeTimings={activeTimings}
@@ -471,6 +499,8 @@ export default function SponsorshipsPage() {
                   resultCount={filtered.length}
                   hasActiveFilter={hasActiveFilter}
                   onReset={resetFilters}
+                  advancedOpen={advancedOpen}
+                  setAdvancedOpen={setAdvancedOpen}
                 />
               </aside>
 
@@ -558,6 +588,8 @@ export default function SponsorshipsPage() {
                 setBudget={setBudget}
                 budgetMax={budgetMax}
                 inBudgetCount={inBudgetCount}
+                activePurposes={activePurposes}
+                setActivePurposes={setActivePurposes}
                 activeMediaTypes={activeMediaTypes}
                 setActiveMediaTypes={setActiveMediaTypes}
                 activeTimings={activeTimings}
@@ -570,6 +602,8 @@ export default function SponsorshipsPage() {
                 resultCount={filtered.length}
                 hasActiveFilter={hasActiveFilter}
                 onReset={resetFilters}
+                advancedOpen={advancedOpen}
+                setAdvancedOpen={setAdvancedOpen}
               />
             </div>
             <footer className="px-5 py-3 border-t border-ink-100 grid grid-cols-2 gap-2 shrink-0">
@@ -622,6 +656,8 @@ function FilterPanel({
   setBudget,
   budgetMax,
   inBudgetCount,
+  activePurposes,
+  setActivePurposes,
   activeMediaTypes,
   setActiveMediaTypes,
   activeTimings,
@@ -634,6 +670,8 @@ function FilterPanel({
   resultCount,
   hasActiveFilter,
   onReset,
+  advancedOpen,
+  setAdvancedOpen,
 }: {
   search: string;
   setSearch: (s: string) => void;
@@ -643,6 +681,8 @@ function FilterPanel({
   setBudget: (n: number) => void;
   budgetMax: number;
   inBudgetCount: number;
+  activePurposes: Set<Purpose>;
+  setActivePurposes: (s: Set<Purpose>) => void;
   activeMediaTypes: Set<MediaType>;
   setActiveMediaTypes: (s: Set<MediaType>) => void;
   activeTimings: Set<Timing>;
@@ -655,6 +695,8 @@ function FilterPanel({
   resultCount: number;
   hasActiveFilter: boolean;
   onReset: () => void;
+  advancedOpen: boolean;
+  setAdvancedOpen: (v: boolean) => void;
 }) {
   const locale = useLocale((s) => s.locale);
   const mediaOptions = MEDIA_TYPE_OPTIONS.map((o) => ({
@@ -676,13 +718,13 @@ function FilterPanel({
         <div className="text-[12px] text-ink-500">
           {locale === "en" ? (
             <>
-              <strong className="text-brand-700">{resultCount}</strong> of{" "}
+              <strong className="text-brand-500">{resultCount}</strong> of{" "}
               <strong className="text-ink-900">{totalCount}</strong>
             </>
           ) : (
             <>
               전체 <strong className="text-ink-900">{totalCount}</strong>개 중{" "}
-              <strong className="text-brand-700">{resultCount}</strong>개
+              <strong className="text-brand-500">{resultCount}</strong>개
             </>
           )}
         </div>
@@ -698,61 +740,74 @@ function FilterPanel({
         )}
       </div>
 
-      {/* (A) 검색 */}
-      <FilterSection title={t("common.search", locale)}>
-        <div className="relative">
-          <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-ink-300" />
-          <input
-            type="text"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder={t("spons.searchPlaceholder", locale)}
-            className="w-full pl-9 pr-3 py-2 text-[13px] border border-ink-100 rounded-btn focus:outline-none focus:border-brand-500"
-          />
-        </div>
-      </FilterSection>
-
-      {/* (B) 채널 */}
-      <FilterSection title={t("spons.channel", locale)}>
-        <div className="flex flex-wrap lg:flex-col gap-1">
-          {CHANNEL_FILTER_IDS.map((id) => (
-            <button
-              key={id}
-              type="button"
-              onClick={() => setFilterChannel(id)}
-              className={
-                "text-left px-3 py-1.5 rounded-btn text-[13px] transition-colors " +
-                (filterChannel === id
-                  ? "bg-ink-900 text-white font-semibold"
-                  : "text-ink-700 hover:bg-ink-50")
-              }
-            >
-              {channelLabel(id, locale)}
-            </button>
-          ))}
-        </div>
-        <p className="mt-1.5 px-1 text-[10.5px] text-ink-500">
-          {locale === "en"
-            ? "Packages are shown in the section at the top."
-            : "패키지는 페이지 상단 전용 섹션에서 확인하세요."}
-        </p>
-      </FilterSection>
-
-      {/* (C-1) 매체 유형 */}
-      <FilterSection title={t("spons.media", locale)}>
-        <CheckboxList
-          options={mediaOptions}
-          active={activeMediaTypes}
-          onToggle={(id) => {
-            const next = new Set(activeMediaTypes);
-            if (next.has(id)) next.delete(id);
-            else next.add(id);
-            setActiveMediaTypes(next);
-          }}
+      {/* (1) 예산 — 가장 먼저 묻는 질문 */}
+      <FilterSection title={t("spons.budget", locale)}>
+        <BudgetSlider
+          budget={budget}
+          setBudget={setBudget}
+          budgetMax={budgetMax}
+          inBudgetCount={inBudgetCount}
         />
       </FilterSection>
 
-      {/* (C-2) 노출 시점 */}
+      {/* (2) 광고 목적 — 참가업체 언어 (단일 진실원) */}
+      <FilterSection
+        title={locale === "en" ? "Purpose" : "광고 목적"}
+        hint={
+          locale === "en"
+            ? "Why are you buying?"
+            : "왜 사시는지 — 참가업체 시점"
+        }
+      >
+        <div className="space-y-1.5">
+          {PURPOSE_ORDER.map((p) => {
+            const meta = PURPOSE_META[p];
+            const active = activePurposes.has(p);
+            return (
+              <button
+                key={p}
+                type="button"
+                onClick={() => {
+                  const next = new Set(activePurposes);
+                  if (active) next.delete(p);
+                  else next.add(p);
+                  setActivePurposes(next);
+                }}
+                className={
+                  "w-full text-left px-3 py-2 rounded-btn border-2 transition-colors " +
+                  (active
+                    ? "border-brand-500 bg-brand-500 text-white"
+                    : "border-ink-100 bg-surface hover:border-brand-500")
+                }
+              >
+                <div className="flex items-center justify-between gap-2">
+                  <span
+                    className={
+                      "text-[12.5px] font-bold " +
+                      (active ? "text-white" : "text-ink-900")
+                    }
+                  >
+                    {locale === "en" ? meta.en : meta.ko}
+                  </span>
+                  {active && (
+                    <span className="w-1.5 h-1.5 rounded-full bg-white" />
+                  )}
+                </div>
+                <div
+                  className={
+                    "text-[10.5px] mt-0.5 leading-snug " +
+                    (active ? "text-white/85" : "text-ink-500")
+                  }
+                >
+                  {meta.desc}
+                </div>
+              </button>
+            );
+          })}
+        </div>
+      </FilterSection>
+
+      {/* (3) 노출 시점 */}
       <FilterSection title={t("spons.timing", locale)}>
         <CheckboxList
           options={timingOptions}
@@ -766,7 +821,7 @@ function FilterPanel({
         />
       </FilterSection>
 
-      {/* (C-3) 위치 */}
+      {/* (4) 위치 */}
       <FilterSection title={t("spons.location", locale)}>
         <CheckboxList
           options={locationOptions}
@@ -780,17 +835,7 @@ function FilterPanel({
         />
       </FilterSection>
 
-      {/* (D) 예산 슬라이더 */}
-      <FilterSection title={t("spons.budget", locale)}>
-        <BudgetSlider
-          budget={budget}
-          setBudget={setBudget}
-          budgetMax={budgetMax}
-          inBudgetCount={inBudgetCount}
-        />
-      </FilterSection>
-
-      {/* (E) 마감 임박 */}
+      {/* (5) 마감 임박 */}
       <FilterSection title={t("spons.deadline", locale)}>
         <label className="flex items-center gap-2 text-[13px] text-ink-700 cursor-pointer hover:text-ink-900">
           <input
@@ -802,23 +847,98 @@ function FilterPanel({
           <span>{t("spons.deadlineSoon", locale)}</span>
         </label>
       </FilterSection>
+
+      {/* (6) 고급 필터 — 접힘. 사무국·내부 표현(매체 유형/채널/검색) */}
+      <details
+        open={advancedOpen}
+        onToggle={(e) => setAdvancedOpen((e.target as HTMLDetailsElement).open)}
+        className="border-t border-ink-100 pt-5"
+      >
+        <summary className="cursor-pointer text-[11px] uppercase tracking-widest text-ink-500 font-semibold flex items-center gap-1.5 list-none">
+          <span className="inline-block transition-transform" style={{ transform: advancedOpen ? "rotate(90deg)" : "none" }}>
+            ›
+          </span>
+          {locale === "en" ? "Advanced filters" : "고급 필터"}
+          <span className="ml-auto text-[10px] text-ink-300 normal-case tracking-normal font-normal">
+            {locale === "en" ? "(media · channel · search)" : "(매체 · 채널 · 검색)"}
+          </span>
+        </summary>
+
+        <div className="space-y-5 mt-4">
+          <FilterSection title={t("common.search", locale)}>
+            <div className="relative">
+              <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-ink-300" />
+              <input
+                type="text"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder={t("spons.searchPlaceholder", locale)}
+                className="w-full pl-9 pr-3 py-2 text-[13px] border border-ink-100 rounded-btn focus:outline-none focus:border-brand-500"
+              />
+            </div>
+          </FilterSection>
+
+          <FilterSection title={t("spons.channel", locale)}>
+            <div className="flex flex-wrap lg:flex-col gap-1">
+              {CHANNEL_FILTER_IDS.map((id) => (
+                <button
+                  key={id}
+                  type="button"
+                  onClick={() => setFilterChannel(id)}
+                  className={
+                    "text-left px-3 py-1.5 rounded-btn text-[13px] transition-colors " +
+                    (filterChannel === id
+                      ? "bg-ink-900 text-white font-semibold"
+                      : "text-ink-700 hover:bg-ink-50")
+                  }
+                >
+                  {channelLabel(id, locale)}
+                </button>
+              ))}
+            </div>
+          </FilterSection>
+
+          <FilterSection
+            title={t("spons.media", locale)}
+            hint={locale === "en" ? "Organizer's view" : "사무국 분류 — 참고용"}
+          >
+            <CheckboxList
+              options={mediaOptions}
+              active={activeMediaTypes}
+              onToggle={(id) => {
+                const next = new Set(activeMediaTypes);
+                if (next.has(id)) next.delete(id);
+                else next.add(id);
+                setActiveMediaTypes(next);
+              }}
+            />
+          </FilterSection>
+        </div>
+      </details>
     </div>
   );
 }
 
 function FilterSection({
   title,
+  hint,
   children,
 }: {
   title: string;
+  hint?: string;
   children: React.ReactNode;
 }) {
   return (
     <div>
-      <div className="text-[11px] uppercase tracking-widest text-ink-500 mb-2 font-semibold">
-        {title}
+      <div className="text-[11px] uppercase tracking-widest text-ink-500 mb-1 font-semibold flex items-baseline gap-2 flex-wrap">
+        <span>{title}</span>
+        {hint && (
+          <span className="text-[10px] text-ink-300 normal-case tracking-normal font-normal">
+            · {hint}
+          </span>
+        )}
       </div>
-      {children}
+      <div className="mt-2">{children}</div>
     </div>
   );
 }

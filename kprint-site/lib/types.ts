@@ -2,6 +2,48 @@ import type { Timestamp } from "firebase/firestore";
 
 export type { Timestamp };
 
+// ============= PURPOSE (참가업체 시점의 광고 목적) =============
+// 참가업체가 "왜 사는지" — 사이드바 필터·페르소나 매칭의 단일 진실원.
+// 카테고리는 명시적 purposeOverride 또는 휴리스틱(derivePurposes)으로 매핑됨.
+export type Purpose =
+  | "traffic_driver"     // 부스 방문 유도 (현장 동선 위 광고)
+  | "brand_awareness"    // 브랜드 인지도 확보 (대형 노출 채널)
+  | "buyer_reach"        // 해외/특정 바이어 도달 (타겟팅 직접 도달)
+  | "post_asset";        // 행사 후 자산 (콘텐츠·SNS·인터뷰)
+
+export const PURPOSE_ORDER: Purpose[] = [
+  "traffic_driver",
+  "brand_awareness",
+  "buyer_reach",
+  "post_asset",
+];
+
+export const PURPOSE_META: Record<
+  Purpose,
+  { ko: string; en: string; desc: string }
+> = {
+  traffic_driver: {
+    ko: "부스 방문 유도",
+    en: "Drive booth traffic",
+    desc: "참관객 동선 위에서 부스로 유도",
+  },
+  brand_awareness: {
+    ko: "브랜드 인지도 확보",
+    en: "Brand awareness",
+    desc: "전 동선 통합 노출로 브랜드 인지",
+  },
+  buyer_reach: {
+    ko: "해외·특정 바이어 도달",
+    en: "Reach key buyers",
+    desc: "결정권자에게 직접 도달 (메일·등록·세미나)",
+  },
+  post_asset: {
+    ko: "행사 후 자산 남기기",
+    en: "Post-event assets",
+    desc: "콘텐츠·SNS·인터뷰로 사후 활용",
+  },
+};
+
 // ============= CATEGORY TYPE =============
 export type CategoryType =
   | "floor_plan" // 도면형 (천장배너, 등록대, 라이팅월, 기둥광고)
@@ -104,6 +146,21 @@ export type Category = {
   personas?: string[];    // 이 카테고리가 어떤 페르소나에 속하는지 (Persona.id 배열)
   timingOverride?: Array<"pre" | "onsite" | "post">;  // 어드민 수동 지정 (없으면 휴리스틱)
   locationOverride?: Array<"hall_a" | "hall_b" | "hall_c" | "hall_d" | "outdoor" | "online">;  // 어드민 수동 지정
+  purposeOverride?: Purpose[];  // 참가업체 목적별 필터링 (없으면 휴리스틱)
+
+  // 사회적 증거 (작년 데이터) — 시드 후 어드민 편집
+  lastYear?: {
+    buyers?: string[];      // 작년 이 카테고리 구매 회사명
+    soldOutDate?: string;   // ISO date, 작년 매진된 날
+    avgRoiNote?: string;    // 자유 텍스트, 예: "부스 방문 +27%"
+  };
+
+  // 한정 재고 — 슬롯 단위에서도 가능하지만 카테고리 전체 단독 수량 등
+  inventoryNote?: string;     // "한정 1자리" 등 자유 텍스트
+
+  // 패키지 크로스 표시 — 이 카테고리에 포함된 슬롯이 어느 패키지에 속하는지
+  inPackages?: string[];      // Package.id 배열
+
   order: number;
 
   // 잠금 상태 (엑셀 동기화 필드는 잠금)
@@ -256,8 +313,27 @@ export type SiteSettings = {
 // /[eventSlug] 페이지의 콘텐츠를 어드민에서 자유롭게 구성할 수 있는 블록 단위 schema.
 // 각 블록 = 한 화면(스냅 슬라이드) 또는 한 섹션. 타입별 디자인은 KIMES Figma 톤으로 고정.
 
+/** 블록 공통 스타일 override — 어드민이 블록 단위로 자유 조정 가능 */
+export type BlockStyle = {
+  /** 배경: hex, 또는 'canvas'/'surface'/'ink'/'brand'/'transparent' 키워드 */
+  bg?: string;
+  /** 텍스트 색상 hex */
+  text?: string;
+  /** 액센트 색상 hex (없으면 행사 brand color) */
+  accent?: string;
+  /** 최소 높이: 'screen' (h-screen, 기본) | 'half' | 'auto' */
+  minHeight?: "screen" | "half" | "auto";
+  /** 정렬 */
+  align?: "left" | "center" | "right";
+  /** 패딩 강도 */
+  pad?: "tight" | "normal" | "loose";
+  /** 풀브리드 (가로 max-w 제거) */
+  fullBleed?: boolean;
+};
+
 export type LandingBlockBase = {
   id: string; // 안정 키 (re-render·드래그용)
+  style?: BlockStyle;
 };
 
 export type CoverBlock = LandingBlockBase & {
@@ -473,6 +549,7 @@ export type Persona = {
   title: string;
   description: string;
   targetTags?: string[];   // 카테고리 자동 추천용 (옵션 — 명시적 personas 필드가 우선)
+  purposes?: Purpose[];    // 이 페르소나가 강조하는 광고 목적 — 사이드바 필터와 단일 진실원 공유
   budgetMin?: number;
   budgetMax?: number;
   packageTier?: "signature" | "standard";

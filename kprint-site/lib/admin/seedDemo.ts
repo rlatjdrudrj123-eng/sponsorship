@@ -25,6 +25,7 @@ import {
   writeBatch,
 } from "firebase/firestore";
 import { getDb } from "../firebase/firestore";
+import { derivePurposes } from "../purposes";
 import type {
   CartItem,
   Category,
@@ -840,6 +841,7 @@ const DEFAULT_PERSONAS = [
     description:
       "예산 부담 적게 진입 채널 확보. 500만~1500만원 사이 단품·스탠다드 패키지 위주.",
     targetTags: ["온사이트", "프린트", "정보탐색"],
+    purposes: ["traffic_driver", "brand_awareness"] as const,
     budgetMax: 15_000_000,
     packageTier: "standard" as const,
     order: 0,
@@ -852,6 +854,7 @@ const DEFAULT_PERSONAS = [
     description:
       "해외 뉴스레터, 영문 쇼가이드, 옥외 LED 등 외국인 동선·해외 채널 집중.",
     targetTags: ["글로벌", "옥외", "정보탐색"],
+    purposes: ["buyer_reach", "brand_awareness"] as const,
     order: 1,
     isActive: true,
   },
@@ -862,6 +865,7 @@ const DEFAULT_PERSONAS = [
     description:
       "단가 낮은 디지털 배너·SNS 콘텐츠 중심. 노출량 대비 비용이 가장 낮은 조합.",
     targetTags: ["온라인", "SNS", "콘텐츠"],
+    purposes: ["buyer_reach", "post_asset"] as const,
     budgetMax: 5_000_000,
     order: 2,
     isActive: true,
@@ -873,7 +877,7 @@ const DEFAULT_PERSONAS = [
     description:
       "전 동선 통합 노출. 시그니처 패키지 + 옥외 + 천장배너 같은 대형 자리.",
     targetTags: ["브랜드_확산형", "온사이트", "옥외"],
-    budgetMin: 15_000_000,
+    purposes: ["brand_awareness", "traffic_driver"] as const,
     packageTier: "signature" as const,
     order: 3,
     isActive: true,
@@ -885,6 +889,7 @@ const DEFAULT_PERSONAS = [
     description:
       "참관등록 페이지, 세미나 배너, 직접 메일 발송 등 결정권자 타겟 채널.",
     targetTags: ["산업종사자", "등록경로", "직접도달"],
+    purposes: ["buyer_reach"] as const,
     order: 4,
     isActive: true,
   },
@@ -1009,11 +1014,13 @@ export async function populateClassifications(eventId: string): Promise<Populate
 
       const timing = deriveTiming(c);
       const locations = deriveLocations(c);
+      const purposes = derivePurposes(c);
 
       batch.update(doc(db, "categories", c.id), {
         personas: matchedPersonas,
         timingOverride: timing,
         locationOverride: locations,
+        purposeOverride: purposes,
         updatedAt: Timestamp.fromDate(new Date()),
       });
       result.categoriesUpdated++;
