@@ -223,15 +223,31 @@ export default function CartPage() {
                     </span>
                   </span>
                 </label>
-                <button
-                  type="button"
-                  onClick={printPdf}
-                  disabled={noneSelected}
-                  className="px-3.5 py-2 rounded-btn border border-ink-100 text-[12.5px] font-semibold text-ink-900 hover:bg-ink-50 disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1.5"
-                >
-                  <FileDown className="w-3.5 h-3.5" />
-                  선택 항목 PDF로 저장
-                </button>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <Link
+                    href={`/${eventId}/compare?ids=${encodeURIComponent(
+                      Array.from(selected).join(",")
+                    )}`}
+                    aria-disabled={noneSelected}
+                    className={
+                      "px-3.5 py-2 rounded-btn border text-[12.5px] font-semibold flex items-center gap-1.5 transition-colors " +
+                      (noneSelected
+                        ? "border-ink-100 text-ink-300 pointer-events-none"
+                        : "border-ink-100 text-ink-900 hover:border-ink-900")
+                    }
+                  >
+                    선택 항목 비교 →
+                  </Link>
+                  <button
+                    type="button"
+                    onClick={printPdf}
+                    disabled={noneSelected}
+                    className="px-3.5 py-2 rounded-btn border border-ink-100 text-[12.5px] font-semibold text-ink-900 hover:bg-ink-50 disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1.5"
+                  >
+                    <FileDown className="w-3.5 h-3.5" />
+                    PDF로 저장
+                  </button>
+                </div>
               </div>
 
               <div className="bg-surface border border-ink-100 rounded-card overflow-hidden shadow-card">

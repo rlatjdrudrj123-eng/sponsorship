@@ -1152,10 +1152,10 @@ function PackageSection({ packages, eventId }: { packages: Package[]; eventId: s
               key={pkg.id}
               href={`/${eventId}/packages/${pkg.id}`}
               className={
-                "group bg-white border-2 rounded-card overflow-hidden flex flex-col h-full transition-colors " +
+                "group bg-surface border-2 rounded-card overflow-hidden flex flex-col h-full transition-all " +
                 (isSignature
-                  ? "border-brand-500 hover:border-brand-700"
-                  : "border-ink-100 hover:border-brand-500")
+                  ? "border-brand-500 hover:shadow-glow-sm"
+                  : "border-ink-100 hover:border-brand-500 hover:shadow-card")
               }
             >
               <div className="aspect-[4/3] bg-ink-100 relative shrink-0">
@@ -1174,9 +1174,9 @@ function PackageSection({ packages, eventId }: { packages: Package[]; eventId: s
                 <div className="absolute top-3 left-3">
                   <span
                     className={
-                      "text-[10px] uppercase tracking-wider px-2 py-0.5 rounded font-bold " +
+                      "text-[10px] uppercase tracking-wider px-2.5 py-1 rounded-pill font-num font-bold " +
                       (isSignature
-                        ? "bg-brand-500 text-ink-900"
+                        ? "bg-brand-500 text-white shadow-glow-sm"
                         : "bg-white/90 text-ink-900")
                     }
                   >
@@ -1185,7 +1185,14 @@ function PackageSection({ packages, eventId }: { packages: Package[]; eventId: s
                 </div>
               </div>
               <div className="p-4 flex-1 flex flex-col">
-                <div className="font-bold text-[15px] text-ink-900 group-hover:text-brand-700 leading-tight">
+                <div
+                  className={
+                    "font-bold leading-tight tracking-tight transition-colors " +
+                    (isSignature
+                      ? "text-[18px] text-ink-900 group-hover:text-brand-500"
+                      : "text-[15px] text-ink-900 group-hover:text-brand-500")
+                  }
+                >
                   {localized(pkg.name, locale)}
                 </div>
                 {pkg.tagline && (
@@ -1268,6 +1275,14 @@ function CardGrid({ items, eventId }: { items: EnrichedCategory[]; eventId: stri
                   <BadgePill key={b} badge={b} />
                 ))}
               </div>
+              {/* 잔여 N자리 강조 — 한정 재고 정직 표시 */}
+              {c.slotTotal > 0 && c.slotAvailable > 0 && c.slotAvailable <= 3 && (
+                <div className="absolute bottom-3 left-3 right-3 flex items-center justify-between">
+                  <span className="px-2 py-1 rounded-pill bg-ink-900 text-white text-[10.5px] font-num font-bold shadow-card">
+                    잔여 {c.slotAvailable}자리
+                  </span>
+                </div>
+              )}
             </div>
             <div className="p-5 flex-1 flex flex-col">
               <div className="font-bold text-[16px] text-ink-900 group-hover:text-brand-500 leading-tight tracking-tight transition-colors">
@@ -1278,13 +1293,51 @@ function CardGrid({ items, eventId }: { items: EnrichedCategory[]; eventId: stri
                   {c.shortDesc}
                 </p>
               )}
+
+              {/* 목적 칩 — 참가업체 시점 */}
+              {(() => {
+                const purps = derivePurposes(c).slice(0, 2);
+                if (purps.length === 0) return null;
+                return (
+                  <div className="mt-3 flex flex-wrap gap-1">
+                    {purps.map((p) => (
+                      <span
+                        key={p}
+                        className="text-[10px] font-num font-semibold text-brand-500 bg-brand-50 px-2 py-0.5 rounded-pill"
+                      >
+                        {PURPOSE_META[p][locale === "en" ? "en" : "ko"]}
+                      </span>
+                    ))}
+                  </div>
+                );
+              })()}
+
+              {/* 작년 이 자리 산 회사 — 사회적 증거 */}
+              {c.lastYear?.buyers && c.lastYear.buyers.length > 0 && (
+                <div className="mt-3 text-[10.5px] text-ink-500 leading-snug">
+                  <span className="font-num font-bold text-ink-700">작년: </span>
+                  {c.lastYear.buyers.slice(0, 3).join(", ")}
+                  {c.lastYear.buyers.length > 3 && ` 외 ${c.lastYear.buyers.length - 3}곳`}
+                </div>
+              )}
+              {c.lastYear?.soldOutDate && (
+                <div className="text-[10.5px] text-amber-700 font-num font-semibold mt-1">
+                  작년 매진: {c.lastYear.soldOutDate}
+                </div>
+              )}
+
               <div className="mt-auto pt-4 flex items-center justify-between text-[11.5px] font-num">
                 <span>
-                  <span className="text-brand-500 font-bold">{c.slotAvailable}</span>
-                  <span className="text-ink-500">
-                    {" "}
-                    / {c.slotTotal} {t("spons.slotsAvailable", locale)}
-                  </span>
+                  {c.minPrice > 0 ? (
+                    <>
+                      <span className="text-ink-500">{t("spons.minPrice", locale)} </span>
+                      <span className="text-ink-900 font-bold">
+                        {c.minPrice.toLocaleString()}원
+                      </span>
+                    </>
+                  ) : (
+                    <span className="text-ink-500">{t("common.priceNegotiable", locale)}</span>
+                  )}
                 </span>
                 <span className="text-ink-300 group-hover:text-brand-500 group-hover:translate-x-0.5 transition-all">
                   →
