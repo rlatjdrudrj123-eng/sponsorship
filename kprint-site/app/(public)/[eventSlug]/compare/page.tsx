@@ -74,12 +74,35 @@ function CompareContent() {
   const [copied, setCopied] = useState(false);
 
   // URL이 지정되어 있으면 그 ID들만, 아니면 빈 셋
-  const items = useMemo<Array<{ kind: "slot" | "pkg"; id: string }>>(() => {
+  // 지원 형식:
+  //   slot:slotId     — 명시 슬롯
+  //   pkg:packageId   — 패키지
+  //   slot-cat:catId  — 카테고리 대표 슬롯 (compare time 에 가용 슬롯 선정)
+  //   cat:catId       — 같음 (alias)
+  type Item =
+    | { kind: "slot"; id: string }
+    | { kind: "pkg"; id: string }
+    | { kind: "cat"; id: string };
+  const items = useMemo<Item[]>(() => {
     if (!idsParam) return [];
-    return idsParam.split(",").map((s) => {
-      const [kind, id] = s.split(":");
-      return { kind: kind === "pkg" ? "pkg" : "slot", id };
-    });
+    return idsParam
+      .split(",")
+      .map((s) => {
+        if (s.startsWith("slot-cat:")) {
+          return { kind: "cat", id: s.slice("slot-cat:".length) } as Item;
+        }
+        if (s.startsWith("cat:")) {
+          return { kind: "cat", id: s.slice("cat:".length) } as Item;
+        }
+        if (s.startsWith("pkg:")) {
+          return { kind: "pkg", id: s.slice("pkg:".length) } as Item;
+        }
+        if (s.startsWith("slot:")) {
+          return { kind: "slot", id: s.slice("slot:".length) } as Item;
+        }
+        return null;
+      })
+      .filter((x): x is Item => !!x);
   }, [idsParam]);
 
   useEffect(() => {
@@ -162,6 +185,31 @@ function CompareContent() {
           key: `slot:${slot.id}`,
           title: cat.name.ko,
           code: slot.code,
+          kind: "slot",
+          imageUrl: cat.heroImages?.images?.[0]?.url,
+          priceKRW: sub?.priceKRW ?? 0,
+          priceLabel: sub?.priceKRW
+            ? `${sub.priceKRW.toLocaleString()}원 / ${sub.unit?.ko ?? "구좌당"}`
+            : "협의",
+          purposeLabels: purps.map((p) => PURPOSE_META[p].ko),
+          timing: cat.timingOverride ?? [],
+          location: cat.locationOverride ?? [],
+          href: `/${eventId}/sponsorships/${cat.slug}`,
+          lastYearBuyers: cat.lastYear?.buyers,
+        });
+      } else if (it.kind === "cat") {
+        const cat = categories.get(it.id);
+        if (!cat) continue;
+        // 가용한 슬롯 + 최저가 소분류 자동 선정
+        const catSubs = Array.from(subcategories.values())
+          .filter((s) => s.categoryId === cat.id)
+          .sort((a, b) => a.priceKRW - b.priceKRW);
+        const sub = catSubs[0];
+        const purps = derivePurposes(cat);
+        cols.push({
+          key: `cat:${cat.id}`,
+          title: cat.name.ko,
+          code: cat.code,
           kind: "slot",
           imageUrl: cat.heroImages?.images?.[0]?.url,
           priceKRW: sub?.priceKRW ?? 0,

@@ -201,6 +201,18 @@ export default function SponsorshipsPage() {
   const [sheetOpen, setSheetOpen] = useState(false);
   const [viewMode, setViewMode] = useState<"card" | "slide">("card");
   const [advancedOpen, setAdvancedOpen] = useState(false);
+  // 비교 모드 — 카드에서 직접 체크해 모은다 (카트 거치지 않고 바로 compare로)
+  const [compareIds, setCompareIds] = useState<Set<string>>(new Set());
+
+  const toggleCompare = (key: string) => {
+    setCompareIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
+  };
+  const clearCompare = () => setCompareIds(new Set());
 
   useEffect(() => {
     if (!eventId) return;
@@ -559,7 +571,13 @@ export default function SponsorshipsPage() {
                         <div className="flex-1 h-px bg-ink-100" />
                       </div>
                     )}
-                    <CardGrid items={filtered} eventId={eventId} />
+                    <CardGrid
+                      items={filtered}
+                      eventId={eventId}
+                      packages={packages}
+                      compareIds={compareIds}
+                      onToggleCompare={toggleCompare}
+                    />
                   </>
                 )}
               </section>
@@ -650,6 +668,36 @@ export default function SponsorshipsPage() {
             <LayoutGrid className="w-3.5 h-3.5" />
             카드형
           </button>
+        </div>
+      )}
+
+      {/* 플로팅 비교 바 — 카드 체크박스로 모은 항목이 있으면 표시 */}
+      {compareIds.size > 0 && (
+        <div className="fixed bottom-5 left-1/2 -translate-x-1/2 z-40 bg-ink-900 text-white rounded-pill px-2 pl-5 py-2 shadow-2xl flex items-center gap-3 text-[13px] max-w-[90vw]">
+          <span className="font-num font-bold">
+            {compareIds.size}개 선택됨
+          </span>
+          <span className="text-white/40">·</span>
+          <button
+            type="button"
+            onClick={clearCompare}
+            className="text-[12px] text-white/70 hover:text-white"
+          >
+            지우기
+          </button>
+          <Link
+            href={`/${eventId}/compare?ids=${encodeURIComponent(
+              Array.from(compareIds)
+                .map((k) => {
+                  // slot-cat:catId → 비교 페이지가 카테고리 단위 비교를 지원하도록 같은 형태로 패스
+                  return k;
+                })
+                .join(",")
+            )}`}
+            className="ml-1 px-4 py-2 rounded-pill bg-brand-500 text-white font-bold hover:bg-brand-700 transition-colors"
+          >
+            나란히 비교 →
+          </Link>
         </div>
       )}
     </>
@@ -751,6 +799,20 @@ function FilterPanel({
             {t("common.reset", locale)}
           </button>
         )}
+      </div>
+
+      {/* (0) 검색 — 항상 상단 노출 (이메일에서 코드/이름 직접 진입) */}
+      <div>
+        <div className="relative">
+          <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-ink-300" />
+          <input
+            type="text"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder={t("spons.searchPlaceholder", locale)}
+            className="w-full pl-9 pr-3 py-2.5 text-[13px] border border-ink-100 rounded-btn focus:outline-none focus:border-brand-500 bg-white"
+          />
+        </div>
       </div>
 
       {/* (1) 예산 — 가장 먼저 묻는 질문 */}
@@ -878,19 +940,6 @@ function FilterPanel({
         </summary>
 
         <div className="space-y-5 mt-4">
-          <FilterSection title={t("common.search", locale)}>
-            <div className="relative">
-              <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-ink-300" />
-              <input
-                type="text"
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                placeholder={t("spons.searchPlaceholder", locale)}
-                className="w-full pl-9 pr-3 py-2 text-[13px] border border-ink-100 rounded-btn focus:outline-none focus:border-brand-500"
-              />
-            </div>
-          </FilterSection>
-
           <FilterSection title={t("spons.channel", locale)}>
             <div className="flex flex-wrap lg:flex-col gap-1">
               {CHANNEL_FILTER_IDS.map((id) => (
@@ -1255,17 +1304,36 @@ function PackageSection({ packages, eventId }: { packages: Package[]; eventId: s
   );
 }
 
-function CardGrid({ items, eventId }: { items: EnrichedCategory[]; eventId: string }) {
+function CardGrid({
+  items,
+  eventId,
+  packages,
+  compareIds,
+  onToggleCompare,
+}: {
+  items: EnrichedCategory[];
+  eventId: string;
+  packages: Package[];
+  compareIds: Set<string>;
+  onToggleCompare: (key: string) => void;
+}) {
   const locale = useLocale((s) => s.locale);
+  const packagesById = useMemo(() => {
+    const m = new Map<string, Package>();
+    packages.forEach((p) => m.set(p.id, p));
+    return m;
+  }, [packages]);
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
       {items.map((c) => {
         const hero = c.heroImages?.images?.[0]?.url;
+        const compareKey = `slot-cat:${c.id}`; // 카테고리 단위로 비교 추가 (대표 슬롯 자동 선정은 compare 페이지에서)
+        const inCompare = compareIds.has(compareKey);
         return (
           <Link
             key={c.id}
             href={`/${eventId}/sponsorships/${c.slug}`}
-            className="group bg-surface border border-ink-100 rounded-card overflow-hidden hover:border-brand-500 hover:shadow-card transition-all flex flex-col h-full"
+            className="group bg-surface border border-ink-100 rounded-card overflow-hidden hover:border-brand-500 hover:shadow-card transition-all flex flex-col h-full relative"
           >
             <div className="aspect-[4/3] bg-ink-100 relative shrink-0">
               {hero ? (
@@ -1288,6 +1356,31 @@ function CardGrid({ items, eventId }: { items: EnrichedCategory[]; eventId: stri
                   <BadgePill key={b} badge={b} />
                 ))}
               </div>
+              {/* 비교 체크박스 — 우상단 */}
+              <button
+                type="button"
+                aria-pressed={inCompare}
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  onToggleCompare(compareKey);
+                }}
+                className={
+                  "absolute top-3 right-3 w-8 h-8 rounded-full grid place-items-center transition-all shadow-card " +
+                  (inCompare
+                    ? "bg-brand-500 text-white"
+                    : "bg-white/90 text-ink-500 hover:bg-white hover:text-brand-500")
+                }
+                title={inCompare ? "비교에서 빼기" : "비교에 추가"}
+              >
+                {inCompare ? (
+                  <svg viewBox="0 0 24 24" className="w-4 h-4 stroke-current fill-none stroke-[3]" strokeLinecap="round" strokeLinejoin="round">
+                    <polyline points="20 6 9 17 4 12" />
+                  </svg>
+                ) : (
+                  <span className="text-[16px] leading-none font-bold">+</span>
+                )}
+              </button>
               {/* 잔여 N자리 강조 — 한정 재고 정직 표시 */}
               {c.slotTotal > 0 && c.slotAvailable > 0 && c.slotAvailable <= 3 && (
                 <div className="absolute bottom-3 left-3 right-3 flex items-center justify-between">
@@ -1321,6 +1414,26 @@ function CardGrid({ items, eventId }: { items: EnrichedCategory[]; eventId: stri
                         {PURPOSE_META[p][locale === "en" ? "en" : "ko"]}
                       </span>
                     ))}
+                  </div>
+                );
+              })()}
+
+              {/* 이 카테고리를 포함하는 패키지 크로스 표시 — 패키지 매력 살리기 */}
+              {(() => {
+                const pkgs = (c.inPackages ?? [])
+                  .map((id) => packagesById.get(id))
+                  .filter((p): p is Package => !!p);
+                if (pkgs.length === 0) return null;
+                return (
+                  <div className="mt-2 text-[10.5px] text-ink-500 leading-snug">
+                    <span className="font-num font-semibold text-ink-700">
+                      📦 포함 패키지:{" "}
+                    </span>
+                    {pkgs
+                      .slice(0, 2)
+                      .map((p) => (p.tier === "signature" ? "★ " : "") + p.name.ko)
+                      .join(", ")}
+                    {pkgs.length > 2 && ` 외 ${pkgs.length - 2}`}
                   </div>
                 );
               })()}
