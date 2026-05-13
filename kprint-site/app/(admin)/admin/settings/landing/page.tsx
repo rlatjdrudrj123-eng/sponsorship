@@ -7,6 +7,7 @@ import {
   ArrowLeft,
   ArrowUp,
   Eye,
+  FileDown,
   Plus,
   Sparkles,
   Trash2,
@@ -186,6 +187,15 @@ export default function LandingBuilderPage() {
           >
             <Eye className="w-3.5 h-3.5" />
             미리보기 열기
+          </Link>
+          <Link
+            href={`/${eventId}/landing/print`}
+            target="_blank"
+            className="px-3.5 py-2 rounded-btn border border-ink-100 text-[12.5px] font-semibold text-ink-900 hover:bg-ink-50 flex items-center gap-1.5"
+            title="현재 랜딩 시퀀스를 PDF로 출력"
+          >
+            <FileDown className="w-3.5 h-3.5" />
+            PDF 출력
           </Link>
           <button
             type="button"
