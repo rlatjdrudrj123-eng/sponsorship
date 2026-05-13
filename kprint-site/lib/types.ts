@@ -247,7 +247,132 @@ export type SiteSettings = {
   };
 
   applicationSteps: Array<{ title: string; desc?: string }>;
+
+  /** 메인 랜딩(/[eventSlug]) 페이지의 블록 시퀀스. 비어있으면 자동 생성된 기본 랜딩 사용 */
+  landing?: LandingBlock[];
 };
+
+// ============= LANDING BLOCKS =============
+// /[eventSlug] 페이지의 콘텐츠를 어드민에서 자유롭게 구성할 수 있는 블록 단위 schema.
+// 각 블록 = 한 화면(스냅 슬라이드) 또는 한 섹션. 타입별 디자인은 KIMES Figma 톤으로 고정.
+
+export type LandingBlockBase = {
+  id: string; // 안정 키 (re-render·드래그용)
+};
+
+export type CoverBlock = LandingBlockBase & {
+  type: "cover";
+  data: {
+    eyebrow?: string;   // 상단 작은 라벨 (uppercase tracking)
+    title: string;      // 큰 제목 (행사명)
+    subtitle?: string;  // 부제 (일정·장소)
+    bgImageUrl?: string;
+  };
+};
+
+export type Stats3YearBlock = LandingBlockBase & {
+  type: "stats3year";
+  data: {
+    eyebrow?: string;
+    headline: string;
+    years: Array<{ year: number; visitors: number; overseas?: number; note?: string }>;
+    footnote?: string;
+  };
+};
+
+export type AdGoals4Block = LandingBlockBase & {
+  type: "adGoals4";
+  data: {
+    eyebrow?: string;
+    headline: string;
+    cards: Array<{ label: string; description: string; emoji?: string }>;
+  };
+};
+
+export type Benefits4Block = LandingBlockBase & {
+  type: "benefits4";
+  data: {
+    eyebrow?: string;
+    headline: string;
+    cards: Array<{ title: string; description?: string; emoji?: string }>;
+  };
+};
+
+export type Steps4Block = LandingBlockBase & {
+  type: "steps4";
+  data: {
+    eyebrow?: string;
+    headline: string;
+    steps: Array<{ title: string; description?: string }>;
+  };
+};
+
+export type TextHeroBlock = LandingBlockBase & {
+  type: "textHero";
+  data: {
+    eyebrow?: string;
+    lines: string[]; // 한 줄당 큰 타이포 한 줄. 빨강 강조 라인은 prefix "*"
+    description?: string;
+  };
+};
+
+export type BigStatBlock = LandingBlockBase & {
+  type: "bigStat";
+  data: {
+    eyebrow?: string;
+    value: string;
+    valueSuffix?: string;
+    label: string;
+    description?: string;
+  };
+};
+
+export type CtaBlock = LandingBlockBase & {
+  type: "cta";
+  data: {
+    eyebrow?: string;
+    lines: string[];
+    primaryLabel?: string;
+    primaryHref?: string;
+    secondaryLabel?: string;
+    secondaryHref?: string;
+    showContact?: boolean;
+  };
+};
+
+export type ImageBlock = LandingBlockBase & {
+  type: "image";
+  data: {
+    url: string;
+    alt?: string;
+    caption?: string;
+    fullBleed?: boolean;
+  };
+};
+
+export type RichTextBlock = LandingBlockBase & {
+  type: "richText";
+  data: {
+    eyebrow?: string;
+    headline?: string;
+    body: string; // plain text, \n preserved
+    align?: "left" | "center";
+  };
+};
+
+export type LandingBlock =
+  | CoverBlock
+  | Stats3YearBlock
+  | AdGoals4Block
+  | Benefits4Block
+  | Steps4Block
+  | TextHeroBlock
+  | BigStatBlock
+  | CtaBlock
+  | ImageBlock
+  | RichTextBlock;
+
+export type LandingBlockType = LandingBlock["type"];
 
 // ============= TAXONOMY =============
 export type TagKind = "purpose" | "package" | "custom";
