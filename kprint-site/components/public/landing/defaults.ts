@@ -231,21 +231,74 @@ export function emptyBlock(type: LandingBlockType): LandingBlock {
         type,
         data: { body: "본문 텍스트를 자유롭게 입력하세요." },
       };
+    case "twoColumn":
+      return {
+        id: id(),
+        type,
+        data: {
+          left: { kind: "text", headline: "왼쪽 제목", body: "왼쪽 본문" },
+          right: { kind: "image", imageUrl: "" },
+          ratio: "1:1",
+        },
+      };
+    case "imageGrid":
+      return {
+        id: id(),
+        type,
+        data: { columns: 3, images: [] },
+      };
+    case "divider":
+      return { id: id(), type, data: {} };
+    case "spacer":
+      return { id: id(), type, data: { size: "md" } };
+    case "buttonRow":
+      return {
+        id: id(),
+        type,
+        data: {
+          buttons: [
+            { label: "스폰서십 보기", href: "/sponsorships", variant: "primary" },
+            { label: "문의하기", href: "/contact", variant: "outline" },
+          ],
+        },
+      };
+    case "videoEmbed":
+      return { id: id(), type, data: { url: "", aspect: "16:9" } };
+    case "customHtml":
+      return {
+        id: id(),
+        type,
+        data: { html: "<p>여기에 자유 HTML을 입력하세요.</p>" },
+      };
+    case "slotsTeaser":
+      return {
+        id: id(),
+        type,
+        data: { headline: "추천 슬롯", categorySlugs: [], layout: "grid" },
+      };
   }
 }
 
 export const BLOCK_TYPE_META: Record<
   LandingBlockType,
-  { label: string; desc: string }
+  { label: string; desc: string; group: "main" | "media" | "layout" | "advanced" }
 > = {
-  cover: { label: "표지 (Cover)", desc: "행사명 + 일정 · 큰 히어로" },
-  stats3year: { label: "3년 통계", desc: "방문객·해외바이어 연도별 카드" },
-  adGoals4: { label: "4가지 광고 목적", desc: "타입 1~4 카드 그리드" },
-  benefits4: { label: "4가지 혜택", desc: "Sponsor Benefits 카드" },
-  steps4: { label: "신청 절차 4단계", desc: "01~04 번호 카드" },
-  textHero: { label: "큰 텍스트", desc: '"모든 동선 위에 / 당신의 브랜드를"' },
-  bigStat: { label: "큰 숫자 한 개", desc: '"70,000명이 / 4일간 다녀갑니다"' },
-  cta: { label: "CTA (빨강)", desc: "빨강 풀브리드 + 버튼 2개" },
-  image: { label: "이미지", desc: "단일 이미지 슬라이드" },
-  richText: { label: "긴 텍스트 본문", desc: "여러 줄 본문 텍스트" },
+  cover: { label: "표지 (Cover)", desc: "행사명 + 일정 · 큰 히어로", group: "main" },
+  stats3year: { label: "3년 통계", desc: "방문객·해외바이어 연도별 카드", group: "main" },
+  adGoals4: { label: "4가지 광고 목적", desc: "타입 1~4 카드 그리드", group: "main" },
+  benefits4: { label: "4가지 혜택", desc: "Sponsor Benefits 카드", group: "main" },
+  steps4: { label: "신청 절차 4단계", desc: "01~04 번호 카드", group: "main" },
+  textHero: { label: "큰 텍스트", desc: '"모든 동선 위에 / 당신의 브랜드를"', group: "main" },
+  bigStat: { label: "큰 숫자 한 개", desc: '"70,000명이 / 4일간 다녀갑니다"', group: "main" },
+  cta: { label: "CTA (빨강)", desc: "빨강 풀브리드 + 버튼 2개", group: "main" },
+  buttonRow: { label: "버튼 행", desc: "여러 버튼 가로 배치", group: "main" },
+  richText: { label: "긴 텍스트 본문", desc: "여러 줄 본문 텍스트", group: "main" },
+  twoColumn: { label: "2-컬럼", desc: "좌우 분할 (텍스트+이미지 자유 조합)", group: "layout" },
+  image: { label: "이미지", desc: "단일 이미지 슬라이드", group: "media" },
+  imageGrid: { label: "이미지 그리드", desc: "2~6열 이미지 갤러리", group: "media" },
+  videoEmbed: { label: "동영상", desc: "YouTube / Vimeo / mp4 임베드", group: "media" },
+  divider: { label: "구분선", desc: "섹션 사이 헤어라인 또는 라벨", group: "layout" },
+  spacer: { label: "여백", desc: "수직 빈 공간", group: "layout" },
+  slotsTeaser: { label: "슬롯 미리보기", desc: "선택한 카테고리들을 카드로", group: "advanced" },
+  customHtml: { label: "자유 HTML", desc: "직접 마크업 (위험 — 신뢰 전제)", group: "advanced" },
 };

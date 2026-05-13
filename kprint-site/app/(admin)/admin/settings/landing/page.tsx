@@ -354,6 +354,22 @@ function blockPreview(b: LandingBlock): string {
       return b.data.url ? b.data.url.slice(0, 40) + "…" : "(이미지 미설정)";
     case "richText":
       return (b.data.headline || b.data.body || "").slice(0, 40);
+    case "twoColumn":
+      return b.data.left.headline || b.data.right.headline || "2-컬럼";
+    case "imageGrid":
+      return `${b.data.images.length}장 / ${b.data.columns}열`;
+    case "divider":
+      return b.data.label || "구분선";
+    case "spacer":
+      return `여백 (${b.data.size})`;
+    case "buttonRow":
+      return b.data.headline || `버튼 ${b.data.buttons.length}개`;
+    case "videoEmbed":
+      return b.data.headline || b.data.url || "(동영상 미설정)";
+    case "customHtml":
+      return (b.data.html || "").replace(/<[^>]+>/g, "").slice(0, 40) || "HTML";
+    case "slotsTeaser":
+      return b.data.headline || `슬롯 ${b.data.categorySlugs?.length ?? 0}개`;
   }
 }
 

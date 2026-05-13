@@ -436,6 +436,106 @@ export type RichTextBlock = LandingBlockBase & {
   };
 };
 
+// ── 자유도 확장: 추가 블록 타입 ──
+
+/** 두 컬럼 좌우 배치. 좌·우 각각 자유 텍스트 + 이미지 */
+export type TwoColumnBlock = LandingBlockBase & {
+  type: "twoColumn";
+  data: {
+    left: {
+      kind: "text" | "image";
+      // text:
+      eyebrow?: string;
+      headline?: string;
+      body?: string;
+      // image:
+      imageUrl?: string;
+      imageAlt?: string;
+    };
+    right: {
+      kind: "text" | "image";
+      eyebrow?: string;
+      headline?: string;
+      body?: string;
+      imageUrl?: string;
+      imageAlt?: string;
+    };
+    ratio?: "1:1" | "1.5:1" | "1:1.5";
+  };
+};
+
+/** 이미지 그리드 (2~6열, 1~12장) */
+export type ImageGridBlock = LandingBlockBase & {
+  type: "imageGrid";
+  data: {
+    eyebrow?: string;
+    headline?: string;
+    columns: 2 | 3 | 4 | 5 | 6;
+    images: Array<{ url: string; alt?: string; caption?: string }>;
+  };
+};
+
+/** 구분선 / 여백 */
+export type DividerBlock = LandingBlockBase & {
+  type: "divider";
+  data: {
+    label?: string; // "Appendix" 같은 라벨
+    accent?: boolean; // 빨강 강조 줄
+  };
+};
+
+export type SpacerBlock = LandingBlockBase & {
+  type: "spacer";
+  data: {
+    size: "sm" | "md" | "lg" | "xl";
+  };
+};
+
+/** 버튼 행 — CTA 만들기용 */
+export type ButtonRowBlock = LandingBlockBase & {
+  type: "buttonRow";
+  data: {
+    eyebrow?: string;
+    headline?: string;
+    description?: string;
+    buttons: Array<{
+      label: string;
+      href: string;
+      variant?: "primary" | "outline" | "ghost";
+    }>;
+  };
+};
+
+/** 동영상 임베드 (YouTube / Vimeo / 직접 mp4 URL) */
+export type VideoEmbedBlock = LandingBlockBase & {
+  type: "videoEmbed";
+  data: {
+    eyebrow?: string;
+    headline?: string;
+    url: string; // YouTube / Vimeo / mp4
+    aspect?: "16:9" | "4:3" | "1:1" | "9:16";
+  };
+};
+
+/** 자유 HTML — 최후의 escape hatch (어드민 신뢰 전제) */
+export type CustomHtmlBlock = LandingBlockBase & {
+  type: "customHtml";
+  data: {
+    html: string;
+  };
+};
+
+/** 슬롯 미리보기 — 카테고리 slug 들을 직접 임베드 */
+export type SlotsTeaserBlock = LandingBlockBase & {
+  type: "slotsTeaser";
+  data: {
+    eyebrow?: string;
+    headline?: string;
+    categorySlugs: string[]; // 보일 카테고리 slug
+    layout?: "grid" | "row"; // 카드 그리드 / 가로 스크롤
+  };
+};
+
 export type LandingBlock =
   | CoverBlock
   | Stats3YearBlock
@@ -446,7 +546,15 @@ export type LandingBlock =
   | BigStatBlock
   | CtaBlock
   | ImageBlock
-  | RichTextBlock;
+  | RichTextBlock
+  | TwoColumnBlock
+  | ImageGridBlock
+  | DividerBlock
+  | SpacerBlock
+  | ButtonRowBlock
+  | VideoEmbedBlock
+  | CustomHtmlBlock
+  | SlotsTeaserBlock;
 
 export type LandingBlockType = LandingBlock["type"];
 

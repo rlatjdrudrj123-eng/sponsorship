@@ -1,7 +1,7 @@
 "use client";
 
 import { Plus, Trash2 } from "lucide-react";
-import type { LandingBlock } from "@/lib/types";
+import type { BlockStyle, LandingBlock } from "@/lib/types";
 import { BLOCK_TYPE_META } from "@/components/public/landing/defaults";
 
 /**
@@ -722,6 +722,552 @@ export function BlockEditor({
             </Field>
           </Fields>
         )}
+
+        {block.type === "twoColumn" && (
+          <Fields>
+            <Field label="비율">
+              <select
+                className={inputCls()}
+                value={block.data.ratio ?? "1:1"}
+                onChange={(e) =>
+                  onChange({
+                    ...block,
+                    data: {
+                      ...block.data,
+                      ratio: e.target.value as "1:1" | "1.5:1" | "1:1.5",
+                    },
+                  })
+                }
+              >
+                <option value="1:1">좌·우 동등</option>
+                <option value="1.5:1">왼쪽 넓게</option>
+                <option value="1:1.5">오른쪽 넓게</option>
+              </select>
+            </Field>
+            <ColumnEditor
+              title="왼쪽 컬럼"
+              side={block.data.left}
+              onSide={(s) =>
+                onChange({ ...block, data: { ...block.data, left: s } })
+              }
+            />
+            <ColumnEditor
+              title="오른쪽 컬럼"
+              side={block.data.right}
+              onSide={(s) =>
+                onChange({ ...block, data: { ...block.data, right: s } })
+              }
+            />
+          </Fields>
+        )}
+
+        {block.type === "imageGrid" && (
+          <Fields>
+            <Field label="상단 라벨">
+              <input
+                className={inputCls()}
+                value={block.data.eyebrow ?? ""}
+                onChange={(e) =>
+                  onChange({
+                    ...block,
+                    data: { ...block.data, eyebrow: e.target.value },
+                  })
+                }
+              />
+            </Field>
+            <Field label="제목">
+              <input
+                className={inputCls()}
+                value={block.data.headline ?? ""}
+                onChange={(e) =>
+                  onChange({
+                    ...block,
+                    data: { ...block.data, headline: e.target.value },
+                  })
+                }
+              />
+            </Field>
+            <Field label="컬럼 수">
+              <select
+                className={inputCls()}
+                value={block.data.columns}
+                onChange={(e) =>
+                  onChange({
+                    ...block,
+                    data: {
+                      ...block.data,
+                      columns: parseInt(e.target.value, 10) as 2 | 3 | 4 | 5 | 6,
+                    },
+                  })
+                }
+              >
+                {[2, 3, 4, 5, 6].map((n) => (
+                  <option key={n} value={n}>
+                    {n}열
+                  </option>
+                ))}
+              </select>
+            </Field>
+            <Field label="이미지 (URL + alt + 캡션)">
+              <div className="space-y-2">
+                {block.data.images.map((img, i) => (
+                  <div
+                    key={i}
+                    className="grid grid-cols-[1fr_1fr_1fr_auto] gap-2 items-center bg-ink-50/60 border border-ink-100 rounded-btn p-2"
+                  >
+                    <input
+                      placeholder="URL"
+                      value={img.url}
+                      onChange={(e) =>
+                        onChange({
+                          ...block,
+                          data: {
+                            ...block.data,
+                            images: block.data.images.map((m, j) =>
+                              j === i ? { ...m, url: e.target.value } : m
+                            ),
+                          },
+                        })
+                      }
+                      className={inputCls() + " font-mono text-[11px]"}
+                    />
+                    <input
+                      placeholder="alt"
+                      value={img.alt ?? ""}
+                      onChange={(e) =>
+                        onChange({
+                          ...block,
+                          data: {
+                            ...block.data,
+                            images: block.data.images.map((m, j) =>
+                              j === i ? { ...m, alt: e.target.value } : m
+                            ),
+                          },
+                        })
+                      }
+                      className={inputCls()}
+                    />
+                    <input
+                      placeholder="캡션"
+                      value={img.caption ?? ""}
+                      onChange={(e) =>
+                        onChange({
+                          ...block,
+                          data: {
+                            ...block.data,
+                            images: block.data.images.map((m, j) =>
+                              j === i ? { ...m, caption: e.target.value } : m
+                            ),
+                          },
+                        })
+                      }
+                      className={inputCls()}
+                    />
+                    <button
+                      type="button"
+                      onClick={() =>
+                        onChange({
+                          ...block,
+                          data: {
+                            ...block.data,
+                            images: block.data.images.filter((_, j) => j !== i),
+                          },
+                        })
+                      }
+                      className="w-8 h-8 grid place-items-center text-ink-500 hover:text-red-700"
+                    >
+                      ×
+                    </button>
+                  </div>
+                ))}
+                <button
+                  type="button"
+                  onClick={() =>
+                    onChange({
+                      ...block,
+                      data: {
+                        ...block.data,
+                        images: [...block.data.images, { url: "" }],
+                      },
+                    })
+                  }
+                  className="w-full py-2 rounded-btn border-[1.5px] border-dashed border-ink-300 text-[12.5px] text-ink-500 hover:border-ink-900 hover:text-ink-900 flex items-center justify-center gap-1.5"
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                  이미지 추가
+                </button>
+              </div>
+            </Field>
+          </Fields>
+        )}
+
+        {block.type === "divider" && (
+          <Fields>
+            <Field label="라벨 (선택)" hint="구분선 가운데 표시 (예: Appendix)">
+              <input
+                className={inputCls()}
+                value={block.data.label ?? ""}
+                onChange={(e) =>
+                  onChange({
+                    ...block,
+                    data: { ...block.data, label: e.target.value },
+                  })
+                }
+              />
+            </Field>
+            <label className="flex items-center gap-2 text-[12.5px] text-ink-700 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={block.data.accent ?? false}
+                onChange={(e) =>
+                  onChange({
+                    ...block,
+                    data: { ...block.data, accent: e.target.checked },
+                  })
+                }
+                className="accent-ink-900 w-4 h-4"
+              />
+              브랜드 빨강 강조
+            </label>
+          </Fields>
+        )}
+
+        {block.type === "spacer" && (
+          <Fields>
+            <Field label="크기">
+              <select
+                className={inputCls()}
+                value={block.data.size}
+                onChange={(e) =>
+                  onChange({
+                    ...block,
+                    data: {
+                      ...block.data,
+                      size: e.target.value as "sm" | "md" | "lg" | "xl",
+                    },
+                  })
+                }
+              >
+                <option value="sm">작게 (8vh)</option>
+                <option value="md">보통 (20vh)</option>
+                <option value="lg">크게 (40vh)</option>
+                <option value="xl">아주 크게 (60vh)</option>
+              </select>
+            </Field>
+          </Fields>
+        )}
+
+        {block.type === "buttonRow" && (
+          <Fields>
+            <Field label="상단 라벨">
+              <input
+                className={inputCls()}
+                value={block.data.eyebrow ?? ""}
+                onChange={(e) =>
+                  onChange({
+                    ...block,
+                    data: { ...block.data, eyebrow: e.target.value },
+                  })
+                }
+              />
+            </Field>
+            <Field label="제목">
+              <input
+                className={inputCls()}
+                value={block.data.headline ?? ""}
+                onChange={(e) =>
+                  onChange({
+                    ...block,
+                    data: { ...block.data, headline: e.target.value },
+                  })
+                }
+              />
+            </Field>
+            <Field label="설명">
+              <textarea
+                className={inputCls() + " min-h-[60px]"}
+                value={block.data.description ?? ""}
+                onChange={(e) =>
+                  onChange({
+                    ...block,
+                    data: { ...block.data, description: e.target.value },
+                  })
+                }
+              />
+            </Field>
+            <Field label="버튼">
+              <div className="space-y-2">
+                {block.data.buttons.map((b, i) => (
+                  <div
+                    key={i}
+                    className="grid grid-cols-[1.4fr_2fr_1fr_auto] gap-2 items-center bg-ink-50/60 border border-ink-100 rounded-btn p-2"
+                  >
+                    <input
+                      placeholder="라벨"
+                      value={b.label}
+                      onChange={(e) =>
+                        onChange({
+                          ...block,
+                          data: {
+                            ...block.data,
+                            buttons: block.data.buttons.map((bb, j) =>
+                              j === i ? { ...bb, label: e.target.value } : bb
+                            ),
+                          },
+                        })
+                      }
+                      className={inputCls()}
+                    />
+                    <input
+                      placeholder="링크 (/sponsorships, https://…)"
+                      value={b.href}
+                      onChange={(e) =>
+                        onChange({
+                          ...block,
+                          data: {
+                            ...block.data,
+                            buttons: block.data.buttons.map((bb, j) =>
+                              j === i ? { ...bb, href: e.target.value } : bb
+                            ),
+                          },
+                        })
+                      }
+                      className={inputCls() + " font-mono text-[11px]"}
+                    />
+                    <select
+                      value={b.variant ?? "primary"}
+                      onChange={(e) =>
+                        onChange({
+                          ...block,
+                          data: {
+                            ...block.data,
+                            buttons: block.data.buttons.map((bb, j) =>
+                              j === i
+                                ? {
+                                    ...bb,
+                                    variant: e.target.value as
+                                      | "primary"
+                                      | "outline"
+                                      | "ghost",
+                                  }
+                                : bb
+                            ),
+                          },
+                        })
+                      }
+                      className={inputCls()}
+                    >
+                      <option value="primary">기본 (빨강)</option>
+                      <option value="outline">아웃라인</option>
+                      <option value="ghost">고스트</option>
+                    </select>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        onChange({
+                          ...block,
+                          data: {
+                            ...block.data,
+                            buttons: block.data.buttons.filter(
+                              (_, j) => j !== i
+                            ),
+                          },
+                        })
+                      }
+                      className="w-8 h-8 grid place-items-center text-ink-500 hover:text-red-700"
+                    >
+                      ×
+                    </button>
+                  </div>
+                ))}
+                <button
+                  type="button"
+                  onClick={() =>
+                    onChange({
+                      ...block,
+                      data: {
+                        ...block.data,
+                        buttons: [
+                          ...block.data.buttons,
+                          { label: "", href: "", variant: "primary" },
+                        ],
+                      },
+                    })
+                  }
+                  className="w-full py-2 rounded-btn border-[1.5px] border-dashed border-ink-300 text-[12.5px] text-ink-500 hover:border-ink-900 hover:text-ink-900 flex items-center justify-center gap-1.5"
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                  버튼 추가
+                </button>
+              </div>
+            </Field>
+          </Fields>
+        )}
+
+        {block.type === "videoEmbed" && (
+          <Fields>
+            <Field label="상단 라벨">
+              <input
+                className={inputCls()}
+                value={block.data.eyebrow ?? ""}
+                onChange={(e) =>
+                  onChange({
+                    ...block,
+                    data: { ...block.data, eyebrow: e.target.value },
+                  })
+                }
+              />
+            </Field>
+            <Field label="제목">
+              <input
+                className={inputCls()}
+                value={block.data.headline ?? ""}
+                onChange={(e) =>
+                  onChange({
+                    ...block,
+                    data: { ...block.data, headline: e.target.value },
+                  })
+                }
+              />
+            </Field>
+            <Field
+              label="동영상 URL"
+              required
+              hint="YouTube · Vimeo · mp4 URL"
+            >
+              <input
+                className={inputCls() + " font-mono text-[11.5px]"}
+                value={block.data.url}
+                onChange={(e) =>
+                  onChange({
+                    ...block,
+                    data: { ...block.data, url: e.target.value },
+                  })
+                }
+              />
+            </Field>
+            <Field label="비율">
+              <select
+                className={inputCls()}
+                value={block.data.aspect ?? "16:9"}
+                onChange={(e) =>
+                  onChange({
+                    ...block,
+                    data: {
+                      ...block.data,
+                      aspect: e.target.value as
+                        | "16:9"
+                        | "4:3"
+                        | "1:1"
+                        | "9:16",
+                    },
+                  })
+                }
+              >
+                <option value="16:9">16:9 가로</option>
+                <option value="4:3">4:3</option>
+                <option value="1:1">1:1 정사각</option>
+                <option value="9:16">9:16 세로</option>
+              </select>
+            </Field>
+          </Fields>
+        )}
+
+        {block.type === "customHtml" && (
+          <Fields>
+            <Field
+              label="HTML"
+              hint="⚠️ 운영자 신뢰 전제. XSS 위험 없는 마크업만 사용하세요."
+            >
+              <textarea
+                className={inputCls() + " min-h-[280px] font-mono text-[12px]"}
+                value={block.data.html ?? ""}
+                onChange={(e) =>
+                  onChange({
+                    ...block,
+                    data: { html: e.target.value },
+                  })
+                }
+              />
+            </Field>
+          </Fields>
+        )}
+
+        {block.type === "slotsTeaser" && (
+          <Fields>
+            <Field label="상단 라벨">
+              <input
+                className={inputCls()}
+                value={block.data.eyebrow ?? ""}
+                onChange={(e) =>
+                  onChange({
+                    ...block,
+                    data: { ...block.data, eyebrow: e.target.value },
+                  })
+                }
+              />
+            </Field>
+            <Field label="제목">
+              <input
+                className={inputCls()}
+                value={block.data.headline ?? ""}
+                onChange={(e) =>
+                  onChange({
+                    ...block,
+                    data: { ...block.data, headline: e.target.value },
+                  })
+                }
+              />
+            </Field>
+            <Field
+              label="카테고리 slug (콤마 구분)"
+              hint="예: ceiling-banner-hall-a, xpace-bridge"
+            >
+              <input
+                className={inputCls() + " font-mono text-[12px]"}
+                value={(block.data.categorySlugs ?? []).join(", ")}
+                onChange={(e) =>
+                  onChange({
+                    ...block,
+                    data: {
+                      ...block.data,
+                      categorySlugs: e.target.value
+                        .split(",")
+                        .map((s) => s.trim())
+                        .filter(Boolean),
+                    },
+                  })
+                }
+              />
+            </Field>
+            <Field label="레이아웃">
+              <select
+                className={inputCls()}
+                value={block.data.layout ?? "grid"}
+                onChange={(e) =>
+                  onChange({
+                    ...block,
+                    data: {
+                      ...block.data,
+                      layout: e.target.value as "grid" | "row",
+                    },
+                  })
+                }
+              >
+                <option value="grid">그리드 (3열)</option>
+                <option value="row">가로 스크롤</option>
+              </select>
+            </Field>
+          </Fields>
+        )}
+
+        {/* ─── 공통: 스타일 패널 ─── */}
+        <div className="mt-6 pt-5 border-t border-ink-100">
+          <StylePanel
+            value={block.style}
+            onChange={(s) => onChange({ ...block, style: s })}
+          />
+        </div>
       </div>
     </div>
   );
@@ -760,6 +1306,308 @@ function Field({
 
 function inputCls(): string {
   return "w-full px-3 py-2 text-sm border border-ink-100 rounded-btn focus:outline-none focus:border-ink-900 bg-white";
+}
+
+// ============================================================================
+// 공통 스타일 패널 — 모든 블록의 style override
+// ============================================================================
+
+const BG_PRESETS: Array<{ id: string; label: string; preview: string }> = [
+  { id: "", label: "기본", preview: "#F6F6F6" },
+  { id: "canvas", label: "캔버스 (회색)", preview: "#F6F6F6" },
+  { id: "surface", label: "흰색", preview: "#FFFFFF" },
+  { id: "ink", label: "검정 (다크)", preview: "#0A0A0A" },
+  { id: "brand", label: "브랜드 (빨강)", preview: "#DB0711" },
+  { id: "transparent", label: "투명", preview: "linear-gradient(45deg, #ccc 25%, transparent 25%, transparent 75%, #ccc 75%, #ccc) 0 0/12px 12px, linear-gradient(45deg, #ccc 25%, transparent 25%, transparent 75%, #ccc 75%, #ccc) 6px 6px/12px 12px" },
+];
+
+function StylePanel({
+  value,
+  onChange,
+}: {
+  value?: BlockStyle;
+  onChange: (s: BlockStyle | undefined) => void;
+}) {
+  const v = value ?? {};
+  const patch = (p: Partial<BlockStyle>) => {
+    const next: BlockStyle = { ...v, ...p };
+    // null/빈 값 정리
+    Object.keys(next).forEach((k) => {
+      const val = (next as Record<string, unknown>)[k];
+      if (val === "" || val === undefined) {
+        delete (next as Record<string, unknown>)[k];
+      }
+    });
+    onChange(Object.keys(next).length === 0 ? undefined : next);
+  };
+
+  return (
+    <details className="group">
+      <summary className="cursor-pointer text-[12px] uppercase tracking-widest text-ink-500 font-semibold flex items-center gap-1.5 list-none">
+        <span className="inline-block transition-transform group-open:rotate-90">›</span>
+        스타일 (블록 단위 override)
+        {value && Object.keys(value).length > 0 && (
+          <span className="ml-1.5 text-[10px] bg-mint-50 text-mint-700 px-1.5 py-0.5 rounded font-mono normal-case tracking-normal" style={{ background: "#FEE9EA", color: "#AA0008" }}>
+            {Object.keys(value).length}개 적용
+          </span>
+        )}
+      </summary>
+      <div className="mt-4 space-y-4">
+        {/* 배경 */}
+        <Field
+          label="배경"
+          hint="키워드 (canvas/surface/ink/brand) 또는 hex 직접 입력"
+        >
+          <div className="space-y-2">
+            <div className="grid grid-cols-3 gap-2">
+              {BG_PRESETS.map((p) => (
+                <button
+                  key={p.id}
+                  type="button"
+                  onClick={() => patch({ bg: p.id || undefined })}
+                  className={
+                    "px-2 py-2 rounded-btn border-2 text-[11.5px] font-semibold flex flex-col items-center gap-1 transition-colors " +
+                    ((v.bg ?? "") === p.id
+                      ? "border-ink-900"
+                      : "border-ink-100 hover:border-ink-300")
+                  }
+                >
+                  <span
+                    className="w-full h-6 rounded border border-ink-100"
+                    style={{ background: p.preview }}
+                  />
+                  <span>{p.label}</span>
+                </button>
+              ))}
+            </div>
+            <input
+              type="text"
+              placeholder="#FFFFFF (커스텀 hex)"
+              value={v.bg && !BG_PRESETS.some((p) => p.id === v.bg) ? v.bg : ""}
+              onChange={(e) => patch({ bg: e.target.value })}
+              className={inputCls() + " font-mono text-[12px]"}
+            />
+          </div>
+        </Field>
+
+        {/* 텍스트 색 */}
+        <Field label="텍스트 색" hint="hex 직접 입력 (비우면 자동)">
+          <div className="flex gap-2">
+            <input
+              type="color"
+              value={v.text ?? "#0A0A0A"}
+              onChange={(e) => patch({ text: e.target.value })}
+              className="w-12 h-9 rounded-btn border border-ink-100 cursor-pointer bg-white"
+            />
+            <input
+              type="text"
+              placeholder="#0A0A0A"
+              value={v.text ?? ""}
+              onChange={(e) => patch({ text: e.target.value })}
+              className={inputCls() + " font-mono text-[12px]"}
+            />
+            {v.text && (
+              <button
+                type="button"
+                onClick={() => patch({ text: undefined })}
+                className="px-2 text-[11px] text-ink-500 hover:text-red-700"
+              >
+                초기화
+              </button>
+            )}
+          </div>
+        </Field>
+
+        {/* 액센트 색 */}
+        <Field
+          label="액센트 (brand override)"
+          hint="이 블록만 다른 brand color 적용. 비우면 행사 기본."
+        >
+          <div className="flex gap-2">
+            <input
+              type="color"
+              value={v.accent ?? "#DB0711"}
+              onChange={(e) => patch({ accent: e.target.value })}
+              className="w-12 h-9 rounded-btn border border-ink-100 cursor-pointer bg-white"
+            />
+            <input
+              type="text"
+              placeholder="#DB0711"
+              value={v.accent ?? ""}
+              onChange={(e) => patch({ accent: e.target.value })}
+              className={inputCls() + " font-mono text-[12px]"}
+            />
+            {v.accent && (
+              <button
+                type="button"
+                onClick={() => patch({ accent: undefined })}
+                className="px-2 text-[11px] text-ink-500 hover:text-red-700"
+              >
+                초기화
+              </button>
+            )}
+          </div>
+        </Field>
+
+        {/* 정렬 */}
+        <div className="grid grid-cols-3 gap-3">
+          <Field label="정렬">
+            <select
+              className={inputCls()}
+              value={v.align ?? "left"}
+              onChange={(e) =>
+                patch({ align: e.target.value as BlockStyle["align"] })
+              }
+            >
+              <option value="left">왼쪽</option>
+              <option value="center">가운데</option>
+              <option value="right">오른쪽</option>
+            </select>
+          </Field>
+          <Field label="최소 높이">
+            <select
+              className={inputCls()}
+              value={v.minHeight ?? "screen"}
+              onChange={(e) =>
+                patch({ minHeight: e.target.value as BlockStyle["minHeight"] })
+              }
+            >
+              <option value="screen">풀스크린</option>
+              <option value="half">반화면</option>
+              <option value="auto">자동</option>
+            </select>
+          </Field>
+          <Field label="패딩">
+            <select
+              className={inputCls()}
+              value={v.pad ?? "normal"}
+              onChange={(e) =>
+                patch({ pad: e.target.value as BlockStyle["pad"] })
+              }
+            >
+              <option value="tight">좁게</option>
+              <option value="normal">보통</option>
+              <option value="loose">넓게</option>
+            </select>
+          </Field>
+        </div>
+
+        <label className="flex items-center gap-2 text-[12.5px] text-ink-700 cursor-pointer">
+          <input
+            type="checkbox"
+            checked={v.fullBleed ?? false}
+            onChange={(e) => patch({ fullBleed: e.target.checked })}
+            className="accent-ink-900 w-4 h-4"
+          />
+          풀브리드 (가로 폭 제한 해제)
+        </label>
+
+        {value && Object.keys(value).length > 0 && (
+          <button
+            type="button"
+            onClick={() => onChange(undefined)}
+            className="text-[11px] text-ink-500 hover:text-red-700 font-semibold"
+          >
+            ↺ 스타일 전체 초기화
+          </button>
+        )}
+      </div>
+    </details>
+  );
+}
+
+// ============================================================================
+// TwoColumn 한쪽 컬럼 에디터
+// ============================================================================
+
+type Side = {
+  kind: "text" | "image";
+  eyebrow?: string;
+  headline?: string;
+  body?: string;
+  imageUrl?: string;
+  imageAlt?: string;
+};
+
+function ColumnEditor({
+  title,
+  side,
+  onSide,
+}: {
+  title: string;
+  side: Side;
+  onSide: (s: Side) => void;
+}) {
+  return (
+    <div className="bg-ink-50/60 border border-ink-100 rounded-btn p-3 space-y-3">
+      <div className="flex items-center justify-between">
+        <span className="text-[12px] font-bold text-ink-900">{title}</span>
+        <div className="inline-flex bg-white border border-ink-100 rounded-btn p-0.5">
+          <button
+            type="button"
+            onClick={() => onSide({ ...side, kind: "text" })}
+            className={
+              "px-2.5 py-1 rounded text-[11px] font-semibold " +
+              (side.kind === "text"
+                ? "bg-ink-900 text-white"
+                : "text-ink-500 hover:text-ink-900")
+            }
+          >
+            텍스트
+          </button>
+          <button
+            type="button"
+            onClick={() => onSide({ ...side, kind: "image" })}
+            className={
+              "px-2.5 py-1 rounded text-[11px] font-semibold " +
+              (side.kind === "image"
+                ? "bg-ink-900 text-white"
+                : "text-ink-500 hover:text-ink-900")
+            }
+          >
+            이미지
+          </button>
+        </div>
+      </div>
+      {side.kind === "text" ? (
+        <>
+          <input
+            placeholder="상단 라벨"
+            value={side.eyebrow ?? ""}
+            onChange={(e) => onSide({ ...side, eyebrow: e.target.value })}
+            className={inputCls()}
+          />
+          <input
+            placeholder="제목"
+            value={side.headline ?? ""}
+            onChange={(e) => onSide({ ...side, headline: e.target.value })}
+            className={inputCls()}
+          />
+          <textarea
+            placeholder="본문"
+            value={side.body ?? ""}
+            onChange={(e) => onSide({ ...side, body: e.target.value })}
+            className={inputCls() + " min-h-[80px]"}
+          />
+        </>
+      ) : (
+        <>
+          <input
+            placeholder="이미지 URL"
+            value={side.imageUrl ?? ""}
+            onChange={(e) => onSide({ ...side, imageUrl: e.target.value })}
+            className={inputCls() + " font-mono text-[12px]"}
+          />
+          <input
+            placeholder="alt (선택)"
+            value={side.imageAlt ?? ""}
+            onChange={(e) => onSide({ ...side, imageAlt: e.target.value })}
+            className={inputCls()}
+          />
+        </>
+      )}
+    </div>
+  );
 }
 
 // ============================================================================
