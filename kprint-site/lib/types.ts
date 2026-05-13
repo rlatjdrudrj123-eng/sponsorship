@@ -661,6 +661,28 @@ export type Persona = {
   budgetMin?: number;
   budgetMax?: number;
   packageTier?: "signature" | "standard";
+
+  // ── 강화: 결정 부담을 줄이고 행동을 유도하는 메타 ──
+
+  /** 페르소나 카드와 결과 배너에 들어갈 사회적 증거 한 줄 — 예: "작년 18개 회사가 이 코스 선택" */
+  socialProofNote?: string;
+
+  /** 예산 anchor 한 줄 — 예: "평균 1,200만원 (단품 + 시그니처 콤보)" */
+  budgetNote?: string;
+
+  /**
+   * 페르소나 선택 시 결과 화면 상단 배너에 보여주는 "정석 조합" — 어드민이 큐레이션.
+   * 추천 콤보 = (slot/package id 배열) + 한 줄 카피.
+   * "한 번에 카트 담기" 버튼이 자동 생성됨.
+   */
+  recommendedCombo?: {
+    headline?: string;       // "당신 같은 회사가 보통 이렇게 합니다"
+    rationale?: string;      // "동선 + 인지 + 자산 3박자"
+    categorySlugs?: string[]; // 최저가 슬롯 1개를 자동 선택해 카트에 담음
+    packageIds?: string[];   // 패키지 직접 명시
+    expectedKRW?: number;    // 예상 총액 (정보용)
+  };
+
   order: number;
   isActive: boolean;
 };

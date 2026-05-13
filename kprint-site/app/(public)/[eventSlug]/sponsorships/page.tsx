@@ -36,6 +36,7 @@ import type {
 import { Footer } from "@/components/public/Footer";
 import { LocaleSwitch } from "@/components/public/LocaleSwitch";
 import { SlotPicker } from "@/components/public/CategoryDetail/_shared/SlotPicker";
+import { PersonaRecommendation } from "@/components/public/PersonaRecommendation";
 import { localized, useLocale, type Locale } from "@/lib/i18n/locale";
 import { t } from "@/lib/i18n/strings";
 import { derivePurposes } from "@/lib/purposes";
@@ -510,13 +511,25 @@ export default function SponsorshipsPage() {
                 <div className="hidden lg:flex items-center justify-between mb-4">
                   <div className="text-[12px] text-ink-500">
                     전체 <strong className="text-ink-900">{totalCount}</strong>개 중{" "}
-                    <strong className="text-brand-700">{filtered.length}</strong>개
+                    <strong className="text-brand-500">{filtered.length}</strong>개
                   </div>
                   <ViewModeToggle viewMode={viewMode} setViewMode={setViewMode} />
                 </div>
                 <div className="lg:hidden mb-4 flex justify-end">
                   <ViewModeToggle viewMode={viewMode} setViewMode={setViewMode} />
                 </div>
+
+                {/* 페르소나 선택 시 추천 콤보 배너 */}
+                {selectedPersona && (
+                  <PersonaRecommendation
+                    persona={selectedPersona}
+                    categories={categories}
+                    subcategories={subcategories}
+                    slots={slots}
+                    packages={packages}
+                    eventId={eventId}
+                  />
+                )}
 
                 {/* 패키지 전용 섹션 */}
                 {packagesToShow.length > 0 && (

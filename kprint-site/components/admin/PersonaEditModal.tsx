@@ -4,9 +4,10 @@ import { useEffect, useState } from "react";
 import { doc, setDoc, Timestamp } from "firebase/firestore";
 import { X } from "lucide-react";
 import { getDb } from "@/lib/firebase/firestore";
-import type { Persona } from "@/lib/types";
+import type { Persona, Purpose } from "@/lib/types";
+import { PURPOSE_META, PURPOSE_ORDER } from "@/lib/types";
 
-// 페르소나 이모지 선택지 — 산업·마케팅 컨텍스트에 어울리는 큐레이션
+// 페르소나 이모지 — 산업·마케팅 컨텍스트
 const EMOJI_OPTIONS = [
   "🌱", "🌏", "💰", "🚀", "🎯",
   "🏆", "💎", "🔍", "📊", "🤝",
@@ -30,15 +31,49 @@ export function PersonaEditModal({
   const initial =
     mode.kind === "edit"
       ? mode.persona
-      : {
+      : ({
           emoji: "🎯",
           title: "",
           description: "",
-        };
+        } as Partial<Persona>);
 
   const [emoji, setEmoji] = useState(initial.emoji ?? "🎯");
   const [title, setTitle] = useState(initial.title ?? "");
   const [description, setDescription] = useState(initial.description ?? "");
+  const [purposes, setPurposes] = useState<Purpose[]>(
+    (initial.purposes ?? []) as Purpose[]
+  );
+  const [socialProofNote, setSocialProofNote] = useState(
+    initial.socialProofNote ?? ""
+  );
+  const [budgetNote, setBudgetNote] = useState(initial.budgetNote ?? "");
+  const [budgetMin, setBudgetMin] = useState<string>(
+    initial.budgetMin ? String(initial.budgetMin) : ""
+  );
+  const [budgetMax, setBudgetMax] = useState<string>(
+    initial.budgetMax ? String(initial.budgetMax) : ""
+  );
+  const [packageTier, setPackageTier] = useState<
+    "signature" | "standard" | ""
+  >(initial.packageTier ?? "");
+  const [comboHeadline, setComboHeadline] = useState(
+    initial.recommendedCombo?.headline ?? ""
+  );
+  const [comboRationale, setComboRationale] = useState(
+    initial.recommendedCombo?.rationale ?? ""
+  );
+  const [comboSlugs, setComboSlugs] = useState(
+    (initial.recommendedCombo?.categorySlugs ?? []).join(", ")
+  );
+  const [comboPackageIds, setComboPackageIds] = useState(
+    (initial.recommendedCombo?.packageIds ?? []).join(", ")
+  );
+  const [comboExpected, setComboExpected] = useState<string>(
+    initial.recommendedCombo?.expectedKRW
+      ? String(initial.recommendedCombo.expectedKRW)
+      : ""
+  );
+
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
@@ -56,15 +91,49 @@ export function PersonaEditModal({
       return;
     }
     setSaving(true);
+
+    const slugs = comboSlugs
+      .split(",")
+      .map((s) => s.trim())
+      .filter(Boolean);
+    const pkgIds = comboPackageIds
+      .split(",")
+      .map((s) => s.trim())
+      .filter(Boolean);
+    const recommendedCombo =
+      comboHeadline || comboRationale || slugs.length > 0 || pkgIds.length > 0 || comboExpected
+        ? {
+            headline: comboHeadline.trim() || undefined,
+            rationale: comboRationale.trim() || undefined,
+            categorySlugs: slugs.length > 0 ? slugs : undefined,
+            packageIds: pkgIds.length > 0 ? pkgIds : undefined,
+            expectedKRW: comboExpected ? parseInt(comboExpected, 10) : undefined,
+          }
+        : undefined;
+
+    const minN = budgetMin ? parseInt(budgetMin, 10) : undefined;
+    const maxN = budgetMax ? parseInt(budgetMax, 10) : undefined;
+
+    const payload: Partial<Persona> = {
+      emoji,
+      title: t,
+      description: description.trim(),
+      purposes: purposes.length > 0 ? purposes : undefined,
+      socialProofNote: socialProofNote.trim() || undefined,
+      budgetNote: budgetNote.trim() || undefined,
+      budgetMin: minN,
+      budgetMax: maxN,
+      packageTier: packageTier ? packageTier : undefined,
+      recommendedCombo,
+    };
+
     try {
       if (mode.kind === "new") {
         const id = `${mode.eventId}-${slugify(t)}-${Date.now().toString(36).slice(-4)}`;
         await setDoc(doc(getDb(), "personas", id), {
+          ...payload,
           id,
           eventId: mode.eventId,
-          emoji,
-          title: t,
-          description: description.trim(),
           targetTags: [],
           order: mode.order,
           isActive: true,
@@ -74,9 +143,7 @@ export function PersonaEditModal({
           doc(getDb(), "personas", mode.persona.id),
           {
             ...mode.persona,
-            emoji,
-            title: t,
-            description: description.trim(),
+            ...payload,
             updatedAt: Timestamp.fromDate(new Date()),
           },
           { merge: true }
@@ -90,6 +157,12 @@ export function PersonaEditModal({
     }
   };
 
+  const togglePurpose = (p: Purpose) => {
+    setPurposes((prev) =>
+      prev.includes(p) ? prev.filter((x) => x !== p) : [...prev, p]
+    );
+  };
+
   return (
     <div
       className="fixed inset-0 z-50 bg-ink-900/40 backdrop-blur-[1px] flex items-center justify-center p-4"
@@ -99,9 +172,9 @@ export function PersonaEditModal({
         role="dialog"
         aria-modal="true"
         onClick={(e) => e.stopPropagation()}
-        className="bg-white w-full max-w-lg rounded-card shadow-2xl overflow-hidden"
+        className="bg-white w-full max-w-2xl max-h-[92vh] rounded-card shadow-2xl overflow-hidden flex flex-col"
       >
-        <header className="px-5 py-4 border-b border-ink-100 flex items-center justify-between">
+        <header className="px-5 py-4 border-b border-ink-100 flex items-center justify-between shrink-0">
           <h2 className="text-[16px] font-bold text-ink-900">
             {mode.kind === "new" ? "새 페르소나" : "페르소나 편집"}
           </h2>
@@ -115,21 +188,38 @@ export function PersonaEditModal({
           </button>
         </header>
 
-        <div className="px-5 py-4 space-y-4">
+        <div className="px-5 py-4 space-y-5 overflow-y-auto flex-1">
           {/* 미리보기 */}
-          <div className="bg-brand-50 border border-brand-100 rounded-card p-4 flex flex-col">
-            <div className="text-[22px] mb-2">{emoji}</div>
-            <div className="text-[13.5px] font-bold text-ink-900 leading-tight">
+          <div className="bg-canvas border border-ink-100 rounded-card p-4">
+            <div className="text-[26px] mb-2">{emoji}</div>
+            <div className="text-[14px] font-bold text-ink-900 leading-tight">
               {title || "(제목 미정)"}
             </div>
             {description && (
-              <p className="text-[11px] text-ink-500 mt-2 leading-snug">
+              <p className="text-[11.5px] text-ink-500 mt-2 leading-snug">
                 {description}
               </p>
             )}
+            {(socialProofNote || budgetNote) && (
+              <div className="mt-3 pt-3 border-t border-ink-100 space-y-1">
+                {socialProofNote && (
+                  <div className="text-[11px] text-ink-700">
+                    👥 {socialProofNote}
+                  </div>
+                )}
+                {budgetNote && (
+                  <div className="text-[10.5px] text-ink-500 font-num">
+                    💰 {budgetNote}
+                  </div>
+                )}
+              </div>
+            )}
           </div>
 
-          {/* 아이콘 선택 */}
+          {/* ── 기본 ── */}
+          <SectionHeader>기본 정보</SectionHeader>
+
+          {/* 아이콘 */}
           <div>
             <span className="text-[12px] text-ink-700 font-semibold mb-2 block">
               아이콘
@@ -156,40 +246,200 @@ export function PersonaEditModal({
             </div>
           </div>
 
-          {/* 제목 */}
-          <label className="block">
-            <span className="text-[12px] text-ink-700 font-semibold mb-1 block">
-              제목 *
-            </span>
+          <Field label="제목 *">
             <input
               type="text"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               placeholder="예: 처음 참가하는 회사"
               autoFocus
-              className="w-full px-3 py-2 text-sm border border-ink-100 rounded-btn focus:outline-none focus:border-brand-500"
+              className={inputCls()}
             />
-          </label>
+          </Field>
 
-          {/* 서브 카피 / 설명 */}
-          <label className="block">
-            <span className="text-[12px] text-ink-700 font-semibold mb-1 block">
-              서브 카피 (한 줄~두 줄)
-            </span>
+          <Field label="서브 카피">
             <textarea
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               placeholder="예: 예산 부담 적게 진입 채널 확보. 500만~1500만원 사이 단품·스탠다드 패키지 위주."
-              rows={3}
-              className="w-full px-3 py-2 text-sm border border-ink-100 rounded-btn focus:outline-none focus:border-brand-500 resize-y"
+              rows={2}
+              className={inputCls() + " resize-y"}
             />
-            <p className="text-[10.5px] text-ink-500 mt-1">
-              참가업체가 카드를 볼 때 본인 상황과 맞는지 판단하는 단서가 됩니다.
-            </p>
-          </label>
+          </Field>
+
+          {/* ── 페르소나가 강력해지는 메타 ── */}
+          <SectionHeader hint="비워두면 결과 화면 narration이 빈약해집니다">
+            확신을 주는 메타 (강화)
+          </SectionHeader>
+
+          <Field
+            label="사회적 증거 한 줄"
+            hint='예: "작년 18곳이 이 코스로 시작했어요"'
+          >
+            <input
+              type="text"
+              value={socialProofNote}
+              onChange={(e) => setSocialProofNote(e.target.value)}
+              placeholder="작년 N개 회사가 이 코스 선택"
+              className={inputCls()}
+            />
+          </Field>
+
+          <Field
+            label="예산 anchor"
+            hint='예: "평균 1,200만원 (시그니처 + 단품 2개)"'
+          >
+            <input
+              type="text"
+              value={budgetNote}
+              onChange={(e) => setBudgetNote(e.target.value)}
+              placeholder="평균 ○○만원"
+              className={inputCls()}
+            />
+          </Field>
+
+          <div className="grid grid-cols-2 gap-3">
+            <Field label="예산 하한 (KRW)">
+              <input
+                type="number"
+                value={budgetMin}
+                onChange={(e) => setBudgetMin(e.target.value)}
+                placeholder="0"
+                className={inputCls() + " font-mono"}
+              />
+            </Field>
+            <Field label="예산 상한 (KRW)">
+              <input
+                type="number"
+                value={budgetMax}
+                onChange={(e) => setBudgetMax(e.target.value)}
+                placeholder="15000000"
+                className={inputCls() + " font-mono"}
+              />
+            </Field>
+          </div>
+
+          <Field
+            label="패키지 티어 선호"
+            hint="선택하면 카드 카운트·추천에 해당 티어 패키지 포함"
+          >
+            <select
+              value={packageTier}
+              onChange={(e) =>
+                setPackageTier(e.target.value as "signature" | "standard" | "")
+              }
+              className={inputCls()}
+            >
+              <option value="">선호 없음</option>
+              <option value="signature">시그니처</option>
+              <option value="standard">스탠다드</option>
+            </select>
+          </Field>
+
+          {/* 광고 목적 (사이드바 자동 연동) */}
+          <Field
+            label="광고 목적 (선택 시 사이드바 필터 자동 적용)"
+            hint="이 페르소나를 선택하면 여기서 고른 목적이 사이드바에 자동 체크됩니다"
+          >
+            <div className="grid grid-cols-2 gap-2">
+              {PURPOSE_ORDER.map((p) => {
+                const on = purposes.includes(p);
+                return (
+                  <button
+                    key={p}
+                    type="button"
+                    onClick={() => togglePurpose(p)}
+                    className={
+                      "text-left px-3 py-2 rounded-btn border-2 transition-colors " +
+                      (on
+                        ? "border-brand-500 bg-brand-50"
+                        : "border-ink-100 bg-white hover:border-ink-300")
+                    }
+                  >
+                    <div className="text-[12px] font-bold text-ink-900">
+                      {PURPOSE_META[p].ko}
+                    </div>
+                    <div className="text-[10px] text-ink-500 mt-0.5 leading-snug">
+                      {PURPOSE_META[p].desc}
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          </Field>
+
+          {/* ── 추천 콤보 ── */}
+          <SectionHeader hint="비우면 자동 생성 (매칭 카테고리 상위 3 + 선호 티어 패키지). 직접 큐레이션 권장.">
+            추천 콤보 (결과 화면 배너 + 한 번에 카트 담기)
+          </SectionHeader>
+
+          <Field
+            label="콤보 헤드라인"
+            hint='기본: "당신 같은 회사가 보통 이렇게 합니다"'
+          >
+            <input
+              type="text"
+              value={comboHeadline}
+              onChange={(e) => setComboHeadline(e.target.value)}
+              placeholder="예: 첫 참가, 이 3개로 시작하세요"
+              className={inputCls()}
+            />
+          </Field>
+
+          <Field
+            label="콤보 이유 한 줄"
+            hint='예: "동선 + 인지 + 자산 3박자"'
+          >
+            <input
+              type="text"
+              value={comboRationale}
+              onChange={(e) => setComboRationale(e.target.value)}
+              placeholder="왜 이 콤보인지 한 줄로"
+              className={inputCls()}
+            />
+          </Field>
+
+          <Field
+            label="카테고리 slug (콤마 구분)"
+            hint='어드민 [카테고리]에서 카테고리 별 slug 확인. 예: "ceiling-banner-hall-a, xpace-bridge"'
+          >
+            <input
+              type="text"
+              value={comboSlugs}
+              onChange={(e) => setComboSlugs(e.target.value)}
+              placeholder="ceiling-banner-hall-a, ..."
+              className={inputCls() + " font-mono text-[11.5px]"}
+            />
+          </Field>
+
+          <Field
+            label="패키지 ID (콤마 구분)"
+            hint="어드민 [패키지]에서 ID 확인. 보통 1개."
+          >
+            <input
+              type="text"
+              value={comboPackageIds}
+              onChange={(e) => setComboPackageIds(e.target.value)}
+              placeholder="signature-bundle-2026"
+              className={inputCls() + " font-mono text-[11.5px]"}
+            />
+          </Field>
+
+          <Field
+            label="예상 합계 (선택, KRW)"
+            hint="비우면 자동 계산"
+          >
+            <input
+              type="number"
+              value={comboExpected}
+              onChange={(e) => setComboExpected(e.target.value)}
+              placeholder="12000000"
+              className={inputCls() + " font-mono"}
+            />
+          </Field>
         </div>
 
-        <footer className="px-5 py-3 border-t border-ink-100 grid grid-cols-2 gap-2">
+        <footer className="px-5 py-3 border-t border-ink-100 grid grid-cols-2 gap-2 shrink-0">
           <button
             type="button"
             onClick={onClose}
@@ -201,7 +451,7 @@ export function PersonaEditModal({
             type="button"
             onClick={submit}
             disabled={saving || !title.trim()}
-            className="px-4 py-2.5 rounded-btn bg-brand-500 text-ink-900 text-[13px] font-bold hover:bg-brand-700 hover:text-white disabled:opacity-50"
+            className="px-4 py-2.5 rounded-btn bg-brand-500 text-white text-[13px] font-bold hover:bg-brand-700 disabled:opacity-50"
           >
             {saving ? "저장 중…" : mode.kind === "new" ? "추가" : "저장"}
           </button>
@@ -209,6 +459,55 @@ export function PersonaEditModal({
       </div>
     </div>
   );
+}
+
+function SectionHeader({
+  children,
+  hint,
+}: {
+  children: React.ReactNode;
+  hint?: string;
+}) {
+  return (
+    <div className="pt-2 border-t border-ink-100 first:border-t-0 first:pt-0">
+      <div className="text-[11px] uppercase tracking-widest text-brand-500 font-bold mt-3">
+        {children}
+      </div>
+      {hint && (
+        <div className="text-[11px] text-ink-500 mt-0.5 leading-snug">
+          {hint}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function Field({
+  label,
+  hint,
+  children,
+}: {
+  label: string;
+  hint?: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <label className="block">
+      <span className="text-[12px] text-ink-700 font-semibold mb-1 block">
+        {label}
+      </span>
+      {children}
+      {hint && (
+        <span className="text-[10.5px] text-ink-500 mt-1 block leading-snug">
+          {hint}
+        </span>
+      )}
+    </label>
+  );
+}
+
+function inputCls(): string {
+  return "w-full px-3 py-2 text-sm border border-ink-100 rounded-btn focus:outline-none focus:border-brand-500 bg-white";
 }
 
 function slugify(s: string): string {
