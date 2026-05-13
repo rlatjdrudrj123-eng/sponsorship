@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { useParams } from "next/navigation";
 import { Check } from "lucide-react";
 import { doc, getDoc } from "firebase/firestore";
 import { getDb } from "@/lib/firebase/firestore";
@@ -9,18 +10,21 @@ import type { SiteSettings } from "@/lib/types";
 import { Footer } from "@/components/public/Footer";
 
 export default function ContactDonePage() {
+  const params = useParams<{ eventSlug: string }>();
+  const eventId = params.eventSlug;
   const [settings, setSettings] = useState<SiteSettings | null>(null);
 
   useEffect(() => {
+    if (!eventId) return;
     (async () => {
       try {
-        const snap = await getDoc(doc(getDb(), "siteSettings", "main"));
+        const snap = await getDoc(doc(getDb(), "siteSettings", eventId));
         if (snap.exists()) setSettings(snap.data() as SiteSettings);
       } catch {
         // ignore
       }
     })();
-  }, []);
+  }, [eventId]);
 
   return (
     <>
@@ -49,13 +53,13 @@ export default function ContactDonePage() {
           )}
           <div className="mt-10 flex items-center justify-center gap-3">
             <Link
-              href="/"
+              href={`/${eventId}`}
               className="px-5 py-2.5 rounded-btn border border-ink-100 text-[13px] font-semibold hover:bg-ink-50"
             >
               홈으로
             </Link>
             <Link
-              href="/sponsorships"
+              href={`/${eventId}/sponsorships`}
               className="px-5 py-2.5 rounded-btn bg-mint-500 text-ink-900 font-semibold text-[13px] hover:bg-mint-700 hover:text-white"
             >
               추가 둘러보기

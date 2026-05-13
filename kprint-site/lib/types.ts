@@ -211,6 +211,7 @@ export type Inquiry = {
 
 // ============= SITE SETTINGS =============
 export type SiteSettings = {
+  eventId?: string; // doc id 와 동일 — 보조 인덱스용
   event: {
     nameKo: string;
     nameEn: string;

@@ -149,9 +149,11 @@ export default function CategoryEditPage() {
     };
   }, [id]);
 
-  // taxonomy
+  // taxonomy (행사별)
   useEffect(() => {
-    const u = onSnapshot(doc(getDb(), "taxonomy", "main"), (s) => {
+    const evId = category?.eventId;
+    if (!evId) return;
+    const u = onSnapshot(doc(getDb(), "taxonomy", evId), (s) => {
       if (s.exists()) {
         setTaxonomyTags((s.data() as Taxonomy).tags ?? []);
       } else {
@@ -159,7 +161,7 @@ export default function CategoryEditPage() {
       }
     });
     return () => u();
-  }, []);
+  }, [category?.eventId]);
 
   // auto-save
   useEffect(() => {
@@ -419,7 +421,7 @@ export default function CategoryEditPage() {
               <div className="text-[12px] font-semibold text-ink-700 mb-2 uppercase tracking-wide">태그</div>
               {taxonomyTags.length === 0 ? (
                 <div className="text-[12px] text-ink-500 bg-ink-50 rounded-btn px-3 py-2">
-                  taxonomy/main 도큐먼트가 없습니다.{" "}
+                  이 행사의 태그가 아직 없습니다.{" "}
                   <Link href="/admin/settings/taxonomy" className="text-mint-700 font-semibold hover:underline">
                     분류·태그에서 먼저 추가하세요 →
                   </Link>

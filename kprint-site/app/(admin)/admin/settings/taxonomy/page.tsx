@@ -6,7 +6,9 @@ import {
   doc,
   getDocs,
   onSnapshot,
+  query,
   setDoc,
+  where,
 } from "firebase/firestore";
 import { useFieldArray, useForm } from "react-hook-form";
 import {
@@ -21,9 +23,8 @@ import {
   X,
 } from "lucide-react";
 import { getDb } from "@/lib/firebase/firestore";
+import { useEventFilter } from "@/lib/admin/useEventFilter";
 import type { Category, Tag, TagKind, Taxonomy } from "@/lib/types";
-
-const TAXONOMY_DOC_ID = "main";
 
 const FIXED_CHANNELS: Taxonomy["channels"] = [
   { id: "offline", label: "오프라인" },
@@ -89,6 +90,7 @@ type FormValues = {
 };
 
 export default function TaxonomyPage() {
+  const { eventId, ready } = useEventFilter();
   const [loaded, setLoaded] = useState(false);
   const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
   const [saveError, setSaveError] = useState<string | null>(null);
@@ -116,7 +118,10 @@ export default function TaxonomyPage() {
 
   // 1회성 마이그레이션: 첫 로드 시 누락 필드 자동 채움 + 저장
   useEffect(() => {
-    const u = onSnapshot(doc(getDb(), "taxonomy", TAXONOMY_DOC_ID), (s) => {
+    if (!ready || !eventId) return;
+    initRef.current = false;
+    setLoaded(false);
+    const u = onSnapshot(doc(getDb(), "taxonomy", eventId), (s) => {
       setLoaded(true);
       if (initRef.current) return;
       initRef.current = true;
@@ -150,11 +155,12 @@ export default function TaxonomyPage() {
 
       if (migrated && normalized.length > 0) {
         // 자동 저장 (silent)
-        const data: Taxonomy = {
+        const data: Taxonomy & { eventId: string } = {
+          eventId,
           tags: normalized.map((t, i) => buildTag(t, i, normalized)),
           channels: FIXED_CHANNELS,
         };
-        setDoc(doc(getDb(), "taxonomy", TAXONOMY_DOC_ID), data)
+        setDoc(doc(getDb(), "taxonomy", eventId), data)
           .then(() => {
             setMigrationNote(
               `기존 태그 ${normalized.length}개에 kind / isActive / order 자동 적용 완료.`
@@ -167,19 +173,25 @@ export default function TaxonomyPage() {
       }
     });
     return () => u();
-  }, [form]);
+  }, [form, ready, eventId]);
 
   const handleSave = async () => {
+    if (!eventId) {
+      setSaveStatus("error");
+      setSaveError("상단에서 행사를 먼저 선택하세요.");
+      return;
+    }
     setSaveStatus("saving");
     setSaveError(null);
     try {
       const v = form.getValues();
       const validTags = v.tags.filter((t) => t.id.trim() && t.label.trim());
-      const data: Taxonomy = {
+      const data: Taxonomy & { eventId: string } = {
+        eventId,
         tags: validTags.map((t, i) => buildTag(t, i, validTags)),
         channels: FIXED_CHANNELS,
       };
-      await setDoc(doc(getDb(), "taxonomy", TAXONOMY_DOC_ID), data);
+      await setDoc(doc(getDb(), "taxonomy", eventId), data);
       setSaveStatus("saved");
       setTimeout(() => setSaveStatus("idle"), 3000);
     } catch (e) {
@@ -203,8 +215,14 @@ export default function TaxonomyPage() {
 
   /** categories 컬렉션 전체를 스캔해서 사용 중인 태그 라벨을 수집 → 중복 제거 → 누락된 것만 폼에 추가 */
   const handleImportFromCategories = async () => {
+    if (!eventId) {
+      alert("상단에서 행사를 먼저 선택하세요.");
+      return;
+    }
     try {
-      const snap = await getDocs(collection(getDb(), "categories"));
+      const snap = await getDocs(
+        query(collection(getDb(), "categories"), where("eventId", "==", eventId))
+      );
       const labelSet = new Set<string>();
       snap.docs.forEach((d) => {
         const cat = d.data() as Category;
@@ -276,6 +294,16 @@ export default function TaxonomyPage() {
     });
   };
 
+  if (!ready) {
+    return <div className="text-sm text-ink-500 text-center py-16">행사 정보 불러오는 중…</div>;
+  }
+  if (!eventId) {
+    return (
+      <div className="text-sm text-ink-500 text-center py-16">
+        상단 셀렉터에서 행사를 먼저 선택하세요.
+      </div>
+    );
+  }
   if (!loaded) {
     return <div className="text-sm text-ink-500 text-center py-16">불러오는 중…</div>;
   }

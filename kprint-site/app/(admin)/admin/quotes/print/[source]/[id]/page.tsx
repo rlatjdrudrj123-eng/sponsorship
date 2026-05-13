@@ -53,7 +53,24 @@ export default function QuotePrintPage() {
     (async () => {
       try {
         const db = getDb();
-        const settingsSnap = await getDoc(doc(db, "quoteSettings", "main"));
+
+        // 1) 먼저 source 도큐먼트에서 eventId 확인 — 행사별 quoteSettings 로드용
+        let sourceEventId: string | null = null;
+        if (source === "inquiry") {
+          const s = await getDoc(doc(db, "inquiries", id));
+          if (s.exists()) sourceEventId = (s.data() as Inquiry).eventId ?? null;
+        } else if (source === "sponsor") {
+          const s = await getDoc(doc(db, "sponsors", id));
+          if (s.exists()) sourceEventId = (s.data() as Sponsor).eventId ?? null;
+        }
+
+        // 2) 행사별 quoteSettings (없으면 main 폴백 — 레거시 보호)
+        let settingsSnap = sourceEventId
+          ? await getDoc(doc(db, "quoteSettings", sourceEventId))
+          : null;
+        if (!settingsSnap || !settingsSnap.exists()) {
+          settingsSnap = await getDoc(doc(db, "quoteSettings", "main"));
+        }
         if (!settingsSnap.exists()) {
           alert("견적서 설정이 없습니다. /admin/settings/quote 에서 먼저 설정해주세요.");
           return;

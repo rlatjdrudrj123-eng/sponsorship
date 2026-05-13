@@ -9,6 +9,7 @@ import {
 } from "firebase/firestore";
 import { Check, FileText, Plus, Trash2 } from "lucide-react";
 import { getDb } from "@/lib/firebase/firestore";
+import { useEventFilter } from "@/lib/admin/useEventFilter";
 import type { QuoteSettings } from "@/lib/types";
 
 const DEFAULT_SETTINGS: QuoteSettings = {
@@ -45,14 +46,17 @@ const DEFAULT_SETTINGS: QuoteSettings = {
 };
 
 export default function QuoteSettingsPage() {
+  const { eventId, ready } = useEventFilter();
   const [v, setV] = useState<QuoteSettings | null>(null);
   const [loading, setLoading] = useState(true);
   const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
 
   useEffect(() => {
+    if (!ready || !eventId) return;
+    setLoading(true);
     (async () => {
       try {
-        const snap = await getDoc(doc(getDb(), "quoteSettings", "main"));
+        const snap = await getDoc(doc(getDb(), "quoteSettings", eventId));
         if (snap.exists()) {
           setV({ ...DEFAULT_SETTINGS, ...(snap.data() as QuoteSettings) });
         } else {
@@ -62,18 +66,19 @@ export default function QuoteSettingsPage() {
         setLoading(false);
       }
     })();
-  }, []);
+  }, [ready, eventId]);
 
   const update = (updater: (prev: QuoteSettings) => QuoteSettings) => {
     setV((p) => (p ? updater(p) : p));
   };
 
   const save = async () => {
-    if (!v) return;
+    if (!v || !eventId) return;
     setSaveStatus("saving");
     try {
-      await setDoc(doc(getDb(), "quoteSettings", "main"), {
+      await setDoc(doc(getDb(), "quoteSettings", eventId), {
         ...v,
+        eventId,
         updatedAt: serverTimestamp(),
       });
       setSaveStatus("saved");
@@ -84,6 +89,16 @@ export default function QuoteSettingsPage() {
     }
   };
 
+  if (!ready) {
+    return <div className="text-sm text-ink-500 text-center py-16">행사 정보 불러오는 중…</div>;
+  }
+  if (!eventId) {
+    return (
+      <div className="text-sm text-ink-500 text-center py-16">
+        상단 셀렉터에서 행사를 먼저 선택하세요.
+      </div>
+    );
+  }
   if (loading || !v) {
     return <div className="text-sm text-ink-500 text-center py-16">불러오는 중…</div>;
   }

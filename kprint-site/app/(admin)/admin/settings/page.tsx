@@ -17,9 +17,8 @@ import {
   deleteFile,
   uploadFile,
 } from "@/lib/firebase/storage";
+import { useEventFilter } from "@/lib/admin/useEventFilter";
 import type { SiteSettings } from "@/lib/types";
-
-const SETTINGS_DOC_ID = "main";
 
 type FormValues = {
   event: {
@@ -50,6 +49,7 @@ type FormValues = {
 };
 
 export default function SettingsPage() {
+  const { eventId, ready } = useEventFilter();
   const [loaded, setLoaded] = useState(false);
   const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
   const [saveError, setSaveError] = useState<string | null>(null);
@@ -76,7 +76,10 @@ export default function SettingsPage() {
   const steps = useFieldArray({ control: form.control, name: "applicationSteps" });
 
   useEffect(() => {
-    const u = onSnapshot(doc(getDb(), "siteSettings", SETTINGS_DOC_ID), (s) => {
+    if (!ready || !eventId) return;
+    initRef.current = false;
+    setLoaded(false);
+    const u = onSnapshot(doc(getDb(), "siteSettings", eventId), (s) => {
       setLoaded(true);
       if (!s.exists() || initRef.current) return;
       const data = s.data() as SiteSettings;
@@ -122,14 +125,20 @@ export default function SettingsPage() {
       initRef.current = true;
     });
     return () => u();
-  }, [form]);
+  }, [form, ready, eventId]);
 
   const handleSave = async () => {
+    if (!eventId) {
+      setSaveStatus("error");
+      setSaveError("상단에서 행사를 먼저 선택하세요.");
+      return;
+    }
     setSaveStatus("saving");
     setSaveError(null);
     try {
       const v = form.getValues();
       const data: Partial<SiteSettings> = {
+        eventId,
         event: {
           nameKo: v.event.nameKo,
           nameEn: v.event.nameEn,
@@ -152,7 +161,7 @@ export default function SettingsPage() {
         contact: v.contact,
         applicationSteps: v.applicationSteps.filter((s) => s.title),
       };
-      await setDoc(doc(getDb(), "siteSettings", SETTINGS_DOC_ID), data, { merge: true });
+      await setDoc(doc(getDb(), "siteSettings", eventId), data, { merge: true });
       setSaveStatus("saved");
       setTimeout(() => setSaveStatus("idle"), 3000);
     } catch (e) {
@@ -162,6 +171,10 @@ export default function SettingsPage() {
   };
 
   const uploadKV = async (kind: "desktop" | "mobile", file: File) => {
+    if (!eventId) {
+      alert("상단에서 행사를 먼저 선택하세요.");
+      return;
+    }
     if (!file.type.startsWith("image/")) {
       alert("이미지 파일만 가능합니다.");
       return;
@@ -180,8 +193,9 @@ export default function SettingsPage() {
       }
       // 업로드한 즉시 doc 갱신해주는게 안전 — 명시적 저장과 별개로
       await setDoc(
-        doc(getDb(), "siteSettings", SETTINGS_DOC_ID),
+        doc(getDb(), "siteSettings", eventId),
         {
+          eventId,
           kv:
             kind === "desktop"
               ? { desktopUrl: result.url }
@@ -194,6 +208,16 @@ export default function SettingsPage() {
     }
   };
 
+  if (!ready) {
+    return <div className="text-sm text-ink-500 text-center py-16">행사 정보 불러오는 중…</div>;
+  }
+  if (!eventId) {
+    return (
+      <div className="text-sm text-ink-500 text-center py-16">
+        상단 셀렉터에서 행사를 먼저 선택하세요.
+      </div>
+    );
+  }
   if (!loaded) {
     return <div className="text-sm text-ink-500 text-center py-16">불러오는 중…</div>;
   }

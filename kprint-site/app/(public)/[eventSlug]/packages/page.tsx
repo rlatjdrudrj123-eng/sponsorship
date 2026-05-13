@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import { useParams } from "next/navigation";
 import {
   collection,
   doc,
@@ -18,19 +19,26 @@ import { Footer } from "@/components/public/Footer";
 type Tab = "all" | "signature" | "standard";
 
 export default function PackagesListPage() {
+  const params = useParams<{ eventSlug: string }>();
+  const eventId = params.eventSlug;
   const [packages, setPackages] = useState<Package[]>([]);
   const [settings, setSettings] = useState<SiteSettings | null>(null);
   const [tab, setTab] = useState<Tab>("all");
 
   useEffect(() => {
+    if (!eventId) return;
     (async () => {
       try {
         const db = getDb();
         const [pkgSnap, settingsSnap] = await Promise.all([
           getDocs(
-            query(collection(db, "packages"), where("isPublished", "==", true))
+            query(
+              collection(db, "packages"),
+              where("eventId", "==", eventId),
+              where("isPublished", "==", true)
+            )
           ),
-          getDoc(doc(db, "siteSettings", "main")),
+          getDoc(doc(db, "siteSettings", eventId)),
         ]);
         setPackages(
           pkgSnap.docs.map((d) => ({ ...(d.data() as Package), id: d.id }))
@@ -41,7 +49,7 @@ export default function PackagesListPage() {
         console.error(e);
       }
     })();
-  }, []);
+  }, [eventId]);
 
   const filtered = useMemo(() => {
     return [...packages]
@@ -54,7 +62,7 @@ export default function PackagesListPage() {
       <main className="min-h-screen bg-white">
         <header className="px-6 md:px-16 pt-12 pb-6 border-b border-ink-100">
           <Link
-            href="/"
+            href={`/${eventId}`}
             className="inline-flex items-center gap-1.5 text-[12px] text-ink-500 hover:text-ink-900 mb-3"
           >
             <ArrowLeft className="w-3.5 h-3.5" />
@@ -102,7 +110,7 @@ export default function PackagesListPage() {
                 return (
                   <Link
                     key={pkg.id}
-                    href={`/packages/${pkg.id}`}
+                    href={`/${eventId}/packages/${pkg.id}`}
                     className="group bg-[#fafaf7] border border-ink-100 rounded-card overflow-hidden hover:border-mint-500 transition-colors flex flex-col h-full"
                   >
                     <div className="aspect-[16/9] bg-ink-100 relative shrink-0">

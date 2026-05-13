@@ -1,7 +1,7 @@
 "use client";
 
 import { Suspense, useEffect, useMemo, useState } from "react";
-import { useSearchParams } from "next/navigation";
+import { useParams, useSearchParams } from "next/navigation";
 import { collection, doc, getDoc, getDocs, query, where } from "firebase/firestore";
 import { Printer } from "lucide-react";
 import { getDb } from "@/lib/firebase/firestore";
@@ -36,6 +36,8 @@ export default function CartPrintPage() {
 
 function CartPrintContent() {
   const search = useSearchParams();
+  const params = useParams<{ eventSlug: string }>();
+  const eventId = params.eventSlug;
   const idsParam = search.get("ids") ?? "";
   const items = useCartStore((s) => s.items);
   const hydrated = useCartStore((s) => s.hasHydrated);
@@ -48,16 +50,31 @@ function CartPrintContent() {
   const [ready, setReady] = useState(false);
 
   useEffect(() => {
+    if (!eventId) return;
     (async () => {
       try {
         const db = getDb();
         // 공개 사이트 — isPublished=true만 읽기 가능 (firestore rules)
         const [c, s, sl, p, st] = await Promise.all([
-          getDocs(query(collection(db, "categories"), where("isPublished", "==", true))),
-          getDocs(collection(db, "subcategories")),
-          getDocs(collection(db, "slots")),
-          getDocs(query(collection(db, "packages"), where("isPublished", "==", true))),
-          getDoc(doc(db, "siteSettings", "main")),
+          getDocs(
+            query(
+              collection(db, "categories"),
+              where("eventId", "==", eventId),
+              where("isPublished", "==", true)
+            )
+          ),
+          getDocs(
+            query(collection(db, "subcategories"), where("eventId", "==", eventId))
+          ),
+          getDocs(query(collection(db, "slots"), where("eventId", "==", eventId))),
+          getDocs(
+            query(
+              collection(db, "packages"),
+              where("eventId", "==", eventId),
+              where("isPublished", "==", true)
+            )
+          ),
+          getDoc(doc(db, "siteSettings", eventId)),
         ]);
         const cm = new Map<string, Category>();
         c.docs.forEach((d) => cm.set(d.id, { ...(d.data() as Category), id: d.id }));
@@ -78,7 +95,7 @@ function CartPrintContent() {
         setReady(true);
       }
     })();
-  }, []);
+  }, [eventId]);
 
   const selected = useMemo<CartItem[]>(() => {
     if (!idsParam) return items;
@@ -152,7 +169,7 @@ function CartPrintContent() {
     return () => clearTimeout(t);
   }, [ready, hydrated]);
 
-  const eventName = settings?.event?.nameKo ?? "K-PRINT 2026";
+  const eventName = settings?.event?.nameKo ?? eventId ?? "행사";
 
   if (!ready || !hydrated) {
     return <div className="p-12 text-center text-sm text-ink-500">불러오는 중…</div>;

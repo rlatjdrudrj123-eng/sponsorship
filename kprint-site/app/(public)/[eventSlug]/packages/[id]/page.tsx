@@ -8,13 +8,16 @@ import {
   doc,
   getDoc,
   getDocs,
+  query,
+  where,
 } from "firebase/firestore";
 import { getDb } from "@/lib/firebase/firestore";
 import type { Package, SiteSettings, Slot } from "@/lib/types";
 import { PackageType } from "@/components/public/CategoryDetail/PackageType";
 
 export default function PackageDetailPage() {
-  const params = useParams<{ id: string }>();
+  const params = useParams<{ eventSlug: string; id: string }>();
+  const eventId = params.eventSlug;
   const id = params.id;
 
   const [pkg, setPkg] = useState<Package | null>(null);
@@ -26,6 +29,7 @@ export default function PackageDetailPage() {
   const [notFound, setNotFound] = useState(false);
 
   useEffect(() => {
+    if (!eventId) return;
     (async () => {
       try {
         const db = getDb();
@@ -39,8 +43,10 @@ export default function PackageDetailPage() {
         setPkg(data);
 
         const [slotsSnap, settingsSnap] = await Promise.all([
-          getDocs(collection(db, "slots")),
-          getDoc(doc(db, "siteSettings", "main")),
+          getDocs(
+            query(collection(db, "slots"), where("eventId", "==", eventId))
+          ),
+          getDoc(doc(db, "siteSettings", eventId)),
         ]);
         const map = new Map<string, Slot>();
         slotsSnap.docs.forEach((d) => {
@@ -55,7 +61,7 @@ export default function PackageDetailPage() {
         setLoaded(true);
       }
     })();
-  }, [id]);
+  }, [eventId, id]);
 
   if (!loaded) {
     return (
@@ -70,7 +76,7 @@ export default function PackageDetailPage() {
         <div className="text-center">
           <p className="text-sm text-ink-700">패키지를 찾을 수 없습니다.</p>
           <Link
-            href="/packages"
+            href={`/${eventId}/packages`}
             className="text-mint-700 font-semibold mt-3 inline-block hover:underline"
           >
             전체 패키지로 →
