@@ -212,6 +212,9 @@ export type Inquiry = {
 // ============= SITE SETTINGS =============
 export type SiteSettings = {
   eventId?: string; // doc id 와 동일 — 보조 인덱스용
+  theme?: {
+    primary?: string; // hex color, 예: "#DB0711" — 행사별 brand color
+  };
   event: {
     nameKo: string;
     nameEn: string;

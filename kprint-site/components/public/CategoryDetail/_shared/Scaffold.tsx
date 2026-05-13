@@ -29,7 +29,7 @@ export function Scaffold({
   const available = slots.filter((s) => s.status === "available").length;
   return (
     <>
-      <main className="min-h-screen bg-white">
+      <main className="min-h-screen bg-canvas">
         <CategoryHero
           category={category}
           subcategories={subcategories}

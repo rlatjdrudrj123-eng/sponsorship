@@ -21,6 +21,9 @@ import { useEventFilter } from "@/lib/admin/useEventFilter";
 import type { SiteSettings } from "@/lib/types";
 
 type FormValues = {
+  theme: {
+    primary: string; // hex
+  };
   event: {
     nameKo: string;
     nameEn: string;
@@ -48,6 +51,16 @@ type FormValues = {
   applicationSteps: Array<{ title: string; desc: string }>;
 };
 
+const PRESET_COLORS: Array<{ label: string; hex: string }> = [
+  { label: "KIMES 빨강", hex: "#DB0711" },
+  { label: "K-PRINT 민트", hex: "#00BFA6" },
+  { label: "딥 블루", hex: "#1E40AF" },
+  { label: "포레스트", hex: "#15803D" },
+  { label: "퍼플", hex: "#7C3AED" },
+  { label: "오렌지", hex: "#EA580C" },
+  { label: "차콜", hex: "#1F2937" },
+];
+
 export default function SettingsPage() {
   const { eventId, ready } = useEventFilter();
   const [loaded, setLoaded] = useState(false);
@@ -57,15 +70,16 @@ export default function SettingsPage() {
 
   const form = useForm<FormValues>({
     defaultValues: {
+      theme: { primary: "#DB0711" },
       event: {
-        nameKo: "K-PRINT 2026",
-        nameEn: "K-PRINT 2026",
+        nameKo: "",
+        nameEn: "",
         dateRange: "",
         venue: "",
         applicationDeadline: "",
       },
       kv: { desktopUrl: "", mobileUrl: "", overlayText: "" },
-      why: { headline: "왜 K-PRINT인가?", stats: [], chartData: [] },
+      why: { headline: "", stats: [], chartData: [] },
       contact: { phone: "", email: "", address: "" },
       applicationSteps: [],
     },
@@ -84,6 +98,9 @@ export default function SettingsPage() {
       if (!s.exists() || initRef.current) return;
       const data = s.data() as SiteSettings;
       form.reset({
+        theme: {
+          primary: data.theme?.primary || "#DB0711",
+        },
         event: {
           nameKo: data.event?.nameKo ?? "",
           nameEn: data.event?.nameEn ?? "",
@@ -139,6 +156,9 @@ export default function SettingsPage() {
       const v = form.getValues();
       const data: Partial<SiteSettings> = {
         eventId,
+        theme: {
+          primary: v.theme.primary || "#DB0711",
+        },
         event: {
           nameKo: v.event.nameKo,
           nameEn: v.event.nameEn,
@@ -244,6 +264,15 @@ export default function SettingsPage() {
           </button>
         </div>
       </header>
+
+      <Section title="테마 색상">
+        <ThemePrimaryPicker
+          value={form.watch("theme.primary")}
+          onChange={(hex) =>
+            form.setValue("theme.primary", hex, { shouldDirty: true })
+          }
+        />
+      </Section>
 
       <Section title="이벤트 정보">
         <div className="grid grid-cols-2 gap-3">
@@ -559,6 +588,92 @@ function KVUpload({
           e.target.value = "";
         }}
       />
+    </div>
+  );
+}
+
+function ThemePrimaryPicker({
+  value,
+  onChange,
+}: {
+  value: string;
+  onChange: (hex: string) => void;
+}) {
+  const safe = value && /^#[0-9a-fA-F]{3,6}$/.test(value) ? value : "#DB0711";
+
+  return (
+    <div className="space-y-3">
+      <div className="flex items-center gap-3">
+        <input
+          type="color"
+          value={safe}
+          onChange={(e) => onChange(e.target.value)}
+          className="w-16 h-12 rounded-btn border border-ink-100 cursor-pointer bg-white"
+          aria-label="브랜드 색상"
+        />
+        <input
+          type="text"
+          value={safe}
+          onChange={(e) => onChange(e.target.value)}
+          placeholder="#DB0711"
+          className="px-3 py-2 text-sm border border-ink-100 rounded-btn focus:outline-none focus:border-brand-500 bg-white font-mono w-32"
+        />
+        <span className="text-[11px] text-ink-500">
+          이 색상이 공개 사이트의 버튼·강조·링크·로고에 적용됩니다.
+        </span>
+      </div>
+
+      {/* 프리셋 */}
+      <div className="flex flex-wrap gap-2">
+        {PRESET_COLORS.map((p) => (
+          <button
+            key={p.hex}
+            type="button"
+            onClick={() => onChange(p.hex)}
+            className={
+              "px-2.5 py-1.5 rounded-btn text-[11.5px] font-semibold border transition-all flex items-center gap-1.5 " +
+              (safe.toUpperCase() === p.hex.toUpperCase()
+                ? "border-ink-900 bg-ink-900 text-white"
+                : "border-ink-100 hover:border-ink-900 bg-white")
+            }
+            title={p.hex}
+          >
+            <span
+              className="w-3 h-3 rounded-full border border-black/10"
+              style={{ background: p.hex }}
+            />
+            {p.label}
+          </button>
+        ))}
+      </div>
+
+      {/* 미리보기 */}
+      <div className="flex flex-wrap items-center gap-3 mt-2 p-3 rounded-btn bg-ink-50 border border-ink-100">
+        <span className="text-[11px] text-ink-500 mr-1">미리보기:</span>
+        <button
+          type="button"
+          className="px-3.5 py-1.5 rounded-btn text-white text-[12px] font-semibold"
+          style={{ background: safe }}
+        >
+          CTA 버튼
+        </button>
+        <button
+          type="button"
+          className="px-3.5 py-1.5 rounded-btn text-[12px] font-semibold bg-white border-2"
+          style={{ borderColor: safe, color: safe }}
+        >
+          아웃라인
+        </button>
+        <span
+          className="px-2.5 py-1 rounded-pill text-white text-[10px] font-bold"
+          style={{ background: safe }}
+        >
+          BADGE
+        </span>
+        <span className="text-[12px] font-bold" style={{ color: safe }}>
+          링크 텍스트
+        </span>
+      </div>
     </div>
   );
 }

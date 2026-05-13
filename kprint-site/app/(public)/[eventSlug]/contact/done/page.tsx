@@ -28,39 +28,44 @@ export default function ContactDonePage() {
 
   return (
     <>
-      <main className="min-h-screen bg-white grid place-items-center px-6 py-16">
+      <main className="min-h-screen bg-canvas grid place-items-center px-6 py-16">
         <div className="max-w-md text-center">
-          <div className="w-16 h-16 mx-auto rounded-full bg-brand-50 border border-brand-100 grid place-items-center mb-6">
-            <Check className="w-8 h-8 text-brand-700" />
+          <div className="w-20 h-20 mx-auto rounded-full bg-brand-500 grid place-items-center mb-8 shadow-glow">
+            <Check className="w-10 h-10 text-white" strokeWidth={3} />
           </div>
-          <h1 className="text-[28px] md:text-[32px] font-bold tracking-tight leading-tight mb-3">
+          <div className="font-num text-[11px] uppercase tracking-[0.3em] text-brand-500 font-bold mb-3">
+            inquiry received
+          </div>
+          <h1 className="text-[32px] md:text-[44px] font-bold tracking-tight leading-tight mb-4 text-ink-900">
             문의가 접수됐어요
           </h1>
-          <p className="text-[14px] text-ink-700 leading-relaxed">
+          <p className="text-[14px] md:text-[15px] text-ink-500 leading-relaxed">
             사무국이 1영업일 내 회신드립니다. 입력하신 이메일과 전화번호로 연락드릴
             예정이니 확인 부탁드려요.
           </p>
           {settings?.contact && (
-            <div className="mt-6 text-[12px] text-ink-500 space-y-0.5">
-              <div>{settings.contact.phone}</div>
-              <a
-                href={`mailto:${settings.contact.email}`}
-                className="text-brand-700 hover:underline"
-              >
-                {settings.contact.email}
-              </a>
+            <div className="mt-8 pt-6 border-t border-ink-100 text-[12px] text-ink-500 space-y-1 font-num">
+              {settings.contact.phone && <div>{settings.contact.phone}</div>}
+              {settings.contact.email && (
+                <a
+                  href={`mailto:${settings.contact.email}`}
+                  className="text-brand-500 font-bold hover:underline"
+                >
+                  {settings.contact.email}
+                </a>
+              )}
             </div>
           )}
-          <div className="mt-10 flex items-center justify-center gap-3">
+          <div className="mt-10 flex items-center justify-center gap-3 flex-wrap">
             <Link
               href={`/${eventId}`}
-              className="px-5 py-2.5 rounded-btn border border-ink-100 text-[13px] font-semibold hover:bg-ink-50"
+              className="px-5 py-3 rounded-pill border border-ink-100 text-[13px] font-bold hover:border-ink-900 hover:bg-surface transition-colors"
             >
               홈으로
             </Link>
             <Link
               href={`/${eventId}/sponsorships`}
-              className="px-5 py-2.5 rounded-btn bg-brand-500 text-ink-900 font-semibold text-[13px] hover:bg-brand-700 hover:text-white"
+              className="px-5 py-3 rounded-pill bg-brand-500 text-white font-bold text-[13px] hover:bg-brand-700 hover:shadow-glow-sm transition-all"
             >
               추가 둘러보기
             </Link>

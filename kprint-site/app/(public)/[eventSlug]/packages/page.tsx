@@ -59,21 +59,27 @@ export default function PackagesListPage() {
 
   return (
     <>
-      <main className="min-h-screen bg-white">
-        <header className="px-6 md:px-16 pt-12 pb-6 border-b border-ink-100">
-          <Link
-            href={`/${eventId}`}
-            className="inline-flex items-center gap-1.5 text-[12px] text-ink-500 hover:text-ink-900 mb-3"
-          >
-            <ArrowLeft className="w-3.5 h-3.5" />
-            홈
-          </Link>
-          <h1 className="text-[28px] md:text-[40px] font-bold tracking-tight leading-tight">
-            패키지
-          </h1>
-          <p className="text-[13px] text-ink-700 mt-2">
-            오프라인·온라인 채널을 묶은 할인 구성. 협의 후 배정합니다.
-          </p>
+      <main className="min-h-screen bg-canvas">
+        <header className="px-6 md:px-16 pt-16 md:pt-20 pb-8 md:pb-10 border-b border-ink-100 bg-surface">
+          <div className="max-w-6xl mx-auto">
+            <Link
+              href={`/${eventId}`}
+              className="inline-flex items-center gap-1.5 text-[12px] text-ink-500 hover:text-brand-500 mb-4 font-num font-semibold"
+            >
+              <ArrowLeft className="w-3.5 h-3.5" />
+              홈
+            </Link>
+            <div className="font-num text-[11px] md:text-[12px] uppercase tracking-[0.3em] text-brand-500 font-bold mb-3 flex items-center gap-2">
+              <span className="w-6 h-px bg-brand-500" />
+              packages
+            </div>
+            <h1 className="text-[36px] md:text-[64px] font-bold tracking-tight leading-[1.05] text-ink-900">
+              패키지
+            </h1>
+            <p className="text-[14px] md:text-[16px] text-ink-500 mt-3 leading-relaxed max-w-xl">
+              오프라인·온라인 채널을 묶은 할인 구성. 협의 후 배정합니다.
+            </p>
+          </div>
         </header>
 
         <div className="max-w-6xl mx-auto px-6 md:px-12 py-10">
@@ -111,7 +117,7 @@ export default function PackagesListPage() {
                   <Link
                     key={pkg.id}
                     href={`/${eventId}/packages/${pkg.id}`}
-                    className="group bg-[#fafaf7] border border-ink-100 rounded-card overflow-hidden hover:border-brand-500 transition-colors flex flex-col h-full"
+                    className="group bg-surface border border-ink-100 rounded-card overflow-hidden hover:border-brand-500 hover:shadow-card transition-all flex flex-col h-full"
                   >
                     <div className="aspect-[16/9] bg-ink-100 relative shrink-0">
                       {hero ? (

@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useParams } from "next/navigation";
 import { ArrowLeft, Download } from "lucide-react";
 import type { Category, Subcategory } from "@/lib/types";
 
@@ -29,6 +30,9 @@ export function CategoryHero({
   totalSlots,
   availableSlots,
 }: Props) {
+  const params = useParams<{ eventSlug?: string }>();
+  const eventId = params?.eventSlug ?? "";
+
   const minPrice = Math.min(
     ...subcategories.map((s) => s.priceKRW).filter((p) => p > 0),
     Infinity
@@ -37,43 +41,41 @@ export function CategoryHero({
   const samePrice = minPrice === maxPrice;
 
   return (
-    <div className="border-b border-ink-100 bg-white">
-      <div className="max-w-6xl mx-auto px-6 md:px-12 py-8">
+    <div className="border-b border-ink-100 bg-surface">
+      <div className="max-w-6xl mx-auto px-6 md:px-12 pt-12 md:pt-16 pb-10">
         <Link
-          href="/sponsorships"
-          className="inline-flex items-center gap-1.5 text-[12px] text-ink-500 hover:text-ink-900 mb-4"
+          href={eventId ? `/${eventId}/sponsorships` : "/"}
+          className="inline-flex items-center gap-1.5 text-[12px] text-ink-500 hover:text-brand-500 mb-6 font-num font-semibold"
         >
           <ArrowLeft className="w-3.5 h-3.5" />
           전체 스폰서십
         </Link>
 
-        <div className="flex items-baseline gap-3 mb-2 flex-wrap">
-          <span className="text-[10px] uppercase tracking-widest font-mono text-ink-500">
-            {category.code}
-          </span>
-          <span className="text-[10px] uppercase tracking-widest text-brand-700 font-bold">
-            {TYPE_LABELS[category.type]}
-          </span>
+        <div className="font-num text-[11px] uppercase tracking-[0.3em] font-bold mb-3 flex items-center gap-3 text-brand-500">
+          <span className="w-6 h-px bg-brand-500" />
+          <span>{TYPE_LABELS[category.type]}</span>
+          <span className="text-ink-300">·</span>
+          <span className="text-ink-500">{category.code}</span>
         </div>
-        <h1 className="text-[28px] md:text-[40px] font-bold tracking-tight leading-tight">
+        <h1 className="text-[36px] md:text-[64px] font-bold tracking-tight leading-[1.05] text-ink-900">
           {category.name.ko}
         </h1>
         {category.shortDesc && (
-          <p className="text-[14px] text-ink-700 mt-3 max-w-3xl leading-relaxed">
+          <p className="text-[14px] md:text-[16px] text-ink-500 mt-4 max-w-3xl leading-relaxed">
             {category.shortDesc}
           </p>
         )}
 
-        <div className="mt-6 flex items-center gap-6 flex-wrap text-[12px]">
+        <div className="mt-8 flex items-center gap-x-8 gap-y-3 flex-wrap text-[13px]">
           <Meta label="구좌">
-            <span className="font-mono">
-              <span className="text-brand-700 font-bold">{availableSlots}</span>
+            <span className="font-num">
+              <span className="text-brand-500 font-bold">{availableSlots}</span>
               <span className="text-ink-500"> / {totalSlots} 가능</span>
             </span>
           </Meta>
           {Number.isFinite(minPrice) && minPrice > 0 && (
             <Meta label="단가">
-              <span className="font-mono">
+              <span className="font-num">
                 {samePrice
                   ? `${minPrice.toLocaleString()}원`
                   : `${minPrice.toLocaleString()} ~ ${maxPrice.toLocaleString()}원`}
@@ -82,7 +84,7 @@ export function CategoryHero({
           )}
           {category.deadline && (
             <Meta label="입고 마감">
-              <span className="font-mono">
+              <span className="font-num">
                 {category.deadline.toDate().toLocaleDateString("ko-KR")}
               </span>
             </Meta>
@@ -97,7 +99,7 @@ export function CategoryHero({
               href={category.designGuideFileUrl}
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center gap-1 text-brand-700 font-semibold hover:underline ml-auto"
+              className="inline-flex items-center gap-1.5 text-brand-500 font-bold hover:underline ml-auto"
             >
               <Download className="w-3.5 h-3.5" />
               디자인 가이드 PDF
@@ -111,9 +113,11 @@ export function CategoryHero({
 
 function Meta({ label, children }: { label: string; children: React.ReactNode }) {
   return (
-    <div>
-      <span className="text-ink-500 mr-1.5">{label}</span>
-      {children}
+    <div className="flex items-baseline gap-2">
+      <span className="text-ink-500 text-[11px] uppercase tracking-wider font-num font-semibold">
+        {label}
+      </span>
+      <span className="font-bold text-ink-900">{children}</span>
     </div>
   );
 }

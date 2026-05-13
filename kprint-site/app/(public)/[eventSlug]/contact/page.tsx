@@ -154,21 +154,27 @@ export default function ContactPage() {
 
   return (
     <>
-      <main className="min-h-screen bg-white">
-        <header className="px-6 md:px-16 pt-12 pb-6 border-b border-ink-100">
-          <Link
-            href={`/${eventId}/cart`}
-            className="inline-flex items-center gap-1.5 text-[12px] text-ink-500 hover:text-ink-900 mb-3"
-          >
-            <ArrowLeft className="w-3.5 h-3.5" />
-            관심 항목으로
-          </Link>
-          <h1 className="text-[28px] md:text-[40px] font-bold tracking-tight leading-tight">
-            문의하기
-          </h1>
-          <p className="text-[13px] text-ink-700 mt-2">
-            관심 표시한 항목과 함께 보내주시면 사무국에서 1영업일 내 정식 견적을 회신드립니다.
-          </p>
+      <main className="min-h-screen bg-canvas">
+        <header className="px-6 md:px-16 pt-16 md:pt-20 pb-8 md:pb-10 border-b border-ink-100 bg-surface">
+          <div className="max-w-5xl mx-auto">
+            <Link
+              href={`/${eventId}/cart`}
+              className="inline-flex items-center gap-1.5 text-[12px] text-ink-500 hover:text-brand-500 mb-4 font-num font-semibold"
+            >
+              <ArrowLeft className="w-3.5 h-3.5" />
+              관심 항목으로
+            </Link>
+            <div className="font-num text-[11px] md:text-[12px] uppercase tracking-[0.3em] text-brand-500 font-bold mb-3 flex items-center gap-2">
+              <span className="w-6 h-px bg-brand-500" />
+              contact
+            </div>
+            <h1 className="text-[36px] md:text-[64px] font-bold tracking-tight leading-[1.05] text-ink-900">
+              문의하기
+            </h1>
+            <p className="text-[14px] md:text-[16px] text-ink-500 mt-3 leading-relaxed max-w-xl">
+              관심 표시한 항목과 함께 보내주시면 사무국에서 1영업일 내 정식 견적을 회신드립니다.
+            </p>
+          </div>
         </header>
 
         <div className="max-w-5xl mx-auto px-6 md:px-12 py-10 grid lg:grid-cols-[1fr_360px] gap-8 items-start">
@@ -230,7 +236,7 @@ export default function ContactPage() {
               <button
                 type="submit"
                 disabled={isSubmitting}
-                className="px-6 py-3 rounded-btn bg-brand-500 text-ink-900 font-semibold hover:bg-brand-700 hover:text-white disabled:opacity-50 disabled:cursor-not-allowed"
+                className="px-7 py-3.5 rounded-pill bg-brand-500 text-white font-bold hover:bg-brand-700 hover:shadow-glow-sm disabled:opacity-50 disabled:cursor-not-allowed transition-all"
               >
                 {isSubmitting ? "전송 중…" : "문의 보내기"}
               </button>
@@ -238,8 +244,9 @@ export default function ContactPage() {
           </form>
 
           {/* Wishlist sidebar */}
-          <aside className="bg-[#fafaf7] border border-ink-100 rounded-card p-5 lg:sticky lg:top-6">
-            <div className="text-[10px] uppercase tracking-[0.2em] text-brand-700 font-bold mb-3">
+          <aside className="bg-surface border border-ink-100 rounded-card p-5 lg:sticky lg:top-6 shadow-card">
+            <div className="font-num text-[10px] uppercase tracking-[0.3em] text-brand-500 font-bold mb-3 flex items-center gap-2">
+              <span className="w-4 h-px bg-brand-500" />
               첨부될 관심 항목 ({items.length}건)
             </div>
             {!hydrated ? (

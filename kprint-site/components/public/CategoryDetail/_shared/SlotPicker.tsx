@@ -36,21 +36,34 @@ export function SlotPicker({ categoryId, eventId, subcategories, slots }: Props)
 
           return (
             <div key={sub.id}>
-              <div className="flex items-baseline justify-between mb-2.5">
+              <div className="flex items-baseline justify-between mb-3">
                 <div>
-                  <h4 className="font-bold text-[14px] text-ink-900">
+                  <h4 className="font-bold text-[16px] text-ink-900 tracking-tight">
                     {sub.name.ko || "기본"}
                   </h4>
-                  <div className="text-[11px] text-ink-500 mt-0.5">
-                    <span className="text-brand-700 font-semibold">{available}</span>
+                  <div className="text-[11.5px] text-ink-500 mt-1 font-num">
+                    <span className="text-brand-500 font-bold">{available}</span>
                     <span> / {total} 가능</span>
                   </div>
                 </div>
+                {sub.priceKRW > 0 && (
+                  <div className="text-right font-num">
+                    <div className="text-[18px] font-bold text-ink-900">
+                      {sub.priceKRW.toLocaleString()}
+                      <span className="text-[12px] ml-1 font-semibold">원</span>
+                    </div>
+                    <div className="text-[10.5px] text-ink-500">
+                      / {sub.unit?.ko ?? "구좌당"}
+                    </div>
+                  </div>
+                )}
               </div>
               {sub.priceNote && (
-                <div className="text-[11px] text-ink-500 mb-2 italic">{sub.priceNote}</div>
+                <div className="text-[11.5px] text-ink-500 mb-3 italic">
+                  {sub.priceNote}
+                </div>
               )}
-              <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-1.5">
+              <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-2">
                 {subSlots.map((slot) => {
                   const isSold = slot.status !== "available";
                   const inCart = hydrated && hasSlot(slot.id);
@@ -67,18 +80,18 @@ export function SlotPicker({ categoryId, eventId, subcategories, slots }: Props)
                         setPicked({ slot, sub });
                       }}
                       className={
-                        "relative px-2.5 py-2 rounded-btn text-[11px] font-mono transition-colors text-left border-2 " +
+                        "relative px-3 py-2.5 rounded-btn text-[11px] font-num transition-all text-left border-2 " +
                         (isSold
-                          ? "bg-ink-100 text-ink-300 border-ink-100 cursor-not-allowed"
+                          ? "bg-ink-50 text-ink-300 border-ink-100 cursor-not-allowed"
                           : inCart
-                            ? "bg-brand-500 text-ink-900 border-brand-700 ring-2 ring-brand-200 shadow-sm"
-                            : "bg-white text-ink-900 border-ink-100 hover:border-brand-500 hover:bg-brand-50")
+                            ? "bg-brand-500 text-white border-brand-500 shadow-glow-sm"
+                            : "bg-surface text-ink-900 border-ink-100 hover:border-brand-500 hover:bg-brand-50")
                       }
                     >
                       {inCart && (
                         <span
                           aria-hidden
-                          className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-ink-900 text-brand-500 grid place-items-center shadow"
+                          className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-ink-900 text-white grid place-items-center shadow"
                         >
                           <Check className="w-3 h-3" strokeWidth={3} />
                         </span>
@@ -87,7 +100,9 @@ export function SlotPicker({ categoryId, eventId, subcategories, slots }: Props)
                       {isSold ? (
                         <div className="text-[10px] mt-0.5 text-ink-300">마감</div>
                       ) : inCart ? (
-                        <div className="text-[10px] mt-0.5 font-bold opacity-80">관심 표시됨</div>
+                        <div className="text-[10px] mt-0.5 font-bold opacity-90">
+                          관심 표시됨
+                        </div>
                       ) : slot.note ? (
                         <div className="text-[10px] mt-0.5 truncate opacity-70">
                           {slot.note}
@@ -228,7 +243,7 @@ function SlotConfirmModal({
             <button
               type="button"
               onClick={onRemove}
-              className="px-4 py-2.5 rounded-btn bg-ink-900 text-brand-500 text-[13px] font-bold hover:bg-ink-700 flex items-center justify-center gap-1.5"
+              className="px-4 py-2.5 rounded-pill bg-ink-900 text-white text-[13px] font-bold hover:bg-ink-700 flex items-center justify-center gap-1.5 transition-colors"
             >
               <BookmarkCheck className="w-4 h-4" />
               관심 해제
@@ -237,7 +252,7 @@ function SlotConfirmModal({
             <button
               type="button"
               onClick={onAdd}
-              className="px-4 py-2.5 rounded-btn bg-brand-500 text-ink-900 text-[13px] font-bold hover:bg-brand-700 hover:text-white flex items-center justify-center gap-1.5"
+              className="px-4 py-2.5 rounded-pill bg-brand-500 text-white text-[13px] font-bold hover:bg-brand-700 hover:shadow-glow-sm flex items-center justify-center gap-1.5 transition-all"
             >
               <Bookmark className="w-4 h-4" />
               관심 표시

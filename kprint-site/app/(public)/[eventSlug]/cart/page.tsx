@@ -146,22 +146,28 @@ export default function CartPage() {
 
   return (
     <>
-      <main className="min-h-screen bg-white">
-        <header className="px-6 md:px-16 pt-12 pb-6 border-b border-ink-100">
-          <Link
-            href="/sponsorships"
-            className="inline-flex items-center gap-1.5 text-[12px] text-ink-500 hover:text-ink-900 mb-3"
-          >
-            <ArrowLeft className="w-3.5 h-3.5" />
-            전체 스폰서십
-          </Link>
-          <h1 className="text-[28px] md:text-[40px] font-bold tracking-tight leading-tight flex items-center gap-3">
-            <Bookmark className="w-7 h-7 text-brand-700" fill="currentColor" />
-            관심 항목
-          </h1>
-          <p className="text-[13px] text-ink-700 mt-2">
-            관심 표시한 항목들입니다. 사무국에 문의하시면 1영업일 내 정식 견적을 회신드려요.
-          </p>
+      <main className="min-h-screen bg-canvas">
+        <header className="px-6 md:px-16 pt-16 md:pt-20 pb-8 md:pb-10 border-b border-ink-100 bg-surface">
+          <div className="max-w-4xl mx-auto">
+            <Link
+              href={`/${eventId}/sponsorships`}
+              className="inline-flex items-center gap-1.5 text-[12px] text-ink-500 hover:text-brand-500 mb-4 font-num font-semibold"
+            >
+              <ArrowLeft className="w-3.5 h-3.5" />
+              전체 스폰서십
+            </Link>
+            <div className="font-num text-[11px] md:text-[12px] uppercase tracking-[0.3em] text-brand-500 font-bold mb-3 flex items-center gap-2">
+              <span className="w-6 h-px bg-brand-500" />
+              cart
+            </div>
+            <h1 className="text-[36px] md:text-[64px] font-bold tracking-tight leading-[1.05] text-ink-900 flex items-center gap-3">
+              <Bookmark className="w-8 h-8 md:w-10 md:h-10 text-brand-500" fill="currentColor" />
+              관심 항목
+            </h1>
+            <p className="text-[14px] md:text-[16px] text-ink-500 mt-3 leading-relaxed">
+              관심 표시한 항목들입니다. 사무국에 문의하시면 1영업일 내 정식 견적을 회신드려요.
+            </p>
+          </div>
         </header>
 
         <div className="max-w-4xl mx-auto px-6 md:px-12 py-10">
@@ -183,15 +189,20 @@ export default function CartPage() {
           {!hydrated || !dataLoaded ? (
             <div className="text-center text-sm text-ink-500 py-16">불러오는 중…</div>
           ) : items.length === 0 ? (
-            <div className="bg-ink-50 rounded-card py-16 text-center">
-              <p className="text-[15px] text-ink-700">
+            <div className="bg-surface border border-ink-100 rounded-card py-20 text-center">
+              <Bookmark className="w-10 h-10 text-ink-300 mx-auto mb-4" />
+              <p className="text-[15px] text-ink-700 font-semibold">
                 아직 관심 표시한 항목이 없습니다.
+              </p>
+              <p className="text-[13px] text-ink-500 mt-1.5">
+                마음에 드는 스폰서십을 찾아보세요.
               </p>
               <Link
                 href={`/${eventId}/sponsorships`}
-                className="mt-4 inline-block px-5 py-2.5 rounded-btn bg-brand-500 text-ink-900 font-semibold hover:bg-brand-700 hover:text-white"
+                className="mt-6 inline-flex items-center gap-2 px-6 py-3 rounded-pill bg-brand-500 text-white font-bold hover:bg-brand-700 hover:shadow-glow-sm transition-all"
               >
-                스폰서십 둘러보기 →
+                스폰서십 둘러보기
+                <ArrowRight className="w-4 h-4" />
               </Link>
             </div>
           ) : (
@@ -223,7 +234,7 @@ export default function CartPage() {
                 </button>
               </div>
 
-              <div className="bg-white border border-ink-100 rounded-card overflow-hidden">
+              <div className="bg-surface border border-ink-100 rounded-card overflow-hidden shadow-card">
                 <ul>
                   {items.map((item, i) => {
                     const key = itemKey(item);
@@ -328,7 +339,7 @@ export default function CartPage() {
                 </button>
                 <Link
                   href={`/${eventId}/contact`}
-                  className="px-5 py-3 rounded-btn bg-brand-500 text-ink-900 font-semibold hover:bg-brand-700 hover:text-white flex items-center gap-2"
+                  className="px-6 py-3.5 rounded-pill bg-brand-500 text-white font-bold hover:bg-brand-700 hover:shadow-glow-sm flex items-center gap-2 transition-all"
                 >
                   관심 항목으로 문의 보내기
                   <ArrowRight className="w-4 h-4" />

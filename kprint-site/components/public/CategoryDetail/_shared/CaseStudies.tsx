@@ -13,18 +13,19 @@ export function CaseStudies({ items }: { items: CaseStudy[] }) {
   if (items.length === 0) return null;
 
   return (
-    <section className="bg-[#fafaf7] border border-ink-100 rounded-card p-6 md:p-8">
-      <div className="text-[10px] uppercase tracking-[0.2em] text-brand-700 font-bold mb-2">
+    <section className="bg-surface border border-ink-100 rounded-card p-6 md:p-8 shadow-card">
+      <div className="font-num text-[11px] uppercase tracking-[0.3em] text-brand-500 font-bold mb-3 flex items-center gap-2">
+        <span className="w-4 h-px bg-brand-500" />
         case study
       </div>
-      <h3 className="text-[18px] md:text-[22px] font-bold text-ink-900 mb-5">
+      <h3 className="text-[20px] md:text-[24px] font-bold text-ink-900 mb-6 tracking-tight">
         이 자리를 선택한 회사들
       </h3>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
         {items.map((c, i) => (
           <div
             key={i}
-            className="bg-white border border-ink-100 rounded-btn p-4 flex gap-3"
+            className="bg-canvas border border-ink-100 rounded-btn p-4 flex gap-3 hover:border-brand-500 transition-colors"
           >
             {c.logoUrl ? (
               // eslint-disable-next-line @next/next/no-img-element

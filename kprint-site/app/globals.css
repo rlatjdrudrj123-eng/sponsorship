@@ -6,20 +6,43 @@
 @tailwind components;
 @tailwind utilities;
 
+/*
+  KIMES 디자인 토큰. 색상은 CSS 변수 — 행사별 테마 색상 주입 가능.
+
+  ThemeProvider 가 <html>에 inline style 로 --brand-500 등을 덮어쓰면
+  tailwind 의 bg-brand-500 같은 클래스가 행사별 색상으로 자동 반영된다.
+
+  음영(700, 100, 50 등)은 brand-500을 색상혼합으로 파생. 단일 hex 만 받아도
+  전체 ramp가 자동 구성된다.
+*/
 :root {
+  /* font */
   --font-pretendard: "Pretendard Variable", Pretendard, -apple-system, BlinkMacSystemFont,
     system-ui, sans-serif;
   --font-inter: "Inter", "Pretendard Variable", system-ui, sans-serif;
   --font-jetbrains-mono: "JetBrains Mono", ui-monospace, monospace;
 
-  /* KIMES Figma 토큰 — 컴포넌트에서 raw 값 필요할 때 */
+  /* base color tokens */
   --color-canvas: #f6f6f6;
   --color-surface: #ffffff;
   --color-ink: #0a0a0a;
   --color-ink-muted: #808080;
-  --color-brand: #db0711;
-  --color-brand-dark: #be000f;
-  --color-accent: #f39800;
+
+  /* brand ramp — 기본값 KIMES 빨강. ThemeProvider 가 overide */
+  --brand-500: #db0711;
+  --brand-50: color-mix(in srgb, var(--brand-500), white 92%);
+  --brand-100: color-mix(in srgb, var(--brand-500), white 80%);
+  --brand-200: color-mix(in srgb, var(--brand-500), white 60%);
+  --brand-400: color-mix(in srgb, var(--brand-500), white 20%);
+  --brand-600: color-mix(in srgb, var(--brand-500), black 12%);
+  --brand-700: color-mix(in srgb, var(--brand-500), black 25%);
+  --brand-800: color-mix(in srgb, var(--brand-500), black 40%);
+  --brand-900: color-mix(in srgb, var(--brand-500), black 55%);
+
+  /* glow alpha (boxShadow에서 사용) — brand-500의 80% 명도 정도가 자연스러움 */
+  --brand-glow-strong: color-mix(in srgb, var(--brand-500), transparent 70%);
+  --brand-glow-mid: color-mix(in srgb, var(--brand-500), transparent 80%);
+  --brand-glow-weak: color-mix(in srgb, var(--brand-500), transparent 90%);
 }
 
 html,
@@ -28,7 +51,7 @@ body {
   color: var(--color-ink);
 }
 
-/* 어드민 페이지는 별도 흰색 배경 유지 — 운영 도구는 콘트라스트 높게 */
+/* 어드민은 화이트 배경 유지 (운영 도구 콘트라스트) */
 .admin-shell {
   background: #ffffff;
 }
@@ -45,11 +68,11 @@ body {
     text-wrap: balance;
   }
 
-  /* 빨강 글로우 — CTA·feature 강조용 */
+  /* 브랜드 글로우 — CTA·feature 강조 */
   .ring-brand-glow {
     box-shadow:
-      0 0 13px rgba(200, 16, 46, 0.3),
-      0 0 26px rgba(200, 16, 46, 0.2),
-      0 0 39px rgba(200, 16, 46, 0.1);
+      0 0 13px var(--brand-glow-strong),
+      0 0 26px var(--brand-glow-mid),
+      0 0 39px var(--brand-glow-weak);
   }
 }

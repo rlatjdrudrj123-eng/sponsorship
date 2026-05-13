@@ -1,15 +1,15 @@
 import type { Config } from "tailwindcss";
 
 /**
- * KIMES 2026 Figma export 기반 디자인 토큰.
+ * KIMES Figma 기반 디자인 토큰.
  *
- * - 메인 브랜드 컬러: 빨강 (#DB0711)
- * - 서브 컬러: 앰버/주황 (#F39800) — 사용처 별로 강조용
- * - 그레이스케일: KIMES 뉴트럴 (텍스트 #0A0A0A, 뮤트 #808080, 배경 #F6F6F6)
- * - 폰트: Pretendard (한글+라틴 본문), Inter (라틴 숫자 라벨)
- * - 카드: 20px 라운드 + soft shadow / CTA: 빨강 글로우
+ * 색상은 CSS 변수로 추상화돼있어 행사별로 다른 primary color를 주입할 수 있다.
+ * 기본값은 KIMES 빨강. 어드민 [사이트 설정] → 테마 색상에서 행사별로 변경.
  *
- * 기존 토큰명 (mint→brand 리네임) 외 ink, card, btn 은 유지.
+ * 변수는 globals.css :root 에 정의되고, 공개 페이지에서 ThemeProvider 가
+ * 행사의 settings.theme.primary 값을 받아 inline style 로 덮어쓴다.
+ *
+ * 어두운 음영(700)·밝은 음영(100, 50)은 color-mix() 로 런타임 파생.
  */
 const config: Config = {
   content: [
@@ -20,19 +20,19 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        // ── 브랜드 (빨강) ── KIMES primary
+        // ── 브랜드 (행사별 가변, CSS 변수) ──
         brand: {
-          50: "#FEE9EA",
-          100: "#FFC7C9",
-          200: "#FF9296",
-          400: "#FF4047",
-          500: "#DB0711", // 메인
-          600: "#BE000F",
-          700: "#AA0008",
-          800: "#83000A",
-          900: "#750409",
+          50: "var(--brand-50)",
+          100: "var(--brand-100)",
+          200: "var(--brand-200)",
+          400: "var(--brand-400)",
+          500: "var(--brand-500)",
+          600: "var(--brand-600)",
+          700: "var(--brand-700)",
+          800: "var(--brand-800)",
+          900: "var(--brand-900)",
         },
-        // ── 서브 액센트 (앰버/주황) ── 강조 라벨/뱃지
+        // ── 서브 액센트 (앰버) — 행사 무관 고정 ──
         accent: {
           50: "#FFF6E5",
           100: "#FFE7B8",
@@ -42,16 +42,15 @@ const config: Config = {
           700: "#A85F00",
           900: "#443105",
         },
-        // ── 그레이스케일 (텍스트·라인) ──
+        // ── 그레이스케일 (KIMES 표준) ──
         ink: {
-          50: "#F6F6F6",   // 캔버스 / 라이트 surface
-          100: "#EBEBEB",  // 헤어라인 보더
-          300: "#D9D9D9",  // 비활성, 디바이더
-          500: "#808080",  // 뮤트 텍스트
-          700: "#515151",  // 중간 텍스트
-          900: "#0A0A0A",  // 본문 텍스트
+          50: "#F6F6F6",
+          100: "#EBEBEB",
+          300: "#D9D9D9",
+          500: "#808080",
+          700: "#515151",
+          900: "#0A0A0A",
         },
-        // 단일 알리아스 — 캔버스/서피스
         canvas: "#F6F6F6",
         surface: "#FFFFFF",
       },
@@ -63,7 +62,6 @@ const config: Config = {
           "system-ui",
           "sans-serif",
         ],
-        // Inter 는 라틴 숫자/캡션 전용
         num: [
           "var(--font-inter)",
           "Inter",
@@ -79,7 +77,6 @@ const config: Config = {
         ],
       },
       fontSize: {
-        // Figma 추출 스케일. [size, { lineHeight, letterSpacing, fontWeight }]
         hero: ["80px", { lineHeight: "100px", fontWeight: "500" }],
         display: [
           "64px",
@@ -96,7 +93,6 @@ const config: Config = {
         micro: ["10px", { lineHeight: "12px", fontWeight: "400" }],
       },
       borderRadius: {
-        // 기존 단축 키 유지
         btn: "9px",
         card: "20px",
         chip: "6px",
@@ -104,24 +100,23 @@ const config: Config = {
         feature: "30px",
       },
       boxShadow: {
-        // KIMES Figma 에서 반복되는 그림자 레시피
         card: "0 4px 6px -1px rgba(0,0,0,0.10), 0 2px 4px -2px rgba(0,0,0,0.10)",
         drop: "0 4px 4px rgba(0,0,0,0.25)",
         heavy: "5px 5px 10px rgba(0,0,0,0.5)",
         glow:
-          "0 0 13px rgba(200,16,46,0.3), 0 0 26px rgba(200,16,46,0.2), 0 0 39px rgba(200,16,46,0.1)",
+          "0 0 13px var(--brand-glow-strong, rgba(200,16,46,0.3)), 0 0 26px var(--brand-glow-mid, rgba(200,16,46,0.2)), 0 0 39px var(--brand-glow-weak, rgba(200,16,46,0.1))",
         "glow-sm":
-          "0 0 8px rgba(200,16,46,0.25), 0 0 16px rgba(200,16,46,0.12)",
+          "0 0 8px var(--brand-glow-mid, rgba(200,16,46,0.25)), 0 0 16px var(--brand-glow-weak, rgba(200,16,46,0.12))",
       },
       backgroundImage: {
-        // 반복 그라데이션
-        "brand-grad": "linear-gradient(360deg, #83000A 0%, #E60012 100%)",
+        "brand-grad":
+          "linear-gradient(360deg, var(--brand-800) 0%, var(--brand-500) 100%)",
         "chrome-grad":
           "linear-gradient(180deg, #DFDFDF 0%, #DDDDDD 36%, #666666 100%)",
         "red-flare":
-          "linear-gradient(0deg, rgba(246,246,246,0) 15%, #E60012 68%, #BE000F 100%)",
+          "linear-gradient(0deg, rgba(246,246,246,0) 15%, var(--brand-500) 68%, var(--brand-700) 100%)",
         "red-fade":
-          "linear-gradient(180deg, #F3CBCB 0%, rgba(246,246,246,0) 100%)",
+          "linear-gradient(180deg, var(--brand-50) 0%, rgba(246,246,246,0) 100%)",
       },
       letterSpacing: {
         display: "2px",

@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { useParams } from "next/navigation";
 import { ArrowLeft, Bookmark, BookmarkCheck, Check, X } from "lucide-react";
 import type { Package, SiteSettings, Slot } from "@/lib/types";
 import { ImageCarousel } from "./_shared/ImageCarousel";
@@ -15,6 +16,8 @@ type Props = {
 };
 
 export function PackageType({ pkg, resolvedSlots, settings }: Props) {
+  const params = useParams<{ eventSlug?: string }>();
+  const eventId = params?.eventSlug ?? "";
   const hasPackage = useCartStore((s) => s.hasPackage);
   const addPackage = useCartStore((s) => s.addPackage);
   const removePackage = useCartStore((s) => s.removePackage);
@@ -30,29 +33,27 @@ export function PackageType({ pkg, resolvedSlots, settings }: Props) {
 
   return (
     <>
-      <main className="min-h-screen bg-white">
-        <div className="border-b border-ink-100">
-          <div className="max-w-6xl mx-auto px-6 md:px-12 py-8">
+      <main className="min-h-screen bg-canvas">
+        <div className="border-b border-ink-100 bg-surface">
+          <div className="max-w-6xl mx-auto px-6 md:px-12 pt-12 md:pt-16 pb-10">
             <Link
-              href="/packages"
-              className="inline-flex items-center gap-1.5 text-[12px] text-ink-500 hover:text-ink-900 mb-4"
+              href={eventId ? `/${eventId}/packages` : "/"}
+              className="inline-flex items-center gap-1.5 text-[12px] text-ink-500 hover:text-brand-500 mb-6 font-num font-semibold"
             >
               <ArrowLeft className="w-3.5 h-3.5" />
               전체 패키지
             </Link>
-            <div className="flex items-baseline gap-3 mb-2 flex-wrap">
-              <span className="text-[10px] uppercase tracking-widest font-mono text-ink-500">
-                {pkg.code}
-              </span>
-              <span className="text-[10px] uppercase tracking-widest text-brand-700 font-bold">
-                {pkg.tier === "signature" ? "시그니처" : "스탠다드"}
-              </span>
+            <div className="font-num text-[11px] uppercase tracking-[0.3em] font-bold mb-3 flex items-center gap-3 text-brand-500">
+              <span className="w-6 h-px bg-brand-500" />
+              <span>{pkg.tier === "signature" ? "Signature" : "Standard"}</span>
+              <span className="text-ink-300">·</span>
+              <span className="text-ink-500">{pkg.code}</span>
             </div>
-            <h1 className="text-[28px] md:text-[40px] font-bold tracking-tight leading-tight">
+            <h1 className="text-[36px] md:text-[64px] font-bold tracking-tight leading-[1.05] text-ink-900">
               {pkg.name.ko}
             </h1>
             {pkg.tagline && (
-              <p className="text-[14px] text-ink-700 mt-3 max-w-3xl leading-relaxed">
+              <p className="text-[14px] md:text-[16px] text-ink-500 mt-4 max-w-3xl leading-relaxed">
                 {pkg.tagline}
               </p>
             )}
@@ -62,21 +63,22 @@ export function PackageType({ pkg, resolvedSlots, settings }: Props) {
         <div className="max-w-6xl mx-auto px-6 md:px-12 py-10 grid lg:grid-cols-[1.4fr_1fr] gap-10 items-start">
           <ImageCarousel slot={pkg.heroImages} aspectRatio="aspect-[16/10]" />
 
-          <div className="space-y-6">
-            <div className="bg-[#fafaf7] border border-ink-100 rounded-card p-6">
-              <div className="text-[10px] uppercase tracking-[0.2em] text-brand-700 font-bold mb-3">
+          <div className="space-y-5">
+            <div className="bg-surface border border-ink-100 rounded-card p-6 shadow-card">
+              <div className="font-num text-[11px] uppercase tracking-[0.3em] text-brand-500 font-bold mb-4 flex items-center gap-2">
+                <span className="w-4 h-px bg-brand-500" />
                 포함 항목
               </div>
-              <ul className="space-y-2.5">
+              <ul className="space-y-3">
                 {(pkg.includedItems ?? []).map((it, i) => (
-                  <li key={i} className="flex gap-2.5 text-[13px] text-ink-900">
-                    <Check className="w-4 h-4 text-brand-500 shrink-0 mt-0.5" />
+                  <li key={i} className="flex gap-3 text-[14px] text-ink-900">
+                    <Check className="w-4 h-4 text-brand-500 shrink-0 mt-1" />
                     <div className="flex-1">
-                      <div>{it.label}</div>
+                      <div className="font-semibold">{it.label}</div>
                       {resolvedSlots &&
                         it.referencedSlotIds &&
                         it.referencedSlotIds.length > 0 && (
-                          <div className="text-[11px] text-ink-500 mt-0.5 font-mono">
+                          <div className="text-[11px] text-ink-500 mt-1 font-num">
                             {it.referencedSlotIds
                               .map((id) => resolvedSlots.get(id)?.code)
                               .filter(Boolean)
@@ -92,24 +94,25 @@ export function PackageType({ pkg, resolvedSlots, settings }: Props) {
               </ul>
             </div>
 
-            <div className="bg-brand-50 border border-brand-100 rounded-card p-6">
-              <div className="flex items-baseline gap-3 mb-1">
-                <span className="text-[32px] font-bold text-brand-700">
-                  {pkg.discountPrice.toLocaleString()}원
+            <div className="bg-brand-grad rounded-card p-6 text-white shadow-glow-sm">
+              <div className="flex items-baseline gap-3 mb-1 flex-wrap">
+                <span className="text-[40px] md:text-[44px] font-bold font-num leading-none">
+                  {pkg.discountPrice.toLocaleString()}
                 </span>
+                <span className="text-[18px] font-bold">원</span>
                 {discount > 0 && (
-                  <span className="text-[14px] font-bold text-brand-700 bg-white px-2 py-0.5 rounded">
+                  <span className="ml-auto text-[12px] font-bold text-brand-500 bg-white px-2.5 py-1 rounded-pill font-num">
                     {discount}% OFF
                   </span>
                 )}
               </div>
               {pkg.originalPrice > pkg.discountPrice && (
-                <div className="text-[13px] text-ink-500 line-through font-mono">
+                <div className="text-[13px] text-white/70 line-through font-num">
                   {pkg.originalPrice.toLocaleString()}원
                 </div>
               )}
               {pkg.priceNote && (
-                <p className="text-[12px] text-ink-700 mt-3 leading-relaxed">
+                <p className="text-[12px] text-white/90 mt-3 leading-relaxed">
                   {pkg.priceNote}
                 </p>
               )}
@@ -122,13 +125,17 @@ export function PackageType({ pkg, resolvedSlots, settings }: Props) {
                   setConfirming(true);
                 }}
                 className={
-                  "mt-4 w-full py-3 rounded-btn font-semibold flex items-center justify-center gap-2 transition-colors " +
+                  "mt-5 w-full py-3.5 rounded-pill font-bold flex items-center justify-center gap-2 transition-colors " +
                   (inCart
-                    ? "bg-ink-900 text-brand-500 hover:bg-ink-700 ring-2 ring-brand-200"
-                    : "bg-brand-500 text-ink-900 hover:bg-brand-700 hover:text-white")
+                    ? "bg-ink-900 text-white hover:bg-ink-700"
+                    : "bg-white text-brand-500 hover:bg-canvas")
                 }
               >
-                {inCart ? <BookmarkCheck className="w-4 h-4" /> : <Bookmark className="w-4 h-4" />}
+                {inCart ? (
+                  <BookmarkCheck className="w-4 h-4" />
+                ) : (
+                  <Bookmark className="w-4 h-4" />
+                )}
                 {inCart ? "관심 표시됨 · 해제하기" : "관심 표시"}
               </button>
             </div>
