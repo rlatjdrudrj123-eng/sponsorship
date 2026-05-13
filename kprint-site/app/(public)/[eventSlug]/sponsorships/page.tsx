@@ -35,6 +35,7 @@ import type {
 } from "@/lib/types";
 import { Footer } from "@/components/public/Footer";
 import { LocaleSwitch } from "@/components/public/LocaleSwitch";
+import { SlotPicker } from "@/components/public/CategoryDetail/_shared/SlotPicker";
 import { localized, useLocale, type Locale } from "@/lib/i18n/locale";
 import { t } from "@/lib/i18n/strings";
 
@@ -382,6 +383,8 @@ export default function SponsorshipsPage() {
       {viewMode === "slide" ? (
         <SlideStream
           items={filtered}
+          subcategories={subcategories}
+          slots={slots}
           totalCount={totalCount}
           onCardMode={() => setViewMode("card")}
           onOpenFilter={() => setSheetOpen(true)}
@@ -1181,6 +1184,8 @@ function CardGrid({ items, eventId }: { items: EnrichedCategory[]; eventId: stri
 
 function SlideStream({
   items,
+  subcategories,
+  slots,
   totalCount,
   onCardMode,
   onOpenFilter,
@@ -1188,6 +1193,8 @@ function SlideStream({
   eventId,
 }: {
   items: EnrichedCategory[];
+  subcategories: Subcategory[];
+  slots: Slot[];
   totalCount: number;
   onCardMode: () => void;
   onOpenFilter: () => void;
@@ -1249,16 +1256,32 @@ function SlideStream({
       </div>
 
       {items.length === 0 ? (
-        <main className="h-screen pt-14 grid place-items-center bg-white">
+        <main className="h-screen pt-14 grid place-items-center bg-canvas">
           <div className="text-center text-sm text-ink-500">
             {t("spons.filterEmpty", locale)}
           </div>
         </main>
       ) : (
-        <main className="h-screen overflow-y-scroll snap-y snap-mandatory bg-white scroll-smooth">
-          {items.map((c, i) => (
-            <SlideSection key={c.id} item={c} index={i} total={items.length} eventId={eventId} />
-          ))}
+        <main className="h-screen overflow-y-scroll snap-y snap-proximity bg-canvas scroll-smooth">
+          {items.map((c, i) => {
+            const subs = subcategories
+              .filter((s) => s.categoryId === c.id)
+              .sort((a, b) => a.order - b.order);
+            const catSlots = slots
+              .filter((s) => s.categoryId === c.id)
+              .sort((a, b) => a.order - b.order);
+            return (
+              <SlideSection
+                key={c.id}
+                item={c}
+                subcategories={subs}
+                slots={catSlots}
+                index={i}
+                total={items.length}
+                eventId={eventId}
+              />
+            );
+          })}
         </main>
       )}
     </>
@@ -1267,11 +1290,15 @@ function SlideStream({
 
 function SlideSection({
   item,
+  subcategories,
+  slots,
   index,
   total,
   eventId,
 }: {
   item: EnrichedCategory;
+  subcategories: Subcategory[];
+  slots: Slot[];
   index: number;
   eventId: string;
   total: number;
@@ -1296,12 +1323,12 @@ function SlideSection({
   ];
 
   return (
-    <section className="h-screen snap-start snap-always bg-white pt-14 overflow-hidden relative">
-      <div className="h-full max-w-7xl mx-auto px-6 md:px-12 py-6 md:py-10 grid lg:grid-cols-[1.1fr_1fr] gap-8 lg:gap-14 items-stretch">
+    <section className="min-h-screen snap-start bg-canvas pt-14 relative">
+      <div className="max-w-7xl mx-auto px-6 md:px-12 py-8 md:py-12 grid lg:grid-cols-[1.1fr_1fr] gap-8 lg:gap-14 items-start">
         {/* LEFT: 정보 */}
         <div className="flex flex-col min-w-0">
           {/* 해시태그 */}
-          <div className="flex flex-wrap gap-x-4 gap-y-1 text-[13px] md:text-[14px] tracking-wide text-brand-700 font-semibold mb-5 md:mb-7">
+          <div className="flex flex-wrap gap-x-4 gap-y-1 text-[13px] md:text-[14px] tracking-wide text-brand-500 font-bold mb-5 md:mb-7 font-num">
             {hashTags.map((tag, i) => (
               <span key={i}>#{tag}</span>
             ))}
@@ -1312,7 +1339,7 @@ function SlideSection({
             <h2 className="text-[40px] md:text-[64px] font-bold leading-[0.95] tracking-tight text-ink-900">
               {localized(item.name, locale)}
             </h2>
-            <span className="text-[14px] md:text-[18px] text-ink-300 font-mono">
+            <span className="text-[14px] md:text-[18px] text-ink-300 font-num">
               #{item.code}
             </span>
           </div>
@@ -1325,10 +1352,10 @@ function SlideSection({
           )}
 
           {/* 구분선 */}
-          <hr className="border-ink-100 my-6 md:my-8" />
+          <hr className="border-ink-100 my-6 md:my-7" />
 
-          {/* 스펙 표 */}
-          <dl className="space-y-3 md:space-y-4 flex-1">
+          {/* 스펙 표 (2열 콤팩트) */}
+          <dl className="grid grid-cols-2 gap-x-6 gap-y-3">
             {item.size && (
               <SpecRow label={t("spons.size", locale)} value={item.size} />
             )}
@@ -1348,7 +1375,7 @@ function SlideSection({
               label={t("spons.slots", locale)}
               value={
                 <>
-                  <span className="text-brand-700 font-bold">
+                  <span className="text-brand-500 font-bold">
                     {item.slotAvailable}
                   </span>
                   <span className="text-ink-500">
@@ -1361,53 +1388,29 @@ function SlideSection({
           </dl>
 
           {/* 액션 버튼 */}
-          <div className="mt-6 md:mt-8 flex flex-wrap gap-2">
+          <div className="mt-6 flex flex-wrap gap-2">
             {item.designGuideFileUrl && (
               <a
                 href={item.designGuideFileUrl}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="px-5 py-2.5 rounded-btn bg-ink-900 text-white hover:bg-brand-500 hover:text-ink-900 font-semibold text-[13px] transition-colors"
+                className="px-5 py-2.5 rounded-pill bg-brand-500 text-white hover:bg-brand-700 hover:shadow-glow-sm font-bold text-[13px] transition-all"
               >
                 {t("spons.designGuide", locale)}
               </a>
             )}
             <Link
               href={`/${eventId}/sponsorships/${item.slug}`}
-              className="px-5 py-2.5 rounded-btn border border-ink-100 text-ink-900 hover:border-brand-500 hover:text-brand-700 font-semibold text-[13px] transition-colors"
+              className="px-5 py-2.5 rounded-pill border-2 border-ink-100 text-ink-900 hover:border-ink-900 font-bold text-[13px] transition-colors"
             >
               {t("common.viewMore", locale)}
             </Link>
           </div>
-
-          {/* 가격 (우측 정렬, 큰 텍스트) */}
-          <hr className="border-ink-100 mt-6 mb-4" />
-          <div className="flex items-baseline justify-end gap-2 mb-2">
-            <div className="text-right">
-              {item.minPrice > 0 ? (
-                <>
-                  <div className="text-[28px] md:text-[40px] font-bold text-ink-900 leading-none tracking-tight">
-                    {item.minPrice.toLocaleString()}
-                    <span className="text-[16px] md:text-[20px] ml-1 font-semibold">
-                      {t("common.won", locale)}
-                    </span>
-                  </div>
-                  <div className="text-[11px] text-ink-500 mt-1.5">
-                    {t("common.priceVatExcluded", locale)}
-                  </div>
-                </>
-              ) : (
-                <div className="text-[14px] text-ink-500">
-                  {t("common.priceNegotiable", locale)}
-                </div>
-              )}
-            </div>
-          </div>
         </div>
 
-        {/* RIGHT: 큰 hero 이미지 */}
-        <div className="relative flex flex-col min-h-0">
-          <div className="aspect-[4/3] lg:aspect-auto lg:flex-1 rounded-card bg-ink-100 overflow-hidden border border-ink-100 relative">
+        {/* RIGHT: 큰 hero 이미지 + 최저가 박스 */}
+        <div className="flex flex-col gap-4">
+          <div className="aspect-[4/3] rounded-card bg-ink-100 overflow-hidden border border-ink-100 relative shadow-card">
             {hero ? (
               // eslint-disable-next-line @next/next/no-img-element
               <img
@@ -1421,27 +1424,72 @@ function SlideSection({
               </div>
             )}
           </div>
+
+          {/* 최저가 박스 */}
+          <div className="bg-surface border border-ink-100 rounded-card p-5 shadow-card">
+            <div className="font-num text-[11px] uppercase tracking-[0.3em] text-brand-500 font-bold mb-2 flex items-center gap-2">
+              <span className="w-4 h-px bg-brand-500" />
+              {t("spons.minPrice", locale)}
+            </div>
+            {item.minPrice > 0 ? (
+              <>
+                <div className="text-[32px] md:text-[40px] font-bold text-ink-900 leading-none tracking-tight font-num">
+                  {item.minPrice.toLocaleString()}
+                  <span className="text-[16px] md:text-[20px] ml-1 font-semibold">
+                    {t("common.won", locale)}
+                  </span>
+                </div>
+                <div className="text-[11px] text-ink-500 mt-1.5">
+                  {t("common.priceVatExcluded", locale)}
+                </div>
+              </>
+            ) : (
+              <div className="text-[14px] text-ink-500">
+                {t("common.priceNegotiable", locale)}
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
+      {/* 하단 — 소분류 + 슬롯 picker (자세히 보기 콘텐츠 포함) */}
+      {subcategories.length > 0 && (
+        <div className="max-w-7xl mx-auto px-6 md:px-12 pb-14">
+          <div className="bg-surface border border-ink-100 rounded-card p-6 md:p-8 shadow-card">
+            <div className="font-num text-[11px] uppercase tracking-[0.3em] text-brand-500 font-bold mb-5 flex items-center gap-2">
+              <span className="w-4 h-px bg-brand-500" />
+              구좌 선택
+            </div>
+            <SlotPicker
+              categoryId={item.id}
+              eventId={item.eventId}
+              subcategories={subcategories}
+              slots={slots}
+            />
+            <div className="mt-6 pt-5 border-t border-ink-100 flex items-center justify-between gap-3 flex-wrap">
+              <p className="text-[11.5px] text-ink-500">
+                구좌를 클릭하면 관심 표시되며, 우상단 카트에서 확인할 수 있어요.
+              </p>
+              <Link
+                href={`/${eventId}/sponsorships/${item.slug}`}
+                className="text-[12px] font-num font-bold text-brand-500 hover:text-brand-700 flex items-center gap-1 group"
+              >
+                {item.type === "floor_plan" ? "도면형 자세히 보기" : "전체 자세히 보기"}
+                <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />
+              </Link>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* 페이지 번호 (우하단, 강조) */}
-      <div className="absolute bottom-3 right-6 md:right-12 font-mono tracking-widest text-ink-300 text-[12px]">
+      <div className="sticky bottom-3 ml-auto mr-6 md:mr-12 w-fit font-mono tracking-widest text-ink-300 text-[12px] pointer-events-none">
         <span className="text-ink-700 font-bold">
           {String(index + 1).padStart(2, "0")}
         </span>
         <span className="mx-1">/</span>
         {String(total).padStart(2, "0")}
       </div>
-
-      {/* 스크롤 안내 (마지막 빼고) */}
-      {index < total - 1 && (
-        <div className="absolute bottom-3 left-1/2 -translate-x-1/2 text-[10px] text-ink-300 font-mono uppercase tracking-widest pointer-events-none flex items-center gap-1.5">
-          <span className="w-4 h-px bg-ink-300" />
-          scroll
-          <ArrowRight className="w-3 h-3 rotate-90" />
-          <span className="w-4 h-px bg-ink-300" />
-        </div>
-      )}
     </section>
   );
 }
