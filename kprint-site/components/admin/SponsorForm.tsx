@@ -142,7 +142,7 @@ export function SponsorForm({
               <select
                 value={v.currency}
                 onChange={(e) => update("currency", e.target.value as "KRW" | "USD")}
-                className="px-3 py-2 text-sm border border-ink-100 rounded-btn bg-white focus:outline-none focus:border-mint-500"
+                className="px-3 py-2 text-sm border border-ink-100 rounded-btn bg-white focus:outline-none focus:border-brand-500"
               >
                 <option value="KRW">KRW (원)</option>
                 <option value="USD">USD ($)</option>
@@ -187,7 +187,7 @@ export function SponsorForm({
                       update("items", next);
                     }}
                     placeholder="메모"
-                    className="w-40 px-3 py-2 text-sm border border-ink-100 rounded-btn focus:outline-none focus:border-mint-500"
+                    className="w-40 px-3 py-2 text-sm border border-ink-100 rounded-btn focus:outline-none focus:border-brand-500"
                   />
                   <RemoveButton
                     onClick={() => {
@@ -214,7 +214,7 @@ export function SponsorForm({
                 type="button"
                 onClick={() => fillDesignFromItems(v, update)}
                 disabled={v.items.length === 0}
-                className="px-2.5 py-1 rounded-btn border border-mint-200 bg-mint-50 text-[11px] font-semibold text-mint-700 hover:bg-mint-100 disabled:opacity-40 disabled:cursor-not-allowed"
+                className="px-2.5 py-1 rounded-btn border border-brand-200 bg-brand-50 text-[11px] font-semibold text-brand-700 hover:bg-brand-100 disabled:opacity-40 disabled:cursor-not-allowed"
                 title={v.items.length === 0 ? "먼저 품목을 추가해주세요" : "품목에서 디자인물 항목 자동 추가"}
               >
                 품목에서 자동 추가
@@ -241,7 +241,7 @@ export function SponsorForm({
                     className={
                       "grid grid-cols-[auto_1fr_140px_100px_auto] gap-2 items-center px-2 py-1.5 rounded-btn border " +
                       (done
-                        ? "border-mint-200 bg-mint-50"
+                        ? "border-brand-200 bg-brand-50"
                         : "border-transparent hover:bg-ink-50")
                     }
                   >
@@ -256,7 +256,7 @@ export function SponsorForm({
                         };
                         update("designItems", next);
                       }}
-                      className="w-4 h-4 accent-mint-500 cursor-pointer"
+                      className="w-4 h-4 accent-brand-500 cursor-pointer"
                       title={done ? "수령 완료 — 클릭해 미수령으로 변경" : "체크하면 수령 완료"}
                     />
                     <input
@@ -269,8 +269,8 @@ export function SponsorForm({
                       }}
                       placeholder="디자인물 이름"
                       className={
-                        "px-3 py-1.5 text-sm border rounded-btn focus:outline-none focus:border-mint-500 bg-white " +
-                        (done ? "line-through text-ink-500 border-mint-100" : "border-ink-100")
+                        "px-3 py-1.5 text-sm border rounded-btn focus:outline-none focus:border-brand-500 bg-white " +
+                        (done ? "line-through text-ink-500 border-brand-100" : "border-ink-100")
                       }
                     />
                     <input
@@ -282,7 +282,7 @@ export function SponsorForm({
                         update("designItems", next);
                       }}
                       placeholder="마감 (예: 3월 4일)"
-                      className="px-3 py-1.5 text-sm border border-ink-100 rounded-btn focus:outline-none focus:border-mint-500 bg-white"
+                      className="px-3 py-1.5 text-sm border border-ink-100 rounded-btn focus:outline-none focus:border-brand-500 bg-white"
                     />
                     <select
                       value={it.status ?? "pending"}
@@ -294,7 +294,7 @@ export function SponsorForm({
                         };
                         update("designItems", next);
                       }}
-                      className="px-2 py-1.5 text-sm border border-ink-100 rounded-btn bg-white focus:outline-none focus:border-mint-500"
+                      className="px-2 py-1.5 text-sm border border-ink-100 rounded-btn bg-white focus:outline-none focus:border-brand-500"
                     >
                       {Object.entries(DESIGN_STATUS_LABELS).map(([k, l]) => (
                         <option key={k} value={k}>
@@ -323,7 +323,7 @@ export function SponsorForm({
             value={v.notes}
             onChange={(e) => update("notes", e.target.value)}
             placeholder="협의 내용, 특이사항 등"
-            className="w-full px-3 py-2 text-sm border border-ink-100 rounded-btn focus:outline-none focus:border-mint-500 min-h-[100px] resize-y"
+            className="w-full px-3 py-2 text-sm border border-ink-100 rounded-btn focus:outline-none focus:border-brand-500 min-h-[100px] resize-y"
           />
         </Section>
       </div>
@@ -337,7 +337,7 @@ export function SponsorForm({
               <select
                 value={v.status}
                 onChange={(e) => update("status", e.target.value as SponsorStatus)}
-                className="w-full px-3 py-2 text-sm border border-ink-100 rounded-btn bg-white focus:outline-none focus:border-mint-500"
+                className="w-full px-3 py-2 text-sm border border-ink-100 rounded-btn bg-white focus:outline-none focus:border-brand-500"
               >
                 {Object.entries(STATUS_LABELS).map(([k, l]) => (
                   <option key={k} value={k}>
@@ -351,7 +351,7 @@ export function SponsorForm({
               <select
                 value={v.eventId}
                 onChange={(e) => update("eventId", e.target.value)}
-                className="w-full px-3 py-2 text-sm border border-ink-100 rounded-btn bg-white focus:outline-none focus:border-mint-500"
+                className="w-full px-3 py-2 text-sm border border-ink-100 rounded-btn bg-white focus:outline-none focus:border-brand-500"
               >
                 <option value="">— 선택 —</option>
                 {events.map((ev) => (
@@ -403,7 +403,7 @@ export function SponsorForm({
               <select
                 value={v.bannerType}
                 onChange={(e) => update("bannerType", e.target.value)}
-                className="w-full px-3 py-2 text-sm border border-ink-100 rounded-btn bg-white focus:outline-none focus:border-mint-500"
+                className="w-full px-3 py-2 text-sm border border-ink-100 rounded-btn bg-white focus:outline-none focus:border-brand-500"
               >
                 {BANNER_TYPE_OPTIONS.map((o) => (
                   <option key={o} value={o}>
@@ -455,7 +455,7 @@ export function SponsorForm({
                       update("contacts", next);
                     }}
                     placeholder="이름"
-                    className="w-full px-3 py-1.5 text-[13px] border border-ink-100 rounded-btn focus:outline-none focus:border-mint-500 bg-white"
+                    className="w-full px-3 py-1.5 text-[13px] border border-ink-100 rounded-btn focus:outline-none focus:border-brand-500 bg-white"
                   />
                   <input
                     type="email"
@@ -466,7 +466,7 @@ export function SponsorForm({
                       update("contacts", next);
                     }}
                     placeholder="이메일"
-                    className="w-full px-3 py-1.5 text-[13px] border border-ink-100 rounded-btn focus:outline-none focus:border-mint-500 bg-white font-mono"
+                    className="w-full px-3 py-1.5 text-[13px] border border-ink-100 rounded-btn focus:outline-none focus:border-brand-500 bg-white font-mono"
                   />
                   <input
                     type="text"
@@ -477,7 +477,7 @@ export function SponsorForm({
                       update("contacts", next);
                     }}
                     placeholder="전화 (선택)"
-                    className="w-full px-3 py-1.5 text-[13px] border border-ink-100 rounded-btn focus:outline-none focus:border-mint-500 bg-white font-mono"
+                    className="w-full px-3 py-1.5 text-[13px] border border-ink-100 rounded-btn focus:outline-none focus:border-brand-500 bg-white font-mono"
                   />
                 </div>
               ))}
@@ -491,7 +491,7 @@ export function SponsorForm({
             type="button"
             onClick={submit}
             disabled={saving}
-            className="w-full px-4 py-2.5 rounded-btn bg-mint-500 text-ink-900 text-sm font-bold hover:bg-mint-700 hover:text-white disabled:opacity-50"
+            className="w-full px-4 py-2.5 rounded-btn bg-brand-500 text-ink-900 text-sm font-bold hover:bg-brand-700 hover:text-white disabled:opacity-50"
           >
             {saving ? "저장 중…" : submitLabel}
           </button>
@@ -657,11 +657,11 @@ function ItemCombo({
           }}
           onFocus={() => setOpen(true)}
           placeholder="예: A홀 천장배너 1, XPACE 패키지 A"
-          className="w-full pl-3 pr-16 py-2 text-sm border border-ink-100 rounded-btn focus:outline-none focus:border-mint-500"
+          className="w-full pl-3 pr-16 py-2 text-sm border border-ink-100 rounded-btn focus:outline-none focus:border-brand-500"
         />
         <div className="absolute right-1 top-1/2 -translate-y-1/2 flex items-center gap-1">
           {linkedTag && (
-            <span className="text-[10px] px-1.5 py-0.5 rounded bg-mint-50 text-mint-700 border border-mint-100 font-semibold">
+            <span className="text-[10px] px-1.5 py-0.5 rounded bg-brand-50 text-brand-700 border border-brand-100 font-semibold">
               {linkedTag}
             </span>
           )}
@@ -695,7 +695,7 @@ function ItemCombo({
                     key={it.key}
                     type="button"
                     onClick={() => select(it)}
-                    className="w-full text-left px-3 py-1.5 text-[12.5px] hover:bg-mint-50 flex items-center justify-between gap-2"
+                    className="w-full text-left px-3 py-1.5 text-[12.5px] hover:bg-brand-50 flex items-center justify-between gap-2"
                   >
                     <span className="text-ink-900 truncate">{it.label}</span>
                     {it.hint && (
@@ -762,7 +762,7 @@ function FieldText({
         value={value}
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}
-        className="px-3 py-2 text-sm border border-ink-100 rounded-btn focus:outline-none focus:border-mint-500 bg-white"
+        className="px-3 py-2 text-sm border border-ink-100 rounded-btn focus:outline-none focus:border-brand-500 bg-white"
       />
     </label>
   );
@@ -787,7 +787,7 @@ function FieldNumber({
           const n = parseInt(e.target.value, 10);
           onChange(isNaN(n) ? 0 : n);
         }}
-        className="px-3 py-2 text-sm border border-ink-100 rounded-btn focus:outline-none focus:border-mint-500 bg-white text-right font-mono"
+        className="px-3 py-2 text-sm border border-ink-100 rounded-btn focus:outline-none focus:border-brand-500 bg-white text-right font-mono"
         placeholder="0"
       />
     </label>
@@ -810,7 +810,7 @@ function BenefitToggle({
       className={
         "flex items-start gap-2.5 px-3 py-2 rounded-btn border cursor-pointer transition-colors " +
         (checked
-          ? "border-mint-500 bg-mint-50"
+          ? "border-brand-500 bg-brand-50"
           : "border-ink-100 bg-white hover:bg-ink-50")
       }
     >
@@ -818,7 +818,7 @@ function BenefitToggle({
         type="checkbox"
         checked={checked}
         onChange={(e) => onChange(e.target.checked)}
-        className="mt-0.5 accent-mint-500"
+        className="mt-0.5 accent-brand-500"
       />
       <div className="flex-1 min-w-0">
         <div className="text-[12.5px] font-semibold text-ink-900">{label}</div>

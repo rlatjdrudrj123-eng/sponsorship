@@ -156,7 +156,7 @@ export default function CartPage() {
             전체 스폰서십
           </Link>
           <h1 className="text-[28px] md:text-[40px] font-bold tracking-tight leading-tight flex items-center gap-3">
-            <Bookmark className="w-7 h-7 text-mint-700" fill="currentColor" />
+            <Bookmark className="w-7 h-7 text-brand-700" fill="currentColor" />
             관심 항목
           </h1>
           <p className="text-[13px] text-ink-700 mt-2">
@@ -189,7 +189,7 @@ export default function CartPage() {
               </p>
               <Link
                 href={`/${eventId}/sponsorships`}
-                className="mt-4 inline-block px-5 py-2.5 rounded-btn bg-mint-500 text-ink-900 font-semibold hover:bg-mint-700 hover:text-white"
+                className="mt-4 inline-block px-5 py-2.5 rounded-btn bg-brand-500 text-ink-900 font-semibold hover:bg-brand-700 hover:text-white"
               >
                 스폰서십 둘러보기 →
               </Link>
@@ -203,7 +203,7 @@ export default function CartPage() {
                     type="checkbox"
                     checked={allSelected}
                     onChange={toggleAll}
-                    className="accent-mint-500 w-4 h-4"
+                    className="accent-brand-500 w-4 h-4"
                   />
                   <span>
                     전체 선택{" "}
@@ -243,11 +243,11 @@ export default function CartPage() {
                             type="checkbox"
                             checked={checked}
                             onChange={() => toggleSelect(key)}
-                            className="accent-mint-500 w-4 h-4 shrink-0"
+                            className="accent-brand-500 w-4 h-4 shrink-0"
                           />
-                          <div className="w-1 h-10 bg-mint-500 rounded-full shrink-0" />
+                          <div className="w-1 h-10 bg-brand-500 rounded-full shrink-0" />
                           <div className="flex-1 min-w-0">
-                            <div className="text-[10px] uppercase tracking-wider text-mint-700 font-semibold">
+                            <div className="text-[10px] uppercase tracking-wider text-brand-700 font-semibold">
                               스폰서십
                             </div>
                             <div className="font-bold text-[14px] text-ink-900">
@@ -286,7 +286,7 @@ export default function CartPage() {
                           type="checkbox"
                           checked={checked}
                           onChange={() => toggleSelect(key)}
-                          className="accent-mint-500 w-4 h-4 shrink-0"
+                          className="accent-brand-500 w-4 h-4 shrink-0"
                         />
                         <div className="w-1 h-10 bg-ink-900 rounded-full shrink-0" />
                         <div className="flex-1 min-w-0">
@@ -328,7 +328,7 @@ export default function CartPage() {
                 </button>
                 <Link
                   href={`/${eventId}/contact`}
-                  className="px-5 py-3 rounded-btn bg-mint-500 text-ink-900 font-semibold hover:bg-mint-700 hover:text-white flex items-center gap-2"
+                  className="px-5 py-3 rounded-btn bg-brand-500 text-ink-900 font-semibold hover:bg-brand-700 hover:text-white flex items-center gap-2"
                 >
                   관심 항목으로 문의 보내기
                   <ArrowRight className="w-4 h-4" />

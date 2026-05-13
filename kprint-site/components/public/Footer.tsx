@@ -9,7 +9,7 @@ export function Footer({ settings }: { settings: SiteSettings | null }) {
       <div className="max-w-6xl mx-auto grid md:grid-cols-3 gap-8 text-[13px]">
         <div>
           <div className="flex items-center gap-2 mb-3">
-            <span className="w-1.5 h-1.5 rounded-full bg-mint-500" />
+            <span className="w-1.5 h-1.5 rounded-full bg-brand-500" />
             <span className="font-bold text-[14px]">K-PRINT 2026</span>
           </div>
           <p className="text-ink-300 leading-relaxed">
@@ -19,7 +19,7 @@ export function Footer({ settings }: { settings: SiteSettings | null }) {
           </p>
         </div>
         <div>
-          <h4 className="font-bold text-[12px] uppercase tracking-widest text-mint-500 mb-3">
+          <h4 className="font-bold text-[12px] uppercase tracking-widest text-brand-500 mb-3">
             사무국 연락처
           </h4>
           <div className="text-ink-300 leading-relaxed space-y-1">
@@ -27,7 +27,7 @@ export function Footer({ settings }: { settings: SiteSettings | null }) {
             {settings?.contact.email && (
               <a
                 href={`mailto:${settings.contact.email}`}
-                className="hover:text-mint-500"
+                className="hover:text-brand-500"
               >
                 {settings.contact.email}
               </a>
@@ -36,22 +36,22 @@ export function Footer({ settings }: { settings: SiteSettings | null }) {
           </div>
         </div>
         <div>
-          <h4 className="font-bold text-[12px] uppercase tracking-widest text-mint-500 mb-3">
+          <h4 className="font-bold text-[12px] uppercase tracking-widest text-brand-500 mb-3">
             바로가기
           </h4>
           <ul className="text-ink-300 space-y-1.5">
             <li>
-              <Link href="/sponsorships" className="hover:text-mint-500">
+              <Link href="/sponsorships" className="hover:text-brand-500">
                 전체 스폰서십
               </Link>
             </li>
             <li>
-              <Link href="/packages" className="hover:text-mint-500">
+              <Link href="/packages" className="hover:text-brand-500">
                 패키지
               </Link>
             </li>
             <li>
-              <Link href="/contact" className="hover:text-mint-500">
+              <Link href="/contact" className="hover:text-brand-500">
                 문의하기
               </Link>
             </li>

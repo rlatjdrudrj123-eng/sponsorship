@@ -95,7 +95,7 @@ export function CompletenessCheck({ category }: Props) {
         </div>
       )}
       {missing.length === 0 && (
-        <div className="mx-3 mb-3 p-2.5 rounded-btn bg-mint-50 border border-mint-100 text-[11px] text-mint-700">
+        <div className="mx-3 mb-3 p-2.5 rounded-btn bg-brand-50 border border-brand-100 text-[11px] text-brand-700">
           ✓ 모든 항목 채움
         </div>
       )}

@@ -23,7 +23,7 @@ export function ProgressOverlay({ phase, current, total }: Props) {
       <div className="bg-white rounded-card p-7 max-w-md w-full shadow-2xl">
         <div className="flex items-center gap-3 mb-4">
           <svg
-            className="animate-spin w-5 h-5 text-mint-500"
+            className="animate-spin w-5 h-5 text-brand-500"
             viewBox="0 0 24 24"
             fill="none"
           >
@@ -46,7 +46,7 @@ export function ProgressOverlay({ phase, current, total }: Props) {
         </div>
         <div className="h-1.5 rounded-full bg-ink-100 overflow-hidden">
           <div
-            className="h-full bg-mint-500 transition-all duration-300"
+            className="h-full bg-brand-500 transition-all duration-300"
             style={{ width: `${pct}%` }}
           />
         </div>

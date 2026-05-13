@@ -134,7 +134,7 @@ function FloorTile({
             type="button"
             onClick={onOpenPinEditor}
             title="핀 좌표 편집"
-            className="text-[10px] px-2 py-0.5 rounded-full bg-white border border-mint-200 text-mint-700 flex items-center gap-1 hover:bg-mint-50 hover:border-mint-500 transition-colors font-semibold"
+            className="text-[10px] px-2 py-0.5 rounded-full bg-white border border-brand-200 text-brand-700 flex items-center gap-1 hover:bg-brand-50 hover:border-brand-500 transition-colors font-semibold"
           >
             <MapPin className="w-2.5 h-2.5" /> 핀 {floorImage.pins.length}
           </button>
@@ -173,13 +173,13 @@ function FloorTile({
             const f = e.dataTransfer.files?.[0];
             if (f) handleFile(f);
           }}
-          className="w-full aspect-[4/3] border-[1.5px] border-dashed border-ink-300 rounded flex flex-col items-center justify-center text-[11px] text-ink-500 hover:border-mint-500 hover:text-mint-700 hover:bg-mint-50 transition-colors relative overflow-hidden"
+          className="w-full aspect-[4/3] border-[1.5px] border-dashed border-ink-300 rounded flex flex-col items-center justify-center text-[11px] text-ink-500 hover:border-brand-500 hover:text-brand-700 hover:bg-brand-50 transition-colors relative overflow-hidden"
         >
           {pct !== null ? (
             <>
               <div className="font-mono text-ink-700">{pct}%</div>
               <div
-                className="absolute bottom-0 left-0 h-1 bg-mint-500 transition-all"
+                className="absolute bottom-0 left-0 h-1 bg-brand-500 transition-all"
                 style={{ width: `${pct}%` }}
               />
             </>

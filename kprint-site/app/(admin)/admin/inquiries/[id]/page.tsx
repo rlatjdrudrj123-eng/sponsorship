@@ -114,7 +114,7 @@ export default function InquiryDetailPage() {
         <p className="text-sm text-ink-500">문의를 찾을 수 없습니다.</p>
         <Link
           href="/admin/inquiries"
-          className="text-mint-700 font-semibold mt-4 inline-block hover:underline"
+          className="text-brand-700 font-semibold mt-4 inline-block hover:underline"
         >
           목록으로
         </Link>
@@ -160,7 +160,7 @@ export default function InquiryDetailPage() {
           </Link>
           <Link
             href={`/admin/sponsors/new?inquiryId=${inquiry.id}`}
-            className="px-3.5 py-2 rounded-btn bg-mint-500 text-ink-900 text-[13px] font-bold hover:bg-mint-700 hover:text-white flex items-center gap-1.5"
+            className="px-3.5 py-2 rounded-btn bg-brand-500 text-ink-900 text-[13px] font-bold hover:bg-brand-700 hover:text-white flex items-center gap-1.5"
           >
             <Handshake className="w-4 h-4" />
             스폰서로 전환
@@ -212,7 +212,7 @@ export default function InquiryDetailPage() {
                         return (
                           <tr key={i} className="border-t border-ink-100">
                             <td className="px-3 py-2">
-                              <span className="text-[10px] px-1.5 py-0.5 rounded bg-mint-50 text-mint-700 border border-mint-100 font-semibold">
+                              <span className="text-[10px] px-1.5 py-0.5 rounded bg-brand-50 text-brand-700 border border-brand-100 font-semibold">
                                 슬롯
                               </span>
                             </td>
@@ -272,7 +272,7 @@ export default function InquiryDetailPage() {
             <select
               value={inquiry.status}
               onChange={(e) => updateStatus(e.target.value as Inquiry["status"])}
-              className="w-full px-3 py-2 text-sm border border-ink-100 rounded-btn focus:outline-none focus:border-mint-500 bg-white"
+              className="w-full px-3 py-2 text-sm border border-ink-100 rounded-btn focus:outline-none focus:border-brand-500 bg-white"
             >
               <option value="new">신규</option>
               <option value="in_progress">진행 중</option>
@@ -291,7 +291,7 @@ export default function InquiryDetailPage() {
               value={adminNote}
               onChange={(e) => setAdminNote(e.target.value)}
               placeholder="상담 진행 메모 (사무국 내부용)"
-              className="w-full px-3 py-2 text-sm border border-ink-100 rounded-btn focus:outline-none focus:border-mint-500 bg-white min-h-[120px] resize-y"
+              className="w-full px-3 py-2 text-sm border border-ink-100 rounded-btn focus:outline-none focus:border-brand-500 bg-white min-h-[120px] resize-y"
             />
             <div className="mt-2 flex items-center justify-between">
               <NoteStatus status={noteSaveStatus} />
@@ -362,7 +362,7 @@ function SumRow({
       <div className={"text-[12px] text-right " + (accent ? "text-ink-900 font-bold" : "text-ink-500")}>
         {label}
       </div>
-      <div className={"text-right font-mono " + (accent ? "text-[16px] text-mint-700 font-bold" : "text-[12px] text-ink-700")}>
+      <div className={"text-right font-mono " + (accent ? "text-[16px] text-brand-700 font-bold" : "text-[12px] text-ink-700")}>
         {value.toLocaleString()}원
       </div>
     </>
@@ -373,7 +373,7 @@ function NoteStatus({ status }: { status: "idle" | "saving" | "saved" | "error" 
   if (status === "saving") return <span className="text-[11px] text-ink-500">저장 중…</span>;
   if (status === "saved") {
     return (
-      <span className="text-[11px] text-mint-700 flex items-center gap-1">
+      <span className="text-[11px] text-brand-700 flex items-center gap-1">
         <Check className="w-3 h-3" /> 저장됨
       </span>
     );

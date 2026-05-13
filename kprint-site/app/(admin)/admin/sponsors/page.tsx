@@ -31,7 +31,7 @@ const STATUS_LABELS: Record<SponsorStatus, string> = {
 };
 
 const STATUS_COLORS: Record<SponsorStatus, string> = {
-  in_progress: "bg-mint-50 text-mint-700 border-mint-100",
+  in_progress: "bg-brand-50 text-brand-700 border-brand-100",
   reviewing: "bg-amber-50 text-amber-700 border-amber-200",
   declined: "bg-ink-100 text-ink-500 border-ink-100",
   in_kind: "bg-blue-50 text-blue-700 border-blue-100",
@@ -196,7 +196,7 @@ export default function SponsorsListPage() {
       <header className="flex items-start justify-between gap-4 flex-wrap">
         <div>
           <h1 className="text-[22px] font-bold text-ink-900 leading-tight flex items-center gap-2">
-            <Handshake className="w-5 h-5 text-mint-700" />
+            <Handshake className="w-5 h-5 text-brand-700" />
             스폰서 관리
           </h1>
           <p className="text-[13px] text-ink-700 mt-1">
@@ -227,7 +227,7 @@ export default function SponsorsListPage() {
           <p className="text-sm text-ink-700 mb-3">먼저 행사를 등록해주세요.</p>
           <Link
             href="/admin/events"
-            className="text-mint-700 font-semibold hover:underline text-sm"
+            className="text-brand-700 font-semibold hover:underline text-sm"
           >
             행사 관리로 이동 →
           </Link>
@@ -284,7 +284,7 @@ export default function SponsorsListPage() {
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 placeholder="회사·담당자·이메일 검색"
-                className="w-full pl-9 pr-3 py-2 text-sm border border-ink-100 rounded-btn focus:outline-none focus:border-mint-500"
+                className="w-full pl-9 pr-3 py-2 text-sm border border-ink-100 rounded-btn focus:outline-none focus:border-brand-500"
               />
             </div>
             <div className="flex items-center gap-1">
@@ -300,7 +300,7 @@ export default function SponsorsListPage() {
                       className={
                         "px-3 py-1.5 rounded-btn text-[12px] font-semibold border " +
                         (active
-                          ? "bg-mint-500 text-ink-900 border-mint-500"
+                          ? "bg-brand-500 text-ink-900 border-brand-500"
                           : "bg-white text-ink-700 border-ink-100 hover:bg-ink-50")
                       }
                     >
@@ -370,7 +370,7 @@ export default function SponsorsListPage() {
                       <td className="px-3 py-2.5">
                         <Link
                           href={`/admin/sponsors/${s.id}`}
-                          className="text-ink-900 font-semibold hover:text-mint-700"
+                          className="text-ink-900 font-semibold hover:text-brand-700"
                         >
                           {s.companyName}
                         </Link>
@@ -413,7 +413,7 @@ export default function SponsorsListPage() {
                       <td className="px-3 py-2.5 text-right">
                         <Link
                           href={`/admin/sponsors/${s.id}`}
-                          className="text-mint-700 inline-flex items-center text-[12px] font-semibold hover:underline"
+                          className="text-brand-700 inline-flex items-center text-[12px] font-semibold hover:underline"
                         >
                           <ChevronRight className="w-3.5 h-3.5" />
                         </Link>
@@ -447,7 +447,7 @@ function BenefitDots({ benefits }: { benefits: Sponsor["benefits"] }) {
             title={label}
             className={
               "w-6 h-6 grid place-items-center rounded-full text-[10px] font-bold " +
-              (on ? "bg-mint-500 text-ink-900" : "bg-ink-100 text-ink-300")
+              (on ? "bg-brand-500 text-ink-900" : "bg-ink-100 text-ink-300")
             }
           >
             {short}
@@ -477,14 +477,14 @@ function SumCard({
     <div
       className={
         "rounded-card p-4 border " +
-        (accent ? "bg-mint-50 border-mint-100" : "bg-white border-ink-100")
+        (accent ? "bg-brand-50 border-brand-100" : "bg-white border-ink-100")
       }
     >
       <div className="text-[11px] text-ink-700 font-semibold uppercase tracking-wide">{label}</div>
       <div
         className={
           "mt-1 font-mono font-bold tabular-nums " +
-          (accent ? "text-[22px] text-mint-700" : "text-[18px] text-ink-900")
+          (accent ? "text-[22px] text-brand-700" : "text-[18px] text-ink-900")
         }
       >
         {formatAmount(value, currency)}
@@ -510,7 +510,7 @@ function YoyCard({ lastYear, diff, pct }: { lastYear: number; diff: number; pct:
       <div
         className={
           "mt-1 text-[11px] font-semibold " +
-          (positive ? "text-mint-700" : "text-red-700")
+          (positive ? "text-brand-700" : "text-red-700")
         }
       >
         {positive ? "▲" : "▼"} {formatAmount(Math.abs(diff), "KRW")} ({pct.toFixed(1)}%)

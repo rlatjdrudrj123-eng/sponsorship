@@ -70,8 +70,8 @@ export function PinOverlay({ floorImage, categoryId, eventId, subcategory, slots
                 (isSold
                   ? "bg-ink-300 text-white border-white opacity-60 cursor-not-allowed"
                   : inCart
-                    ? "bg-ink-900 text-mint-500 border-mint-500 ring-4 ring-mint-200"
-                    : "bg-mint-500 text-ink-900 border-white hover:scale-110 cursor-pointer")
+                    ? "bg-ink-900 text-brand-500 border-brand-500 ring-4 ring-brand-200"
+                    : "bg-brand-500 text-ink-900 border-white hover:scale-110 cursor-pointer")
               }
               style={{
                 left: `${pin.x}%`,

@@ -102,7 +102,7 @@ export function PinEditor({
           <button
             type="button"
             onClick={onClose}
-            className="mt-4 px-4 py-2 rounded-btn bg-mint-500 text-ink-900 font-semibold text-[13px]"
+            className="mt-4 px-4 py-2 rounded-btn bg-brand-500 text-ink-900 font-semibold text-[13px]"
           >
             닫기
           </button>
@@ -125,7 +125,7 @@ export function PinEditor({
           <button
             type="button"
             onClick={onClose}
-            className="mt-4 px-4 py-2 rounded-btn bg-mint-500 text-ink-900 font-semibold text-[13px]"
+            className="mt-4 px-4 py-2 rounded-btn bg-brand-500 text-ink-900 font-semibold text-[13px]"
           >
             닫기
           </button>
@@ -216,7 +216,7 @@ export function PinEditor({
                 "px-4 py-2 rounded-btn font-semibold text-[13px] transition-colors " +
                 (saving || !editor.isDirty
                   ? "bg-white/10 text-white/50 cursor-not-allowed"
-                  : "bg-mint-500 text-ink-900 hover:bg-mint-700 hover:text-white")
+                  : "bg-brand-500 text-ink-900 hover:bg-brand-700 hover:text-white")
               }
             >
               {saving ? "저장 중…" : `저장 (${editor.pins.length}개 핀)`}
@@ -226,7 +226,7 @@ export function PinEditor({
       </div>
 
       {toast && (
-        <div className="fixed bottom-8 left-1/2 -translate-x-1/2 bg-ink-900 text-white px-4 py-2.5 rounded-btn text-[13px] shadow-lg border border-mint-500 z-[60] font-semibold">
+        <div className="fixed bottom-8 left-1/2 -translate-x-1/2 bg-ink-900 text-white px-4 py-2.5 rounded-btn text-[13px] shadow-lg border border-brand-500 z-[60] font-semibold">
           {toast}
         </div>
       )}

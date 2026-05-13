@@ -118,7 +118,7 @@ export default function EventsPage() {
       <header className="flex items-center justify-between gap-4">
         <div>
           <h1 className="text-[22px] font-bold text-ink-900 leading-tight flex items-center gap-2">
-            <CalendarDays className="w-5 h-5 text-mint-700" />
+            <CalendarDays className="w-5 h-5 text-brand-700" />
             행사 관리
           </h1>
           <p className="text-[13px] text-ink-700 mt-1">
@@ -192,7 +192,7 @@ export default function EventsPage() {
                       const v = ev.target.value.trim();
                       if (v && v !== e.name) updateField(e.id, "name", v);
                     }}
-                    className="w-full px-2 py-1.5 text-[13px] border border-transparent hover:border-ink-100 focus:border-mint-500 rounded-btn bg-transparent focus:bg-white focus:outline-none font-semibold text-ink-900"
+                    className="w-full px-2 py-1.5 text-[13px] border border-transparent hover:border-ink-100 focus:border-brand-500 rounded-btn bg-transparent focus:bg-white focus:outline-none font-semibold text-ink-900"
                   />
                 </td>
                 <td className="px-4 py-2">
@@ -203,7 +203,7 @@ export default function EventsPage() {
                       const v = ev.target.value.trim();
                       if (v !== e.shortName) updateField(e.id, "shortName", v);
                     }}
-                    className="w-full px-2 py-1.5 text-[13px] border border-transparent hover:border-ink-100 focus:border-mint-500 rounded-btn bg-transparent focus:bg-white focus:outline-none"
+                    className="w-full px-2 py-1.5 text-[13px] border border-transparent hover:border-ink-100 focus:border-brand-500 rounded-btn bg-transparent focus:bg-white focus:outline-none"
                   />
                 </td>
                 <td className="px-4 py-2">
@@ -214,7 +214,7 @@ export default function EventsPage() {
                       const v = parseInt(ev.target.value, 10);
                       if (!isNaN(v) && v !== e.year) updateField(e.id, "year", v);
                     }}
-                    className="w-full px-2 py-1.5 text-[13px] border border-transparent hover:border-ink-100 focus:border-mint-500 rounded-btn bg-transparent focus:bg-white focus:outline-none text-right font-mono"
+                    className="w-full px-2 py-1.5 text-[13px] border border-transparent hover:border-ink-100 focus:border-brand-500 rounded-btn bg-transparent focus:bg-white focus:outline-none text-right font-mono"
                   />
                 </td>
                 <td className="px-4 py-2">
@@ -235,7 +235,7 @@ export default function EventsPage() {
                         updateField(e.id, "lastYearTotal", n);
                       }
                     }}
-                    className="w-full px-2 py-1.5 text-[13px] border border-transparent hover:border-ink-100 focus:border-mint-500 rounded-btn bg-transparent focus:bg-white focus:outline-none text-right font-mono"
+                    className="w-full px-2 py-1.5 text-[13px] border border-transparent hover:border-ink-100 focus:border-brand-500 rounded-btn bg-transparent focus:bg-white focus:outline-none text-right font-mono"
                   />
                 </td>
                 <td className="px-4 py-2 text-center">
@@ -245,7 +245,7 @@ export default function EventsPage() {
                     className={
                       "px-2.5 py-1 rounded-full text-[11px] font-semibold border " +
                       (e.isActive
-                        ? "bg-mint-500 text-ink-900 border-mint-500"
+                        ? "bg-brand-500 text-ink-900 border-brand-500"
                         : "bg-ink-100 text-ink-500 border-ink-100")
                     }
                   >
@@ -346,7 +346,7 @@ function AddEventModal({ events, onClose }: { events: Event[]; onClose: () => vo
             type="button"
             onClick={submit}
             disabled={saving}
-            className="px-3.5 py-2 rounded-btn bg-mint-500 text-ink-900 text-[13px] font-semibold hover:bg-mint-700 disabled:opacity-50"
+            className="px-3.5 py-2 rounded-btn bg-brand-500 text-ink-900 text-[13px] font-semibold hover:bg-brand-700 disabled:opacity-50"
           >
             {saving ? "저장 중…" : "추가"}
           </button>
@@ -377,7 +377,7 @@ function Field({
         value={value}
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}
-        className="w-full px-3 py-2 text-sm border border-ink-100 rounded-btn focus:outline-none focus:border-mint-500 bg-white"
+        className="w-full px-3 py-2 text-sm border border-ink-100 rounded-btn focus:outline-none focus:border-brand-500 bg-white"
       />
     </label>
   );

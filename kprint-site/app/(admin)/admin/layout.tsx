@@ -54,7 +54,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
       <div className="min-h-screen flex items-center justify-center bg-ink-50">
         <div className="flex items-center gap-3 text-sm text-ink-500">
           <svg
-            className="animate-spin w-4 h-4 text-mint-500"
+            className="animate-spin w-4 h-4 text-brand-500"
             viewBox="0 0 24 24"
             fill="none"
           >

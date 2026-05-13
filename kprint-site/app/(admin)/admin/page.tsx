@@ -154,22 +154,22 @@ function StatCard({
   return (
     <Link
       href={href}
-      className="group bg-white border border-ink-100 rounded-card p-5 hover:border-mint-500 transition-colors block"
+      className="group bg-white border border-ink-100 rounded-card p-5 hover:border-brand-500 transition-colors block"
     >
       <div className="flex items-center justify-between mb-3">
         <span className="text-xs text-ink-500">{label}</span>
-        <Icon className="w-4 h-4 text-ink-300 group-hover:text-mint-500 transition-colors" />
+        <Icon className="w-4 h-4 text-ink-300 group-hover:text-brand-500 transition-colors" />
       </div>
       <div className="flex items-end justify-between gap-2">
         <div
           className={
             "text-[32px] font-bold leading-none " +
-            (accent ? "text-mint-700" : "text-ink-900")
+            (accent ? "text-brand-700" : "text-ink-900")
           }
         >
           {value === undefined ? "—" : value}
         </div>
-        <ArrowUpRight className="w-4 h-4 text-ink-300 group-hover:text-mint-500 transition-colors mb-1" />
+        <ArrowUpRight className="w-4 h-4 text-ink-300 group-hover:text-brand-500 transition-colors mb-1" />
       </div>
       {hint && (
         <div className="text-[11px] text-ink-500 mt-2 font-mono">{hint}</div>

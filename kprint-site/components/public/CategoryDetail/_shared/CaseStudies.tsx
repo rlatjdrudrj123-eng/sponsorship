@@ -14,7 +14,7 @@ export function CaseStudies({ items }: { items: CaseStudy[] }) {
 
   return (
     <section className="bg-[#fafaf7] border border-ink-100 rounded-card p-6 md:p-8">
-      <div className="text-[10px] uppercase tracking-[0.2em] text-mint-700 font-bold mb-2">
+      <div className="text-[10px] uppercase tracking-[0.2em] text-brand-700 font-bold mb-2">
         case study
       </div>
       <h3 className="text-[18px] md:text-[22px] font-bold text-ink-900 mb-5">
@@ -51,7 +51,7 @@ export function CaseStudies({ items }: { items: CaseStudy[] }) {
               </div>
               {c.quote && (
                 <div className="mt-1.5 flex gap-1.5">
-                  <Quote className="w-3 h-3 text-mint-500 shrink-0 mt-1" />
+                  <Quote className="w-3 h-3 text-brand-500 shrink-0 mt-1" />
                   <p className="text-[12px] text-ink-700 leading-relaxed">
                     {c.quote}
                   </p>

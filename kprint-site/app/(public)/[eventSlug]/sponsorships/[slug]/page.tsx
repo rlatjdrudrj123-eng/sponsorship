@@ -110,7 +110,7 @@ export default function CategoryDetailPage() {
           <p className="text-sm text-ink-700">카테고리를 찾을 수 없습니다.</p>
           <Link
             href={`/${eventId}/sponsorships`}
-            className="text-mint-700 font-semibold mt-3 inline-block hover:underline"
+            className="text-brand-700 font-semibold mt-3 inline-block hover:underline"
           >
             전체 보기로 →
           </Link>

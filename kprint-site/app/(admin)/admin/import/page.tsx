@@ -255,7 +255,7 @@ export default function ImportPage() {
                     className={
                       "px-4 py-2 rounded-btn font-semibold text-[13px] flex items-center gap-1.5 transition-colors " +
                       (canUpload
-                        ? "bg-mint-500 text-ink-900 hover:bg-mint-700 hover:text-white"
+                        ? "bg-brand-500 text-ink-900 hover:bg-brand-700 hover:text-white"
                         : "bg-ink-100 text-ink-500 cursor-not-allowed")
                     }
                   >
@@ -278,7 +278,7 @@ export default function ImportPage() {
               )}
 
               {uploadResult && uploadResult.errors.length === 0 && (
-                <div className="bg-mint-50 border border-mint-100 rounded-btn p-4 text-sm text-mint-700">
+                <div className="bg-brand-50 border border-brand-100 rounded-btn p-4 text-sm text-brand-700">
                   ✓ 업로드 완료 — 카테고리{" "}
                   {uploadResult.counts.categoriesCreated +
                     uploadResult.counts.categoriesUpdated}
@@ -294,7 +294,7 @@ export default function ImportPage() {
         <aside className="space-y-4 sticky top-[72px]">
           <div className="bg-white border border-ink-100 rounded-card p-5">
             <h3 className="text-[13px] font-bold text-ink-900 mb-3 flex items-center gap-2">
-              <FileSpreadsheet className="w-4 h-4 text-mint-500" />
+              <FileSpreadsheet className="w-4 h-4 text-brand-500" />
               엑셀 양식 가이드
             </h3>
             <ul className="space-y-1.5 text-[12px] text-ink-700">
@@ -311,7 +311,7 @@ export default function ImportPage() {
                 type="button"
                 onClick={handleDownloadTemplate}
                 disabled={downloadingTemplate}
-                className="block mt-1.5 text-mint-500 font-semibold hover:underline disabled:opacity-50"
+                className="block mt-1.5 text-brand-500 font-semibold hover:underline disabled:opacity-50"
               >
                 {downloadingTemplate ? "생성 중…" : "양식 다운로드 →"}
               </button>
@@ -336,7 +336,7 @@ export default function ImportPage() {
 function GuideItem({ children }: { children: React.ReactNode }) {
   return (
     <li className="flex gap-2">
-      <span className="w-1 h-1 rounded-full bg-mint-500 mt-1.5 shrink-0" />
+      <span className="w-1 h-1 rounded-full bg-brand-500 mt-1.5 shrink-0" />
       <span>{children}</span>
     </li>
   );

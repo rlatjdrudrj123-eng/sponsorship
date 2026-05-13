@@ -74,7 +74,7 @@ export function AdminTopbar({ user }: { user: User | null }) {
 
       <div className="flex items-center gap-2 pl-3 ml-1 border-l border-ink-100">
         <div
-          className="w-8 h-8 rounded-full bg-mint-500 text-ink-900 grid place-items-center font-bold text-[13px]"
+          className="w-8 h-8 rounded-full bg-brand-500 text-ink-900 grid place-items-center font-bold text-[13px]"
           title={user?.email ?? ""}
         >
           {initial}

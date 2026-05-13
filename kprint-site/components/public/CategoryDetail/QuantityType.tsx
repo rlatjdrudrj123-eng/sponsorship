@@ -46,7 +46,7 @@ export function QuantityType({
 
       {category.detailImages && category.detailImages.images.length > 0 && (
         <div>
-          <h3 className="text-[10px] uppercase tracking-[0.2em] text-mint-700 font-bold mb-3">
+          <h3 className="text-[10px] uppercase tracking-[0.2em] text-brand-700 font-bold mb-3">
             디테일
           </h3>
           <ImageCarousel slot={category.detailImages} aspectRatio="aspect-[16/9]" />

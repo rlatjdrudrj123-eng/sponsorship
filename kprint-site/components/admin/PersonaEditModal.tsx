@@ -117,7 +117,7 @@ export function PersonaEditModal({
 
         <div className="px-5 py-4 space-y-4">
           {/* 미리보기 */}
-          <div className="bg-mint-50 border border-mint-100 rounded-card p-4 flex flex-col">
+          <div className="bg-brand-50 border border-brand-100 rounded-card p-4 flex flex-col">
             <div className="text-[22px] mb-2">{emoji}</div>
             <div className="text-[13.5px] font-bold text-ink-900 leading-tight">
               {title || "(제목 미정)"}
@@ -145,8 +145,8 @@ export function PersonaEditModal({
                     className={
                       "h-9 grid place-items-center rounded-btn text-[20px] transition-colors " +
                       (active
-                        ? "bg-mint-500 ring-2 ring-mint-700"
-                        : "bg-white border border-ink-100 hover:bg-mint-50")
+                        ? "bg-brand-500 ring-2 ring-brand-700"
+                        : "bg-white border border-ink-100 hover:bg-brand-50")
                     }
                   >
                     {e}
@@ -167,7 +167,7 @@ export function PersonaEditModal({
               onChange={(e) => setTitle(e.target.value)}
               placeholder="예: 처음 참가하는 회사"
               autoFocus
-              className="w-full px-3 py-2 text-sm border border-ink-100 rounded-btn focus:outline-none focus:border-mint-500"
+              className="w-full px-3 py-2 text-sm border border-ink-100 rounded-btn focus:outline-none focus:border-brand-500"
             />
           </label>
 
@@ -181,7 +181,7 @@ export function PersonaEditModal({
               onChange={(e) => setDescription(e.target.value)}
               placeholder="예: 예산 부담 적게 진입 채널 확보. 500만~1500만원 사이 단품·스탠다드 패키지 위주."
               rows={3}
-              className="w-full px-3 py-2 text-sm border border-ink-100 rounded-btn focus:outline-none focus:border-mint-500 resize-y"
+              className="w-full px-3 py-2 text-sm border border-ink-100 rounded-btn focus:outline-none focus:border-brand-500 resize-y"
             />
             <p className="text-[10.5px] text-ink-500 mt-1">
               참가업체가 카드를 볼 때 본인 상황과 맞는지 판단하는 단서가 됩니다.
@@ -201,7 +201,7 @@ export function PersonaEditModal({
             type="button"
             onClick={submit}
             disabled={saving || !title.trim()}
-            className="px-4 py-2.5 rounded-btn bg-mint-500 text-ink-900 text-[13px] font-bold hover:bg-mint-700 hover:text-white disabled:opacity-50"
+            className="px-4 py-2.5 rounded-btn bg-brand-500 text-ink-900 text-[13px] font-bold hover:bg-brand-700 hover:text-white disabled:opacity-50"
           >
             {saving ? "저장 중…" : mode.kind === "new" ? "추가" : "저장"}
           </button>

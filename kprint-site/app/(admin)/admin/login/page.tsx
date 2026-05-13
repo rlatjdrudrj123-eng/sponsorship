@@ -72,7 +72,7 @@ export default function AdminLoginPage() {
     <main className="min-h-screen bg-ink-50 flex items-center justify-center px-4">
       <div className="w-full max-w-sm bg-white border border-ink-100 rounded-card p-8 shadow-sm">
         <div className="flex items-center gap-2 mb-6">
-          <span className="w-2 h-2 rounded-full bg-mint-500" />
+          <span className="w-2 h-2 rounded-full bg-brand-500" />
           <span className="font-bold text-ink-900 tracking-tight">K-PRINT Admin</span>
         </div>
         <h1 className="text-xl font-bold text-ink-900 mb-1">로그인</h1>
@@ -89,7 +89,7 @@ export default function AdminLoginPage() {
               autoComplete="email"
               placeholder="admin@kprint.kr"
               {...register("email")}
-              className="w-full px-3 py-2 text-sm border border-ink-100 rounded-btn focus:outline-none focus:border-mint-500"
+              className="w-full px-3 py-2 text-sm border border-ink-100 rounded-btn focus:outline-none focus:border-brand-500"
             />
             {errors.email && (
               <p className="text-xs text-red-600 mt-1">{errors.email.message}</p>
@@ -105,7 +105,7 @@ export default function AdminLoginPage() {
               type="password"
               autoComplete="current-password"
               {...register("password")}
-              className="w-full px-3 py-2 text-sm border border-ink-100 rounded-btn focus:outline-none focus:border-mint-500"
+              className="w-full px-3 py-2 text-sm border border-ink-100 rounded-btn focus:outline-none focus:border-brand-500"
             />
             {errors.password && (
               <p className="text-xs text-red-600 mt-1">{errors.password.message}</p>
@@ -121,7 +121,7 @@ export default function AdminLoginPage() {
           <button
             type="submit"
             disabled={isSubmitting}
-            className="w-full py-2 rounded-btn bg-mint-500 text-ink-900 font-semibold transition-colors hover:bg-mint-700 hover:text-white disabled:opacity-50 disabled:cursor-not-allowed"
+            className="w-full py-2 rounded-btn bg-brand-500 text-ink-900 font-semibold transition-colors hover:bg-brand-700 hover:text-white disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {isSubmitting ? "로그인 중…" : "로그인"}
           </button>

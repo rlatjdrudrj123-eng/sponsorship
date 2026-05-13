@@ -36,14 +36,14 @@ export function MailingType({
 
         <div className="space-y-6">
           {spec && (
-            <div className="bg-mint-50 border border-mint-100 rounded-card p-5">
-              <h3 className="text-[10px] uppercase tracking-[0.2em] text-mint-700 font-bold mb-3">
+            <div className="bg-brand-50 border border-brand-100 rounded-card p-5">
+              <h3 className="text-[10px] uppercase tracking-[0.2em] text-brand-700 font-bold mb-3">
                 발송 정보
               </h3>
               <div className="grid grid-cols-2 gap-3">
                 {spec.audience > 0 && (
                   <div>
-                    <div className="flex items-center gap-1.5 text-[11px] text-mint-700">
+                    <div className="flex items-center gap-1.5 text-[11px] text-brand-700">
                       <Users className="w-3 h-3" /> 발송 대상
                     </div>
                     <div className="text-[20px] font-bold text-ink-900 mt-1 font-mono">
@@ -59,7 +59,7 @@ export function MailingType({
                 )}
                 {spec.sendDates?.length > 0 && (
                   <div>
-                    <div className="flex items-center gap-1.5 text-[11px] text-mint-700">
+                    <div className="flex items-center gap-1.5 text-[11px] text-brand-700">
                       <Mail className="w-3 h-3" /> 발송일
                     </div>
                     <ul className="text-[12px] font-mono text-ink-900 mt-1 space-y-0.5">

@@ -63,7 +63,7 @@ export default function PackagesListPage() {
         </div>
         <Link
           href="/admin/packages/new"
-          className="px-3.5 py-2 rounded-btn bg-mint-500 text-ink-900 font-semibold text-[13px] hover:bg-mint-700 hover:text-white flex items-center gap-1.5"
+          className="px-3.5 py-2 rounded-btn bg-brand-500 text-ink-900 font-semibold text-[13px] hover:bg-brand-700 hover:text-white flex items-center gap-1.5"
         >
           <Plus className="w-4 h-4" />
           신규 패키지
@@ -120,7 +120,7 @@ export default function PackagesListPage() {
               <tr>
                 <td colSpan={6} className="px-4 py-12 text-center text-sm text-ink-500">
                   패키지가 없습니다.{" "}
-                  <Link href="/admin/packages/new" className="text-mint-700 font-semibold hover:underline">
+                  <Link href="/admin/packages/new" className="text-brand-700 font-semibold hover:underline">
                     추가하세요 →
                   </Link>
                 </td>
@@ -139,7 +139,7 @@ export default function PackagesListPage() {
                 >
                   <td className="px-4 py-2.5 font-mono text-[12px] text-ink-900">{pkg.code}</td>
                   <td className="px-4 py-2.5">
-                    <Link href={`/admin/packages/${pkg.id}`} className="text-ink-900 font-semibold hover:text-mint-700">
+                    <Link href={`/admin/packages/${pkg.id}`} className="text-ink-900 font-semibold hover:text-brand-700">
                       {pkg.name.ko}
                     </Link>
                     {pkg.tagline && (
@@ -153,7 +153,7 @@ export default function PackagesListPage() {
                       className={
                         "text-[11px] px-2 py-0.5 rounded-full font-semibold " +
                         (pkg.tier === "signature"
-                          ? "bg-mint-50 text-mint-700 border border-mint-100"
+                          ? "bg-brand-50 text-brand-700 border border-brand-100"
                           : "bg-ink-100 text-ink-700")
                       }
                     >
@@ -170,7 +170,7 @@ export default function PackagesListPage() {
                   </td>
                   <td className="px-4 py-2.5 text-right">
                     {discount > 0 && (
-                      <span className="text-[11px] font-semibold text-mint-700">
+                      <span className="text-[11px] font-semibold text-brand-700">
                         {discount}%
                       </span>
                     )}
@@ -197,7 +197,7 @@ function Switch({ checked, onChange }: { checked: boolean; onChange: () => void 
       onClick={onChange}
       className={
         "relative inline-flex h-5 w-9 items-center rounded-full transition-colors " +
-        (checked ? "bg-mint-500" : "bg-ink-100")
+        (checked ? "bg-brand-500" : "bg-ink-100")
       }
     >
       <span

@@ -237,7 +237,7 @@ export default function SettingsPage() {
             type="button"
             onClick={handleSave}
             disabled={saveStatus === "saving"}
-            className="px-4 py-2 rounded-btn bg-mint-500 text-ink-900 font-semibold text-[13px] hover:bg-mint-700 hover:text-white flex items-center gap-1.5 disabled:opacity-50"
+            className="px-4 py-2 rounded-btn bg-brand-500 text-ink-900 font-semibold text-[13px] hover:bg-brand-700 hover:text-white flex items-center gap-1.5 disabled:opacity-50"
           >
             <Save className="w-4 h-4" />
             저장
@@ -348,7 +348,7 @@ export default function SettingsPage() {
             <button
               type="button"
               onClick={() => stats.append({ label: "", value: "", suffix: "", desc: "" })}
-              className="w-full py-2 rounded-btn border-[1.5px] border-dashed border-ink-300 text-[13px] text-ink-500 hover:border-mint-500 hover:text-mint-700 flex items-center justify-center gap-1.5"
+              className="w-full py-2 rounded-btn border-[1.5px] border-dashed border-ink-300 text-[13px] text-ink-500 hover:border-brand-500 hover:text-brand-700 flex items-center justify-center gap-1.5"
             >
               <Plus className="w-4 h-4" />
               통계 카드 추가
@@ -396,7 +396,7 @@ export default function SettingsPage() {
             <button
               type="button"
               onClick={() => chartData.append({ year: 2024, visitors: 0, exhibitors: 0 })}
-              className="w-full py-2 rounded-btn border-[1.5px] border-dashed border-ink-300 text-[13px] text-ink-500 hover:border-mint-500 hover:text-mint-700 flex items-center justify-center gap-1.5"
+              className="w-full py-2 rounded-btn border-[1.5px] border-dashed border-ink-300 text-[13px] text-ink-500 hover:border-brand-500 hover:text-brand-700 flex items-center justify-center gap-1.5"
             >
               <Plus className="w-4 h-4" />
               연도 추가
@@ -434,7 +434,7 @@ export default function SettingsPage() {
           <button
             type="button"
             onClick={() => steps.append({ title: "", desc: "" })}
-            className="w-full py-2 rounded-btn border-[1.5px] border-dashed border-ink-300 text-[13px] text-ink-500 hover:border-mint-500 hover:text-mint-700 flex items-center justify-center gap-1.5"
+            className="w-full py-2 rounded-btn border-[1.5px] border-dashed border-ink-300 text-[13px] text-ink-500 hover:border-brand-500 hover:text-brand-700 flex items-center justify-center gap-1.5"
           >
             <Plus className="w-4 h-4" />
             단계 추가
@@ -464,7 +464,7 @@ export default function SettingsPage() {
 }
 
 function inputCls(): string {
-  return "w-full px-3 py-2 text-sm border border-ink-100 rounded-btn focus:outline-none focus:border-mint-500 bg-white";
+  return "w-full px-3 py-2 text-sm border border-ink-100 rounded-btn focus:outline-none focus:border-brand-500 bg-white";
 }
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
@@ -503,7 +503,7 @@ function SaveStatus({
   if (status === "saving") return <span className="text-[11px] text-ink-500">저장 중…</span>;
   if (status === "saved") {
     return (
-      <span className="text-[11px] text-mint-700 flex items-center gap-1">
+      <span className="text-[11px] text-brand-700 flex items-center gap-1">
         <Check className="w-3 h-3" /> 저장됨
       </span>
     );

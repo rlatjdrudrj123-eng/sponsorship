@@ -32,8 +32,8 @@ export function DropZone({ file, onFileSelect, disabled }: Props) {
 
   if (file) {
     return (
-      <div className="rounded-card border-2 border-mint-200 bg-gradient-to-b from-mint-50 to-white p-6 flex items-center gap-4">
-        <FileSpreadsheet className="w-10 h-10 text-mint-500 shrink-0" />
+      <div className="rounded-card border-2 border-brand-200 bg-gradient-to-b from-brand-50 to-white p-6 flex items-center gap-4">
+        <FileSpreadsheet className="w-10 h-10 text-brand-500 shrink-0" />
         <div className="flex-1 min-w-0">
           <div className="font-mono text-sm text-ink-900 truncate">{file.name}</div>
           <div className="text-xs text-ink-500 mt-1">
@@ -70,18 +70,18 @@ export function DropZone({ file, onFileSelect, disabled }: Props) {
         }}
         onClick={() => !disabled && inputRef.current?.click()}
         className={
-          "rounded-card border-2 border-dashed bg-gradient-to-b from-mint-50 to-white p-10 flex flex-col items-center text-center gap-2 cursor-pointer transition-colors " +
-          (dragOver ? "border-mint-500 bg-mint-100/50" : "border-mint-500") +
+          "rounded-card border-2 border-dashed bg-gradient-to-b from-brand-50 to-white p-10 flex flex-col items-center text-center gap-2 cursor-pointer transition-colors " +
+          (dragOver ? "border-brand-500 bg-brand-100/50" : "border-brand-500") +
           (disabled ? " opacity-60 cursor-not-allowed" : "")
         }
       >
-        <Upload className="w-9 h-9 text-mint-500" strokeWidth={1.5} />
+        <Upload className="w-9 h-9 text-brand-500" strokeWidth={1.5} />
         <h3 className="text-base font-semibold text-ink-900">
           엑셀 파일을 여기에 끌어다 놓으세요
         </h3>
         <p className="text-sm text-ink-700">
           또는{" "}
-          <span className="text-mint-700 font-semibold underline-offset-2 hover:underline">
+          <span className="text-brand-700 font-semibold underline-offset-2 hover:underline">
             파일 선택
           </span>{" "}
           · .xlsx / .xls 지원, 최대 {MAX_SIZE_MB}MB

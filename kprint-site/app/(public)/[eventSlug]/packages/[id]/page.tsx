@@ -77,7 +77,7 @@ export default function PackageDetailPage() {
           <p className="text-sm text-ink-700">패키지를 찾을 수 없습니다.</p>
           <Link
             href={`/${eventId}/packages`}
-            className="text-mint-700 font-semibold mt-3 inline-block hover:underline"
+            className="text-brand-700 font-semibold mt-3 inline-block hover:underline"
           >
             전체 패키지로 →
           </Link>

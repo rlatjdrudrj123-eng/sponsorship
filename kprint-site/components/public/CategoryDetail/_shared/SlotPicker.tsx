@@ -42,7 +42,7 @@ export function SlotPicker({ categoryId, eventId, subcategories, slots }: Props)
                     {sub.name.ko || "기본"}
                   </h4>
                   <div className="text-[11px] text-ink-500 mt-0.5">
-                    <span className="text-mint-700 font-semibold">{available}</span>
+                    <span className="text-brand-700 font-semibold">{available}</span>
                     <span> / {total} 가능</span>
                   </div>
                 </div>
@@ -71,14 +71,14 @@ export function SlotPicker({ categoryId, eventId, subcategories, slots }: Props)
                         (isSold
                           ? "bg-ink-100 text-ink-300 border-ink-100 cursor-not-allowed"
                           : inCart
-                            ? "bg-mint-500 text-ink-900 border-mint-700 ring-2 ring-mint-200 shadow-sm"
-                            : "bg-white text-ink-900 border-ink-100 hover:border-mint-500 hover:bg-mint-50")
+                            ? "bg-brand-500 text-ink-900 border-brand-700 ring-2 ring-brand-200 shadow-sm"
+                            : "bg-white text-ink-900 border-ink-100 hover:border-brand-500 hover:bg-brand-50")
                       }
                     >
                       {inCart && (
                         <span
                           aria-hidden
-                          className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-ink-900 text-mint-500 grid place-items-center shadow"
+                          className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-ink-900 text-brand-500 grid place-items-center shadow"
                         >
                           <Check className="w-3 h-3" strokeWidth={3} />
                         </span>
@@ -171,7 +171,7 @@ function SlotConfirmModal({
       >
         <header className="px-5 py-4 border-b border-ink-100 flex items-start justify-between gap-3">
           <div className="min-w-0">
-            <div className="text-[10px] uppercase tracking-[0.2em] text-mint-700 font-bold">
+            <div className="text-[10px] uppercase tracking-[0.2em] text-brand-700 font-bold">
               구좌 상세
             </div>
             <div className="mt-1 flex items-baseline gap-2 flex-wrap">
@@ -194,7 +194,7 @@ function SlotConfirmModal({
         <div className="px-5 py-4 space-y-3">
           {slot.note && (
             <div className="flex items-start gap-2.5">
-              <MapPin className="w-4 h-4 text-mint-700 shrink-0 mt-0.5" />
+              <MapPin className="w-4 h-4 text-brand-700 shrink-0 mt-0.5" />
               <div>
                 <div className="text-[11px] text-ink-500 mb-0.5">위치</div>
                 <div className="text-[14px] text-ink-900">{slot.note}</div>
@@ -228,7 +228,7 @@ function SlotConfirmModal({
             <button
               type="button"
               onClick={onRemove}
-              className="px-4 py-2.5 rounded-btn bg-ink-900 text-mint-500 text-[13px] font-bold hover:bg-ink-700 flex items-center justify-center gap-1.5"
+              className="px-4 py-2.5 rounded-btn bg-ink-900 text-brand-500 text-[13px] font-bold hover:bg-ink-700 flex items-center justify-center gap-1.5"
             >
               <BookmarkCheck className="w-4 h-4" />
               관심 해제
@@ -237,7 +237,7 @@ function SlotConfirmModal({
             <button
               type="button"
               onClick={onAdd}
-              className="px-4 py-2.5 rounded-btn bg-mint-500 text-ink-900 text-[13px] font-bold hover:bg-mint-700 hover:text-white flex items-center justify-center gap-1.5"
+              className="px-4 py-2.5 rounded-btn bg-brand-500 text-ink-900 text-[13px] font-bold hover:bg-brand-700 hover:text-white flex items-center justify-center gap-1.5"
             >
               <Bookmark className="w-4 h-4" />
               관심 표시

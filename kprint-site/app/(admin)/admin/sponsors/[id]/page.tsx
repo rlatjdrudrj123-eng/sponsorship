@@ -152,7 +152,7 @@ export default function SponsorDetailPage() {
       const el = document.createElement("div");
       el.textContent = "저장됨";
       el.className =
-        "fixed bottom-6 right-6 z-50 px-4 py-2 rounded-btn bg-mint-500 text-ink-900 text-sm font-bold shadow-lg";
+        "fixed bottom-6 right-6 z-50 px-4 py-2 rounded-btn bg-brand-500 text-ink-900 text-sm font-bold shadow-lg";
       document.body.appendChild(el);
       setTimeout(() => el.remove(), 1500);
     } catch (e) {
@@ -175,7 +175,7 @@ export default function SponsorDetailPage() {
         <p className="text-sm text-ink-500">스폰서를 찾을 수 없습니다.</p>
         <Link
           href="/admin/sponsors"
-          className="text-mint-700 font-semibold mt-4 inline-block hover:underline"
+          className="text-brand-700 font-semibold mt-4 inline-block hover:underline"
         >
           목록으로
         </Link>
@@ -208,7 +208,7 @@ export default function SponsorDetailPage() {
                   <span>·</span>
                   <Link
                     href={`/admin/inquiries/${sponsor.inquiryId}`}
-                    className="text-mint-700 hover:underline inline-flex items-center gap-1"
+                    className="text-brand-700 hover:underline inline-flex items-center gap-1"
                   >
                     <Mail className="w-3 h-3" />
                     원본 문의

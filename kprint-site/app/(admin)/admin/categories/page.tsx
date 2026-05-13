@@ -322,9 +322,9 @@ export default function CategoriesListPage() {
       </header>
 
       {seedResult && (
-        <div className="bg-mint-50 border border-mint-100 rounded-card p-4 flex items-start gap-3">
+        <div className="bg-brand-50 border border-brand-100 rounded-card p-4 flex items-start gap-3">
           <div className="flex-1 text-[13px]">
-            <div className="font-bold text-mint-700 mb-1">
+            <div className="font-bold text-brand-700 mb-1">
               샘플 이미지 시드 완료 — 처리 {seedResult.processed.length}개
               {seedResult.skipped.length > 0 &&
                 ` · 스킵 ${seedResult.skipped.length}개`}
@@ -368,7 +368,7 @@ export default function CategoriesListPage() {
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="이름·코드 검색"
-            className="w-full pl-9 pr-3 py-2 text-sm border border-ink-100 rounded-btn focus:outline-none focus:border-mint-500"
+            className="w-full pl-9 pr-3 py-2 text-sm border border-ink-100 rounded-btn focus:outline-none focus:border-brand-500"
           />
         </div>
         <Select<Channel | "all">
@@ -440,7 +440,7 @@ export default function CategoriesListPage() {
               <tr>
                 <td colSpan={9} className="px-4 py-12 text-center text-sm text-ink-500">
                   아직 카테고리가 없습니다.{" "}
-                  <Link href="/admin/import" className="text-mint-700 font-semibold hover:underline">
+                  <Link href="/admin/import" className="text-brand-700 font-semibold hover:underline">
                     엑셀 업로드부터 시작하세요 →
                   </Link>
                 </td>
@@ -467,7 +467,7 @@ export default function CategoriesListPage() {
                   (draggingId === c.id
                     ? "opacity-40 "
                     : dragOverId === c.id
-                      ? "bg-mint-50 outline outline-2 outline-mint-500 "
+                      ? "bg-brand-50 outline outline-2 outline-brand-500 "
                       : "hover:bg-ink-50 ")
                 }
                 onClick={(e) => {
@@ -481,7 +481,7 @@ export default function CategoriesListPage() {
                 </td>
                 <td className="px-4 py-2.5 font-mono text-ink-900 text-[12px]">{c.code}</td>
                 <td className="px-4 py-2.5">
-                  <Link href={`/admin/categories/${c.id}`} className="text-ink-900 font-semibold hover:text-mint-700">
+                  <Link href={`/admin/categories/${c.id}`} className="text-ink-900 font-semibold hover:text-brand-700">
                     {c.name.ko}
                   </Link>
                   <div className="text-[11px] text-ink-500 mt-0.5">{c.name.en}</div>
@@ -490,7 +490,7 @@ export default function CategoriesListPage() {
                 <td className="px-4 py-2.5 text-ink-700 text-[12px]">{TYPE_LABELS[c.type]}</td>
                 <td className="px-4 py-2.5 text-right font-mono text-[12px] text-ink-700">{c.subcategoryCount}</td>
                 <td className="px-4 py-2.5 text-right font-mono text-[12px]">
-                  <span className="text-mint-700 font-semibold">{c.slotAvailable}</span>
+                  <span className="text-brand-700 font-semibold">{c.slotAvailable}</span>
                   <span className="text-ink-500"> / {c.slotTotal}</span>
                 </td>
                 <td className="px-4 py-2.5 text-center">
@@ -547,7 +547,7 @@ function Select<T extends string>({
     <select
       value={value}
       onChange={(e) => onChange(e.target.value as T)}
-      className="px-3 py-2 text-sm border border-ink-100 rounded-btn focus:outline-none focus:border-mint-500 bg-white"
+      className="px-3 py-2 text-sm border border-ink-100 rounded-btn focus:outline-none focus:border-brand-500 bg-white"
     >
       {options.map((o) => (
         <option key={o.value} value={o.value}>
@@ -567,7 +567,7 @@ function Switch({ checked, onChange }: { checked: boolean; onChange: () => void 
       onClick={onChange}
       className={
         "relative inline-flex h-5 w-9 items-center rounded-full transition-colors " +
-        (checked ? "bg-mint-500" : "bg-ink-100")
+        (checked ? "bg-brand-500" : "bg-ink-100")
       }
     >
       <span

@@ -82,7 +82,7 @@ export function PreviewTable({ result }: Props) {
                     {row.isSold ? (
                       <span className="text-ink-500">마감</span>
                     ) : (
-                      <span className="text-mint-700 font-semibold">가능</span>
+                      <span className="text-brand-700 font-semibold">가능</span>
                     )}
                   </td>
                 </tr>

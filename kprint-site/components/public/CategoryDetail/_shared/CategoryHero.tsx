@@ -51,7 +51,7 @@ export function CategoryHero({
           <span className="text-[10px] uppercase tracking-widest font-mono text-ink-500">
             {category.code}
           </span>
-          <span className="text-[10px] uppercase tracking-widest text-mint-700 font-bold">
+          <span className="text-[10px] uppercase tracking-widest text-brand-700 font-bold">
             {TYPE_LABELS[category.type]}
           </span>
         </div>
@@ -67,7 +67,7 @@ export function CategoryHero({
         <div className="mt-6 flex items-center gap-6 flex-wrap text-[12px]">
           <Meta label="구좌">
             <span className="font-mono">
-              <span className="text-mint-700 font-bold">{availableSlots}</span>
+              <span className="text-brand-700 font-bold">{availableSlots}</span>
               <span className="text-ink-500"> / {totalSlots} 가능</span>
             </span>
           </Meta>
@@ -97,7 +97,7 @@ export function CategoryHero({
               href={category.designGuideFileUrl}
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center gap-1 text-mint-700 font-semibold hover:underline ml-auto"
+              className="inline-flex items-center gap-1 text-brand-700 font-semibold hover:underline ml-auto"
             >
               <Download className="w-3.5 h-3.5" />
               디자인 가이드 PDF

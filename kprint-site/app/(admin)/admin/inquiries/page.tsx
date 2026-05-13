@@ -86,7 +86,7 @@ export default function InquiriesListPage() {
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="회사·담당자·이메일 검색"
-            className="w-full pl-9 pr-3 py-2 text-sm border border-ink-100 rounded-btn focus:outline-none focus:border-mint-500"
+            className="w-full pl-9 pr-3 py-2 text-sm border border-ink-100 rounded-btn focus:outline-none focus:border-brand-500"
           />
         </div>
         <select
@@ -154,7 +154,7 @@ export default function InquiriesListPage() {
                 <td className="px-4 py-2.5">
                   <Link
                     href={`/admin/inquiries/${inq.id}`}
-                    className="text-ink-900 font-semibold hover:text-mint-700"
+                    className="text-ink-900 font-semibold hover:text-brand-700"
                   >
                     {inq.companyName}
                   </Link>
@@ -172,7 +172,7 @@ export default function InquiriesListPage() {
                 <td className="px-4 py-2.5 text-right">
                   <Link
                     href={`/admin/inquiries/${inq.id}`}
-                    className="text-mint-700 inline-flex items-center text-[12px] font-semibold hover:underline"
+                    className="text-brand-700 inline-flex items-center text-[12px] font-semibold hover:underline"
                   >
                     상세
                     <ChevronRight className="w-3 h-3" />

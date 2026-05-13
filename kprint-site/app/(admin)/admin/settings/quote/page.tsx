@@ -108,7 +108,7 @@ export default function QuoteSettingsPage() {
       <header className="flex items-start justify-between gap-3">
         <div>
           <h1 className="text-[22px] font-bold text-ink-900 leading-tight flex items-center gap-2">
-            <FileText className="w-5 h-5 text-mint-700" />
+            <FileText className="w-5 h-5 text-brand-700" />
             견적서 설정
           </h1>
           <p className="text-[13px] text-ink-700 mt-1">
@@ -121,7 +121,7 @@ export default function QuoteSettingsPage() {
             type="button"
             onClick={save}
             disabled={saveStatus === "saving"}
-            className="px-4 py-2 rounded-btn bg-mint-500 text-ink-900 text-[13px] font-bold hover:bg-mint-700 hover:text-white disabled:opacity-50"
+            className="px-4 py-2 rounded-btn bg-brand-500 text-ink-900 text-[13px] font-bold hover:bg-brand-700 hover:text-white disabled:opacity-50"
           >
             저장
           </button>
@@ -221,7 +221,7 @@ export default function QuoteSettingsPage() {
             value={v.eventIntro}
             onChange={(e) => update((p) => ({ ...p, eventIntro: e.target.value }))}
             rows={3}
-            className="w-full px-3 py-2 text-sm border border-ink-100 rounded-btn focus:outline-none focus:border-mint-500 resize-y"
+            className="w-full px-3 py-2 text-sm border border-ink-100 rounded-btn focus:outline-none focus:border-brand-500 resize-y"
           />
         </div>
         <div className="grid grid-cols-3 gap-3 mt-3">
@@ -275,7 +275,7 @@ export default function QuoteSettingsPage() {
                   })
                 }
                 placeholder="예: 상위 고정"
-                className="px-3 py-2 text-sm border border-ink-100 rounded-btn focus:outline-none focus:border-mint-500"
+                className="px-3 py-2 text-sm border border-ink-100 rounded-btn focus:outline-none focus:border-brand-500"
               />
               <input
                 type="text"
@@ -288,7 +288,7 @@ export default function QuoteSettingsPage() {
                   })
                 }
                 placeholder="비고 (선택)"
-                className="px-3 py-2 text-sm border border-ink-100 rounded-btn focus:outline-none focus:border-mint-500"
+                className="px-3 py-2 text-sm border border-ink-100 rounded-btn focus:outline-none focus:border-brand-500"
               />
               <button
                 type="button"
@@ -322,7 +322,7 @@ export default function QuoteSettingsPage() {
           type="button"
           onClick={save}
           disabled={saveStatus === "saving"}
-          className="px-5 py-2.5 rounded-btn bg-mint-500 text-ink-900 text-[13px] font-bold hover:bg-mint-700 hover:text-white disabled:opacity-50"
+          className="px-5 py-2.5 rounded-btn bg-brand-500 text-ink-900 text-[13px] font-bold hover:bg-brand-700 hover:text-white disabled:opacity-50"
         >
           {saveStatus === "saving" ? "저장 중…" : "전체 저장"}
         </button>
@@ -367,7 +367,7 @@ function Field({
         type="text"
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className="px-3 py-2 text-sm border border-ink-100 rounded-btn focus:outline-none focus:border-mint-500 bg-white"
+        className="px-3 py-2 text-sm border border-ink-100 rounded-btn focus:outline-none focus:border-brand-500 bg-white"
       />
     </label>
   );
@@ -389,7 +389,7 @@ function FieldFull({
         type="text"
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className="px-3 py-2 text-sm border border-ink-100 rounded-btn focus:outline-none focus:border-mint-500 bg-white"
+        className="px-3 py-2 text-sm border border-ink-100 rounded-btn focus:outline-none focus:border-brand-500 bg-white"
       />
     </label>
   );
@@ -414,7 +414,7 @@ function FieldNumber({
           const n = parseInt(e.target.value, 10);
           onChange(isNaN(n) ? 0 : n);
         }}
-        className="px-3 py-2 text-sm border border-ink-100 rounded-btn focus:outline-none focus:border-mint-500 bg-white text-right font-mono"
+        className="px-3 py-2 text-sm border border-ink-100 rounded-btn focus:outline-none focus:border-brand-500 bg-white text-right font-mono"
       />
     </label>
   );
@@ -423,7 +423,7 @@ function FieldNumber({
 function SaveStatus({ status }: { status: "idle" | "saving" | "saved" | "error" }) {
   if (status === "saved") {
     return (
-      <span className="text-[11px] text-mint-700 flex items-center gap-1">
+      <span className="text-[11px] text-brand-700 flex items-center gap-1">
         <Check className="w-3 h-3" /> 저장됨
       </span>
     );

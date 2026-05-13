@@ -122,17 +122,17 @@ export function PackageMigrationBanner() {
   if (dismissed) return null;
   if (done) {
     return (
-      <div className="bg-mint-50 border border-mint-100 rounded-card p-4 flex items-center justify-between gap-3">
-        <div className="flex items-center gap-2 text-mint-700 font-semibold text-[13px]">
+      <div className="bg-brand-50 border border-brand-100 rounded-card p-4 flex items-center justify-between gap-3">
+        <div className="flex items-center gap-2 text-brand-700 font-semibold text-[13px]">
           <Check className="w-4 h-4" />
           마이그레이션 완료. 새로 생성된 패키지를 확인하세요.
         </div>
         <button
           type="button"
           onClick={() => setDismissed(true)}
-          className="p-1 rounded hover:bg-mint-100"
+          className="p-1 rounded hover:bg-brand-100"
         >
-          <X className="w-4 h-4 text-mint-700" />
+          <X className="w-4 h-4 text-brand-700" />
         </button>
       </div>
     );

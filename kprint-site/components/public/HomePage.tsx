@@ -79,7 +79,7 @@ export function HomePage({ eventId }: { eventId: string }) {
       {/* 우상단 영속 스킵 버튼 */}
       <Link
         href={`/${eventId}/sponsorships`}
-        className="fixed top-6 right-6 md:top-8 md:right-8 z-50 px-4 py-2.5 rounded-full bg-white/90 backdrop-blur text-ink-900 hover:bg-mint-500 text-[12px] md:text-[13px] font-bold transition-colors flex items-center gap-1.5 shadow-lg"
+        className="fixed top-6 right-6 md:top-8 md:right-8 z-50 px-4 py-2.5 rounded-full bg-white/90 backdrop-blur text-ink-900 hover:bg-brand-500 text-[12px] md:text-[13px] font-bold transition-colors flex items-center gap-1.5 shadow-lg"
       >
         스폰서십 바로 보기
         <ArrowRight className="w-3.5 h-3.5" />
@@ -89,7 +89,7 @@ export function HomePage({ eventId }: { eventId: string }) {
         {/* 1) 행사명 */}
         <Slide bgUrl={settings?.kv.desktopUrl} dark first>
           <Reveal>
-            <div className="text-[12px] tracking-[0.3em] uppercase text-mint-500 font-mono mb-6">
+            <div className="text-[12px] tracking-[0.3em] uppercase text-brand-500 font-mono mb-6">
               sponsorship
             </div>
           </Reveal>
@@ -115,7 +115,7 @@ export function HomePage({ eventId }: { eventId: string }) {
         {/* 2) 참관 규모 */}
         <Slide>
           <Reveal>
-            <div className="text-[12px] tracking-[0.3em] uppercase text-mint-500 font-mono mb-6">
+            <div className="text-[12px] tracking-[0.3em] uppercase text-brand-500 font-mono mb-6">
               scale
             </div>
           </Reveal>
@@ -137,7 +137,7 @@ export function HomePage({ eventId }: { eventId: string }) {
         {/* 3) 노출 */}
         <Slide>
           <Reveal>
-            <div className="text-[12px] tracking-[0.3em] uppercase text-mint-500 font-mono mb-6">
+            <div className="text-[12px] tracking-[0.3em] uppercase text-brand-500 font-mono mb-6">
               exposure
             </div>
           </Reveal>
@@ -147,7 +147,7 @@ export function HomePage({ eventId }: { eventId: string }) {
             </h2>
           </Reveal>
           <Reveal delay={500}>
-            <h2 className="text-[40px] md:text-[80px] font-bold leading-[0.95] tracking-tight text-mint-500 mt-2">
+            <h2 className="text-[40px] md:text-[80px] font-bold leading-[0.95] tracking-tight text-brand-500 mt-2">
               당신의 브랜드를.
             </h2>
           </Reveal>
@@ -162,14 +162,14 @@ export function HomePage({ eventId }: { eventId: string }) {
         {/* 4) 채널 */}
         <Slide>
           <Reveal>
-            <div className="text-[12px] tracking-[0.3em] uppercase text-mint-500 font-mono mb-6">
+            <div className="text-[12px] tracking-[0.3em] uppercase text-brand-500 font-mono mb-6">
               channels
             </div>
           </Reveal>
           <Reveal delay={200}>
             <h2 className="text-[40px] md:text-[80px] font-bold leading-[0.95] tracking-tight max-w-5xl">
-              <span className="font-mono text-mint-500">{categories.length}</span>개 채널 ·{" "}
-              <span className="font-mono text-mint-500">{slotsAvailable}</span>개
+              <span className="font-mono text-brand-500">{categories.length}</span>개 채널 ·{" "}
+              <span className="font-mono text-brand-500">{slotsAvailable}</span>개
             </h2>
           </Reveal>
           <Reveal delay={500}>
@@ -189,7 +189,7 @@ export function HomePage({ eventId }: { eventId: string }) {
         {signaturePkg && (
           <Slide>
             <Reveal>
-              <div className="text-[12px] tracking-[0.3em] uppercase text-mint-500 font-mono mb-6">
+              <div className="text-[12px] tracking-[0.3em] uppercase text-brand-500 font-mono mb-6">
                 signature
               </div>
             </Reveal>
@@ -204,24 +204,24 @@ export function HomePage({ eventId }: { eventId: string }) {
                 className="mt-10 inline-flex items-center gap-3 px-6 py-4 rounded-card border border-white/30 hover:bg-white/10 transition-colors max-w-xl group"
               >
                 <div className="flex-1 text-left">
-                  <div className="text-[10px] uppercase tracking-widest text-mint-500 font-mono">
+                  <div className="text-[10px] uppercase tracking-widest text-brand-500 font-mono">
                     {signaturePkg.code}
                   </div>
                   <div className="text-[22px] md:text-[26px] font-bold mt-1 leading-tight">
                     {signaturePkg.name.ko}
                   </div>
-                  <div className="text-[14px] text-mint-500 font-mono mt-1.5">
+                  <div className="text-[14px] text-brand-500 font-mono mt-1.5">
                     {signaturePkg.discountPrice.toLocaleString()}원
                   </div>
                 </div>
-                <ArrowRight className="w-6 h-6 text-white/40 group-hover:text-mint-500 group-hover:translate-x-1 transition-all shrink-0" />
+                <ArrowRight className="w-6 h-6 text-white/40 group-hover:text-brand-500 group-hover:translate-x-1 transition-all shrink-0" />
               </Link>
             </Reveal>
           </Slide>
         )}
 
         {/* 6) CTA */}
-        <Slide bg="bg-mint-500" textColor="text-ink-900">
+        <Slide bg="bg-brand-500" textColor="text-ink-900">
           <Reveal>
             <div className="text-[12px] tracking-[0.3em] uppercase text-ink-900/60 font-mono mb-6">
               get in touch
@@ -253,7 +253,7 @@ export function HomePage({ eventId }: { eventId: string }) {
               </Link>
               <Link
                 href={`/${eventId}/contact`}
-                className="px-7 py-4 rounded-full border-2 border-ink-900 text-ink-900 hover:bg-ink-900 hover:text-mint-500 text-[15px] md:text-[16px] font-bold transition-colors"
+                className="px-7 py-4 rounded-full border-2 border-ink-900 text-ink-900 hover:bg-ink-900 hover:text-brand-500 text-[15px] md:text-[16px] font-bold transition-colors"
               >
                 바로 문의하기
               </Link>

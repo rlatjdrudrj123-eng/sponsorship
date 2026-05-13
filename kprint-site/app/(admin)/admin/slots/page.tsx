@@ -70,7 +70,7 @@ export default function SlotsHubPage() {
               <tr>
                 <td colSpan={5} className="px-4 py-12 text-center text-sm text-ink-500">
                   슬롯이 있는 카테고리가 없습니다.{" "}
-                  <Link href="/admin/import" className="text-mint-700 font-semibold hover:underline">
+                  <Link href="/admin/import" className="text-brand-700 font-semibold hover:underline">
                     엑셀 업로드부터 →
                   </Link>
                 </td>
@@ -83,7 +83,7 @@ export default function SlotsHubPage() {
                   <div className="text-[11px] text-ink-500 mt-0.5 font-mono">{r.code}</div>
                 </td>
                 <td className="px-4 py-2.5 text-right font-mono text-[12px]">{r.total}</td>
-                <td className="px-4 py-2.5 text-right font-mono text-[12px] text-mint-700 font-semibold">
+                <td className="px-4 py-2.5 text-right font-mono text-[12px] text-brand-700 font-semibold">
                   {r.available}
                 </td>
                 <td className="px-4 py-2.5 text-right font-mono text-[12px] text-ink-500">
@@ -92,7 +92,7 @@ export default function SlotsHubPage() {
                 <td className="px-4 py-2.5 text-right">
                   <Link
                     href={`/admin/categories/${r.id}/slots`}
-                    className="text-[12px] text-mint-700 font-semibold hover:underline inline-flex items-center"
+                    className="text-[12px] text-brand-700 font-semibold hover:underline inline-flex items-center"
                   >
                     관리
                     <ChevronRight className="w-3 h-3" />

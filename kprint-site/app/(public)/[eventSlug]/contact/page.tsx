@@ -178,7 +178,7 @@ export default function ContactPage() {
               <input
                 {...register("companyName")}
                 placeholder="(주) 인쇄출판"
-                className="w-full px-3.5 py-2.5 text-[14px] border border-ink-100 rounded-btn focus:outline-none focus:border-mint-500 bg-white"
+                className="w-full px-3.5 py-2.5 text-[14px] border border-ink-100 rounded-btn focus:outline-none focus:border-brand-500 bg-white"
               />
             </Field>
             <div className="grid md:grid-cols-2 gap-5">
@@ -186,14 +186,14 @@ export default function ContactPage() {
                 <input
                   {...register("contactName")}
                   placeholder="홍길동"
-                  className="w-full px-3.5 py-2.5 text-[14px] border border-ink-100 rounded-btn focus:outline-none focus:border-mint-500 bg-white"
+                  className="w-full px-3.5 py-2.5 text-[14px] border border-ink-100 rounded-btn focus:outline-none focus:border-brand-500 bg-white"
                 />
               </Field>
               <Field label="전화번호" error={errors.phone?.message} required>
                 <input
                   {...register("phone")}
                   placeholder="010-0000-0000"
-                  className="w-full px-3.5 py-2.5 text-[14px] border border-ink-100 rounded-btn focus:outline-none focus:border-mint-500 bg-white"
+                  className="w-full px-3.5 py-2.5 text-[14px] border border-ink-100 rounded-btn focus:outline-none focus:border-brand-500 bg-white"
                 />
               </Field>
             </div>
@@ -202,7 +202,7 @@ export default function ContactPage() {
                 type="email"
                 {...register("email")}
                 placeholder="contact@company.com"
-                className="w-full px-3.5 py-2.5 text-[14px] border border-ink-100 rounded-btn focus:outline-none focus:border-mint-500 bg-white"
+                className="w-full px-3.5 py-2.5 text-[14px] border border-ink-100 rounded-btn focus:outline-none focus:border-brand-500 bg-white"
               />
             </Field>
             <Field label="메시지 (선택)" error={errors.message?.message}>
@@ -210,7 +210,7 @@ export default function ContactPage() {
                 {...register("message")}
                 rows={6}
                 placeholder="협의하고 싶은 내용을 적어주세요. 어떤 채널이 우선인지, 예산 범위, 일정 등."
-                className="w-full px-3.5 py-2.5 text-[14px] border border-ink-100 rounded-btn focus:outline-none focus:border-mint-500 bg-white resize-y"
+                className="w-full px-3.5 py-2.5 text-[14px] border border-ink-100 rounded-btn focus:outline-none focus:border-brand-500 bg-white resize-y"
               />
             </Field>
 
@@ -230,7 +230,7 @@ export default function ContactPage() {
               <button
                 type="submit"
                 disabled={isSubmitting}
-                className="px-6 py-3 rounded-btn bg-mint-500 text-ink-900 font-semibold hover:bg-mint-700 hover:text-white disabled:opacity-50 disabled:cursor-not-allowed"
+                className="px-6 py-3 rounded-btn bg-brand-500 text-ink-900 font-semibold hover:bg-brand-700 hover:text-white disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {isSubmitting ? "전송 중…" : "문의 보내기"}
               </button>
@@ -239,7 +239,7 @@ export default function ContactPage() {
 
           {/* Wishlist sidebar */}
           <aside className="bg-[#fafaf7] border border-ink-100 rounded-card p-5 lg:sticky lg:top-6">
-            <div className="text-[10px] uppercase tracking-[0.2em] text-mint-700 font-bold mb-3">
+            <div className="text-[10px] uppercase tracking-[0.2em] text-brand-700 font-bold mb-3">
               첨부될 관심 항목 ({items.length}건)
             </div>
             {!hydrated ? (
@@ -332,7 +332,7 @@ function Field({
     <div>
       <label className="block text-[12px] font-semibold text-ink-700 mb-1.5">
         {label}
-        {required && <span className="text-mint-700 ml-1">*</span>}
+        {required && <span className="text-brand-700 ml-1">*</span>}
       </label>
       {children}
       {error && <p className="text-[11px] text-red-700 mt-1">{error}</p>}

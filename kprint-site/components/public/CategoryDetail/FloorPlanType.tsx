@@ -47,7 +47,7 @@ export function FloorPlanType({
               className={
                 "px-4 py-2.5 text-[13px] font-semibold border-b-2 transition-colors " +
                 (tabId === s.id
-                  ? "border-mint-500 text-ink-900"
+                  ? "border-brand-500 text-ink-900"
                   : "border-transparent text-ink-500 hover:text-ink-900")
               }
             >

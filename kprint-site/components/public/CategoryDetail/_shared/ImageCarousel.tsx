@@ -64,7 +64,7 @@ export function ImageCarousel({ slot, className = "", aspectRatio = "aspect-[4/3
               className={
                 "aspect-square rounded overflow-hidden border-2 " +
                 (idx === i
-                  ? "border-mint-500"
+                  ? "border-brand-500"
                   : "border-transparent opacity-60 hover:opacity-100")
               }
             >

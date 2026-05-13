@@ -35,19 +35,19 @@ export function ContentType({
 
         <div className="space-y-6">
           {spec && (
-            <div className="bg-mint-50 border border-mint-100 rounded-card p-5">
-              <h3 className="text-[10px] uppercase tracking-[0.2em] text-mint-700 font-bold mb-3">
+            <div className="bg-brand-50 border border-brand-100 rounded-card p-5">
+              <h3 className="text-[10px] uppercase tracking-[0.2em] text-brand-700 font-bold mb-3">
                 채널 / 포맷
               </h3>
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <div className="text-[11px] text-mint-700 mb-1">채널</div>
+                  <div className="text-[11px] text-brand-700 mb-1">채널</div>
                   <div className="text-[16px] font-bold text-ink-900">
                     {spec.channel}
                   </div>
                 </div>
                 <div>
-                  <div className="text-[11px] text-mint-700 mb-1">포맷</div>
+                  <div className="text-[11px] text-brand-700 mb-1">포맷</div>
                   <div className="text-[16px] font-bold text-ink-900">
                     {spec.format}
                   </div>

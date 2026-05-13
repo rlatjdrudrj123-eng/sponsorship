@@ -111,7 +111,7 @@ export default function PackagesListPage() {
                   <Link
                     key={pkg.id}
                     href={`/${eventId}/packages/${pkg.id}`}
-                    className="group bg-[#fafaf7] border border-ink-100 rounded-card overflow-hidden hover:border-mint-500 transition-colors flex flex-col h-full"
+                    className="group bg-[#fafaf7] border border-ink-100 rounded-card overflow-hidden hover:border-brand-500 transition-colors flex flex-col h-full"
                   >
                     <div className="aspect-[16/9] bg-ink-100 relative shrink-0">
                       {hero ? (
@@ -130,18 +130,18 @@ export default function PackagesListPage() {
                         <span className="text-[9px] uppercase tracking-wider bg-white/90 text-ink-700 px-1.5 py-0.5 rounded font-mono">
                           {pkg.code}
                         </span>
-                        <span className="text-[9px] uppercase tracking-wider bg-mint-500 text-ink-900 px-1.5 py-0.5 rounded font-bold">
+                        <span className="text-[9px] uppercase tracking-wider bg-brand-500 text-ink-900 px-1.5 py-0.5 rounded font-bold">
                           {pkg.tier === "signature" ? "시그니처" : "스탠다드"}
                         </span>
                       </div>
                       {discount > 0 && (
-                        <div className="absolute top-3 right-3 bg-ink-900 text-mint-500 text-[11px] font-bold px-2 py-1 rounded">
+                        <div className="absolute top-3 right-3 bg-ink-900 text-brand-500 text-[11px] font-bold px-2 py-1 rounded">
                           {discount}% OFF
                         </div>
                       )}
                     </div>
                     <div className="p-5 flex-1 flex flex-col">
-                      <div className="font-bold text-[18px] text-ink-900 group-hover:text-mint-700 leading-tight">
+                      <div className="font-bold text-[18px] text-ink-900 group-hover:text-brand-700 leading-tight">
                         {pkg.name.ko}
                       </div>
                       {pkg.tagline && (
@@ -150,7 +150,7 @@ export default function PackagesListPage() {
                         </p>
                       )}
                       <div className="mt-auto pt-4 flex items-baseline gap-2">
-                        <span className="text-[20px] font-bold text-mint-700">
+                        <span className="text-[20px] font-bold text-brand-700">
                           {pkg.discountPrice.toLocaleString()}원
                         </span>
                         {pkg.originalPrice > pkg.discountPrice && (

@@ -30,8 +30,8 @@ export default function ContactDonePage() {
     <>
       <main className="min-h-screen bg-white grid place-items-center px-6 py-16">
         <div className="max-w-md text-center">
-          <div className="w-16 h-16 mx-auto rounded-full bg-mint-50 border border-mint-100 grid place-items-center mb-6">
-            <Check className="w-8 h-8 text-mint-700" />
+          <div className="w-16 h-16 mx-auto rounded-full bg-brand-50 border border-brand-100 grid place-items-center mb-6">
+            <Check className="w-8 h-8 text-brand-700" />
           </div>
           <h1 className="text-[28px] md:text-[32px] font-bold tracking-tight leading-tight mb-3">
             문의가 접수됐어요
@@ -45,7 +45,7 @@ export default function ContactDonePage() {
               <div>{settings.contact.phone}</div>
               <a
                 href={`mailto:${settings.contact.email}`}
-                className="text-mint-700 hover:underline"
+                className="text-brand-700 hover:underline"
               >
                 {settings.contact.email}
               </a>
@@ -60,7 +60,7 @@ export default function ContactDonePage() {
             </Link>
             <Link
               href={`/${eventId}/sponsorships`}
-              className="px-5 py-2.5 rounded-btn bg-mint-500 text-ink-900 font-semibold text-[13px] hover:bg-mint-700 hover:text-white"
+              className="px-5 py-2.5 rounded-btn bg-brand-500 text-ink-900 font-semibold text-[13px] hover:bg-brand-700 hover:text-white"
             >
               추가 둘러보기
             </Link>

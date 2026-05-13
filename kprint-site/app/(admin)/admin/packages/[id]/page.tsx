@@ -196,7 +196,7 @@ export default function PackageEditPage() {
     return (
       <div className="bg-white border border-ink-100 rounded-card p-12 text-center">
         <p className="text-sm text-ink-500">패키지를 찾을 수 없습니다.</p>
-        <Link href="/admin/packages" className="text-mint-700 font-semibold mt-4 inline-block hover:underline">
+        <Link href="/admin/packages" className="text-brand-700 font-semibold mt-4 inline-block hover:underline">
           목록으로
         </Link>
       </div>
@@ -333,7 +333,7 @@ export default function PackageEditPage() {
             <button
               type="button"
               onClick={() => fields.append({ label: "", slotCodes: "" })}
-              className="w-full py-2 rounded-btn border-[1.5px] border-dashed border-ink-300 text-[13px] text-ink-500 hover:border-mint-500 hover:text-mint-700 hover:bg-mint-50 flex items-center justify-center gap-1.5"
+              className="w-full py-2 rounded-btn border-[1.5px] border-dashed border-ink-300 text-[13px] text-ink-500 hover:border-brand-500 hover:text-brand-700 hover:bg-brand-50 flex items-center justify-center gap-1.5"
             >
               <Plus className="w-4 h-4" />
               항목 추가
@@ -358,7 +358,7 @@ export default function PackageEditPage() {
               <input
                 type="checkbox"
                 {...form.register("isPublished")}
-                className="accent-mint-500 w-4 h-4"
+                className="accent-brand-500 w-4 h-4"
               />
               공개 사이트에 게시
             </label>
@@ -377,7 +377,7 @@ export default function PackageEditPage() {
 }
 
 function inputCls(): string {
-  return "w-full px-3 py-2 text-sm border border-ink-100 rounded-btn focus:outline-none focus:border-mint-500 bg-white";
+  return "w-full px-3 py-2 text-sm border border-ink-100 rounded-btn focus:outline-none focus:border-brand-500 bg-white";
 }
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
@@ -419,7 +419,7 @@ function SaveStatusBadge({
   if (status === "saving") {
     return (
       <span className="text-[11px] text-ink-500 flex items-center gap-1.5">
-        <svg className="animate-spin w-3 h-3 text-mint-500" viewBox="0 0 24 24" fill="none">
+        <svg className="animate-spin w-3 h-3 text-brand-500" viewBox="0 0 24 24" fill="none">
           <circle cx="12" cy="12" r="10" stroke="currentColor" strokeOpacity="0.25" strokeWidth="3" />
           <path d="M22 12a10 10 0 0 1-10 10" stroke="currentColor" strokeWidth="3" strokeLinecap="round" />
         </svg>
@@ -435,7 +435,7 @@ function SaveStatusBadge({
     );
   }
   return (
-    <span className="text-[11px] text-mint-700 flex items-center gap-1.5">
+    <span className="text-[11px] text-brand-700 flex items-center gap-1.5">
       <Check className="w-3 h-3" /> 자동 저장 ·{" "}
       {lastSaved ? lastSaved.toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit" }) : "—"}
     </span>

@@ -55,7 +55,7 @@ export function SpecCard({ category }: { category: Category }) {
 
   return (
     <section className="bg-[#fafaf7] border border-ink-100 rounded-card p-6 md:p-8">
-      <h3 className="text-[10px] uppercase tracking-[0.2em] text-mint-700 font-bold mb-4">
+      <h3 className="text-[10px] uppercase tracking-[0.2em] text-brand-700 font-bold mb-4">
         스펙
       </h3>
       {items.length > 0 && (
@@ -78,7 +78,7 @@ export function SpecCard({ category }: { category: Category }) {
           href={category.designGuideFileUrl}
           target="_blank"
           rel="noopener noreferrer"
-          className="mt-4 inline-flex items-center gap-2 px-4 py-2 rounded-btn border border-mint-500 text-mint-700 font-semibold text-[13px] hover:bg-mint-50"
+          className="mt-4 inline-flex items-center gap-2 px-4 py-2 rounded-btn border border-brand-500 text-brand-700 font-semibold text-[13px] hover:bg-brand-50"
         >
           <Download className="w-4 h-4" />
           디자인 가이드 PDF 다운로드

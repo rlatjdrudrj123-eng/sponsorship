@@ -26,7 +26,7 @@ export function ParsedSummary({ result, mode, onModeChange }: Props) {
             ⚠ 경고 {result.warnings.length}건
           </span>
         ) : (
-          <span className="text-xs px-2.5 py-1 rounded-full bg-mint-50 text-mint-700 border border-mint-100 font-semibold">
+          <span className="text-xs px-2.5 py-1 rounded-full bg-brand-50 text-brand-700 border border-brand-100 font-semibold">
             ✓ 인식 완료
           </span>
         )}
@@ -128,7 +128,7 @@ function ModeRadio({
       className={
         "text-left p-3 rounded-btn border-2 transition-colors " +
         (checked
-          ? "border-mint-500 bg-mint-50"
+          ? "border-brand-500 bg-brand-50"
           : "border-ink-100 hover:border-ink-300 bg-white")
       }
     >
@@ -136,10 +136,10 @@ function ModeRadio({
         <span
           className={
             "w-3.5 h-3.5 rounded-full border-2 grid place-items-center shrink-0 " +
-            (checked ? "border-mint-500" : "border-ink-300")
+            (checked ? "border-brand-500" : "border-ink-300")
           }
         >
-          {checked && <span className="w-1.5 h-1.5 rounded-full bg-mint-500" />}
+          {checked && <span className="w-1.5 h-1.5 rounded-full bg-brand-500" />}
         </span>
         <span>{label}</span>
       </div>

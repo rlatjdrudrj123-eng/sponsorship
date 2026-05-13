@@ -105,7 +105,7 @@ export function AdminSidebar() {
   return (
     <aside className="w-[220px] shrink-0 bg-ink-900 text-ink-100 flex flex-col px-3 py-4 sticky top-0 h-screen overflow-y-auto">
       <div className="flex items-center gap-2 px-2.5 pb-4 mb-2 border-b border-white/10">
-        <span className="w-2 h-2 rounded-full bg-mint-500" />
+        <span className="w-2 h-2 rounded-full bg-brand-500" />
         <span className="font-bold text-white tracking-tight text-[15px]">k·print</span>
         <span className="ml-auto text-[11px] text-ink-500 font-mono">admin</span>
       </div>
@@ -126,7 +126,7 @@ export function AdminSidebar() {
                       className={
                         "flex items-center gap-2.5 px-2.5 py-2 rounded-btn text-[13px] transition-colors " +
                         (active
-                          ? "bg-mint-500 text-ink-900 font-semibold"
+                          ? "bg-brand-500 text-ink-900 font-semibold"
                           : "text-ink-300 hover:bg-white/5 hover:text-white")
                       }
                     >

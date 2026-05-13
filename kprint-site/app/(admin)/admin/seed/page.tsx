@@ -82,7 +82,7 @@ export default function SeedPage() {
     <div className="space-y-5 max-w-3xl">
       <header>
         <h1 className="text-[22px] font-bold text-ink-900 leading-tight flex items-center gap-2">
-          <Database className="w-5 h-5 text-mint-700" />
+          <Database className="w-5 h-5 text-brand-700" />
           데모 데이터 시드
         </h1>
         <p className="text-[13px] text-ink-700 mt-1">
@@ -350,7 +350,7 @@ function SeedCard({
 }) {
   return (
     <div className="bg-white border border-ink-100 rounded-card p-4 flex items-start gap-3">
-      <div className="w-8 h-8 rounded-btn bg-mint-50 text-mint-700 grid place-items-center shrink-0">
+      <div className="w-8 h-8 rounded-btn bg-brand-50 text-brand-700 grid place-items-center shrink-0">
         {icon}
       </div>
       <div className="flex-1 min-w-0">
@@ -394,12 +394,12 @@ function ClearButton({
 }
 
 function ResultCard({ result }: { result: AnyResult }) {
-  const cardClass = "bg-mint-50 border border-mint-100 rounded-card p-3 text-[12px]";
+  const cardClass = "bg-brand-50 border border-brand-100 rounded-card p-3 text-[12px]";
   if (result.kind === "image") {
     const r = result.data;
     return (
       <div className={cardClass}>
-        <div className="font-bold text-mint-700 flex items-center gap-1.5">
+        <div className="font-bold text-brand-700 flex items-center gap-1.5">
           <CheckCircle2 className="w-3.5 h-3.5" />
           이미지 시드 — 처리 {r.processed.length} / 건너뜀 {r.skipped.length} / 실패 {r.errors.length}
         </div>
@@ -420,7 +420,7 @@ function ResultCard({ result }: { result: AnyResult }) {
     const r = result.data;
     return (
       <div className={cardClass}>
-        <div className="font-bold text-mint-700 flex items-center gap-1.5">
+        <div className="font-bold text-brand-700 flex items-center gap-1.5">
           <CheckCircle2 className="w-3.5 h-3.5" />
           패키지 시드 — 생성 {r.created.length} / 실패 {r.errors.length}
         </div>
@@ -431,7 +431,7 @@ function ResultCard({ result }: { result: AnyResult }) {
     const r = result.data;
     return (
       <div className={cardClass}>
-        <div className="font-bold text-mint-700 flex items-center gap-1.5">
+        <div className="font-bold text-brand-700 flex items-center gap-1.5">
           <CheckCircle2 className="w-3.5 h-3.5" />
           문의 시드 — 생성 {r.created.length} / 건너뜀 {r.skipped.length} / 실패 {r.errors.length}
         </div>
@@ -442,7 +442,7 @@ function ResultCard({ result }: { result: AnyResult }) {
     const r = result.data;
     return (
       <div className={cardClass}>
-        <div className="font-bold text-mint-700 flex items-center gap-1.5">
+        <div className="font-bold text-brand-700 flex items-center gap-1.5">
           <CheckCircle2 className="w-3.5 h-3.5" />
           스폰서 시드 — 생성 {r.created.length} / 건너뜀 {r.skipped.length} / 실패 {r.errors.length}
         </div>

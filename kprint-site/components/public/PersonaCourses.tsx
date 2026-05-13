@@ -50,7 +50,7 @@ export function PersonaCourses({
       <div className="max-w-7xl mx-auto px-6 md:px-16 py-8 md:py-10">
         <div className="flex items-end justify-between gap-3 flex-wrap mb-5">
           <div>
-            <div className="text-[10px] uppercase tracking-[0.2em] text-mint-700 font-bold">
+            <div className="text-[10px] uppercase tracking-[0.2em] text-brand-700 font-bold">
               persona course
             </div>
             <h2 className="text-[18px] md:text-[22px] font-bold text-ink-900 mt-1.5">
@@ -90,8 +90,8 @@ export function PersonaCourses({
                   className={
                     "group text-left p-4 rounded-card border-2 transition-all flex flex-col h-full " +
                     (active
-                      ? "bg-mint-500 border-mint-500 text-ink-900 shadow-md"
-                      : "bg-white border-ink-100 text-ink-900 hover:border-mint-500 hover:shadow-sm")
+                      ? "bg-brand-500 border-brand-500 text-ink-900 shadow-md"
+                      : "bg-white border-ink-100 text-ink-900 hover:border-brand-500 hover:shadow-sm")
                   }
                 >
                   <div className="text-[22px] mb-2">{p.emoji}</div>
@@ -109,7 +109,7 @@ export function PersonaCourses({
                   <div
                     className={
                       "mt-3 flex items-center justify-between text-[10px] font-mono " +
-                      (active ? "text-ink-900" : "text-ink-300 group-hover:text-mint-700")
+                      (active ? "text-ink-900" : "text-ink-300 group-hover:text-brand-700")
                     }
                   >
                     <span>{counts[p.id] ?? 0}개 매칭</span>

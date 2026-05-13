@@ -266,7 +266,7 @@ export default function CategoryEditPage() {
         <p className="text-sm text-ink-500">카테고리를 찾을 수 없습니다.</p>
         <Link
           href="/admin/categories"
-          className="text-mint-700 font-semibold mt-4 inline-block hover:underline"
+          className="text-brand-700 font-semibold mt-4 inline-block hover:underline"
         >
           목록으로
         </Link>
@@ -422,7 +422,7 @@ export default function CategoryEditPage() {
               {taxonomyTags.length === 0 ? (
                 <div className="text-[12px] text-ink-500 bg-ink-50 rounded-btn px-3 py-2">
                   이 행사의 태그가 아직 없습니다.{" "}
-                  <Link href="/admin/settings/taxonomy" className="text-mint-700 font-semibold hover:underline">
+                  <Link href="/admin/settings/taxonomy" className="text-brand-700 font-semibold hover:underline">
                     분류·태그에서 먼저 추가하세요 →
                   </Link>
                 </div>
@@ -438,7 +438,7 @@ export default function CategoryEditPage() {
                         className={
                           "px-2.5 py-1 rounded-full text-[11px] border transition-colors " +
                           (on
-                            ? "bg-mint-50 border-mint-500 text-mint-700 font-semibold"
+                            ? "bg-brand-50 border-brand-500 text-brand-700 font-semibold"
                             : "bg-white border-ink-100 text-ink-700 hover:border-ink-300")
                         }
                       >
@@ -482,7 +482,7 @@ export default function CategoryEditPage() {
                 <div className="bg-ink-50/60 border border-ink-100 rounded-card p-4">
                   <h4 className="text-[13px] font-bold mb-3 flex items-center gap-2">
                     <span>도면 이미지 (소분류별)</span>
-                    <span className="text-[10px] bg-mint-500 text-ink-900 px-1.5 py-0.5 rounded-full font-bold">
+                    <span className="text-[10px] bg-brand-500 text-ink-900 px-1.5 py-0.5 rounded-full font-bold">
                       필수
                     </span>
                   </h4>
@@ -514,7 +514,7 @@ export default function CategoryEditPage() {
               <div className="mt-3 flex justify-end">
                 <Link
                   href={`/admin/categories/${id}/slots`}
-                  className="text-[13px] text-mint-700 font-semibold hover:underline"
+                  className="text-[13px] text-brand-700 font-semibold hover:underline"
                 >
                   슬롯 마감 일괄 처리 →
                 </Link>
@@ -530,7 +530,7 @@ export default function CategoryEditPage() {
                   type="checkbox"
                   checked={isFeatured}
                   onChange={toggleFeatured}
-                  className="w-4 h-4 accent-mint-500"
+                  className="w-4 h-4 accent-brand-500"
                 />
                 <div>
                   <div className="text-[13px] font-semibold text-ink-900">
@@ -587,7 +587,7 @@ export default function CategoryEditPage() {
                             saveCaseStudies(next);
                           }}
                           placeholder="회사명"
-                          className="px-2.5 py-1.5 text-[12px] border border-ink-100 rounded-btn focus:outline-none focus:border-mint-500"
+                          className="px-2.5 py-1.5 text-[12px] border border-ink-100 rounded-btn focus:outline-none focus:border-brand-500"
                         />
                         <input
                           type="text"
@@ -598,7 +598,7 @@ export default function CategoryEditPage() {
                             saveCaseStudies(next);
                           }}
                           placeholder="2025"
-                          className="px-2.5 py-1.5 text-[12px] border border-ink-100 rounded-btn focus:outline-none focus:border-mint-500"
+                          className="px-2.5 py-1.5 text-[12px] border border-ink-100 rounded-btn focus:outline-none focus:border-brand-500"
                         />
                         <input
                           type="text"
@@ -609,7 +609,7 @@ export default function CategoryEditPage() {
                             saveCaseStudies(next);
                           }}
                           placeholder="한 줄 후기 (선택)"
-                          className="px-2.5 py-1.5 text-[12px] border border-ink-100 rounded-btn focus:outline-none focus:border-mint-500"
+                          className="px-2.5 py-1.5 text-[12px] border border-ink-100 rounded-btn focus:outline-none focus:border-brand-500"
                         />
                         <button
                           type="button"
@@ -659,7 +659,7 @@ function inputCls(locked: boolean): string {
     "w-full px-3 py-2 text-sm border rounded-btn focus:outline-none transition-colors " +
     (locked
       ? "border-ink-100 bg-ink-50 text-ink-700 cursor-not-allowed"
-      : "border-ink-100 focus:border-mint-500 bg-white")
+      : "border-ink-100 focus:border-brand-500 bg-white")
   );
 }
 
@@ -705,7 +705,7 @@ function Field({
               "text-[10px] font-mono px-1.5 py-0.5 rounded transition-colors " +
               (lockOn
                 ? "bg-ink-100 text-ink-700 hover:bg-ink-50"
-                : "bg-mint-50 text-mint-700 hover:bg-mint-100")
+                : "bg-brand-50 text-brand-700 hover:bg-brand-100")
             }
             title={lockOn ? "잠금 해제 (다음 임포트 때 덮어써짐)" : "잠금 (엑셀 임포트로부터 보호)"}
           >
@@ -741,7 +741,7 @@ function SaveStatusBadge({
   if (status === "saving") {
     return (
       <span className="text-[11px] text-ink-500 flex items-center gap-1.5">
-        <svg className="animate-spin w-3 h-3 text-mint-500" viewBox="0 0 24 24" fill="none">
+        <svg className="animate-spin w-3 h-3 text-brand-500" viewBox="0 0 24 24" fill="none">
           <circle cx="12" cy="12" r="10" stroke="currentColor" strokeOpacity="0.25" strokeWidth="3" />
           <path d="M22 12a10 10 0 0 1-10 10" stroke="currentColor" strokeWidth="3" strokeLinecap="round" />
         </svg>
@@ -760,7 +760,7 @@ function SaveStatusBadge({
     );
   }
   return (
-    <span className="text-[11px] text-mint-700 flex items-center gap-1.5">
+    <span className="text-[11px] text-brand-700 flex items-center gap-1.5">
       <Check className="w-3 h-3" /> 자동 저장 ·{" "}
       {lastSaved
         ? lastSaved.toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit" })

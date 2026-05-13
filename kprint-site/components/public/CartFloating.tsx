@@ -13,7 +13,7 @@ export function CartFloating() {
   return (
     <Link
       href="/cart"
-      className="fixed bottom-6 right-6 z-40 bg-mint-500 text-ink-900 hover:bg-mint-700 hover:text-white px-4 py-3 rounded-full shadow-2xl flex items-center gap-2.5 font-semibold transition-colors"
+      className="fixed bottom-6 right-6 z-40 bg-brand-500 text-ink-900 hover:bg-brand-700 hover:text-white px-4 py-3 rounded-full shadow-2xl flex items-center gap-2.5 font-semibold transition-colors"
     >
       <div className="relative">
         <Bookmark className="w-5 h-5" fill="currentColor" />

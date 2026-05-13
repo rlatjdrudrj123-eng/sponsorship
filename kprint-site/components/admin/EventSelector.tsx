@@ -59,7 +59,7 @@ export function EventSelector() {
         onClick={() => setOpen((p) => !p)}
         className="flex items-center gap-2 px-3 py-1.5 rounded-btn border border-ink-100 bg-white hover:bg-ink-50 text-[13px] font-semibold text-ink-900 min-w-[160px]"
       >
-        <CalendarDays className="w-3.5 h-3.5 text-mint-700 shrink-0" />
+        <CalendarDays className="w-3.5 h-3.5 text-brand-700 shrink-0" />
         <span className="flex-1 text-left truncate">
           {current?.name ?? "행사 선택"}
         </span>
@@ -91,8 +91,8 @@ export function EventSelector() {
                     setOpen(false);
                   }}
                   className={
-                    "w-full text-left px-3 py-2 text-[13px] hover:bg-mint-50 flex items-center gap-2 " +
-                    (active ? "bg-mint-50 text-mint-700 font-bold" : "text-ink-900")
+                    "w-full text-left px-3 py-2 text-[13px] hover:bg-brand-50 flex items-center gap-2 " +
+                    (active ? "bg-brand-50 text-brand-700 font-bold" : "text-ink-900")
                   }
                 >
                   <span className="flex-1 truncate">{e.name}</span>

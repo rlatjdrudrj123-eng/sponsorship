@@ -185,7 +185,7 @@ export default function ClassificationPage() {
       <header className="flex items-start justify-between gap-3 flex-wrap">
         <div>
           <h1 className="text-[22px] font-bold text-ink-900 leading-tight flex items-center gap-2">
-            <Layers className="w-5 h-5 text-mint-700" />
+            <Layers className="w-5 h-5 text-brand-700" />
             분류 관리
           </h1>
           <p className="text-[13px] text-ink-700 mt-1">
@@ -196,7 +196,7 @@ export default function ClassificationPage() {
           type="button"
           onClick={populateCurrent}
           disabled={populating}
-          className="px-3.5 py-2 rounded-btn bg-mint-500 text-ink-900 text-[12.5px] font-bold hover:bg-mint-700 hover:text-white disabled:opacity-50 flex items-center gap-1.5"
+          className="px-3.5 py-2 rounded-btn bg-brand-500 text-ink-900 text-[12.5px] font-bold hover:bg-brand-700 hover:text-white disabled:opacity-50 flex items-center gap-1.5"
           title="현재 카테고리 태그·이름·type에 따라 페르소나·시점·위치를 한 번에 채워넣습니다"
         >
           <Sparkles className="w-3.5 h-3.5" />
@@ -278,7 +278,7 @@ export default function ClassificationPage() {
                       className={
                         "w-full text-left px-3 py-2.5 border-t border-ink-100 flex items-center justify-between gap-2 text-[13px] " +
                         (active
-                          ? "bg-mint-50 text-mint-700 font-bold"
+                          ? "bg-brand-50 text-brand-700 font-bold"
                           : "text-ink-700 hover:bg-ink-50")
                       }
                     >
@@ -296,7 +296,7 @@ export default function ClassificationPage() {
                 <button
                   type="button"
                   onClick={() => setAddingPersona(true)}
-                  className="w-full px-2 py-1.5 rounded-btn border border-dashed border-ink-200 text-[11px] text-ink-500 hover:border-mint-500 hover:text-mint-700 flex items-center justify-center gap-1"
+                  className="w-full px-2 py-1.5 rounded-btn border border-dashed border-ink-200 text-[11px] text-ink-500 hover:border-brand-500 hover:text-brand-700 flex items-center justify-center gap-1"
                 >
                   <Plus className="w-3 h-3" />새 페르소나
                 </button>
@@ -316,7 +316,7 @@ export default function ClassificationPage() {
                           <button
                             type="button"
                             onClick={() => setEditPersona(p)}
-                            className="p-0.5 text-ink-300 hover:text-mint-700"
+                            className="p-0.5 text-ink-300 hover:text-brand-700"
                             title="편집"
                           >
                             <Edit2 className="w-3 h-3" />
@@ -353,7 +353,7 @@ export default function ClassificationPage() {
 
           {/* 중: 활성 버킷에 속한 카테고리 */}
           <div
-            className="bg-white border-2 border-dashed border-mint-200 rounded-card min-h-[300px] p-4"
+            className="bg-white border-2 border-dashed border-brand-200 rounded-card min-h-[300px] p-4"
             onDragOver={(e) => {
               e.preventDefault();
               e.dataTransfer.dropEffect = "move";
@@ -366,7 +366,7 @@ export default function ClassificationPage() {
             }}
           >
             <div className="flex items-center justify-between mb-3">
-              <div className="text-[10px] uppercase tracking-wider text-mint-700 font-bold">
+              <div className="text-[10px] uppercase tracking-wider text-brand-700 font-bold">
                 속한 카테고리
               </div>
               <span className="text-[11px] text-ink-500 font-mono">
@@ -393,11 +393,11 @@ export default function ClassificationPage() {
                     }}
                     onDragEnd={() => setDraggingCatId(null)}
                     className={
-                      "flex items-center gap-2 px-3 py-2 bg-mint-50 border border-mint-100 rounded-btn cursor-move transition-opacity " +
+                      "flex items-center gap-2 px-3 py-2 bg-brand-50 border border-brand-100 rounded-btn cursor-move transition-opacity " +
                       (draggingCatId === c.id ? "opacity-40" : "")
                     }
                   >
-                    <span className="text-[10px] font-mono text-mint-700 shrink-0">
+                    <span className="text-[10px] font-mono text-brand-700 shrink-0">
                       {c.code}
                     </span>
                     <span className="text-[13px] text-ink-900 font-semibold truncate flex-1">
@@ -426,7 +426,7 @@ export default function ClassificationPage() {
             </div>
             {unassigned.length === 0 ? (
               <div className="text-[12px] text-ink-500 py-6 text-center">
-                <CheckCircle2 className="w-5 h-5 mx-auto mb-1 text-mint-500" />
+                <CheckCircle2 className="w-5 h-5 mx-auto mb-1 text-brand-500" />
                 모든 카테고리가 이 그룹에 있습니다.
               </div>
             ) : (
@@ -441,7 +441,7 @@ export default function ClassificationPage() {
                     }}
                     onDragEnd={() => setDraggingCatId(null)}
                     className={
-                      "flex items-center gap-2 px-2 py-1.5 bg-white border border-ink-100 rounded-btn cursor-move hover:border-mint-300 hover:bg-mint-50/50 transition-all " +
+                      "flex items-center gap-2 px-2 py-1.5 bg-white border border-ink-100 rounded-btn cursor-move hover:border-brand-300 hover:bg-brand-50/50 transition-all " +
                       (draggingCatId === c.id ? "opacity-40" : "")
                     }
                     title={c.name.ko}

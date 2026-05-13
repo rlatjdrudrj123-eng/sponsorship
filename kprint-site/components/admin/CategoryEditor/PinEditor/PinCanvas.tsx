@@ -108,11 +108,11 @@ export function PinCanvas({
         {hover && !draggingSlotId && (
           <>
             <div
-              className="absolute top-0 bottom-0 w-px bg-mint-500/60 pointer-events-none"
+              className="absolute top-0 bottom-0 w-px bg-brand-500/60 pointer-events-none"
               style={{ left: `${hover.x}%` }}
             />
             <div
-              className="absolute left-0 right-0 h-px bg-mint-500/60 pointer-events-none"
+              className="absolute left-0 right-0 h-px bg-brand-500/60 pointer-events-none"
               style={{ top: `${hover.y}%` }}
             />
           </>
@@ -142,8 +142,8 @@ export function PinCanvas({
               className={
                 "absolute w-7 h-7 rounded-full border-[3px] grid place-items-center text-[11px] font-bold cursor-move shadow-lg group " +
                 (isSelected
-                  ? "bg-ink-900 text-mint-500 border-mint-500 z-20"
-                  : "bg-mint-500 text-ink-900 border-white z-10 hover:scale-110 transition-transform")
+                  ? "bg-ink-900 text-brand-500 border-brand-500 z-20"
+                  : "bg-brand-500 text-ink-900 border-white z-10 hover:scale-110 transition-transform")
               }
               style={{
                 left: `${p.x}%`,
@@ -165,8 +165,8 @@ export function PinCanvas({
 
       {hover && !draggingSlotId && (
         <div className="absolute top-8 right-8 bg-ink-900/85 text-white px-2.5 py-1.5 rounded font-mono text-[11px] pointer-events-none">
-          X: <span className="text-mint-500">{hover.x.toFixed(1)}%</span> · Y:{" "}
-          <span className="text-mint-500">{hover.y.toFixed(1)}%</span>
+          X: <span className="text-brand-500">{hover.x.toFixed(1)}%</span> · Y:{" "}
+          <span className="text-brand-500">{hover.y.toFixed(1)}%</span>
         </div>
       )}
     </div>

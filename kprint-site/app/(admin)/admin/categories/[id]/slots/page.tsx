@@ -165,7 +165,7 @@ export default function CategorySlotsPage() {
             </h1>
             <div className="text-[12px] text-ink-500 mt-0.5">
               전체 <strong className="text-ink-900">{totalCount}</strong> · 가능{" "}
-              <strong className="text-mint-700">{availCount}</strong> · 마감{" "}
+              <strong className="text-brand-700">{availCount}</strong> · 마감{" "}
               <strong className="text-ink-700">{soldCount}</strong>
             </div>
           </div>
@@ -180,13 +180,13 @@ export default function CategorySlotsPage() {
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="코드·위치 메모 검색"
-            className="w-full pl-9 pr-3 py-2 text-sm border border-ink-100 rounded-btn focus:outline-none focus:border-mint-500"
+            className="w-full pl-9 pr-3 py-2 text-sm border border-ink-100 rounded-btn focus:outline-none focus:border-brand-500"
           />
         </div>
         <select
           value={filterSubcategory}
           onChange={(e) => setFilterSubcategory(e.target.value)}
-          className="px-3 py-2 text-sm border border-ink-100 rounded-btn bg-white focus:outline-none focus:border-mint-500"
+          className="px-3 py-2 text-sm border border-ink-100 rounded-btn bg-white focus:outline-none focus:border-brand-500"
         >
           <option value="all">전체 소분류</option>
           {subcategories.map((sub) => (
@@ -198,7 +198,7 @@ export default function CategorySlotsPage() {
         <select
           value={filterStatus}
           onChange={(e) => setFilterStatus(e.target.value as typeof filterStatus)}
-          className="px-3 py-2 text-sm border border-ink-100 rounded-btn bg-white focus:outline-none focus:border-mint-500"
+          className="px-3 py-2 text-sm border border-ink-100 rounded-btn bg-white focus:outline-none focus:border-brand-500"
         >
           <option value="all">전체 상태</option>
           <option value="available">가능</option>
@@ -218,7 +218,7 @@ export default function CategorySlotsPage() {
                     filtered.every((s) => selected.has(s.id))
                   }
                   onChange={toggleAllVisible}
-                  className="accent-mint-500"
+                  className="accent-brand-500"
                 />
               </th>
               <th className="text-left px-4 py-2.5 font-semibold">코드</th>
@@ -245,7 +245,7 @@ export default function CategorySlotsPage() {
                       type="checkbox"
                       checked={selected.has(slot.id)}
                       onChange={() => toggleSelected(slot.id)}
-                      className="accent-mint-500"
+                      className="accent-brand-500"
                     />
                   </td>
                   <td className="px-4 py-2 font-mono text-[12px] text-ink-900">
@@ -279,7 +279,7 @@ export default function CategorySlotsPage() {
       {selected.size > 0 && (
         <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-30 bg-ink-900 text-white rounded-card px-5 py-3 flex items-center gap-4 shadow-2xl">
           <span className="text-[13px]">
-            선택된 <strong className="text-mint-500">{selected.size}</strong>개
+            선택된 <strong className="text-brand-500">{selected.size}</strong>개
           </span>
           <button
             type="button"
@@ -291,7 +291,7 @@ export default function CategorySlotsPage() {
           <button
             type="button"
             onClick={() => bulkUpdate("available")}
-            className="px-3 py-1.5 rounded-btn bg-mint-500 text-ink-900 hover:bg-mint-700 hover:text-white text-[13px] font-semibold"
+            className="px-3 py-1.5 rounded-btn bg-brand-500 text-ink-900 hover:bg-brand-700 hover:text-white text-[13px] font-semibold"
           >
             일괄 가능
           </button>
@@ -323,13 +323,13 @@ function StatusToggle({
       className={
         "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold border transition-colors " +
         (isAvail
-          ? "bg-mint-50 border-mint-100 text-mint-700 hover:bg-mint-100"
+          ? "bg-brand-50 border-brand-100 text-brand-700 hover:bg-brand-100"
           : "bg-ink-100 border-ink-100 text-ink-700 hover:bg-ink-50")
       }
     >
       <span
         className={
-          "w-1.5 h-1.5 rounded-full " + (isAvail ? "bg-mint-500" : "bg-ink-500")
+          "w-1.5 h-1.5 rounded-full " + (isAvail ? "bg-brand-500" : "bg-ink-500")
         }
       />
       {isAvail ? "가능" : "마감"}
@@ -355,7 +355,7 @@ function NoteCell({
         if (local !== value) onSave(local);
       }}
       placeholder="—"
-      className="w-full px-2 py-1 text-[12px] border border-transparent hover:border-ink-100 focus:border-mint-500 focus:outline-none rounded bg-transparent focus:bg-white"
+      className="w-full px-2 py-1 text-[12px] border border-transparent hover:border-ink-100 focus:border-brand-500 focus:outline-none rounded bg-transparent focus:bg-white"
     />
   );
 }

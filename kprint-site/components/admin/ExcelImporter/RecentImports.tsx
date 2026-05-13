@@ -68,7 +68,7 @@ export function RecentImports({ reloadKey }: Props) {
           {items.map((it) => (
             <li
               key={it.id}
-              className="border-l-2 border-mint-500 pl-2.5 text-[12px]"
+              className="border-l-2 border-brand-500 pl-2.5 text-[12px]"
             >
               <div className="font-mono text-ink-900 truncate" title={it.fileName}>
                 {it.fileName}

@@ -394,7 +394,7 @@ export default function SponsorshipsPage() {
             <header className="px-6 md:px-16 pt-12 pb-6 border-b border-ink-100">
               <div className="max-w-7xl mx-auto flex items-start justify-between gap-4">
                 <div className="min-w-0">
-                  <div className="text-[10px] uppercase tracking-[0.25em] text-mint-700 font-bold mb-2">
+                  <div className="text-[10px] uppercase tracking-[0.25em] text-brand-700 font-bold mb-2">
                     {localized(
                       {
                         ko: settings?.event.nameKo,
@@ -435,7 +435,7 @@ export default function SponsorshipsPage() {
                   <Filter className="w-3.5 h-3.5" />
                   {t("spons.filter", locale)}
                   {hasActiveFilter && (
-                    <span className="w-1.5 h-1.5 rounded-full bg-mint-500 ml-0.5" />
+                    <span className="w-1.5 h-1.5 rounded-full bg-brand-500 ml-0.5" />
                   )}
                 </button>
                 <div className="text-[12px] text-ink-500">
@@ -476,7 +476,7 @@ export default function SponsorshipsPage() {
                 <div className="hidden lg:flex items-center justify-between mb-4">
                   <div className="text-[12px] text-ink-500">
                     전체 <strong className="text-ink-900">{totalCount}</strong>개 중{" "}
-                    <strong className="text-mint-700">{filtered.length}</strong>개
+                    <strong className="text-brand-700">{filtered.length}</strong>개
                   </div>
                   <ViewModeToggle viewMode={viewMode} setViewMode={setViewMode} />
                 </div>
@@ -496,7 +496,7 @@ export default function SponsorshipsPage() {
                       <button
                         type="button"
                         onClick={resetFilters}
-                        className="block mx-auto mt-3 text-mint-700 font-semibold hover:underline"
+                        className="block mx-auto mt-3 text-brand-700 font-semibold hover:underline"
                       >
                         필터 초기화 →
                       </button>
@@ -506,7 +506,7 @@ export default function SponsorshipsPage() {
                   <>
                     {packagesToShow.length > 0 && (
                       <div className="mt-8 mb-4 flex items-center gap-3">
-                        <span className="text-[10px] uppercase tracking-[0.2em] text-mint-700 font-bold">
+                        <span className="text-[10px] uppercase tracking-[0.2em] text-brand-700 font-bold">
                           개별 구좌
                         </span>
                         <div className="flex-1 h-px bg-ink-100" />
@@ -579,7 +579,7 @@ export default function SponsorshipsPage() {
               <button
                 type="button"
                 onClick={() => setSheetOpen(false)}
-                className="px-4 py-2.5 rounded-btn bg-mint-500 text-ink-900 hover:bg-mint-700 hover:text-white text-[13px] font-semibold"
+                className="px-4 py-2.5 rounded-btn bg-brand-500 text-ink-900 hover:bg-brand-700 hover:text-white text-[13px] font-semibold"
               >
                 {filtered.length}개 결과 보기
               </button>
@@ -672,13 +672,13 @@ function FilterPanel({
         <div className="text-[12px] text-ink-500">
           {locale === "en" ? (
             <>
-              <strong className="text-mint-700">{resultCount}</strong> of{" "}
+              <strong className="text-brand-700">{resultCount}</strong> of{" "}
               <strong className="text-ink-900">{totalCount}</strong>
             </>
           ) : (
             <>
               전체 <strong className="text-ink-900">{totalCount}</strong>개 중{" "}
-              <strong className="text-mint-700">{resultCount}</strong>개
+              <strong className="text-brand-700">{resultCount}</strong>개
             </>
           )}
         </div>
@@ -703,7 +703,7 @@ function FilterPanel({
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder={t("spons.searchPlaceholder", locale)}
-            className="w-full pl-9 pr-3 py-2 text-[13px] border border-ink-100 rounded-btn focus:outline-none focus:border-mint-500"
+            className="w-full pl-9 pr-3 py-2 text-[13px] border border-ink-100 rounded-btn focus:outline-none focus:border-brand-500"
           />
         </div>
       </FilterSection>
@@ -793,7 +793,7 @@ function FilterPanel({
             type="checkbox"
             checked={deadlineSoon}
             onChange={(e) => setDeadlineSoon(e.target.checked)}
-            className="accent-mint-500 w-3.5 h-3.5"
+            className="accent-brand-500 w-3.5 h-3.5"
           />
           <span>{t("spons.deadlineSoon", locale)}</span>
         </label>
@@ -890,7 +890,7 @@ function CheckboxList<T extends string>({
               type="checkbox"
               checked={active.has(o.id)}
               onChange={() => onToggle(o.id)}
-              className="accent-mint-500 w-3.5 h-3.5"
+              className="accent-brand-500 w-3.5 h-3.5"
             />
             <span>{o.label}</span>
           </label>
@@ -926,7 +926,7 @@ function BudgetSlider({
   return (
     <div className="space-y-2.5">
       <div className="flex items-baseline justify-between gap-2">
-        <span className={"font-mono text-[15px] font-bold " + (active ? "text-mint-700" : "text-ink-500")}>
+        <span className={"font-mono text-[15px] font-bold " + (active ? "text-brand-700" : "text-ink-500")}>
           {active ? `${display}원 이하` : "예산 미정"}
         </span>
         {active && (
@@ -946,7 +946,7 @@ function BudgetSlider({
         step={500_000}
         value={budget}
         onChange={(e) => setBudget(parseInt(e.target.value, 10))}
-        className="w-full accent-mint-500 cursor-pointer"
+        className="w-full accent-brand-500 cursor-pointer"
         aria-label="예산 슬라이더"
       />
       <div className="flex items-center justify-between text-[10.5px] text-ink-500 font-mono">
@@ -957,7 +957,7 @@ function BudgetSlider({
         className={
           "mt-2 px-3 py-2 rounded-btn text-[11.5px] border " +
           (active
-            ? "bg-mint-50 border-mint-100 text-mint-700 font-semibold"
+            ? "bg-brand-50 border-brand-100 text-brand-700 font-semibold"
             : "bg-ink-50 border-ink-100 text-ink-500")
         }
       >
@@ -982,9 +982,9 @@ function BadgePill({ badge }: { badge: Badge }) {
     Badge,
     { label: string; bg: string; text: string }
   > = {
-    popular: { label: "인기", bg: "bg-mint-500", text: "text-ink-900" },
+    popular: { label: "인기", bg: "bg-brand-500", text: "text-ink-900" },
     closing: { label: "마감 임박", bg: "bg-amber-500", text: "text-white" },
-    solo: { label: "단독", bg: "bg-ink-900", text: "text-mint-500" },
+    solo: { label: "단독", bg: "bg-ink-900", text: "text-brand-500" },
     limited: { label: "1석 남음", bg: "bg-red-600", text: "text-white" },
     sold_out: { label: "매진", bg: "bg-ink-300", text: "text-white" },
   };
@@ -1013,7 +1013,7 @@ function PackageSection({ packages, eventId }: { packages: Package[]; eventId: s
   return (
     <section className="mb-2">
       <div className="flex items-center gap-3 mb-3">
-        <span className="text-[10px] uppercase tracking-[0.2em] text-mint-700 font-bold">
+        <span className="text-[10px] uppercase tracking-[0.2em] text-brand-700 font-bold">
           {t("spons.packagesSection", locale)}
         </span>
         <div className="flex-1 h-px bg-ink-100" />
@@ -1030,8 +1030,8 @@ function PackageSection({ packages, eventId }: { packages: Package[]; eventId: s
               className={
                 "group bg-white border-2 rounded-card overflow-hidden flex flex-col h-full transition-colors " +
                 (isSignature
-                  ? "border-mint-500 hover:border-mint-700"
-                  : "border-ink-100 hover:border-mint-500")
+                  ? "border-brand-500 hover:border-brand-700"
+                  : "border-ink-100 hover:border-brand-500")
               }
             >
               <div className="aspect-[4/3] bg-ink-100 relative shrink-0">
@@ -1052,7 +1052,7 @@ function PackageSection({ packages, eventId }: { packages: Package[]; eventId: s
                     className={
                       "text-[10px] uppercase tracking-wider px-2 py-0.5 rounded font-bold " +
                       (isSignature
-                        ? "bg-mint-500 text-ink-900"
+                        ? "bg-brand-500 text-ink-900"
                         : "bg-white/90 text-ink-900")
                     }
                   >
@@ -1061,7 +1061,7 @@ function PackageSection({ packages, eventId }: { packages: Package[]; eventId: s
                 </div>
               </div>
               <div className="p-4 flex-1 flex flex-col">
-                <div className="font-bold text-[15px] text-ink-900 group-hover:text-mint-700 leading-tight">
+                <div className="font-bold text-[15px] text-ink-900 group-hover:text-brand-700 leading-tight">
                   {localized(pkg.name, locale)}
                 </div>
                 {pkg.tagline && (
@@ -1089,7 +1089,7 @@ function PackageSection({ packages, eventId }: { packages: Package[]; eventId: s
                       <div className="text-[10px] text-ink-500 line-through font-mono">
                         {pkg.originalPrice.toLocaleString()}원
                       </div>
-                      <div className="text-[14px] font-bold text-mint-700 font-mono">
+                      <div className="text-[14px] font-bold text-brand-700 font-mono">
                         {pkg.discountPrice.toLocaleString()}원
                       </div>
                     </div>
@@ -1121,7 +1121,7 @@ function CardGrid({ items, eventId }: { items: EnrichedCategory[]; eventId: stri
           <Link
             key={c.id}
             href={`/${eventId}/sponsorships/${c.slug}`}
-            className="group bg-white border border-ink-100 rounded-card overflow-hidden hover:border-mint-500 transition-colors flex flex-col h-full"
+            className="group bg-white border border-ink-100 rounded-card overflow-hidden hover:border-brand-500 transition-colors flex flex-col h-full"
           >
             <div className="aspect-[4/3] bg-ink-100 relative shrink-0">
               {hero ? (
@@ -1146,7 +1146,7 @@ function CardGrid({ items, eventId }: { items: EnrichedCategory[]; eventId: stri
               </div>
             </div>
             <div className="p-4 flex-1 flex flex-col">
-              <div className="font-bold text-[15px] text-ink-900 group-hover:text-mint-700 leading-tight">
+              <div className="font-bold text-[15px] text-ink-900 group-hover:text-brand-700 leading-tight">
                 {localized(c.name, locale)}
               </div>
               {c.shortDesc && (
@@ -1156,7 +1156,7 @@ function CardGrid({ items, eventId }: { items: EnrichedCategory[]; eventId: stri
               )}
               <div className="mt-auto pt-3 flex items-center justify-between text-[11px] font-mono">
                 <span>
-                  <span className="text-mint-700 font-bold">{c.slotAvailable}</span>
+                  <span className="text-brand-700 font-bold">{c.slotAvailable}</span>
                   <span className="text-ink-500">
                     {" "}
                     / {c.slotTotal} {t("spons.slotsAvailable", locale)}
@@ -1210,13 +1210,13 @@ function SlideStream({
         <span className="text-[12px] text-ink-500">
           {locale === "en" ? (
             <>
-              <strong className="text-mint-700">{items.length}</strong> of{" "}
+              <strong className="text-brand-700">{items.length}</strong> of{" "}
               <strong className="text-ink-900">{totalCount}</strong>
             </>
           ) : (
             <>
               전체 <strong className="text-ink-900">{totalCount}</strong>개 중{" "}
-              <strong className="text-mint-700">{items.length}</strong>개
+              <strong className="text-brand-700">{items.length}</strong>개
             </>
           )}
         </span>
@@ -1231,13 +1231,13 @@ function SlideStream({
           <Filter className="w-3.5 h-3.5" />
           {t("spons.filter", locale)}
           {hasActiveFilter && (
-            <span className="w-1.5 h-1.5 rounded-full bg-mint-500 ml-0.5" />
+            <span className="w-1.5 h-1.5 rounded-full bg-brand-500 ml-0.5" />
           )}
         </button>
         <button
           type="button"
           onClick={onCardMode}
-          className="px-2.5 py-1.5 rounded-btn bg-ink-900 text-white hover:bg-mint-500 hover:text-ink-900 text-[12px] font-semibold flex items-center gap-1"
+          className="px-2.5 py-1.5 rounded-btn bg-ink-900 text-white hover:bg-brand-500 hover:text-ink-900 text-[12px] font-semibold flex items-center gap-1"
           title={t("spons.viewCard", locale)}
         >
           <LayoutGrid className="w-3.5 h-3.5" />
@@ -1298,7 +1298,7 @@ function SlideSection({
         {/* LEFT: 정보 */}
         <div className="flex flex-col min-w-0">
           {/* 해시태그 */}
-          <div className="flex flex-wrap gap-x-4 gap-y-1 text-[13px] md:text-[14px] tracking-wide text-mint-700 font-semibold mb-5 md:mb-7">
+          <div className="flex flex-wrap gap-x-4 gap-y-1 text-[13px] md:text-[14px] tracking-wide text-brand-700 font-semibold mb-5 md:mb-7">
             {hashTags.map((tag, i) => (
               <span key={i}>#{tag}</span>
             ))}
@@ -1345,7 +1345,7 @@ function SlideSection({
               label={t("spons.slots", locale)}
               value={
                 <>
-                  <span className="text-mint-700 font-bold">
+                  <span className="text-brand-700 font-bold">
                     {item.slotAvailable}
                   </span>
                   <span className="text-ink-500">
@@ -1364,14 +1364,14 @@ function SlideSection({
                 href={item.designGuideFileUrl}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="px-5 py-2.5 rounded-btn bg-ink-900 text-white hover:bg-mint-500 hover:text-ink-900 font-semibold text-[13px] transition-colors"
+                className="px-5 py-2.5 rounded-btn bg-ink-900 text-white hover:bg-brand-500 hover:text-ink-900 font-semibold text-[13px] transition-colors"
               >
                 {t("spons.designGuide", locale)}
               </a>
             )}
             <Link
               href={`/${eventId}/sponsorships/${item.slug}`}
-              className="px-5 py-2.5 rounded-btn border border-ink-100 text-ink-900 hover:border-mint-500 hover:text-mint-700 font-semibold text-[13px] transition-colors"
+              className="px-5 py-2.5 rounded-btn border border-ink-100 text-ink-900 hover:border-brand-500 hover:text-brand-700 font-semibold text-[13px] transition-colors"
             >
               {t("common.viewMore", locale)}
             </Link>

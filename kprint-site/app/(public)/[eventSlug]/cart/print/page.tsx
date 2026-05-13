@@ -310,12 +310,12 @@ function CategorySlide({
         {/* LEFT */}
         <div className="flex flex-col min-w-0">
           {/* 행사명 (작게, 상단) */}
-          <div className="text-[10px] uppercase tracking-[0.2em] text-mint-700 font-bold mb-1">
+          <div className="text-[10px] uppercase tracking-[0.2em] text-brand-700 font-bold mb-1">
             {eventName} · 관심 항목
           </div>
 
           {/* 해시태그 */}
-          <div className="flex flex-wrap gap-x-4 gap-y-1 text-[13px] tracking-wide text-mint-700 font-semibold mb-4">
+          <div className="flex flex-wrap gap-x-4 gap-y-1 text-[13px] tracking-wide text-brand-700 font-semibold mb-4">
             {hashTags.map((t, i) => (
               <span key={i}>#{t}</span>
             ))}
@@ -427,11 +427,11 @@ function PackageSlide({
     <section className="a4-page bg-white shadow print:shadow-none mx-auto print:mx-0 my-4 print:my-0 w-[297mm] h-[210mm] relative overflow-hidden">
       <div className="h-full px-12 py-10 grid grid-cols-[1.1fr_1fr] gap-10 items-stretch">
         <div className="flex flex-col min-w-0">
-          <div className="text-[10px] uppercase tracking-[0.2em] text-mint-700 font-bold mb-1">
+          <div className="text-[10px] uppercase tracking-[0.2em] text-brand-700 font-bold mb-1">
             {eventName} · 관심 항목
           </div>
 
-          <div className="flex flex-wrap gap-x-4 gap-y-1 text-[13px] tracking-wide text-mint-700 font-semibold mb-4">
+          <div className="flex flex-wrap gap-x-4 gap-y-1 text-[13px] tracking-wide text-brand-700 font-semibold mb-4">
             <span>#패키지</span>
             <span>#{pkg.tier === "signature" ? "시그니처" : "스탠다드"}</span>
           </div>
@@ -481,7 +481,7 @@ function PackageSlide({
                 )}
                 {pkg.discountPrice > 0 ? (
                   <>
-                    <div className="text-[34px] font-bold text-mint-700 leading-none tracking-tight">
+                    <div className="text-[34px] font-bold text-brand-700 leading-none tracking-tight">
                       {pkg.discountPrice.toLocaleString()}
                       <span className="text-[16px] ml-1 font-semibold text-ink-900">원</span>
                     </div>

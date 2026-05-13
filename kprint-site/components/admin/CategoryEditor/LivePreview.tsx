@@ -47,9 +47,9 @@ export function LivePreview({ category }: Props) {
             (device === "desktop" ? "aspect-[16/10]" : "aspect-[9/16] max-w-[160px] mx-auto")
           }
         >
-          <div className="absolute inset-0 bg-gradient-to-br from-mint-500/20 via-transparent to-transparent" />
+          <div className="absolute inset-0 bg-gradient-to-br from-brand-500/20 via-transparent to-transparent" />
           <div className="relative p-4">
-            <div className="text-[10px] uppercase tracking-widest text-mint-500 mb-1.5">
+            <div className="text-[10px] uppercase tracking-widest text-brand-500 mb-1.5">
               K-PRINT 2026
             </div>
             <div className="text-[16px] font-bold leading-tight">

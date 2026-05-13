@@ -164,7 +164,7 @@ export function ImageSlot({
         <h4 className="text-[13px] font-bold flex items-center gap-2">
           <span>{label}</span>
           {required && (
-            <span className="text-[10px] bg-mint-500 text-ink-900 px-1.5 py-0.5 rounded-full font-bold">
+            <span className="text-[10px] bg-brand-500 text-ink-900 px-1.5 py-0.5 rounded-full font-bold">
               필수
             </span>
           )}
@@ -217,7 +217,7 @@ export function ImageSlot({
                     onClick={() =>
                       setUploading((prev) => prev.filter((x) => x.id !== u.id))
                     }
-                    className="mt-1 text-mint-700 hover:underline text-[10px]"
+                    className="mt-1 text-brand-700 hover:underline text-[10px]"
                   >
                     닫기
                   </button>
@@ -231,7 +231,7 @@ export function ImageSlot({
             </div>
             {!u.error && (
               <div
-                className="absolute bottom-0 left-0 h-1 bg-mint-500 transition-all"
+                className="absolute bottom-0 left-0 h-1 bg-brand-500 transition-all"
                 style={{ width: `${u.pct}%` }}
               />
             )}
@@ -254,8 +254,8 @@ export function ImageSlot({
           className={
             "aspect-[4/3] rounded-btn border-[1.5px] border-dashed flex flex-col items-center justify-center gap-1.5 text-[11px] transition-colors " +
             (dragOver
-              ? "border-mint-500 bg-mint-50 text-mint-700"
-              : "border-ink-300 text-ink-500 hover:border-mint-500 hover:bg-mint-50 hover:text-mint-700")
+              ? "border-brand-500 bg-brand-50 text-brand-700"
+              : "border-ink-300 text-ink-500 hover:border-brand-500 hover:bg-brand-50 hover:text-brand-700")
           }
         >
           {images.length === 0 && uploading.length === 0 ? (
@@ -347,7 +347,7 @@ function ImageTile({
         value={image.caption ?? ""}
         onChange={(e) => onCaptionChange(e.target.value)}
         placeholder="캡션 (선택)"
-        className="text-[11px] px-2 py-1.5 border-t border-ink-100 focus:outline-none focus:bg-mint-50"
+        className="text-[11px] px-2 py-1.5 border-t border-ink-100 focus:outline-none focus:bg-brand-50"
       />
     </div>
   );

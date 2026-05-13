@@ -59,8 +59,8 @@ export function PdfUpload({ categoryId, fileUrl, filePath, onChange }: Props) {
   if (fileUrl) {
     const filename = filePath ? filePath.split("/").slice(-1)[0].replace(/^[a-z0-9-]+_/, "") : "design-guide.pdf";
     return (
-      <div className="flex items-center gap-3 p-3 bg-mint-50 border border-mint-100 rounded-btn">
-        <FileText className="w-5 h-5 text-mint-700 shrink-0" />
+      <div className="flex items-center gap-3 p-3 bg-brand-50 border border-brand-100 rounded-btn">
+        <FileText className="w-5 h-5 text-brand-700 shrink-0" />
         <a
           href={fileUrl}
           target="_blank"
@@ -108,13 +108,13 @@ export function PdfUpload({ categoryId, fileUrl, filePath, onChange }: Props) {
         const f = e.dataTransfer.files?.[0];
         if (f) handleFile(f);
       }}
-      className="w-full p-4 border-[1.5px] border-dashed border-ink-300 rounded-btn flex items-center justify-center gap-2 text-[13px] text-ink-500 hover:border-mint-500 hover:text-mint-700 hover:bg-mint-50 transition-colors relative overflow-hidden"
+      className="w-full p-4 border-[1.5px] border-dashed border-ink-300 rounded-btn flex items-center justify-center gap-2 text-[13px] text-ink-500 hover:border-brand-500 hover:text-brand-700 hover:bg-brand-50 transition-colors relative overflow-hidden"
     >
       {pct !== null ? (
         <>
           <span className="font-mono text-ink-700">{pct}%</span>
           <div
-            className="absolute bottom-0 left-0 h-1 bg-mint-500 transition-all"
+            className="absolute bottom-0 left-0 h-1 bg-brand-500 transition-all"
             style={{ width: `${pct}%` }}
           />
         </>

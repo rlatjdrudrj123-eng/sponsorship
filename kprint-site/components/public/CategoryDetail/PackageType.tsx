@@ -44,7 +44,7 @@ export function PackageType({ pkg, resolvedSlots, settings }: Props) {
               <span className="text-[10px] uppercase tracking-widest font-mono text-ink-500">
                 {pkg.code}
               </span>
-              <span className="text-[10px] uppercase tracking-widest text-mint-700 font-bold">
+              <span className="text-[10px] uppercase tracking-widest text-brand-700 font-bold">
                 {pkg.tier === "signature" ? "시그니처" : "스탠다드"}
               </span>
             </div>
@@ -64,13 +64,13 @@ export function PackageType({ pkg, resolvedSlots, settings }: Props) {
 
           <div className="space-y-6">
             <div className="bg-[#fafaf7] border border-ink-100 rounded-card p-6">
-              <div className="text-[10px] uppercase tracking-[0.2em] text-mint-700 font-bold mb-3">
+              <div className="text-[10px] uppercase tracking-[0.2em] text-brand-700 font-bold mb-3">
                 포함 항목
               </div>
               <ul className="space-y-2.5">
                 {(pkg.includedItems ?? []).map((it, i) => (
                   <li key={i} className="flex gap-2.5 text-[13px] text-ink-900">
-                    <Check className="w-4 h-4 text-mint-500 shrink-0 mt-0.5" />
+                    <Check className="w-4 h-4 text-brand-500 shrink-0 mt-0.5" />
                     <div className="flex-1">
                       <div>{it.label}</div>
                       {resolvedSlots &&
@@ -92,13 +92,13 @@ export function PackageType({ pkg, resolvedSlots, settings }: Props) {
               </ul>
             </div>
 
-            <div className="bg-mint-50 border border-mint-100 rounded-card p-6">
+            <div className="bg-brand-50 border border-brand-100 rounded-card p-6">
               <div className="flex items-baseline gap-3 mb-1">
-                <span className="text-[32px] font-bold text-mint-700">
+                <span className="text-[32px] font-bold text-brand-700">
                   {pkg.discountPrice.toLocaleString()}원
                 </span>
                 {discount > 0 && (
-                  <span className="text-[14px] font-bold text-mint-700 bg-white px-2 py-0.5 rounded">
+                  <span className="text-[14px] font-bold text-brand-700 bg-white px-2 py-0.5 rounded">
                     {discount}% OFF
                   </span>
                 )}
@@ -124,8 +124,8 @@ export function PackageType({ pkg, resolvedSlots, settings }: Props) {
                 className={
                   "mt-4 w-full py-3 rounded-btn font-semibold flex items-center justify-center gap-2 transition-colors " +
                   (inCart
-                    ? "bg-ink-900 text-mint-500 hover:bg-ink-700 ring-2 ring-mint-200"
-                    : "bg-mint-500 text-ink-900 hover:bg-mint-700 hover:text-white")
+                    ? "bg-ink-900 text-brand-500 hover:bg-ink-700 ring-2 ring-brand-200"
+                    : "bg-brand-500 text-ink-900 hover:bg-brand-700 hover:text-white")
                 }
               >
                 {inCart ? <BookmarkCheck className="w-4 h-4" /> : <Bookmark className="w-4 h-4" />}
@@ -203,14 +203,14 @@ function PackageConfirmModal({
       >
         <header className="px-5 py-4 border-b border-ink-100 flex items-start justify-between gap-3">
           <div className="min-w-0">
-            <div className="text-[10px] uppercase tracking-[0.2em] text-mint-700 font-bold">
+            <div className="text-[10px] uppercase tracking-[0.2em] text-brand-700 font-bold">
               패키지 상세
             </div>
             <div className="mt-1 flex items-baseline gap-2 flex-wrap">
               <h3 className="text-[18px] font-bold text-ink-900 leading-tight">
                 {pkg.name.ko}
               </h3>
-              <span className="text-[10px] text-mint-700 font-bold">
+              <span className="text-[10px] text-brand-700 font-bold">
                 {pkg.tier === "signature" ? "시그니처" : "스탠다드"}
               </span>
             </div>
@@ -236,7 +236,7 @@ function PackageConfirmModal({
                     key={i}
                     className="flex gap-2 text-[13px] text-ink-900 leading-snug"
                   >
-                    <Check className="w-3.5 h-3.5 text-mint-500 shrink-0 mt-0.5" />
+                    <Check className="w-3.5 h-3.5 text-brand-500 shrink-0 mt-0.5" />
                     <span>{it.label}</span>
                   </li>
                 ))}
@@ -246,12 +246,12 @@ function PackageConfirmModal({
           <div className="pt-2 border-t border-ink-100">
             <div className="text-[11px] text-ink-500 mb-0.5">가격</div>
             <div className="flex items-baseline gap-2">
-              <span className="text-[24px] font-bold text-mint-700 font-mono">
+              <span className="text-[24px] font-bold text-brand-700 font-mono">
                 {pkg.discountPrice.toLocaleString()}
                 <span className="text-[14px] ml-1">원</span>
               </span>
               {discount > 0 && (
-                <span className="text-[11px] font-bold text-mint-700 bg-mint-50 px-2 py-0.5 rounded">
+                <span className="text-[11px] font-bold text-brand-700 bg-brand-50 px-2 py-0.5 rounded">
                   {discount}% OFF
                 </span>
               )}
@@ -279,7 +279,7 @@ function PackageConfirmModal({
             <button
               type="button"
               onClick={onRemove}
-              className="px-4 py-2.5 rounded-btn bg-ink-900 text-mint-500 text-[13px] font-bold hover:bg-ink-700 flex items-center justify-center gap-1.5"
+              className="px-4 py-2.5 rounded-btn bg-ink-900 text-brand-500 text-[13px] font-bold hover:bg-ink-700 flex items-center justify-center gap-1.5"
             >
               <BookmarkCheck className="w-4 h-4" />
               관심 해제
@@ -288,7 +288,7 @@ function PackageConfirmModal({
             <button
               type="button"
               onClick={onAdd}
-              className="px-4 py-2.5 rounded-btn bg-mint-500 text-ink-900 text-[13px] font-bold hover:bg-mint-700 hover:text-white flex items-center justify-center gap-1.5"
+              className="px-4 py-2.5 rounded-btn bg-brand-500 text-ink-900 text-[13px] font-bold hover:bg-brand-700 hover:text-white flex items-center justify-center gap-1.5"
             >
               <Bookmark className="w-4 h-4" />
               관심 표시
