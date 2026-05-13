@@ -119,14 +119,15 @@ function resolveBg(bg?: string): string | undefined {
 }
 
 function minHeightCls(mh?: BlockStyle["minHeight"]): string {
+  // 16:9 PDF 호환: 슬라이드 1장 = 정확히 h-screen, 스크롤 없음, overflow 잘림
   switch (mh) {
     case "half":
-      return "min-h-[50vh]";
+      return "h-[50vh] overflow-hidden";
     case "auto":
       return "";
     case "screen":
     default:
-      return "min-h-screen";
+      return "h-screen overflow-hidden";
   }
 }
 
@@ -233,7 +234,7 @@ export function CoverSection({
   return (
     <section
       className={
-        "relative overflow-hidden flex items-center " +
+        "relative flex items-center " +
         minHeightCls(style?.minHeight ?? "screen") +
         " " +
         snapCls() +

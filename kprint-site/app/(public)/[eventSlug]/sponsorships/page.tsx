@@ -1435,7 +1435,7 @@ function SlideStream({
           </div>
         </main>
       ) : (
-        <main className="h-screen overflow-y-scroll snap-y snap-proximity bg-canvas scroll-smooth">
+        <main className="h-screen overflow-y-scroll snap-y snap-mandatory bg-canvas scroll-smooth">
           {items.map((c, i) => {
             const subs = subcategories
               .filter((s) => s.categoryId === c.id)
@@ -1477,6 +1477,7 @@ function SlideSection({
   total: number;
 }) {
   const locale = useLocale((s) => s.locale);
+  const [pickerOpen, setPickerOpen] = useState(false);
   const hero = item.heroImages?.images?.[0]?.url;
   const deadlineStr = item.deadline
     ? item.deadline.toDate().toLocaleDateString(
@@ -1496,174 +1497,258 @@ function SlideSection({
   ];
 
   return (
-    <section className="min-h-screen snap-start bg-canvas pt-14 relative">
-      <div className="max-w-7xl mx-auto px-6 md:px-12 py-8 md:py-12 grid lg:grid-cols-[1.1fr_1fr] gap-8 lg:gap-14 items-start">
-        {/* LEFT: 정보 */}
-        <div className="flex flex-col min-w-0">
-          {/* 해시태그 */}
-          <div className="flex flex-wrap gap-x-4 gap-y-1 text-[13px] md:text-[14px] tracking-wide text-brand-500 font-bold mb-5 md:mb-7 font-num">
-            {hashTags.map((tag, i) => (
-              <span key={i}>#{tag}</span>
-            ))}
-          </div>
+    <>
+      <section className="h-screen snap-start bg-canvas pt-14 relative overflow-hidden">
+        <div className="max-w-7xl mx-auto h-full px-6 md:px-12 py-6 md:py-8 grid lg:grid-cols-[1.1fr_1fr] gap-6 lg:gap-12 items-stretch">
+          {/* LEFT: 정보 */}
+          <div className="flex flex-col min-w-0 min-h-0">
+            {/* 해시태그 */}
+            <div className="flex flex-wrap gap-x-4 gap-y-1 text-[13px] md:text-[14px] tracking-wide text-brand-500 font-bold mb-4 font-num">
+              {hashTags.map((tag, i) => (
+                <span key={i}>#{tag}</span>
+              ))}
+            </div>
 
-          {/* 거대한 카테고리 명 + 코드 */}
-          <div className="flex items-baseline gap-3 flex-wrap">
-            <h2 className="text-[40px] md:text-[64px] font-bold leading-[0.95] tracking-tight text-ink-900">
-              {localized(item.name, locale)}
-            </h2>
-            <span className="text-[14px] md:text-[18px] text-ink-300 font-num">
-              #{item.code}
-            </span>
-          </div>
+            {/* 거대한 카테고리 명 + 코드 */}
+            <div className="flex items-baseline gap-3 flex-wrap">
+              <h2 className="text-[36px] md:text-[56px] font-bold leading-[0.95] tracking-tight text-ink-900">
+                {localized(item.name, locale)}
+              </h2>
+              <span className="text-[14px] md:text-[18px] text-ink-300 font-num">
+                #{item.code}
+              </span>
+            </div>
 
-          {/* 한 줄 설명 */}
-          {item.shortDesc && (
-            <p className="text-[13px] md:text-[15px] text-ink-700 mt-3 leading-relaxed max-w-xl">
-              {item.shortDesc}
-            </p>
-          )}
-
-          {/* 구분선 */}
-          <hr className="border-ink-100 my-6 md:my-7" />
-
-          {/* 스펙 표 (2열 콤팩트) */}
-          <dl className="grid grid-cols-2 gap-x-6 gap-y-3">
-            {item.size && (
-              <SpecRow label={t("spons.size", locale)} value={item.size} />
+            {/* 한 줄 설명 */}
+            {item.shortDesc && (
+              <p className="text-[13px] md:text-[14px] text-ink-700 mt-3 leading-relaxed max-w-xl line-clamp-2">
+                {item.shortDesc}
+              </p>
             )}
-            {item.fileFormat && (
+
+            <hr className="border-ink-100 my-5" />
+
+            {/* 스펙 표 (2열 콤팩트) */}
+            <dl className="grid grid-cols-2 gap-x-6 gap-y-2.5">
+              {item.size && (
+                <SpecRow label={t("spons.size", locale)} value={item.size} />
+              )}
+              {item.fileFormat && (
+                <SpecRow
+                  label={t("spons.fileFormat", locale)}
+                  value={item.fileFormat}
+                />
+              )}
+              {deadlineStr && (
+                <SpecRow
+                  label={t("spons.submitDeadline", locale)}
+                  value={deadlineStr}
+                />
+              )}
               <SpecRow
-                label={t("spons.fileFormat", locale)}
-                value={item.fileFormat}
+                label={t("spons.slots", locale)}
+                value={
+                  <>
+                    <span className="text-brand-500 font-bold">
+                      {item.slotAvailable}
+                    </span>
+                    <span className="text-ink-500">
+                      {" "}
+                      / {item.slotTotal} {t("spons.slotsAvailable", locale)}
+                    </span>
+                  </>
+                }
               />
-            )}
-            {deadlineStr && (
-              <SpecRow
-                label={t("spons.submitDeadline", locale)}
-                value={deadlineStr}
-              />
-            )}
-            <SpecRow
-              label={t("spons.slots", locale)}
-              value={
-                <>
-                  <span className="text-brand-500 font-bold">
-                    {item.slotAvailable}
-                  </span>
-                  <span className="text-ink-500">
-                    {" "}
-                    / {item.slotTotal} {t("spons.slotsAvailable", locale)}
-                  </span>
-                </>
-              }
-            />
-          </dl>
+            </dl>
 
-          {/* 액션 버튼 */}
-          <div className="mt-6 flex flex-wrap gap-2">
-            {item.designGuideFileUrl && (
-              <a
-                href={item.designGuideFileUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="px-5 py-2.5 rounded-pill bg-brand-500 text-white hover:bg-brand-700 hover:shadow-glow-sm font-bold text-[13px] transition-all"
-              >
-                {t("spons.designGuide", locale)}
-              </a>
-            )}
-            <Link
-              href={`/${eventId}/sponsorships/${item.slug}`}
-              className="px-5 py-2.5 rounded-pill border-2 border-ink-100 text-ink-900 hover:border-ink-900 font-bold text-[13px] transition-colors"
-            >
-              {t("common.viewMore", locale)}
-            </Link>
-          </div>
-        </div>
-
-        {/* RIGHT: 큰 hero 이미지 + 최저가 박스 */}
-        <div className="flex flex-col gap-4">
-          <div className="aspect-[4/3] rounded-card bg-ink-100 overflow-hidden border border-ink-100 relative shadow-card">
-            {hero ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
-                src={hero}
-                alt={localized(item.name, locale)}
-                className="absolute inset-0 w-full h-full object-cover"
-              />
-            ) : (
-              <div className="w-full h-full grid place-items-center text-ink-300 text-sm">
-                {locale === "en" ? "Image coming soon" : "이미지 준비 중"}
+            {/* 잔여 강조 + 작년 데이터 (있을 때만) */}
+            {(item.lastYear?.buyers?.length || item.lastYear?.soldOutDate) && (
+              <div className="mt-4 text-[11.5px] text-ink-500 leading-snug">
+                {item.lastYear?.buyers && item.lastYear.buyers.length > 0 && (
+                  <div>
+                    <span className="font-num font-bold text-ink-700">작년: </span>
+                    {item.lastYear.buyers.slice(0, 3).join(", ")}
+                    {item.lastYear.buyers.length > 3 &&
+                      ` 외 ${item.lastYear.buyers.length - 3}곳`}
+                  </div>
+                )}
+                {item.lastYear?.soldOutDate && (
+                  <div className="text-amber-700 font-num font-semibold mt-0.5">
+                    작년 매진: {item.lastYear.soldOutDate}
+                  </div>
+                )}
               </div>
             )}
-          </div>
 
-          {/* 최저가 박스 */}
-          <div className="bg-surface border border-ink-100 rounded-card p-5 shadow-card">
-            <div className="font-num text-[11px] uppercase tracking-[0.3em] text-brand-500 font-bold mb-2 flex items-center gap-2">
-              <span className="w-4 h-px bg-brand-500" />
-              {t("spons.minPrice", locale)}
+            <div className="mt-auto pt-5 flex items-center gap-2 flex-wrap">
+              <button
+                type="button"
+                onClick={() => setPickerOpen(true)}
+                className="px-5 py-2.5 rounded-pill bg-brand-500 text-white hover:bg-brand-700 hover:shadow-glow-sm font-bold text-[13px] transition-all flex items-center gap-1.5"
+              >
+                구좌 선택하기 →
+              </button>
+              {item.designGuideFileUrl && (
+                <a
+                  href={item.designGuideFileUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="px-5 py-2.5 rounded-pill border-2 border-ink-100 hover:border-ink-900 text-ink-900 font-bold text-[13px] transition-colors"
+                >
+                  {t("spons.designGuide", locale)}
+                </a>
+              )}
+              <Link
+                href={`/${eventId}/sponsorships/${item.slug}`}
+                className="text-[12.5px] font-num font-bold text-ink-500 hover:text-brand-500 underline-offset-2 hover:underline ml-1"
+              >
+                도면·사례 보기 →
+              </Link>
             </div>
-            {item.minPrice > 0 ? (
-              <>
-                <div className="text-[32px] md:text-[40px] font-bold text-ink-900 leading-none tracking-tight font-num">
+
+            {/* 가격 — 최하단 */}
+            <div className="mt-4 pt-4 border-t border-ink-100 flex items-baseline justify-between gap-3">
+              <span className="font-num text-[11px] uppercase tracking-[0.3em] text-brand-500 font-bold">
+                {t("spons.minPrice", locale)}
+              </span>
+              {item.minPrice > 0 ? (
+                <span className="font-num text-[24px] md:text-[28px] font-bold text-ink-900 leading-none">
                   {item.minPrice.toLocaleString()}
-                  <span className="text-[16px] md:text-[20px] ml-1 font-semibold">
+                  <span className="text-[13px] ml-1 font-semibold">
                     {t("common.won", locale)}
                   </span>
+                </span>
+              ) : (
+                <span className="text-[14px] text-ink-500">
+                  {t("common.priceNegotiable", locale)}
+                </span>
+              )}
+            </div>
+          </div>
+
+          {/* RIGHT: 큰 hero 이미지 */}
+          <div className="flex min-h-0">
+            <div className="flex-1 rounded-card bg-ink-100 overflow-hidden border border-ink-100 relative shadow-card">
+              {hero ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={hero}
+                  alt={localized(item.name, locale)}
+                  className="absolute inset-0 w-full h-full object-cover"
+                />
+              ) : (
+                <div className="w-full h-full grid place-items-center text-ink-300 text-sm">
+                  {locale === "en" ? "Image coming soon" : "이미지 준비 중"}
                 </div>
-                <div className="text-[11px] text-ink-500 mt-1.5">
-                  {t("common.priceVatExcluded", locale)}
-                </div>
-              </>
-            ) : (
-              <div className="text-[14px] text-ink-500">
-                {t("common.priceNegotiable", locale)}
-              </div>
-            )}
+              )}
+            </div>
           </div>
         </div>
-      </div>
 
-      {/* 하단 — 소분류 + 슬롯 picker (자세히 보기 콘텐츠 포함) */}
-      {subcategories.length > 0 && (
-        <div className="max-w-7xl mx-auto px-6 md:px-12 pb-14">
-          <div className="bg-surface border border-ink-100 rounded-card p-6 md:p-8 shadow-card">
-            <div className="font-num text-[11px] uppercase tracking-[0.3em] text-brand-500 font-bold mb-5 flex items-center gap-2">
+        {/* 페이지 번호 */}
+        <div className="absolute bottom-3 right-6 md:right-12 font-mono tracking-widest text-ink-300 text-[12px] pointer-events-none">
+          <span className="text-ink-700 font-bold">
+            {String(index + 1).padStart(2, "0")}
+          </span>
+          <span className="mx-1">/</span>
+          {String(total).padStart(2, "0")}
+        </div>
+      </section>
+
+      {/* 구좌 선택 모달 — 16:9 슬라이드 밖에서 처리 */}
+      {pickerOpen && subcategories.length > 0 && (
+        <SlotPickerModal
+          item={item}
+          subcategories={subcategories}
+          slots={slots}
+          eventId={eventId}
+          onClose={() => setPickerOpen(false)}
+        />
+      )}
+    </>
+  );
+}
+
+function SlotPickerModal({
+  item,
+  subcategories,
+  slots,
+  eventId,
+  onClose,
+}: {
+  item: EnrichedCategory;
+  subcategories: Subcategory[];
+  slots: Slot[];
+  eventId: string;
+  onClose: () => void;
+}) {
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
+    window.addEventListener("keydown", onKey);
+    document.body.style.overflow = "hidden";
+    return () => {
+      window.removeEventListener("keydown", onKey);
+      document.body.style.overflow = "";
+    };
+  }, [onClose]);
+
+  return (
+    <div
+      className="fixed inset-0 z-[60] bg-ink-900/60 backdrop-blur-sm flex items-center justify-center p-4"
+      onClick={onClose}
+    >
+      <div
+        role="dialog"
+        aria-modal="true"
+        onClick={(e) => e.stopPropagation()}
+        className="bg-surface w-full max-w-3xl max-h-[88vh] rounded-card shadow-2xl overflow-hidden flex flex-col"
+      >
+        <header className="px-6 py-4 border-b border-ink-100 flex items-start justify-between gap-3 shrink-0">
+          <div className="min-w-0">
+            <div className="font-num text-[11px] uppercase tracking-[0.3em] text-brand-500 font-bold flex items-center gap-2">
               <span className="w-4 h-px bg-brand-500" />
               구좌 선택
             </div>
-            <SlotPicker
-              categoryId={item.id}
-              eventId={item.eventId}
-              subcategories={subcategories}
-              slots={slots}
-            />
-            <div className="mt-6 pt-5 border-t border-ink-100 flex items-center justify-between gap-3 flex-wrap">
-              <p className="text-[11.5px] text-ink-500">
-                구좌를 클릭하면 관심 표시되며, 우상단 카트에서 확인할 수 있어요.
-              </p>
-              <Link
-                href={`/${eventId}/sponsorships/${item.slug}`}
-                className="text-[12px] font-num font-bold text-brand-500 hover:text-brand-700 flex items-center gap-1 group"
-              >
-                {item.type === "floor_plan" ? "도면형 자세히 보기" : "전체 자세히 보기"}
-                <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />
-              </Link>
-            </div>
+            <h3 className="text-[20px] md:text-[24px] font-bold text-ink-900 mt-1 tracking-tight">
+              {item.name.ko}
+              <span className="ml-2 text-[14px] text-ink-300 font-num">
+                #{item.code}
+              </span>
+            </h3>
           </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="w-9 h-9 grid place-items-center rounded-btn hover:bg-ink-50 text-ink-500 shrink-0"
+            aria-label="닫기"
+          >
+            <X className="w-5 h-5" />
+          </button>
+        </header>
+        <div className="px-6 py-5 overflow-y-auto flex-1">
+          <SlotPicker
+            categoryId={item.id}
+            eventId={item.eventId}
+            subcategories={subcategories}
+            slots={slots}
+          />
         </div>
-      )}
-
-      {/* 페이지 번호 (우하단, 강조) */}
-      <div className="sticky bottom-3 ml-auto mr-6 md:mr-12 w-fit font-mono tracking-widest text-ink-300 text-[12px] pointer-events-none">
-        <span className="text-ink-700 font-bold">
-          {String(index + 1).padStart(2, "0")}
-        </span>
-        <span className="mx-1">/</span>
-        {String(total).padStart(2, "0")}
+        <footer className="px-6 py-4 border-t border-ink-100 flex items-center justify-between gap-3 flex-wrap shrink-0">
+          <p className="text-[11.5px] text-ink-500">
+            구좌를 클릭하면 관심 표시되며, 우상단 카트에서 확인할 수 있어요.
+          </p>
+          <Link
+            href={`/${eventId}/sponsorships/${item.slug}`}
+            className="text-[12.5px] font-num font-bold text-brand-500 hover:text-brand-700 flex items-center gap-1"
+          >
+            도면·사례 자세히 보기
+            <ArrowRight className="w-3.5 h-3.5" />
+          </Link>
+        </footer>
       </div>
-    </section>
+    </div>
   );
 }
 
@@ -1675,11 +1760,11 @@ function SpecRow({
   value: React.ReactNode;
 }) {
   return (
-    <div className="flex gap-6 md:gap-8">
-      <dt className="text-[13px] md:text-[14px] font-bold text-ink-900 w-20 md:w-24 shrink-0">
+    <div className="flex flex-col">
+      <dt className="text-[10.5px] uppercase tracking-wider text-ink-500 font-num font-semibold">
         {label}
       </dt>
-      <dd className="text-[13px] md:text-[14px] text-ink-700 flex-1 min-w-0 break-words">
+      <dd className="text-[13px] md:text-[14px] text-ink-900 font-bold mt-0.5 break-words">
         {value}
       </dd>
     </div>
