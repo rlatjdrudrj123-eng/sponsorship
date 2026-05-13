@@ -21,7 +21,16 @@ import {
   AlertCircle,
 } from "lucide-react";
 import { getDb } from "@/lib/firebase/firestore";
-import type { Category, Slot, Subcategory, Taxonomy } from "@/lib/types";
+import type {
+  Category,
+  Package,
+  Purpose,
+  Slot,
+  Subcategory,
+  Taxonomy,
+} from "@/lib/types";
+import { PURPOSE_META, PURPOSE_ORDER } from "@/lib/types";
+import { derivePurposes } from "@/lib/purposes";
 import { LivePreview } from "@/components/admin/CategoryEditor/LivePreview";
 import { CompletenessCheck } from "@/components/admin/CategoryEditor/CompletenessCheck";
 import { SubcategoryTable } from "@/components/admin/CategoryEditor/SubcategoryTable";
@@ -76,6 +85,7 @@ export default function CategoryEditPage() {
   const [slots, setSlots] = useState<Slot[]>([]);
   const [taxonomyTags, setTaxonomyTags] = useState<Taxonomy["tags"]>([]);
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
+  const [allPackages, setAllPackages] = useState<Package[]>([]);
   const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
   const [saveError, setSaveError] = useState<string | null>(null);
   const [lastSaved, setLastSaved] = useState<Date | null>(null);
@@ -148,6 +158,18 @@ export default function CategoryEditPage() {
       u2();
     };
   }, [id]);
+
+  // packages (행사별, inPackages 선택용)
+  useEffect(() => {
+    const evId = category?.eventId;
+    if (!evId) return;
+    const u = onSnapshot(
+      query(collection(getDb(), "packages"), where("eventId", "==", evId)),
+      (s) =>
+        setAllPackages(s.docs.map((d) => ({ ...(d.data() as Package), id: d.id })))
+    );
+    return () => u();
+  }, [category?.eventId]);
 
   // taxonomy (행사별)
   useEffect(() => {
@@ -522,6 +544,20 @@ export default function CategoryEditPage() {
             )}
           </Section>
 
+          {/* 참가업체 시점 데이터 — 사회적 증거 + 목적 매칭 + 한정 재고 + 패키지 연결 */}
+          <Section title="참가업체 시점 (사이드바·카드 노출용)">
+            <ParticipantViewEditor
+              category={category}
+              allPackages={allPackages}
+              onUpdate={async (patch) => {
+                await updateDoc(doc(getDb(), "categories", id), {
+                  ...patch,
+                  updatedAt: Timestamp.fromDate(new Date()),
+                });
+              }}
+            />
+          </Section>
+
           {/* 추천·사례 */}
           <Section title="추천·이전 사례">
             <div className="space-y-4">
@@ -766,5 +802,249 @@ function SaveStatusBadge({
         ? lastSaved.toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit" })
         : "—"}
     </span>
+  );
+}
+
+// ============================================================================
+// ParticipantViewEditor — 참가업체 시점 데이터 편집
+// ============================================================================
+
+function ParticipantViewEditor({
+  category,
+  allPackages,
+  onUpdate,
+}: {
+  category: Category;
+  allPackages: Package[];
+  onUpdate: (patch: Partial<Category>) => Promise<void>;
+}) {
+  const purposeOverride = category.purposeOverride;
+  const derived = derivePurposes(category);
+  const usingOverride = !!(purposeOverride && purposeOverride.length > 0);
+
+  const togglePurpose = (p: Purpose) => {
+    const current = purposeOverride ?? derived;
+    const next = current.includes(p)
+      ? current.filter((x) => x !== p)
+      : [...current, p];
+    onUpdate({ purposeOverride: next });
+  };
+
+  const lastYear = category.lastYear ?? {};
+  const buyers = lastYear.buyers ?? [];
+
+  const inPackages = category.inPackages ?? [];
+
+  return (
+    <div className="space-y-6 text-[13px]">
+      {/* 광고 목적 (참가업체 사이드바 필터) */}
+      <div>
+        <div className="flex items-baseline justify-between mb-2">
+          <div>
+            <div className="text-[13px] font-semibold text-ink-900">
+              광고 목적 (사이드바 필터·페르소나 매칭)
+            </div>
+            <p className="text-[11px] text-ink-500 mt-0.5">
+              참가업체 시점에서 이 카테고리가 어떤 목적에 맞는지. 비워두면 휴리스틱
+              자동 추정. 직접 토글하면 그게 우선.
+            </p>
+          </div>
+          {usingOverride && (
+            <button
+              type="button"
+              onClick={() => onUpdate({ purposeOverride: undefined })}
+              className="text-[10px] text-ink-500 hover:text-ink-900 font-semibold"
+              title="자동 추정으로 되돌리기"
+            >
+              ↺ 자동
+            </button>
+          )}
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+          {PURPOSE_ORDER.map((p) => {
+            const active = (purposeOverride ?? derived).includes(p);
+            const wasDerived = derived.includes(p) && !usingOverride;
+            return (
+              <button
+                key={p}
+                type="button"
+                onClick={() => togglePurpose(p)}
+                className={
+                  "text-left px-3 py-2 rounded-btn border-2 transition-colors " +
+                  (active
+                    ? "border-brand-500 bg-brand-50"
+                    : "border-ink-100 bg-white hover:border-ink-300")
+                }
+              >
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-[12.5px] font-bold text-ink-900">
+                    {PURPOSE_META[p].ko}
+                  </span>
+                  {wasDerived && (
+                    <span className="text-[9px] text-ink-500 font-mono">
+                      auto
+                    </span>
+                  )}
+                </div>
+                <div className="text-[10.5px] text-ink-500 mt-0.5 leading-snug">
+                  {PURPOSE_META[p].desc}
+                </div>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      <hr className="border-ink-100" />
+
+      {/* 작년 데이터 — 사회적 증거 */}
+      <div>
+        <div className="text-[13px] font-semibold text-ink-900 mb-1">
+          작년 데이터 (카드·Compare 페이지 노출)
+        </div>
+        <p className="text-[11px] text-ink-500 mb-3">
+          참가업체에게 가장 강한 확신을 주는 데이터. 빈 값이면 안 보임.
+        </p>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          <div>
+            <label className="text-[11px] uppercase tracking-wider text-ink-500 font-semibold block mb-1">
+              매진 시점
+            </label>
+            <input
+              type="text"
+              defaultValue={lastYear.soldOutDate ?? ""}
+              onBlur={(e) =>
+                onUpdate({
+                  lastYear: {
+                    ...lastYear,
+                    soldOutDate: e.target.value.trim() || undefined,
+                  },
+                })
+              }
+              placeholder="2025-01-15  또는  D-45"
+              className="w-full px-3 py-2 text-sm border border-ink-100 rounded-btn focus:outline-none focus:border-brand-500 bg-white font-mono text-[12px]"
+            />
+          </div>
+          <div>
+            <label className="text-[11px] uppercase tracking-wider text-ink-500 font-semibold block mb-1">
+              ROI / 효과 메모
+            </label>
+            <input
+              type="text"
+              defaultValue={lastYear.avgRoiNote ?? ""}
+              onBlur={(e) =>
+                onUpdate({
+                  lastYear: {
+                    ...lastYear,
+                    avgRoiNote: e.target.value.trim() || undefined,
+                  },
+                })
+              }
+              placeholder="부스 방문 +27%  또는  리드 평균 30건"
+              className="w-full px-3 py-2 text-sm border border-ink-100 rounded-btn focus:outline-none focus:border-brand-500 bg-white"
+            />
+          </div>
+        </div>
+
+        <div className="mt-3">
+          <label className="text-[11px] uppercase tracking-wider text-ink-500 font-semibold block mb-1">
+            작년 구매 회사 (콤마로 구분)
+          </label>
+          <textarea
+            defaultValue={buyers.join(", ")}
+            onBlur={(e) => {
+              const arr = e.target.value
+                .split(",")
+                .map((s) => s.trim())
+                .filter(Boolean);
+              onUpdate({
+                lastYear: {
+                  ...lastYear,
+                  buyers: arr.length > 0 ? arr : undefined,
+                },
+              });
+            }}
+            placeholder="A사, B사, C사"
+            className="w-full px-3 py-2 text-sm border border-ink-100 rounded-btn focus:outline-none focus:border-brand-500 bg-white resize-y min-h-[60px]"
+          />
+          {buyers.length > 0 && (
+            <p className="text-[11px] text-ink-500 mt-1">
+              저장된 {buyers.length}곳: {buyers.slice(0, 5).join(", ")}
+              {buyers.length > 5 ? ` 외 ${buyers.length - 5}곳` : ""}
+            </p>
+          )}
+        </div>
+      </div>
+
+      <hr className="border-ink-100" />
+
+      {/* 한정 재고 메모 */}
+      <div>
+        <label className="text-[11px] uppercase tracking-wider text-ink-500 font-semibold block mb-1">
+          한정 재고 메모 (카드 좌하단 검은 pill)
+        </label>
+        <p className="text-[11px] text-ink-500 mb-2">
+          자유 텍스트. 예: &quot;시그니처 단독 1자리&quot; 또는 &quot;5사 한정&quot;.
+          비워두면 자동 잔여 N자리 (≤3) 만 표시.
+        </p>
+        <input
+          type="text"
+          defaultValue={category.inventoryNote ?? ""}
+          onBlur={(e) =>
+            onUpdate({
+              inventoryNote: e.target.value.trim() || undefined,
+            })
+          }
+          placeholder="예: 단독 1자리"
+          className="w-full px-3 py-2 text-sm border border-ink-100 rounded-btn focus:outline-none focus:border-brand-500 bg-white"
+        />
+      </div>
+
+      <hr className="border-ink-100" />
+
+      {/* inPackages 크로스 표시 */}
+      <div>
+        <div className="text-[13px] font-semibold text-ink-900 mb-1">
+          이 카테고리를 포함하는 패키지
+        </div>
+        <p className="text-[11px] text-ink-500 mb-3">
+          슬롯·카드에 &quot;이 패키지에 포함됨&quot; 크로스 라벨 노출. 패키지 매력 살리기용.
+        </p>
+        {allPackages.length === 0 ? (
+          <div className="text-[12px] text-ink-500 bg-ink-50 rounded-btn px-3 py-2.5">
+            이 행사에 등록된 패키지가 없습니다.
+          </div>
+        ) : (
+          <div className="flex flex-wrap gap-1.5">
+            {allPackages.map((pkg) => {
+              const on = inPackages.includes(pkg.id);
+              return (
+                <button
+                  key={pkg.id}
+                  type="button"
+                  onClick={() => {
+                    const next = on
+                      ? inPackages.filter((x) => x !== pkg.id)
+                      : [...inPackages, pkg.id];
+                    onUpdate({ inPackages: next });
+                  }}
+                  className={
+                    "px-2.5 py-1 rounded-full text-[11px] border transition-colors " +
+                    (on
+                      ? "bg-brand-50 border-brand-500 text-brand-700 font-semibold"
+                      : "bg-white border-ink-100 text-ink-700 hover:border-ink-300")
+                  }
+                  title={pkg.code}
+                >
+                  {pkg.tier === "signature" ? "★ " : ""}
+                  {pkg.name.ko}
+                </button>
+              );
+            })}
+          </div>
+        )}
+      </div>
+    </div>
   );
 }
