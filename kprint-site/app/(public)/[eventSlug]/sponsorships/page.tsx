@@ -34,20 +34,24 @@ import type {
   Subcategory,
 } from "@/lib/types";
 import { Footer } from "@/components/public/Footer";
+import { LocaleSwitch } from "@/components/public/LocaleSwitch";
+import { localized, useLocale, type Locale } from "@/lib/i18n/locale";
+import { t } from "@/lib/i18n/strings";
 
-const CHANNEL_LABELS: Record<Channel | "all", string> = {
-  all: "전체",
-  offline: "오프라인",
-  online: "온라인",
-  package: "패키지",
-};
+function channelLabel(c: Channel | "all", locale: Locale): string {
+  const key = (
+    {
+      all: "spons.channel.all",
+      offline: "spons.channel.offline",
+      online: "spons.channel.online",
+      package: "spons.channel.package",
+    } as const
+  )[c];
+  return t(key, locale);
+}
 
 // 사이드바 필터에서는 패키지를 별도 섹션으로 분리했으므로 채널 옵션에서 제외
-const CHANNEL_FILTER_OPTIONS: Array<{ id: Channel | "all"; label: string }> = [
-  { id: "all", label: "전체" },
-  { id: "offline", label: "오프라인" },
-  { id: "online", label: "온라인" },
-];
+const CHANNEL_FILTER_IDS: Array<Channel | "all"> = ["all", "offline", "online"];
 
 // ============================================================================
 // 매체 유형 / 노출 시점 / 위치 — 실무 필터
@@ -58,29 +62,38 @@ type Timing = "pre" | "onsite" | "post";
 type LocationTag = "hall_a" | "hall_b" | "hall_c" | "hall_d" | "outdoor" | "online";
 
 // 'floor_plan' 옵션은 media 도 같이 매칭 (LDL 같은 실내 LED 영상도 전시장 설치물에 속함)
-const MEDIA_TYPE_OPTIONS: Array<{ id: MediaType; label: string }> = [
-  { id: "floor_plan", label: "전시장 내부 설치" },
-  { id: "xpace", label: "LED 영상 광고" },
-  { id: "digital_banner", label: "사이트·앱 배너" },
-  { id: "mailing", label: "뉴스레터·푸시" },
-  { id: "print_page", label: "쇼가이드 인쇄" },
-  { id: "content", label: "SNS 콘텐츠" },
-  { id: "quantity", label: "참관객 배포물" },
+const MEDIA_TYPE_OPTIONS: Array<{
+  id: MediaType;
+  label: { ko: string; en: string };
+}> = [
+  { id: "floor_plan", label: { ko: "전시장 내부 설치", en: "On-floor install" } },
+  { id: "xpace", label: { ko: "LED 영상 광고", en: "LED video ads" } },
+  { id: "digital_banner", label: { ko: "사이트·앱 배너", en: "Web/app banners" } },
+  { id: "mailing", label: { ko: "뉴스레터·푸시", en: "Newsletter / push" } },
+  { id: "print_page", label: { ko: "쇼가이드 인쇄", en: "Show guide print" } },
+  { id: "content", label: { ko: "SNS 콘텐츠", en: "SNS content" } },
+  { id: "quantity", label: { ko: "참관객 배포물", en: "Visitor giveaways" } },
 ];
 
-const TIMING_OPTIONS: Array<{ id: Timing; label: string }> = [
-  { id: "pre", label: "사전 (행사 전)" },
-  { id: "onsite", label: "현장 (행사 중)" },
-  { id: "post", label: "사후 (행사 후)" },
+const TIMING_OPTIONS: Array<{
+  id: Timing;
+  label: { ko: string; en: string };
+}> = [
+  { id: "pre", label: { ko: "사전 (행사 전)", en: "Pre (before)" } },
+  { id: "onsite", label: { ko: "현장 (행사 중)", en: "On-site (during)" } },
+  { id: "post", label: { ko: "사후 (행사 후)", en: "Post (after)" } },
 ];
 
-const LOCATION_OPTIONS: Array<{ id: LocationTag; label: string }> = [
-  { id: "hall_a", label: "Hall A" },
-  { id: "hall_b", label: "Hall B" },
-  { id: "hall_c", label: "Hall C" },
-  { id: "hall_d", label: "Hall D" },
-  { id: "outdoor", label: "옥외" },
-  { id: "online", label: "온라인" },
+const LOCATION_OPTIONS: Array<{
+  id: LocationTag;
+  label: { ko: string; en: string };
+}> = [
+  { id: "hall_a", label: { ko: "Hall A", en: "Hall A" } },
+  { id: "hall_b", label: { ko: "Hall B", en: "Hall B" } },
+  { id: "hall_c", label: { ko: "Hall C", en: "Hall C" } },
+  { id: "hall_d", label: { ko: "Hall D", en: "Hall D" } },
+  { id: "outdoor", label: { ko: "옥외", en: "Outdoor" } },
+  { id: "online", label: { ko: "온라인", en: "Online" } },
 ];
 
 function getTiming(c: Category): Timing[] {
@@ -163,6 +176,7 @@ function computeBadges(c: Category, slotAvailable: number, slotTotal: number): B
 export default function SponsorshipsPage() {
   const params = useParams<{ eventSlug: string }>();
   const eventId = params.eventSlug;
+  const locale = useLocale((s) => s.locale);
 
   const [categories, setCategories] = useState<Category[]>([]);
   const [subcategories, setSubcategories] = useState<Subcategory[]>([]);
@@ -378,17 +392,25 @@ export default function SponsorshipsPage() {
         <>
           <main className="min-h-screen bg-white">
             <header className="px-6 md:px-16 pt-12 pb-6 border-b border-ink-100">
-              <div className="max-w-7xl mx-auto">
-                <div className="text-[10px] uppercase tracking-[0.25em] text-mint-700 font-bold mb-2">
-                  {settings?.event.nameKo ?? eventId}
+              <div className="max-w-7xl mx-auto flex items-start justify-between gap-4">
+                <div className="min-w-0">
+                  <div className="text-[10px] uppercase tracking-[0.25em] text-mint-700 font-bold mb-2">
+                    {localized(
+                      {
+                        ko: settings?.event.nameKo,
+                        en: settings?.event.nameEn,
+                      },
+                      locale
+                    ) || eventId}
+                  </div>
+                  <h1 className="text-[28px] md:text-[40px] font-bold tracking-tight leading-tight">
+                    {t("spons.title", locale)}
+                  </h1>
+                  <p className="text-[13px] text-ink-700 mt-2">
+                    {t("spons.subtitle", locale)}
+                  </p>
                 </div>
-                <h1 className="text-[28px] md:text-[40px] font-bold tracking-tight leading-tight">
-                  스폰서십 전체 보기
-                </h1>
-                <p className="text-[13px] text-ink-700 mt-2">
-                  구좌 단위로 둘러보고 관심 표시한 뒤, 사무국에 한 번에 문의하세요.
-                </p>
-
+                <LocaleSwitch />
               </div>
             </header>
 
@@ -411,7 +433,7 @@ export default function SponsorshipsPage() {
                   className="px-3 py-1.5 rounded-btn border border-ink-100 text-[13px] font-semibold flex items-center gap-1.5"
                 >
                   <Filter className="w-3.5 h-3.5" />
-                  필터
+                  {t("spons.filter", locale)}
                   {hasActiveFilter && (
                     <span className="w-1.5 h-1.5 rounded-full bg-mint-500 ml-0.5" />
                   )}
@@ -630,12 +652,35 @@ function FilterPanel({
   hasActiveFilter: boolean;
   onReset: () => void;
 }) {
+  const locale = useLocale((s) => s.locale);
+  const mediaOptions = MEDIA_TYPE_OPTIONS.map((o) => ({
+    id: o.id,
+    label: localized(o.label, locale),
+  }));
+  const timingOptions = TIMING_OPTIONS.map((o) => ({
+    id: o.id,
+    label: localized(o.label, locale),
+  }));
+  const locationOptions = LOCATION_OPTIONS.map((o) => ({
+    id: o.id,
+    label: localized(o.label, locale),
+  }));
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div className="text-[12px] text-ink-500">
-          전체 <strong className="text-ink-900">{totalCount}</strong>개 중{" "}
-          <strong className="text-mint-700">{resultCount}</strong>개
+          {locale === "en" ? (
+            <>
+              <strong className="text-mint-700">{resultCount}</strong> of{" "}
+              <strong className="text-ink-900">{totalCount}</strong>
+            </>
+          ) : (
+            <>
+              전체 <strong className="text-ink-900">{totalCount}</strong>개 중{" "}
+              <strong className="text-mint-700">{resultCount}</strong>개
+            </>
+          )}
         </div>
         {hasActiveFilter && (
           <button
@@ -644,53 +689,55 @@ function FilterPanel({
             className="text-[11px] text-ink-500 hover:text-ink-900 flex items-center gap-1"
           >
             <RotateCcw className="w-3 h-3" />
-            초기화
+            {t("common.reset", locale)}
           </button>
         )}
       </div>
 
       {/* (A) 검색 */}
-      <FilterSection title="검색">
+      <FilterSection title={t("common.search", locale)}>
         <div className="relative">
           <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-ink-300" />
           <input
             type="text"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="이름·코드"
+            placeholder={t("spons.searchPlaceholder", locale)}
             className="w-full pl-9 pr-3 py-2 text-[13px] border border-ink-100 rounded-btn focus:outline-none focus:border-mint-500"
           />
         </div>
       </FilterSection>
 
       {/* (B) 채널 */}
-      <FilterSection title="채널">
+      <FilterSection title={t("spons.channel", locale)}>
         <div className="flex flex-wrap lg:flex-col gap-1">
-          {CHANNEL_FILTER_OPTIONS.map((opt) => (
+          {CHANNEL_FILTER_IDS.map((id) => (
             <button
-              key={opt.id}
+              key={id}
               type="button"
-              onClick={() => setFilterChannel(opt.id)}
+              onClick={() => setFilterChannel(id)}
               className={
                 "text-left px-3 py-1.5 rounded-btn text-[13px] transition-colors " +
-                (filterChannel === opt.id
+                (filterChannel === id
                   ? "bg-ink-900 text-white font-semibold"
                   : "text-ink-700 hover:bg-ink-50")
               }
             >
-              {opt.label}
+              {channelLabel(id, locale)}
             </button>
           ))}
         </div>
         <p className="mt-1.5 px-1 text-[10.5px] text-ink-500">
-          패키지는 페이지 상단 전용 섹션에서 확인하세요.
+          {locale === "en"
+            ? "Packages are shown in the section at the top."
+            : "패키지는 페이지 상단 전용 섹션에서 확인하세요."}
         </p>
       </FilterSection>
 
       {/* (C-1) 매체 유형 */}
-      <FilterSection title="매체 유형">
+      <FilterSection title={t("spons.media", locale)}>
         <CheckboxList
-          options={MEDIA_TYPE_OPTIONS}
+          options={mediaOptions}
           active={activeMediaTypes}
           onToggle={(id) => {
             const next = new Set(activeMediaTypes);
@@ -702,9 +749,9 @@ function FilterPanel({
       </FilterSection>
 
       {/* (C-2) 노출 시점 */}
-      <FilterSection title="노출 시점">
+      <FilterSection title={t("spons.timing", locale)}>
         <CheckboxList
-          options={TIMING_OPTIONS}
+          options={timingOptions}
           active={activeTimings}
           onToggle={(id) => {
             const next = new Set(activeTimings);
@@ -716,9 +763,9 @@ function FilterPanel({
       </FilterSection>
 
       {/* (C-3) 위치 */}
-      <FilterSection title="위치">
+      <FilterSection title={t("spons.location", locale)}>
         <CheckboxList
-          options={LOCATION_OPTIONS}
+          options={locationOptions}
           active={activeLocations}
           onToggle={(id) => {
             const next = new Set(activeLocations);
@@ -730,7 +777,7 @@ function FilterPanel({
       </FilterSection>
 
       {/* (D) 예산 슬라이더 */}
-      <FilterSection title="예산 (최저가 기준)">
+      <FilterSection title={t("spons.budget", locale)}>
         <BudgetSlider
           budget={budget}
           setBudget={setBudget}
@@ -740,7 +787,7 @@ function FilterPanel({
       </FilterSection>
 
       {/* (E) 마감 임박 */}
-      <FilterSection title="마감">
+      <FilterSection title={t("spons.deadline", locale)}>
         <label className="flex items-center gap-2 text-[13px] text-ink-700 cursor-pointer hover:text-ink-900">
           <input
             type="checkbox"
@@ -748,7 +795,7 @@ function FilterPanel({
             onChange={(e) => setDeadlineSoon(e.target.checked)}
             className="accent-mint-500 w-3.5 h-3.5"
           />
-          <span>7일 이내 마감만 보기</span>
+          <span>{t("spons.deadlineSoon", locale)}</span>
         </label>
       </FilterSection>
     </div>
@@ -956,6 +1003,7 @@ function BadgePill({ badge }: { badge: Badge }) {
 // ============================================================================
 
 function PackageSection({ packages, eventId }: { packages: Package[]; eventId: string }) {
+  const locale = useLocale((s) => s.locale);
   const sorted = [...packages].sort((a, b) => {
     // 시그니처 먼저, 그다음 order
     if (a.tier !== b.tier) return a.tier === "signature" ? -1 : 1;
@@ -966,7 +1014,7 @@ function PackageSection({ packages, eventId }: { packages: Package[]; eventId: s
     <section className="mb-2">
       <div className="flex items-center gap-3 mb-3">
         <span className="text-[10px] uppercase tracking-[0.2em] text-mint-700 font-bold">
-          추천 패키지
+          {t("spons.packagesSection", locale)}
         </span>
         <div className="flex-1 h-px bg-ink-100" />
       </div>
@@ -991,12 +1039,12 @@ function PackageSection({ packages, eventId }: { packages: Package[]; eventId: s
                   // eslint-disable-next-line @next/next/no-img-element
                   <img
                     src={hero}
-                    alt={pkg.name.ko}
+                    alt={localized(pkg.name, locale)}
                     className="absolute inset-0 w-full h-full object-cover"
                   />
                 ) : (
                   <div className="w-full h-full grid place-items-center text-ink-300 text-xs">
-                    이미지 없음
+                    {locale === "en" ? "No image" : "이미지 없음"}
                   </div>
                 )}
                 <div className="absolute top-3 left-3">
@@ -1014,7 +1062,7 @@ function PackageSection({ packages, eventId }: { packages: Package[]; eventId: s
               </div>
               <div className="p-4 flex-1 flex flex-col">
                 <div className="font-bold text-[15px] text-ink-900 group-hover:text-mint-700 leading-tight">
-                  {pkg.name.ko}
+                  {localized(pkg.name, locale)}
                 </div>
                 {pkg.tagline && (
                   <p className="text-[12px] text-ink-500 mt-1.5 line-clamp-2 leading-snug">
@@ -1064,6 +1112,7 @@ function PackageSection({ packages, eventId }: { packages: Package[]; eventId: s
 }
 
 function CardGrid({ items, eventId }: { items: EnrichedCategory[]; eventId: string }) {
+  const locale = useLocale((s) => s.locale);
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
       {items.map((c) => {
@@ -1079,17 +1128,17 @@ function CardGrid({ items, eventId }: { items: EnrichedCategory[]; eventId: stri
                 // eslint-disable-next-line @next/next/no-img-element
                 <img
                   src={hero}
-                  alt={c.name.ko}
+                  alt={localized(c.name, locale)}
                   className="absolute inset-0 w-full h-full object-cover"
                 />
               ) : (
                 <div className="w-full h-full grid place-items-center text-ink-300 text-xs">
-                  이미지 없음
+                  {locale === "en" ? "No image" : "이미지 없음"}
                 </div>
               )}
               <div className="absolute top-3 left-3 flex gap-1 flex-wrap max-w-[calc(100%-1.5rem)]">
                 <span className="text-[10px] uppercase tracking-wider bg-white/90 text-ink-900 px-2 py-0.5 rounded font-semibold">
-                  {CHANNEL_LABELS[c.channel]}
+                  {channelLabel(c.channel, locale)}
                 </span>
                 {c.badges.map((b) => (
                   <BadgePill key={b} badge={b} />
@@ -1098,7 +1147,7 @@ function CardGrid({ items, eventId }: { items: EnrichedCategory[]; eventId: stri
             </div>
             <div className="p-4 flex-1 flex flex-col">
               <div className="font-bold text-[15px] text-ink-900 group-hover:text-mint-700 leading-tight">
-                {c.name.ko}
+                {localized(c.name, locale)}
               </div>
               {c.shortDesc && (
                 <p className="text-[12px] text-ink-500 mt-1.5 line-clamp-2 leading-snug">
@@ -1108,7 +1157,10 @@ function CardGrid({ items, eventId }: { items: EnrichedCategory[]; eventId: stri
               <div className="mt-auto pt-3 flex items-center justify-between text-[11px] font-mono">
                 <span>
                   <span className="text-mint-700 font-bold">{c.slotAvailable}</span>
-                  <span className="text-ink-500"> / {c.slotTotal} 가능</span>
+                  <span className="text-ink-500">
+                    {" "}
+                    / {c.slotTotal} {t("spons.slotsAvailable", locale)}
+                  </span>
                 </span>
                 <span className="text-ink-300">→</span>
               </div>
@@ -1139,31 +1191,45 @@ function SlideStream({
   hasActiveFilter: boolean;
   eventId: string;
 }) {
+  const locale = useLocale((s) => s.locale);
   return (
     <>
       {/* 상단 고정 바 */}
       <div className="fixed top-0 inset-x-0 z-20 bg-white/90 backdrop-blur border-b border-ink-100 px-4 md:px-8 h-14 flex items-center gap-3">
         <Link
-          href="/"
+          href={`/${eventId}`}
           className="text-[12px] text-ink-500 hover:text-ink-900 flex items-center gap-1"
         >
-          <ArrowLeft className="w-3.5 h-3.5" />홈
+          <ArrowLeft className="w-3.5 h-3.5" />
+          {t("common.home", locale)}
         </Link>
         <span className="text-ink-300">/</span>
-        <span className="text-[13px] font-bold text-ink-900">스폰서십 슬라이드</span>
+        <span className="text-[13px] font-bold text-ink-900">
+          {t("spons.title", locale)}
+        </span>
         <span className="text-[12px] text-ink-500">
-          전체 <strong className="text-ink-900">{totalCount}</strong>개 중{" "}
-          <strong className="text-mint-700">{items.length}</strong>개
+          {locale === "en" ? (
+            <>
+              <strong className="text-mint-700">{items.length}</strong> of{" "}
+              <strong className="text-ink-900">{totalCount}</strong>
+            </>
+          ) : (
+            <>
+              전체 <strong className="text-ink-900">{totalCount}</strong>개 중{" "}
+              <strong className="text-mint-700">{items.length}</strong>개
+            </>
+          )}
         </span>
         <span className="ml-auto" />
+        <LocaleSwitch size="sm" />
         <button
           type="button"
           onClick={onOpenFilter}
           className="px-2.5 py-1.5 rounded-btn border border-ink-100 text-[12px] font-semibold flex items-center gap-1"
-          title="필터"
+          title={t("spons.filter", locale)}
         >
           <Filter className="w-3.5 h-3.5" />
-          필터
+          {t("spons.filter", locale)}
           {hasActiveFilter && (
             <span className="w-1.5 h-1.5 rounded-full bg-mint-500 ml-0.5" />
           )}
@@ -1172,17 +1238,17 @@ function SlideStream({
           type="button"
           onClick={onCardMode}
           className="px-2.5 py-1.5 rounded-btn bg-ink-900 text-white hover:bg-mint-500 hover:text-ink-900 text-[12px] font-semibold flex items-center gap-1"
-          title="카드형으로 돌아가기"
+          title={t("spons.viewCard", locale)}
         >
           <LayoutGrid className="w-3.5 h-3.5" />
-          카드형
+          {t("spons.viewCard", locale)}
         </button>
       </div>
 
       {items.length === 0 ? (
         <main className="h-screen pt-14 grid place-items-center bg-white">
           <div className="text-center text-sm text-ink-500">
-            조건에 맞는 항목이 없어요.
+            {t("spons.filterEmpty", locale)}
           </div>
         </main>
       ) : (
@@ -1207,18 +1273,22 @@ function SlideSection({
   eventId: string;
   total: number;
 }) {
+  const locale = useLocale((s) => s.locale);
   const hero = item.heroImages?.images?.[0]?.url;
   const deadlineStr = item.deadline
-    ? item.deadline.toDate().toLocaleDateString("ko-KR", {
-        year: "numeric",
-        month: "long",
-        day: "numeric",
-      })
+    ? item.deadline.toDate().toLocaleDateString(
+        locale === "en" ? "en-US" : "ko-KR",
+        {
+          year: "numeric",
+          month: locale === "en" ? "short" : "long",
+          day: "numeric",
+        }
+      )
     : null;
 
   // 해시태그 — 채널 + 카테고리.tags 중 첫 2개
   const hashTags: string[] = [
-    CHANNEL_LABELS[item.channel],
+    channelLabel(item.channel, locale),
     ...(item.tags ?? []).slice(0, 2),
   ];
 
@@ -1229,15 +1299,15 @@ function SlideSection({
         <div className="flex flex-col min-w-0">
           {/* 해시태그 */}
           <div className="flex flex-wrap gap-x-4 gap-y-1 text-[13px] md:text-[14px] tracking-wide text-mint-700 font-semibold mb-5 md:mb-7">
-            {hashTags.map((t, i) => (
-              <span key={i}>#{t}</span>
+            {hashTags.map((tag, i) => (
+              <span key={i}>#{tag}</span>
             ))}
           </div>
 
           {/* 거대한 카테고리 명 + 코드 */}
           <div className="flex items-baseline gap-3 flex-wrap">
             <h2 className="text-[40px] md:text-[64px] font-bold leading-[0.95] tracking-tight text-ink-900">
-              {item.name.ko}
+              {localized(item.name, locale)}
             </h2>
             <span className="text-[14px] md:text-[18px] text-ink-300 font-mono">
               #{item.code}
@@ -1256,19 +1326,32 @@ function SlideSection({
 
           {/* 스펙 표 */}
           <dl className="space-y-3 md:space-y-4 flex-1">
-            {item.size && <SpecRow label="사이즈" value={item.size} />}
-            {item.fileFormat && (
-              <SpecRow label="파일 형식" value={item.fileFormat} />
+            {item.size && (
+              <SpecRow label={t("spons.size", locale)} value={item.size} />
             )}
-            {deadlineStr && <SpecRow label="제출 마감" value={deadlineStr} />}
+            {item.fileFormat && (
+              <SpecRow
+                label={t("spons.fileFormat", locale)}
+                value={item.fileFormat}
+              />
+            )}
+            {deadlineStr && (
+              <SpecRow
+                label={t("spons.submitDeadline", locale)}
+                value={deadlineStr}
+              />
+            )}
             <SpecRow
-              label="구좌"
+              label={t("spons.slots", locale)}
               value={
                 <>
                   <span className="text-mint-700 font-bold">
                     {item.slotAvailable}
                   </span>
-                  <span className="text-ink-500"> / {item.slotTotal} 가능</span>
+                  <span className="text-ink-500">
+                    {" "}
+                    / {item.slotTotal} {t("spons.slotsAvailable", locale)}
+                  </span>
                 </>
               }
             />
@@ -1283,14 +1366,14 @@ function SlideSection({
                 rel="noopener noreferrer"
                 className="px-5 py-2.5 rounded-btn bg-ink-900 text-white hover:bg-mint-500 hover:text-ink-900 font-semibold text-[13px] transition-colors"
               >
-                디자인 가이드 다운로드
+                {t("spons.designGuide", locale)}
               </a>
             )}
             <Link
               href={`/${eventId}/sponsorships/${item.slug}`}
               className="px-5 py-2.5 rounded-btn border border-ink-100 text-ink-900 hover:border-mint-500 hover:text-mint-700 font-semibold text-[13px] transition-colors"
             >
-              자세히 보기
+              {t("common.viewMore", locale)}
             </Link>
           </div>
 
@@ -1302,14 +1385,18 @@ function SlideSection({
                 <>
                   <div className="text-[28px] md:text-[40px] font-bold text-ink-900 leading-none tracking-tight">
                     {item.minPrice.toLocaleString()}
-                    <span className="text-[16px] md:text-[20px] ml-1 font-semibold">원</span>
+                    <span className="text-[16px] md:text-[20px] ml-1 font-semibold">
+                      {t("common.won", locale)}
+                    </span>
                   </div>
                   <div className="text-[11px] text-ink-500 mt-1.5">
-                    (부가세 별도)
+                    {t("common.priceVatExcluded", locale)}
                   </div>
                 </>
               ) : (
-                <div className="text-[14px] text-ink-500">가격 협의</div>
+                <div className="text-[14px] text-ink-500">
+                  {t("common.priceNegotiable", locale)}
+                </div>
               )}
             </div>
           </div>
@@ -1322,12 +1409,12 @@ function SlideSection({
               // eslint-disable-next-line @next/next/no-img-element
               <img
                 src={hero}
-                alt={item.name.ko}
+                alt={localized(item.name, locale)}
                 className="absolute inset-0 w-full h-full object-cover"
               />
             ) : (
               <div className="w-full h-full grid place-items-center text-ink-300 text-sm">
-                이미지 준비 중
+                {locale === "en" ? "Image coming soon" : "이미지 준비 중"}
               </div>
             )}
           </div>
