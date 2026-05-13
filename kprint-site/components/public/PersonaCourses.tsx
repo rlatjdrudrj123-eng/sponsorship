@@ -46,17 +46,18 @@ export function PersonaCourses({
   if (personas.length === 0) return null;
 
   return (
-    <section className="bg-[#fafaf7] border-b border-ink-100">
-      <div className="max-w-7xl mx-auto px-6 md:px-16 py-8 md:py-10">
-        <div className="flex items-end justify-between gap-3 flex-wrap mb-5">
+    <section className="bg-canvas border-b border-ink-100">
+      <div className="max-w-7xl mx-auto px-6 md:px-16 py-10 md:py-12">
+        <div className="flex items-end justify-between gap-3 flex-wrap mb-6">
           <div>
-            <div className="text-[10px] uppercase tracking-[0.2em] text-brand-700 font-bold">
+            <div className="font-num text-[11px] uppercase tracking-[0.3em] text-brand-500 font-bold flex items-center gap-2">
+              <span className="w-6 h-px bg-brand-500" />
               persona course
             </div>
-            <h2 className="text-[18px] md:text-[22px] font-bold text-ink-900 mt-1.5">
+            <h2 className="text-[22px] md:text-[28px] font-bold text-ink-900 mt-2 tracking-tight">
               어떤 회사세요?
             </h2>
-            <p className="text-[12px] md:text-[13px] text-ink-500 mt-1">
+            <p className="text-[13px] md:text-[14px] text-ink-500 mt-1.5">
               본인 상황과 가장 가까운 카드를 선택하시면 그에 맞는 스폰서십을 추려드려요.
             </p>
           </div>
@@ -64,7 +65,7 @@ export function PersonaCourses({
             <button
               type="button"
               onClick={onClear}
-              className="text-[11.5px] text-ink-500 hover:text-ink-900 font-semibold"
+              className="text-[12px] text-ink-500 hover:text-ink-900 font-semibold underline-offset-2 hover:underline"
             >
               전체 다시 보기
             </button>
@@ -72,9 +73,9 @@ export function PersonaCourses({
         </div>
 
         <div
-          className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2.5"
+          className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3"
           style={{
-            gridTemplateColumns: `repeat(auto-fit, minmax(180px, 1fr))`,
+            gridTemplateColumns: `repeat(auto-fit, minmax(200px, 1fr))`,
           }}
         >
           {personas
@@ -88,32 +89,32 @@ export function PersonaCourses({
                   type="button"
                   onClick={() => onPick({ id: p.id, persona: p })}
                   className={
-                    "group text-left p-4 rounded-card border-2 transition-all flex flex-col h-full " +
+                    "group text-left p-5 rounded-card border-2 transition-all flex flex-col h-full " +
                     (active
-                      ? "bg-brand-500 border-brand-500 text-ink-900 shadow-md"
-                      : "bg-white border-ink-100 text-ink-900 hover:border-brand-500 hover:shadow-sm")
+                      ? "bg-brand-500 border-brand-500 text-white shadow-glow-sm"
+                      : "bg-surface border-ink-100 text-ink-900 hover:border-brand-500 hover:shadow-card")
                   }
                 >
-                  <div className="text-[22px] mb-2">{p.emoji}</div>
-                  <div className="text-[13.5px] font-bold leading-tight">
+                  <div className="text-[26px] mb-2">{p.emoji}</div>
+                  <div className="text-[14px] font-bold leading-tight tracking-tight">
                     {p.title}
                   </div>
                   <p
                     className={
-                      "text-[11px] mt-2 leading-snug flex-1 " +
-                      (active ? "text-ink-900/80" : "text-ink-500")
+                      "text-[11.5px] mt-2 leading-snug flex-1 " +
+                      (active ? "text-white/85" : "text-ink-500")
                     }
                   >
                     {p.description}
                   </p>
                   <div
                     className={
-                      "mt-3 flex items-center justify-between text-[10px] font-mono " +
-                      (active ? "text-ink-900" : "text-ink-300 group-hover:text-brand-700")
+                      "mt-4 flex items-center justify-between text-[10.5px] font-num font-bold " +
+                      (active ? "text-white" : "text-ink-300 group-hover:text-brand-500")
                     }
                   >
                     <span>{counts[p.id] ?? 0}개 매칭</span>
-                    <ArrowRight className="w-3 h-3 group-hover:translate-x-0.5 transition-transform" />
+                    <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />
                   </div>
                 </button>
               );

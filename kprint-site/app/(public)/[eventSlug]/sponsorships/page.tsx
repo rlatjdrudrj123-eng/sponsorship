@@ -390,11 +390,12 @@ export default function SponsorshipsPage() {
         />
       ) : (
         <>
-          <main className="min-h-screen bg-white">
-            <header className="px-6 md:px-16 pt-12 pb-6 border-b border-ink-100">
+          <main className="min-h-screen bg-canvas">
+            <header className="px-6 md:px-16 pt-16 md:pt-20 pb-8 md:pb-10 border-b border-ink-100 bg-surface">
               <div className="max-w-7xl mx-auto flex items-start justify-between gap-4">
                 <div className="min-w-0">
-                  <div className="text-[10px] uppercase tracking-[0.25em] text-brand-700 font-bold mb-2">
+                  <div className="font-num text-[11px] md:text-[12px] uppercase tracking-[0.3em] text-brand-500 font-bold mb-3 flex items-center gap-2">
+                    <span className="w-6 h-px bg-brand-500" />
                     {localized(
                       {
                         ko: settings?.event.nameKo,
@@ -403,10 +404,10 @@ export default function SponsorshipsPage() {
                       locale
                     ) || eventId}
                   </div>
-                  <h1 className="text-[28px] md:text-[40px] font-bold tracking-tight leading-tight">
+                  <h1 className="text-[36px] md:text-[64px] font-bold tracking-tight leading-[1.05] text-ink-900">
                     {t("spons.title", locale)}
                   </h1>
-                  <p className="text-[13px] text-ink-700 mt-2">
+                  <p className="text-[14px] md:text-[16px] text-ink-500 mt-3 max-w-xl leading-relaxed">
                     {t("spons.subtitle", locale)}
                   </p>
                 </div>
@@ -1121,7 +1122,7 @@ function CardGrid({ items, eventId }: { items: EnrichedCategory[]; eventId: stri
           <Link
             key={c.id}
             href={`/${eventId}/sponsorships/${c.slug}`}
-            className="group bg-white border border-ink-100 rounded-card overflow-hidden hover:border-brand-500 transition-colors flex flex-col h-full"
+            className="group bg-surface border border-ink-100 rounded-card overflow-hidden hover:border-brand-500 hover:shadow-card transition-all flex flex-col h-full"
           >
             <div className="aspect-[4/3] bg-ink-100 relative shrink-0">
               {hero ? (
@@ -1145,24 +1146,26 @@ function CardGrid({ items, eventId }: { items: EnrichedCategory[]; eventId: stri
                 ))}
               </div>
             </div>
-            <div className="p-4 flex-1 flex flex-col">
-              <div className="font-bold text-[15px] text-ink-900 group-hover:text-brand-700 leading-tight">
+            <div className="p-5 flex-1 flex flex-col">
+              <div className="font-bold text-[16px] text-ink-900 group-hover:text-brand-500 leading-tight tracking-tight transition-colors">
                 {localized(c.name, locale)}
               </div>
               {c.shortDesc && (
-                <p className="text-[12px] text-ink-500 mt-1.5 line-clamp-2 leading-snug">
+                <p className="text-[12.5px] text-ink-500 mt-2 line-clamp-2 leading-snug">
                   {c.shortDesc}
                 </p>
               )}
-              <div className="mt-auto pt-3 flex items-center justify-between text-[11px] font-mono">
+              <div className="mt-auto pt-4 flex items-center justify-between text-[11.5px] font-num">
                 <span>
-                  <span className="text-brand-700 font-bold">{c.slotAvailable}</span>
+                  <span className="text-brand-500 font-bold">{c.slotAvailable}</span>
                   <span className="text-ink-500">
                     {" "}
                     / {c.slotTotal} {t("spons.slotsAvailable", locale)}
                   </span>
                 </span>
-                <span className="text-ink-300">→</span>
+                <span className="text-ink-300 group-hover:text-brand-500 group-hover:translate-x-0.5 transition-all">
+                  →
+                </span>
               </div>
             </div>
           </Link>
