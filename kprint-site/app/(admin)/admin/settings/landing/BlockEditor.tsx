@@ -1,8 +1,9 @@
 "use client";
 
 import { Plus, Trash2 } from "lucide-react";
-import type { BlockStyle, LandingBlock } from "@/lib/types";
+import type { BlockStyle, CanvasPage, LandingBlock } from "@/lib/types";
 import { BLOCK_TYPE_META } from "@/components/public/landing/defaults";
+import { CanvasEditor } from "./canvas/CanvasEditor";
 
 /**
  * 선택된 블록의 인라인 편집 폼. type 별로 적절한 필드 노출.
@@ -1191,6 +1192,17 @@ export function BlockEditor({
               />
             </Field>
           </Fields>
+        )}
+
+        {block.type === "canvasPage" && (
+          <div className="-mx-5 -my-5">
+            <CanvasEditor
+              page={block.data.page}
+              onChange={(page: CanvasPage) =>
+                onChange({ ...block, data: { page } })
+              }
+            />
+          </div>
         )}
 
         {block.type === "slotsTeaser" && (

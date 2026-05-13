@@ -9,6 +9,7 @@ import type {
   BigStatBlock,
   BlockStyle,
   ButtonRowBlock,
+  CanvasPageBlock,
   CoverBlock,
   CtaBlock,
   CustomHtmlBlock,
@@ -26,6 +27,7 @@ import type {
   TwoColumnBlock,
   VideoEmbedBlock,
 } from "@/lib/types";
+import { CanvasRenderer } from "@/components/public/canvas/CanvasRenderer";
 
 /**
  * KIMES Figma 톤 기반 블록 컴포넌트들 — 어드민이 자유 구성한 시퀀스를 렌더링.
@@ -1143,10 +1145,30 @@ export function BlockSection({
       return <CustomHtmlSection block={block} />;
     case "slotsTeaser":
       return <SlotsTeaserSection block={block} eventId={eventId} />;
+    case "canvasPage":
+      return <CanvasPageSection block={block} eventId={eventId} />;
     default: {
       const _: never = block;
       void _;
       return null;
     }
   }
+}
+
+// ============================================================================
+// CanvasPage — 1920×1080 자유 캔버스 한 페이지
+// ============================================================================
+
+function CanvasPageSection({
+  block,
+  eventId,
+}: {
+  block: CanvasPageBlock;
+  eventId: string;
+}) {
+  return (
+    <section className="snap-start snap-always relative overflow-hidden h-screen">
+      <CanvasRenderer page={block.data.page} eventId={eventId} />
+    </section>
+  );
 }

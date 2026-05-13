@@ -276,6 +276,19 @@ export function emptyBlock(type: LandingBlockType): LandingBlock {
         type,
         data: { headline: "추천 슬롯", categorySlugs: [], layout: "grid" },
       };
+    case "canvasPage":
+      return {
+        id: id(),
+        type,
+        data: {
+          page: {
+            id: id(),
+            name: "캔버스 페이지",
+            bg: "canvas",
+            nodes: [],
+          },
+        },
+      };
   }
 }
 
@@ -301,4 +314,5 @@ export const BLOCK_TYPE_META: Record<
   spacer: { label: "여백", desc: "수직 빈 공간", group: "layout" },
   slotsTeaser: { label: "슬롯 미리보기", desc: "선택한 카테고리들을 카드로", group: "advanced" },
   customHtml: { label: "자유 HTML", desc: "직접 마크업 (위험 — 신뢰 전제)", group: "advanced" },
+  canvasPage: { label: "캔버스 (자유 배치)", desc: "1920×1080 Figma-스타일 — 자유 노드 배치, 모바일 자동 스택", group: "advanced" },
 };

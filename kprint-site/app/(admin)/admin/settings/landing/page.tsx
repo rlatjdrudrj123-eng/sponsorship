@@ -380,6 +380,11 @@ function blockPreview(b: LandingBlock): string {
       return (b.data.html || "").replace(/<[^>]+>/g, "").slice(0, 40) || "HTML";
     case "slotsTeaser":
       return b.data.headline || `슬롯 ${b.data.categorySlugs?.length ?? 0}개`;
+    case "canvasPage":
+      return (
+        b.data.page.name ||
+        `캔버스 (노드 ${b.data.page.nodes.length}개)`
+      );
   }
 }
 

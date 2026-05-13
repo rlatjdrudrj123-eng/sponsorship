@@ -536,6 +536,17 @@ export type SlotsTeaserBlock = LandingBlockBase & {
   };
 };
 
+/**
+ * 1920×1080 자유 캔버스 — Figma-like 한 페이지.
+ * 어드민이 노드를 자유 배치, 모바일은 stack 으로 자동 변환.
+ */
+export type CanvasPageBlock = LandingBlockBase & {
+  type: "canvasPage";
+  data: {
+    page: CanvasPage;
+  };
+};
+
 export type LandingBlock =
   | CoverBlock
   | Stats3YearBlock
@@ -554,9 +565,112 @@ export type LandingBlock =
   | ButtonRowBlock
   | VideoEmbedBlock
   | CustomHtmlBlock
-  | SlotsTeaserBlock;
+  | SlotsTeaserBlock
+  | CanvasPageBlock;
 
 export type LandingBlockType = LandingBlock["type"];
+
+// ============= CANVAS NODES (Figma-like free positioning) =============
+// 1920×1080 캔버스 위에 자유 배치하는 노드. 데스크톱은 절대 좌표,
+// 모바일은 어드민이 지정한 stack 순서대로 vertical reflow.
+
+/** 1920×1080 캔버스 안에서의 위치·크기 (px 단위) */
+export type CanvasRect = {
+  x: number;       // 0~1920
+  y: number;       // 0~1080
+  w: number;       // 픽셀 너비
+  h: number;       // 픽셀 높이
+  rotate?: number; // deg, 옵션
+  z?: number;      // z-index
+};
+
+/** 모바일 reflow 옵션 — 노드별로 어떻게 변환할지 */
+export type CanvasMobile = {
+  hidden?: boolean;       // 모바일에서 숨김
+  order?: number;         // stack 순서 (낮을수록 먼저)
+  fullWidth?: boolean;    // 모바일에서 가로 꽉
+};
+
+/** 공통 노드 베이스 */
+export type CanvasNodeBase = {
+  id: string;
+  rect: CanvasRect;
+  mobile?: CanvasMobile;
+  opacity?: number;        // 0~1
+  lockAspect?: boolean;    // 리사이즈 시 비율 잠금
+};
+
+export type CanvasTextNode = CanvasNodeBase & {
+  type: "text";
+  data: {
+    content: string;             // plain (\n 보존)
+    fontSize?: number;           // 16~200, 기본 32
+    fontWeight?: 300 | 400 | 500 | 600 | 700 | 800;
+    color?: string;              // hex
+    align?: "left" | "center" | "right";
+    lineHeight?: number;         // 0.9~2
+    letterSpacing?: number;      // px
+    accent?: boolean;            // brand-500 컬러 사용
+    family?: "sans" | "num" | "mono";
+  };
+};
+
+export type CanvasImageNode = CanvasNodeBase & {
+  type: "image";
+  data: {
+    url: string;
+    alt?: string;
+    fit?: "cover" | "contain";
+    radius?: number;             // px corner radius
+  };
+};
+
+export type CanvasShapeNode = CanvasNodeBase & {
+  type: "shape";
+  data: {
+    shape: "rect" | "ellipse" | "line";
+    fill?: string;
+    stroke?: string;
+    strokeWidth?: number;
+    radius?: number;             // rect only
+  };
+};
+
+export type CanvasButtonNode = CanvasNodeBase & {
+  type: "button";
+  data: {
+    label: string;
+    href: string;
+    variant?: "primary" | "outline" | "ghost";
+    fontSize?: number;
+  };
+};
+
+export type CanvasVideoNode = CanvasNodeBase & {
+  type: "video";
+  data: {
+    url: string;                  // YouTube / Vimeo / mp4
+  };
+};
+
+export type CanvasNode =
+  | CanvasTextNode
+  | CanvasImageNode
+  | CanvasShapeNode
+  | CanvasButtonNode
+  | CanvasVideoNode;
+
+export type CanvasNodeType = CanvasNode["type"];
+
+/** 캔버스 한 페이지 = 1920×1080 슬라이드 */
+export type CanvasPage = {
+  id: string;
+  name?: string;                 // 어드민 식별용
+  bg?: string;                   // bg hex 또는 canvas/surface/ink/brand
+  bgImageUrl?: string;           // 배경 이미지
+  nodes: CanvasNode[];
+};
+
 
 // ============= TAXONOMY =============
 export type TagKind = "purpose" | "package" | "custom";
