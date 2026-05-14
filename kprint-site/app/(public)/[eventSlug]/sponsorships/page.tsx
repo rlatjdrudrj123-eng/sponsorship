@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { useParams } from "next/navigation";
+import { useParams, useSearchParams } from "next/navigation";
 import {
   collection,
   doc,
@@ -199,7 +199,10 @@ export default function SponsorshipsPage() {
   const [deadlineSoon, setDeadlineSoon] = useState(false);
   const [search, setSearch] = useState("");
   const [sheetOpen, setSheetOpen] = useState(false);
-  const [viewMode, setViewMode] = useState<"card" | "slide">("card");
+  const searchParams = useSearchParams();
+  const [viewMode, setViewMode] = useState<"card" | "slide">(
+    searchParams?.get("view") === "slide" ? "slide" : "card"
+  );
   const [advancedOpen, setAdvancedOpen] = useState(false);
   // 비교 모드 — 카드에서 직접 체크해 모은다 (카트 거치지 않고 바로 compare로)
   const [compareIds, setCompareIds] = useState<Set<string>>(new Set());

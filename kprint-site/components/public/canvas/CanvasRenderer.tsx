@@ -10,6 +10,7 @@ import type {
   CanvasShapeNode,
   CanvasTextNode,
   CanvasVideoNode,
+  ShapeFill,
   SiteSettings,
 } from "@/lib/types";
 import { ComponentNodeRenderer } from "./ComponentNodeRenderer";
@@ -385,49 +386,233 @@ function ImageNodeView({
   );
 }
 
-function ShapeNodeView({ node }: { node: CanvasShapeNode }) {
-  const {
-    shape,
-    fill,
-    stroke,
-    strokeWidth = 0,
-    radius = 0,
-  } = node.data;
-  if (shape === "ellipse") {
-    return (
-      <div
-        style={{
-          width: "100%",
-          height: "100%",
-          background: fill,
-          border: stroke ? `${strokeWidth}px solid ${stroke}` : undefined,
-          borderRadius: "50%",
-        }}
-      />
-    );
-  }
-  if (shape === "line") {
-    return (
-      <div
-        style={{
-          width: "100%",
-          height: strokeWidth,
-          background: stroke ?? fill ?? "#0A0A0A",
-        }}
-      />
-    );
-  }
+export function ShapeNodeView({ node }: { node: CanvasShapeNode }) {
+  return <ShapeSVG data={node.data} />;
+}
+
+/** 도형 SVG 렌더러 — fill/stroke/shadow/모든 도형 종류 처리 */
+export function ShapeSVG({ data }: { data: CanvasShapeNode["data"] }) {
+  const { shape, stroke, strokeWidth = 0, sides = 6, points = 5 } = data;
+  // unique id per render (avoids gradient/clip-path collision)
+  const uid = useRandomId();
+  const fillId = `f-${uid}`;
+
+  const fill = normalizeFill(data.fill);
+  const shadow = data.shadow;
+
+  // fill prop for SVG element
+  const fillAttr =
+    fill.kind === "solid"
+      ? fill.color
+      : fill.kind === "gradient" || fill.kind === "image"
+        ? `url(#${fillId})`
+        : "transparent";
+
+  const filterAttr = shadow
+    ? `drop-shadow(${shadow.x}px ${shadow.y}px ${shadow.blur}px ${shadow.color})`
+    : undefined;
+
   return (
-    <div
-      style={{
-        width: "100%",
-        height: "100%",
-        background: fill,
-        border: stroke ? `${strokeWidth}px solid ${stroke}` : undefined,
-        borderRadius: radius,
-      }}
-    />
+    <svg
+      viewBox="0 0 100 100"
+      preserveAspectRatio="none"
+      width="100%"
+      height="100%"
+      style={{ display: "block", overflow: "visible", filter: filterAttr }}
+    >
+      <defs>
+        {fill.kind === "gradient" && (
+          fill.gradient.kind === "linear" ? (
+            <linearGradient
+              id={fillId}
+              gradientTransform={`rotate(${fill.gradient.angle} 0.5 0.5)`}
+            >
+              {fill.gradient.stops.map((s, i) => (
+                <stop
+                  key={i}
+                  offset={s.offset}
+                  stopColor={s.color}
+                />
+              ))}
+            </linearGradient>
+          ) : (
+            <radialGradient id={fillId}>
+              {fill.gradient.stops.map((s, i) => (
+                <stop
+                  key={i}
+                  offset={s.offset}
+                  stopColor={s.color}
+                />
+              ))}
+            </radialGradient>
+          )
+        )}
+        {fill.kind === "image" && (
+          <pattern
+            id={fillId}
+            patternUnits="objectBoundingBox"
+            width="1"
+            height="1"
+          >
+            <image
+              href={fill.url}
+              x="0"
+              y="0"
+              width="100"
+              height="100"
+              preserveAspectRatio={
+                fill.fit === "contain" ? "xMidYMid meet" : "xMidYMid slice"
+              }
+            />
+          </pattern>
+        )}
+      </defs>
+
+      {(() => {
+        const strokeAttr = stroke && strokeWidth > 0 ? stroke : undefined;
+        const strokeW =
+          stroke && strokeWidth > 0 ? strokeWidth * (100 / 100) : 0;
+        switch (shape) {
+          case "rect": {
+            const r = (data.radius ?? 0) * (100 / 100);
+            return (
+              <rect
+                x="0"
+                y="0"
+                width="100"
+                height="100"
+                rx={r}
+                ry={r}
+                fill={fillAttr}
+                stroke={strokeAttr}
+                strokeWidth={strokeW}
+                vectorEffect="non-scaling-stroke"
+              />
+            );
+          }
+          case "ellipse":
+            return (
+              <ellipse
+                cx="50"
+                cy="50"
+                rx="50"
+                ry="50"
+                fill={fillAttr}
+                stroke={strokeAttr}
+                strokeWidth={strokeW}
+                vectorEffect="non-scaling-stroke"
+              />
+            );
+          case "line":
+            return (
+              <line
+                x1="0"
+                y1="50"
+                x2="100"
+                y2="50"
+                stroke={
+                  strokeAttr ??
+                  (fill.kind === "solid" ? fill.color : "#0A0A0A")
+                }
+                strokeWidth={Math.max(strokeW, 2)}
+                vectorEffect="non-scaling-stroke"
+              />
+            );
+          case "triangle":
+            return (
+              <polygon
+                points="50,2 98,98 2,98"
+                fill={fillAttr}
+                stroke={strokeAttr}
+                strokeWidth={strokeW}
+                strokeLinejoin="round"
+                vectorEffect="non-scaling-stroke"
+              />
+            );
+          case "polygon": {
+            const n = Math.max(3, Math.min(12, sides));
+            const pts = polygonPoints(n);
+            return (
+              <polygon
+                points={pts}
+                fill={fillAttr}
+                stroke={strokeAttr}
+                strokeWidth={strokeW}
+                strokeLinejoin="round"
+                vectorEffect="non-scaling-stroke"
+              />
+            );
+          }
+          case "star": {
+            const p = Math.max(3, Math.min(12, points));
+            const pts = starPoints(p);
+            return (
+              <polygon
+                points={pts}
+                fill={fillAttr}
+                stroke={strokeAttr}
+                strokeWidth={strokeW}
+                strokeLinejoin="round"
+                vectorEffect="non-scaling-stroke"
+              />
+            );
+          }
+          case "arrow": {
+            // 가로 화살표 — viewBox 0,0,100,100 안에서
+            return (
+              <polygon
+                points="0,35 70,35 70,15 100,50 70,85 70,65 0,65"
+                fill={fillAttr}
+                stroke={strokeAttr}
+                strokeWidth={strokeW}
+                strokeLinejoin="round"
+                vectorEffect="non-scaling-stroke"
+              />
+            );
+          }
+        }
+      })()}
+    </svg>
   );
+}
+
+/** legacy fill (hex 문자열) 도 호환되게 정규화 */
+function normalizeFill(
+  fill: CanvasShapeNode["data"]["fill"]
+): ShapeFill {
+  if (!fill) return { kind: "solid", color: "transparent" };
+  if (typeof fill === "string") return { kind: "solid", color: fill };
+  return fill;
+}
+
+function polygonPoints(n: number): string {
+  const pts: string[] = [];
+  for (let i = 0; i < n; i++) {
+    const angle = (Math.PI * 2 * i) / n - Math.PI / 2; // 위로 시작
+    const x = 50 + 48 * Math.cos(angle);
+    const y = 50 + 48 * Math.sin(angle);
+    pts.push(`${x.toFixed(2)},${y.toFixed(2)}`);
+  }
+  return pts.join(" ");
+}
+
+function starPoints(p: number): string {
+  const outerR = 48;
+  const innerR = outerR * 0.4;
+  const pts: string[] = [];
+  for (let i = 0; i < p * 2; i++) {
+    const r = i % 2 === 0 ? outerR : innerR;
+    const angle = (Math.PI * 2 * i) / (p * 2) - Math.PI / 2;
+    const x = 50 + r * Math.cos(angle);
+    const y = 50 + r * Math.sin(angle);
+    pts.push(`${x.toFixed(2)},${y.toFixed(2)}`);
+  }
+  return pts.join(" ");
+}
+
+function useRandomId(): string {
+  const [id] = useState(() => Math.random().toString(36).slice(2, 10));
+  return id;
 }
 
 function ButtonNodeView({

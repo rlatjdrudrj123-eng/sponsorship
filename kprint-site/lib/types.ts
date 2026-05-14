@@ -622,18 +622,53 @@ export type CanvasImageNode = CanvasNodeBase & {
     alt?: string;
     fit?: "cover" | "contain";
     radius?: number;             // px corner radius
+    shadow?: ShadowEffect;
   };
 };
+
+/** 그라디언트 stop */
+export type GradientStop = { offset: number; color: string };
+
+/** 그라디언트 fill */
+export type Gradient =
+  | { kind: "linear"; angle: number; stops: GradientStop[] }
+  | { kind: "radial"; stops: GradientStop[] };
+
+/** 채움 종류 — 단색 / 그라디언트 / 이미지(클리핑) */
+export type ShapeFill =
+  | { kind: "solid"; color: string }
+  | { kind: "gradient"; gradient: Gradient }
+  | { kind: "image"; url: string; fit?: "cover" | "contain" };
 
 export type CanvasShapeNode = CanvasNodeBase & {
   type: "shape";
   data: {
-    shape: "rect" | "ellipse" | "line";
-    fill?: string;
+    shape:
+      | "rect"
+      | "ellipse"
+      | "line"
+      | "triangle"
+      | "star"
+      | "polygon"
+      | "arrow";
+    /** 신규: fill 객체. 기존 단색 hex 도 호환 (legacy) */
+    fill?: string | ShapeFill;
     stroke?: string;
     strokeWidth?: number;
     radius?: number;             // rect only
+    sides?: number;              // polygon only (3~12)
+    points?: number;             // star only
+    shadow?: ShadowEffect;
   };
+};
+
+/** 박스 그림자 — 모든 노드에 추가 가능 */
+export type ShadowEffect = {
+  x: number;
+  y: number;
+  blur: number;
+  spread?: number;
+  color: string; // hex 또는 rgba
 };
 
 export type CanvasButtonNode = CanvasNodeBase & {

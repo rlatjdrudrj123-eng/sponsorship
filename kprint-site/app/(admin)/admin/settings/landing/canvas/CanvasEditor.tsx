@@ -22,8 +22,12 @@ import type {
   CanvasNode,
   CanvasNodeType,
   CanvasPage,
+  CanvasShapeNode,
   CanvasTextNode,
+  Gradient,
+  ShapeFill,
 } from "@/lib/types";
+import { ShapeSVG } from "@/components/public/canvas/CanvasRenderer";
 
 // CanvasTextNode 는 TextNodeInspector 시그니처에서 직접 쓰임 (아래)
 
@@ -468,8 +472,16 @@ export function CanvasEditor({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedId, page, addImageFromBlob, addTextFromString]);
 
-  return (
-    <div className="grid grid-cols-[180px_1fr_300px] gap-3 h-[calc(100vh-200px)] min-h-[600px]">
+  // 풀스크린 상태 — 캔버스 작업 시 모달처럼 viewport 전체 사용
+  const [fullscreen, setFullscreen] = useState(false);
+
+  const editor = (
+    <div
+      className={
+        "grid grid-cols-[200px_1fr_320px] gap-3 " +
+        (fullscreen ? "h-full p-3" : "h-[calc(100vh-220px)] min-h-[640px]")
+      }
+    >
       {/* 좌측 — 노드 추가 툴바 */}
       <aside className="bg-white border border-ink-100 rounded-card overflow-hidden flex flex-col">
         <div className="px-3 py-2 border-b border-ink-100 text-[11px] uppercase tracking-wide font-bold text-ink-700">
@@ -645,6 +657,53 @@ export function CanvasEditor({
           />
         )}
       </aside>
+    </div>
+  );
+
+  if (fullscreen) {
+    return (
+      <div className="fixed inset-0 z-[60] bg-ink-50 flex flex-col">
+        <header className="px-4 py-2.5 border-b border-ink-100 bg-white flex items-center justify-between shrink-0">
+          <div className="flex items-center gap-3 min-w-0">
+            <span className="font-num text-[11px] uppercase tracking-widest text-brand-500 font-bold">
+              ★ 캔버스 편집
+            </span>
+            <span className="text-[12px] text-ink-700 truncate">
+              {page.name ?? "캔버스 페이지"}
+            </span>
+            <span className="text-[10.5px] text-ink-300 font-num">
+              {page.nodes.length} 노드 · 1920×1080
+            </span>
+          </div>
+          <button
+            type="button"
+            onClick={() => setFullscreen(false)}
+            className="px-3 py-1.5 rounded-btn border border-ink-100 hover:border-ink-900 text-[12px] font-semibold flex items-center gap-1.5"
+            title="작은 창으로 (Esc)"
+          >
+            축소
+          </button>
+        </header>
+        <div className="flex-1 min-h-0">{editor}</div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-2">
+      <div className="flex items-center justify-between">
+        <span className="text-[11px] text-ink-500">
+          작업 공간이 좁다면 풀스크린으로 — 더 큰 캔버스에서 편집 가능
+        </span>
+        <button
+          type="button"
+          onClick={() => setFullscreen(true)}
+          className="px-3 py-1.5 rounded-btn bg-ink-900 text-white text-[12px] font-bold hover:bg-brand-500 flex items-center gap-1.5"
+        >
+          ⛶ 풀스크린으로 편집
+        </button>
+      </div>
+      {editor}
     </div>
   );
 }
@@ -850,43 +909,12 @@ function NodePreview({ node }: { node: CanvasNode }) {
         />
       );
     }
-    case "shape": {
-      const d = node.data;
-      if (d.shape === "ellipse") {
-        return (
-          <div
-            className="w-full h-full pointer-events-none"
-            style={{
-              background: d.fill,
-              border: d.stroke ? `${d.strokeWidth ?? 0}px solid ${d.stroke}` : undefined,
-              borderRadius: "50%",
-            }}
-          />
-        );
-      }
-      if (d.shape === "line") {
-        return (
-          <div
-            className="w-full pointer-events-none"
-            style={{
-              height: d.strokeWidth ?? 1,
-              background: d.stroke ?? d.fill ?? "#0A0A0A",
-              marginTop: "calc(50% - 0.5px)",
-            }}
-          />
-        );
-      }
+    case "shape":
       return (
-        <div
-          className="w-full h-full pointer-events-none"
-          style={{
-            background: d.fill,
-            border: d.stroke ? `${d.strokeWidth ?? 0}px solid ${d.stroke}` : undefined,
-            borderRadius: d.radius ?? 0,
-          }}
-        />
+        <div className="w-full h-full pointer-events-none">
+          <ShapeSVG data={node.data} />
+        </div>
       );
-    }
     case "button": {
       const d = node.data;
       const variant = d.variant ?? "primary";
@@ -1315,10 +1343,12 @@ function ShapeNodeInspector({
   node,
   onUpdateData,
 }: {
-  node: CanvasNode & { type: "shape" };
+  node: CanvasShapeNode;
   onUpdateData: (p: Record<string, unknown>) => void;
 }) {
   const d = node.data;
+  const fill = normalizeShapeFill(d.fill);
+
   return (
     <div className="space-y-3">
       <Field label="모양">
@@ -1329,26 +1359,138 @@ function ShapeNodeInspector({
         >
           <option value="rect">사각형</option>
           <option value="ellipse">원</option>
+          <option value="triangle">삼각형</option>
+          <option value="polygon">다각형</option>
+          <option value="star">별</option>
+          <option value="arrow">화살표</option>
           <option value="line">선</option>
         </select>
       </Field>
-      <Field label="채움 색">
-        <div className="flex gap-1">
-          <input
-            type="color"
-            value={d.fill ?? "#DB0711"}
-            onChange={(e) => onUpdateData({ fill: e.target.value })}
-            className="w-10 h-8 rounded-btn border border-ink-100 cursor-pointer"
-          />
-          <input
-            type="text"
-            value={d.fill ?? ""}
-            onChange={(e) => onUpdateData({ fill: e.target.value })}
-            className={inputCls() + " font-mono text-[11px]"}
-            placeholder="transparent 가능"
-          />
+
+      {/* polygon 변 수 / star 점 수 */}
+      {d.shape === "polygon" && (
+        <NumberField
+          label="변 수 (3~12)"
+          value={d.sides ?? 6}
+          onChange={(v) => onUpdateData({ sides: Math.max(3, Math.min(12, v)) })}
+        />
+      )}
+      {d.shape === "star" && (
+        <NumberField
+          label="점 수 (3~12)"
+          value={d.points ?? 5}
+          onChange={(v) => onUpdateData({ points: Math.max(3, Math.min(12, v)) })}
+        />
+      )}
+
+      {/* ── Fill ── */}
+      <div>
+        <span className="text-[10.5px] uppercase tracking-wider text-ink-500 font-semibold block mb-1.5">
+          채움
+        </span>
+        <div className="inline-flex bg-ink-50 border border-ink-100 rounded-btn p-0.5 mb-2">
+          {(["solid", "gradient", "image"] as const).map((k) => (
+            <button
+              key={k}
+              type="button"
+              onClick={() => {
+                if (k === "solid")
+                  onUpdateData({ fill: { kind: "solid", color: "#DB0711" } });
+                else if (k === "gradient")
+                  onUpdateData({
+                    fill: {
+                      kind: "gradient",
+                      gradient: {
+                        kind: "linear",
+                        angle: 90,
+                        stops: [
+                          { offset: 0, color: "#DB0711" },
+                          { offset: 1, color: "#83000A" },
+                        ],
+                      },
+                    },
+                  });
+                else
+                  onUpdateData({
+                    fill: { kind: "image", url: "", fit: "cover" },
+                  });
+              }}
+              className={
+                "px-2.5 py-1 rounded text-[11px] font-semibold " +
+                (fill.kind === k
+                  ? "bg-ink-900 text-white"
+                  : "text-ink-500 hover:text-ink-900")
+              }
+            >
+              {k === "solid" ? "단색" : k === "gradient" ? "그라디언트" : "이미지"}
+            </button>
+          ))}
         </div>
-      </Field>
+
+        {fill.kind === "solid" && (
+          <div className="flex gap-1">
+            <input
+              type="color"
+              value={fill.color === "transparent" ? "#DB0711" : fill.color}
+              onChange={(e) =>
+                onUpdateData({ fill: { kind: "solid", color: e.target.value } })
+              }
+              className="w-10 h-8 rounded-btn border border-ink-100 cursor-pointer"
+            />
+            <input
+              type="text"
+              value={fill.color}
+              onChange={(e) =>
+                onUpdateData({ fill: { kind: "solid", color: e.target.value } })
+              }
+              className={inputCls() + " font-mono text-[11px]"}
+              placeholder="#hex 또는 transparent"
+            />
+          </div>
+        )}
+
+        {fill.kind === "gradient" && (
+          <GradientEditor
+            gradient={fill.gradient}
+            onChange={(g) =>
+              onUpdateData({ fill: { kind: "gradient", gradient: g } })
+            }
+          />
+        )}
+
+        {fill.kind === "image" && (
+          <div className="space-y-1.5">
+            <input
+              type="text"
+              value={fill.url}
+              onChange={(e) =>
+                onUpdateData({
+                  fill: { kind: "image", url: e.target.value, fit: fill.fit },
+                })
+              }
+              placeholder="이미지 URL"
+              className={inputCls() + " font-mono text-[11px]"}
+            />
+            <select
+              value={fill.fit ?? "cover"}
+              onChange={(e) =>
+                onUpdateData({
+                  fill: {
+                    kind: "image",
+                    url: fill.url,
+                    fit: e.target.value as "cover" | "contain",
+                  },
+                })
+              }
+              className={inputCls()}
+            >
+              <option value="cover">덮기 (cover)</option>
+              <option value="contain">포함 (contain)</option>
+            </select>
+          </div>
+        )}
+      </div>
+
       <Field label="외곽선">
         <div className="flex gap-1">
           <input
@@ -1368,6 +1510,7 @@ function ShapeNodeInspector({
           />
         </div>
       </Field>
+
       {d.shape === "rect" && (
         <NumberField
           label="모서리 둥글기"
@@ -1375,7 +1518,192 @@ function ShapeNodeInspector({
           onChange={(v) => onUpdateData({ radius: v })}
         />
       )}
+
+      {/* 그림자 */}
+      <ShadowEditor
+        shadow={d.shadow}
+        onChange={(s) => onUpdateData({ shadow: s })}
+      />
     </div>
+  );
+}
+
+function normalizeShapeFill(
+  fill: CanvasShapeNode["data"]["fill"]
+): ShapeFill {
+  if (!fill) return { kind: "solid", color: "transparent" };
+  if (typeof fill === "string") return { kind: "solid", color: fill };
+  return fill;
+}
+
+function GradientEditor({
+  gradient,
+  onChange,
+}: {
+  gradient: Gradient;
+  onChange: (g: Gradient) => void;
+}) {
+  return (
+    <div className="space-y-2">
+      <div className="inline-flex bg-ink-50 border border-ink-100 rounded-btn p-0.5">
+        {(["linear", "radial"] as const).map((k) => (
+          <button
+            key={k}
+            type="button"
+            onClick={() => {
+              if (k === "linear") {
+                onChange({
+                  kind: "linear",
+                  angle: 90,
+                  stops: gradient.stops,
+                });
+              } else {
+                onChange({ kind: "radial", stops: gradient.stops });
+              }
+            }}
+            className={
+              "px-2.5 py-1 rounded text-[11px] font-semibold " +
+              (gradient.kind === k
+                ? "bg-ink-900 text-white"
+                : "text-ink-500 hover:text-ink-900")
+            }
+          >
+            {k === "linear" ? "선형" : "원형"}
+          </button>
+        ))}
+      </div>
+      {gradient.kind === "linear" && (
+        <NumberField
+          label="각도 (°)"
+          value={gradient.angle}
+          onChange={(v) =>
+            onChange({ kind: "linear", angle: v, stops: gradient.stops })
+          }
+        />
+      )}
+      <div className="space-y-1.5">
+        {gradient.stops.map((s, i) => (
+          <div key={i} className="flex items-center gap-1.5">
+            <input
+              type="color"
+              value={s.color}
+              onChange={(e) => {
+                const next = [...gradient.stops];
+                next[i] = { ...s, color: e.target.value };
+                onChange({ ...gradient, stops: next });
+              }}
+              className="w-8 h-7 rounded-btn border border-ink-100 cursor-pointer"
+            />
+            <input
+              type="number"
+              step="0.05"
+              min="0"
+              max="1"
+              value={s.offset}
+              onChange={(e) => {
+                const next = [...gradient.stops];
+                next[i] = { ...s, offset: parseFloat(e.target.value) || 0 };
+                onChange({ ...gradient, stops: next });
+              }}
+              className={inputCls() + " font-mono text-[11px] w-16"}
+            />
+            <button
+              type="button"
+              onClick={() =>
+                onChange({
+                  ...gradient,
+                  stops: gradient.stops.filter((_, j) => j !== i),
+                })
+              }
+              disabled={gradient.stops.length <= 2}
+              className="w-6 h-6 grid place-items-center text-ink-500 hover:text-red-700 disabled:opacity-30"
+            >
+              ×
+            </button>
+          </div>
+        ))}
+        <button
+          type="button"
+          onClick={() =>
+            onChange({
+              ...gradient,
+              stops: [...gradient.stops, { offset: 0.5, color: "#FFFFFF" }],
+            })
+          }
+          className="w-full py-1 rounded-btn border border-dashed border-ink-300 text-[11px] text-ink-500 hover:border-ink-900 hover:text-ink-900"
+        >
+          + stop
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function ShadowEditor({
+  shadow,
+  onChange,
+}: {
+  shadow: { x: number; y: number; blur: number; color: string } | undefined;
+  onChange: (s: { x: number; y: number; blur: number; color: string } | undefined) => void;
+}) {
+  return (
+    <details>
+      <summary className="cursor-pointer text-[11px] uppercase tracking-wide font-bold text-ink-700">
+        그림자
+      </summary>
+      <div className="mt-2 space-y-2">
+        <label className="flex items-center gap-2 text-[12px] cursor-pointer">
+          <input
+            type="checkbox"
+            checked={!!shadow}
+            onChange={(e) =>
+              onChange(
+                e.target.checked
+                  ? {
+                      x: 0,
+                      y: 8,
+                      blur: 24,
+                      color: "rgba(0,0,0,0.25)",
+                    }
+                  : undefined
+              )
+            }
+            className="accent-ink-900"
+          />
+          그림자 사용
+        </label>
+        {shadow && (
+          <>
+            <div className="grid grid-cols-3 gap-1.5">
+              <NumberField
+                label="X"
+                value={shadow.x}
+                onChange={(v) => onChange({ ...shadow, x: v })}
+              />
+              <NumberField
+                label="Y"
+                value={shadow.y}
+                onChange={(v) => onChange({ ...shadow, y: v })}
+              />
+              <NumberField
+                label="흐림"
+                value={shadow.blur}
+                onChange={(v) => onChange({ ...shadow, blur: v })}
+              />
+            </div>
+            <input
+              type="text"
+              value={shadow.color}
+              onChange={(e) =>
+                onChange({ ...shadow, color: e.target.value })
+              }
+              className={inputCls() + " font-mono text-[11px]"}
+              placeholder="rgba(0,0,0,0.25)"
+            />
+          </>
+        )}
+      </div>
+    </details>
   );
 }
 
