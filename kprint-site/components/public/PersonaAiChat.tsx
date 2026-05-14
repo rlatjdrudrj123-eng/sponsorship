@@ -40,7 +40,7 @@ type Stage =
   | "experience"
   | "goal"
   | "budget"
-  | "location"
+  | "channel"
   | "result";
 
 type Experience = "first" | "repeat" | "regular";
@@ -54,13 +54,14 @@ type Segment =
   | "supply"
   | "other";
 type CompanySize = "solo" | "small" | "mid" | "large";
-type LocationPref =
-  | "hall_a"
-  | "hall_b"
-  | "hall_c"
-  | "hall_d"
-  | "outdoor"
-  | "online"
+// K-PRINT 는 KINTEX 한 곳 (Hall 7·8) 이라 "어디 홀" 질문은 의미 없음.
+// 대신 노출 채널 선호를 묻는 것이 실제 추천에 더 유용.
+type ChannelPref =
+  | "entry"        // 등록데스크, 사전등록 페이지, 참관객 목걸이 (입구 동선)
+  | "booth"        // 천장배너, 도면 검색 (부스 노출)
+  | "online"       // 참가업체·전시품 검색, 뉴스레터
+  | "seminar"      // 세미나·컨퍼런스 페이지
+  | "guide_print"  // 가이드북, 초대장 삽지 (인쇄물)
   | "any";
 
 export type Collected = {
@@ -74,8 +75,8 @@ export type Collected = {
   purposeLabel?: string;
   budget?: number;
   budgetLabel?: string;
-  location?: LocationPref;
-  locationLabel?: string;
+  channel?: ChannelPref;
+  channelLabel?: string;
 };
 
 type Msg = { role: "user" | "bot"; content: string };
@@ -88,7 +89,7 @@ export const STAGES: Stage[] = [
   "experience",
   "goal",
   "budget",
-  "location",
+  "channel",
 ];
 
 /**
@@ -153,17 +154,16 @@ export const QUESTIONS: Record<
       { label: "💰 3,000만원 이상", value: "100000000" },
     ],
   },
-  location: {
-    intro: "선호하는 노출 위치가 있으신가요?",
-    why: "위치는 약한 가중치 — 없으면 효율 우선으로 자동 추천.",
+  channel: {
+    intro: "어떤 노출 채널이 가장 중요하신가요?",
+    why: "K-PRINT 는 KINTEX Hall 7·8 단일 회장 — 위치 분기 대신 채널 선호로 콤보를 조정. 「무관」 이면 효율 우선 자동 추천.",
     chips: [
-      { label: "Hall A", value: "hall_a" },
-      { label: "Hall B", value: "hall_b" },
-      { label: "Hall C", value: "hall_c" },
-      { label: "Hall D", value: "hall_d" },
-      { label: "옥외 / 전광판", value: "outdoor" },
-      { label: "온라인 중심", value: "online" },
-      { label: "선호 없음 — 효율 우선", value: "any" },
+      { label: "🚪 입구·등록 동선", value: "entry", hint: "등록데스크 · 사전등록 · 목걸이" },
+      { label: "🏭 부스·홀 내부 노출", value: "booth", hint: "천장배너 · 도면 검색" },
+      { label: "💻 온라인 검색·뉴스레터", value: "online", hint: "참가업체 · 전시품 검색 · 국내·해외 NL" },
+      { label: "🎤 세미나·컨퍼런스", value: "seminar", hint: "세미나 페이지 배너" },
+      { label: "📰 가이드북·초대장 인쇄물", value: "guide_print", hint: "GDB·IVL" },
+      { label: "무관 — 효율 우선", value: "any" },
     ],
   },
   result: { intro: "" },
@@ -182,7 +182,7 @@ export const SCORING_WEIGHTS = {
   companySizeLarge: 20,    // 대기업 + 시그니처 가중
   companySizeSolo: 15,     // 1인 + 단품 가중
   goalMatch: 20,           // 목표(purpose) 일치
-  locationMatch: 10,       // 위치 약한 가중
+  channelMatch: 18,        // 채널 일치 (K-PRINT 는 채널이 의미 있음)
 } as const;
 
 export function PersonaAiChat({
@@ -307,9 +307,9 @@ export function PersonaAiChat({
     } else if (stage === "budget") {
       next.budget = parseInt(chip.value, 10);
       next.budgetLabel = chip.label.replace("💰 ", "");
-    } else if (stage === "location") {
-      next.location = chip.value as LocationPref;
-      next.locationLabel = chip.label;
+    } else if (stage === "channel") {
+      next.channel = chip.value as ChannelPref;
+      next.channelLabel = chip.label;
     }
     setCollected(next);
     advance(next, stage);
@@ -751,10 +751,10 @@ function ackFor(stage: Stage, c: Collected): string {
       return `좋아요. 「${c.purposeLabel}」 우선으로 잡고 가겠습니다.`;
     case "budget":
       return `예산 ${c.budgetLabel} 안에서 조합해드릴게요.`;
-    case "location":
-      return c.location === "any"
-        ? "위치는 효과 좋은 곳으로 자동 선정합니다."
-        : `${c.locationLabel} 가중치 두고 추리겠습니다.`;
+    case "channel":
+      return c.channel === "any"
+        ? "채널은 효율 좋은 쪽으로 자동 선정합니다."
+        : `${c.channelLabel} 채널 가중치 두고 추리겠습니다.`;
     case "result":
       return "";
   }
@@ -767,8 +767,8 @@ function buildSummary(c: Collected, persona: Persona | null): string {
   if (c.experienceLabel) parts.push(`· 경험: ${c.experienceLabel.replace(/^.+?\s/, "")}`);
   if (c.purposeLabel) parts.push(`· 목적: ${c.purposeLabel.replace(/^.+?\s/, "")}`);
   if (c.budgetLabel) parts.push(`· 예산: ${c.budgetLabel}`);
-  if (c.location && c.location !== "any" && c.locationLabel)
-    parts.push(`· 위치: ${c.locationLabel}`);
+  if (c.channel && c.channel !== "any" && c.channelLabel)
+    parts.push(`· 채널: ${c.channelLabel.replace(/^.+?\s/, "")}`);
   parts.push("");
   if (persona) {
     parts.push(
@@ -857,11 +857,19 @@ export function findBestPersona(
     // 5. 목표 매칭 (purpose)
     if (c.purpose && p.purposes?.includes(c.purpose)) score += W.goalMatch;
 
-    // 6. 위치 — 약한 가중치, "any" 일 땐 패스
-    if (c.location && c.location !== "any") {
-      const loc = c.location.toLowerCase();
+    // 6. 채널 — K-PRINT 단일 회장 (Hall 7·8) 이라 위치 대신 채널 일치 가중
+    if (c.channel && c.channel !== "any") {
+      const channelKeywords: Record<ChannelPref, string[]> = {
+        entry: ["입구", "등록", "목걸이", "사전등록"],
+        booth: ["부스", "천장", "도면", "홀"],
+        online: ["온라인", "검색", "뉴스레터", "메일"],
+        seminar: ["세미나", "컨퍼런스"],
+        guide_print: ["가이드", "초대", "인쇄물"],
+        any: [],
+      };
+      const kws = channelKeywords[c.channel];
       const titleLow = p.title.toLowerCase();
-      if (titleLow.includes(loc.replace("_", " "))) score += W.locationMatch;
+      if (kws.some((kw) => titleLow.includes(kw))) score += W.channelMatch;
     }
 
     return { p, score };
@@ -913,7 +921,6 @@ function computeCombo(
     if (sub.priceKRW > budget) continue;
 
     const purposes = derivePurposes(cat);
-    const locations = cat.locationOverride ?? [];
     const reasons: string[] = [];
 
     let score = 0;
@@ -930,9 +937,21 @@ function computeCombo(
               : "콘텐츠 자산"
       );
     }
-    if (c.location && c.location !== "any" && locations.includes(c.location as never)) {
-      score += 40;
-      reasons.push(`${c.locationLabel} 위치 매칭`);
+    // 채널 매칭 — 카테고리 타입 기반
+    if (c.channel && c.channel !== "any") {
+      const channelTypes: Record<ChannelPref, string[]> = {
+        entry: ["quantity"],                   // 등록데스크·목걸이 = quantity
+        booth: ["floor_plan", "xpace"],        // 도면·천장배너
+        online: ["digital_banner", "mailing"],
+        seminar: ["content"],                  // 세미나 페이지
+        guide_print: ["print_page"],           // 가이드북·삽지
+        any: [],
+      };
+      const types = channelTypes[c.channel];
+      if (types.includes(cat.type)) {
+        score += 40;
+        reasons.push(`${c.channelLabel} 채널 매칭`);
+      }
     }
     // 분야(segment) 별 채널 보너스
     if (c.segment === "digital" && (cat.type === "digital_banner" || cat.type === "mailing")) {

@@ -179,9 +179,9 @@ export default function DiagnosisLogicPage() {
                 cond="페르소나 purposes 배열에 답변 목표 포함"
               />
               <Row
-                weight={SCORING_WEIGHTS.locationMatch}
-                label="위치 약가중"
-                cond="페르소나 title 에 위치 키워드 포함 (any 가 아닐 때)"
+                weight={SCORING_WEIGHTS.channelMatch}
+                label="채널 일치 (K-PRINT 특화)"
+                cond="입구·부스·온라인·세미나·인쇄물 키워드 페르소나 title 매칭 (any 가 아닐 때)"
               />
               <Row
                 weight={-1}

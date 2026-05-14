@@ -28,6 +28,10 @@ import {
   type SponsorSeedResult,
   type TagMigrationResult,
 } from "@/lib/admin/seedDemo";
+import {
+  seedKprintSponsorship,
+  type KprintSeedResult,
+} from "@/lib/admin/seedKprintSponsorship";
 import { useEventFilter } from "@/lib/admin/useEventFilter";
 
 type AnyResult =
@@ -38,7 +42,8 @@ type AnyResult =
   | { kind: "clear-inquiry"; count: number }
   | { kind: "clear-sponsor"; count: number }
   | { kind: "clear-all"; data: ClearAllResult }
-  | { kind: "tag-migration"; data: TagMigrationResult };
+  | { kind: "tag-migration"; data: TagMigrationResult }
+  | { kind: "kprint"; data: KprintSeedResult };
 
 export default function SeedPage() {
   const [running, setRunning] = useState<string | null>(null);
@@ -133,6 +138,42 @@ export default function SeedPage() {
           className="px-3.5 py-2 rounded-btn bg-blue-700 text-white text-[12px] font-bold hover:bg-blue-800 disabled:opacity-50 shrink-0 whitespace-nowrap"
         >
           {running === "tag-migration" ? "태깅 중…" : "K-PRINT 2026 태깅"}
+        </button>
+      </div>
+
+      {/* K-PRINT 실제 데이터 시드 — 가장 강조 */}
+      <div className="bg-brand-50 border-2 border-brand-200 rounded-card p-4 flex items-start gap-3">
+        <div className="w-8 h-8 rounded-btn bg-brand-100 text-brand-700 grid place-items-center shrink-0">
+          <Database className="w-4 h-4" />
+        </div>
+        <div className="flex-1 min-w-0">
+          <div className="text-[14px] font-bold text-brand-700">
+            K-PRINT 2026 실제 스폰서십 샘플 시드
+          </div>
+          <p className="text-[12px] text-ink-700 mt-0.5 leading-relaxed">
+            작년 K-PRINT 2025 운영 자료 기준 — 카테고리 12종(오프라인 5 + 온라인 7),
+            서브카테고리·슬롯 30+ 개, 패키지 3종(A to Z / 프라임 스팟 / 세미나).
+            <strong> 중복 코드는 건너뜁니다.</strong>
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={() => {
+            const ev = requireEvent("K-PRINT 시드");
+            if (!ev) return;
+            run(
+              "kprint",
+              async () => ({
+                kind: "kprint",
+                data: await seedKprintSponsorship(ev),
+              }),
+              "K-PRINT 2026 실제 데이터 기준 카테고리·슬롯·패키지를 추가합니다. 진행할까요?"
+            );
+          }}
+          disabled={!!running}
+          className="px-3.5 py-2 rounded-btn bg-brand-500 text-white text-[12px] font-bold hover:bg-brand-700 disabled:opacity-50 shrink-0 whitespace-nowrap"
+        >
+          {running === "kprint" ? "시드 중…" : "K-PRINT 시드 실행"}
         </button>
       </div>
 
@@ -466,6 +507,24 @@ function ResultCard({ result }: { result: AnyResult }) {
           <Trash2 className="w-3.5 h-3.5" />
           데모 스폰서 {result.count}건 삭제됨
         </div>
+      </div>
+    );
+  }
+  if (result.kind === "kprint") {
+    const r = result.data;
+    return (
+      <div className={cardClass}>
+        <div className="font-bold text-brand-700 flex items-center gap-1.5">
+          <CheckCircle2 className="w-3.5 h-3.5" />
+          K-PRINT 시드 — 카테고리 {r.categoriesCreated}생성 / {r.categoriesSkipped}건너뜀
+          {" · "}서브 {r.subcategoriesCreated} · 슬롯 {r.slotsCreated}
+          {" · "}패키지 {r.packagesCreated}생성 / {r.packagesSkipped}건너뜀
+        </div>
+        {r.notes.length > 0 && (
+          <div className="text-ink-500 mt-1 text-[11px] leading-snug">
+            {r.notes.join(" · ")}
+          </div>
+        )}
       </div>
     );
   }
