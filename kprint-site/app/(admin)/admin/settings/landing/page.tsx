@@ -426,24 +426,30 @@ function BlockAdderModal({
           </button>
         </header>
         <div className="px-5 py-4 grid grid-cols-1 sm:grid-cols-2 gap-2">
-          {(Object.keys(BLOCK_TYPE_META) as LandingBlockType[]).map((t) => {
-            const meta = BLOCK_TYPE_META[t];
-            return (
-              <button
-                key={t}
-                type="button"
-                onClick={() => onPick(t)}
-                className="text-left p-3.5 rounded-btn border border-ink-100 hover:border-ink-900 hover:bg-ink-50"
-              >
-                <div className="text-[13.5px] font-bold text-ink-900">
-                  {meta.label}
-                </div>
-                <div className="text-[11.5px] text-ink-500 mt-0.5">
-                  {meta.desc}
-                </div>
-              </button>
-            );
-          })}
+          {(Object.keys(BLOCK_TYPE_META) as LandingBlockType[])
+            .filter((t) => !BLOCK_TYPE_META[t].hidden)
+            .map((t) => {
+              const meta = BLOCK_TYPE_META[t];
+              return (
+                <button
+                  key={t}
+                  type="button"
+                  onClick={() => onPick(t)}
+                  className="text-left p-3.5 rounded-btn border-2 border-brand-500 hover:bg-brand-50 transition-colors"
+                >
+                  <div className="text-[13.5px] font-bold text-ink-900">
+                    {meta.label}
+                  </div>
+                  <div className="text-[11.5px] text-ink-500 mt-0.5">
+                    {meta.desc}
+                  </div>
+                </button>
+              );
+            })}
+        </div>
+        <div className="px-5 pb-4 text-[10.5px] text-ink-500 leading-snug border-t border-ink-100 pt-3">
+          💡 모든 콘텐츠는 캔버스 페이지 안에서 자유 배치합니다. 이전 버전의 단일
+          블록(Cover, 통계, 혜택 등)은 캔버스 안에서 <strong>컴포넌트</strong>로 추가하세요.
         </div>
       </div>
     </div>

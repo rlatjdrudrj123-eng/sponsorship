@@ -10,7 +10,9 @@ import type {
   CanvasShapeNode,
   CanvasTextNode,
   CanvasVideoNode,
+  SiteSettings,
 } from "@/lib/types";
+import { ComponentNodeRenderer } from "./ComponentNodeRenderer";
 
 /**
  * 캔버스 페이지 렌더러.
@@ -27,10 +29,12 @@ const MOBILE_BP = 768; // px
 export function CanvasRenderer({
   page,
   eventId,
+  settings,
   forceDesktop = false,
 }: {
   page: CanvasPage;
   eventId?: string;
+  settings?: SiteSettings | null;
   /** PDF 모드 등 강제로 데스크톱 레이아웃을 쓰고 싶을 때 */
   forceDesktop?: boolean;
 }) {
@@ -39,19 +43,35 @@ export function CanvasRenderer({
   const bg = resolveBg(page.bg) ?? "var(--color-canvas, #F6F6F6)";
 
   if (isMobile) {
-    return <CanvasMobileStack page={page} bg={bg} eventId={eventId} />;
+    return (
+      <CanvasMobileStack
+        page={page}
+        bg={bg}
+        eventId={eventId}
+        settings={settings ?? null}
+      />
+    );
   }
-  return <CanvasDesktop page={page} bg={bg} eventId={eventId} />;
+  return (
+    <CanvasDesktop
+      page={page}
+      bg={bg}
+      eventId={eventId}
+      settings={settings ?? null}
+    />
+  );
 }
 
 function CanvasDesktop({
   page,
   bg,
   eventId,
+  settings,
 }: {
   page: CanvasPage;
   bg: string;
   eventId?: string;
+  settings: SiteSettings | null;
 }) {
   // 캔버스를 화면 폭에 맞춰 transform: scale 으로 축소
   // 뷰포트가 1920보다 작아도 1920 그대로 그리고 줄임. 비율 유지.
@@ -81,7 +101,12 @@ function CanvasDesktop({
           />
         )}
         {page.nodes.map((n) => (
-          <NodeRenderer key={n.id} node={n} eventId={eventId} />
+          <NodeRenderer
+            key={n.id}
+            node={n}
+            eventId={eventId}
+            settings={settings}
+          />
         ))}
       </div>
       {/* 화면 폭에 맞춘 scale 자동 보정 */}
@@ -111,10 +136,12 @@ function CanvasMobileStack({
   page,
   bg,
   eventId,
+  settings,
 }: {
   page: CanvasPage;
   bg: string;
   eventId?: string;
+  settings: SiteSettings | null;
 }) {
   const visible = page.nodes
     .filter((n) => !n.mobile?.hidden)
@@ -137,7 +164,11 @@ function CanvasMobileStack({
         )}
         {visible.map((n) => (
           <div key={n.id}>
-            <NodeRendererMobile node={n} eventId={eventId} />
+            <NodeRendererMobile
+              node={n}
+              eventId={eventId}
+              settings={settings}
+            />
           </div>
         ))}
       </div>
@@ -152,9 +183,11 @@ function CanvasMobileStack({
 function NodeRenderer({
   node,
   eventId,
+  settings,
 }: {
   node: CanvasNode;
   eventId?: string;
+  settings: SiteSettings | null;
 }) {
   const baseStyle: CSSProperties = {
     position: "absolute",
@@ -171,7 +204,7 @@ function NodeRenderer({
 
   return (
     <div style={baseStyle}>
-      <NodeInner node={node} eventId={eventId} />
+      <NodeInner node={node} eventId={eventId} settings={settings} />
     </div>
   );
 }
@@ -179,9 +212,11 @@ function NodeRenderer({
 function NodeInner({
   node,
   eventId,
+  settings,
 }: {
   node: CanvasNode;
   eventId?: string;
+  settings: SiteSettings | null;
 }) {
   switch (node.type) {
     case "text":
@@ -194,6 +229,14 @@ function NodeInner({
       return <ButtonNodeView node={node} eventId={eventId} />;
     case "video":
       return <VideoNodeView node={node} />;
+    case "component":
+      return (
+        <ComponentNodeRenderer
+          node={node}
+          eventId={eventId ?? ""}
+          settings={settings}
+        />
+      );
   }
 }
 
@@ -204,9 +247,11 @@ function NodeInner({
 function NodeRendererMobile({
   node,
   eventId,
+  settings,
 }: {
   node: CanvasNode;
   eventId?: string;
+  settings: SiteSettings | null;
 }) {
   switch (node.type) {
     case "text": {
@@ -249,6 +294,16 @@ function NodeRendererMobile({
         <div className="aspect-video w-full overflow-hidden rounded-card">
           <VideoNodeView node={node} />
         </div>
+      );
+    case "component":
+      // 모바일: 컴포넌트는 자체 레이아웃으로 렌더 (캔버스 좌표 무시)
+      return (
+        <ComponentNodeRenderer
+          node={node}
+          eventId={eventId ?? ""}
+          settings={settings}
+          mobile
+        />
       );
   }
 }

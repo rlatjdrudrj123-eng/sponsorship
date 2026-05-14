@@ -1146,7 +1146,13 @@ export function BlockSection({
     case "slotsTeaser":
       return <SlotsTeaserSection block={block} eventId={eventId} />;
     case "canvasPage":
-      return <CanvasPageSection block={block} eventId={eventId} />;
+      return (
+        <CanvasPageSection
+          block={block}
+          eventId={eventId}
+          settings={settings}
+        />
+      );
     default: {
       const _: never = block;
       void _;
@@ -1162,13 +1168,19 @@ export function BlockSection({
 function CanvasPageSection({
   block,
   eventId,
+  settings,
 }: {
   block: CanvasPageBlock;
   eventId: string;
+  settings: SiteSettings | null;
 }) {
   return (
     <section className="snap-start snap-always relative overflow-hidden h-screen">
-      <CanvasRenderer page={block.data.page} eventId={eventId} />
+      <CanvasRenderer
+        page={block.data.page}
+        eventId={eventId}
+        settings={settings}
+      />
     </section>
   );
 }

@@ -653,12 +653,37 @@ export type CanvasVideoNode = CanvasNodeBase & {
   };
 };
 
+/**
+ * 캔버스 위에 놓는 "디자인 완성된 컴포넌트" — 어드민이 정해진 디자인의 위젯을 자유 위치에 배치.
+ * 기존 블록 시스템의 컴포넌트들 (Cover, Stats3Year, AdGoals4, Benefits4, Steps4, TextHero, BigStat, CTA, SlotsTeaser)
+ * 을 canvas-level node 로 흡수.
+ */
+export type CanvasComponentKind =
+  | "cover"
+  | "stats3year"
+  | "adGoals4"
+  | "benefits4"
+  | "steps4"
+  | "textHero"
+  | "bigStat"
+  | "cta"
+  | "slotsTeaser"
+  | "richText";
+
+export type CanvasComponentNode = CanvasNodeBase & {
+  type: "component";
+  componentKind: CanvasComponentKind;
+  // 데이터 스키마는 기존 블록과 동일 (블록의 data 와 1:1 호환)
+  data: Record<string, unknown>;
+};
+
 export type CanvasNode =
   | CanvasTextNode
   | CanvasImageNode
   | CanvasShapeNode
   | CanvasButtonNode
-  | CanvasVideoNode;
+  | CanvasVideoNode
+  | CanvasComponentNode;
 
 export type CanvasNodeType = CanvasNode["type"];
 

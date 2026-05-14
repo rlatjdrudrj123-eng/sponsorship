@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState, type CSSProperties } from "react";
+import { buildStoragePath, uploadFile } from "@/lib/firebase/storage";
 import {
   AlignLeft,
   AlignCenter,
@@ -16,6 +17,8 @@ import {
   Video,
 } from "lucide-react";
 import type {
+  CanvasComponentKind,
+  CanvasComponentNode,
   CanvasNode,
   CanvasNodeType,
   CanvasPage,
@@ -23,6 +26,162 @@ import type {
 } from "@/lib/types";
 
 // CanvasTextNode 는 TextNodeInspector 시그니처에서 직접 쓰임 (아래)
+
+// 캔버스 위에 놓는 디자인 완성된 컴포넌트들
+const COMPONENT_META: Record<
+  CanvasComponentKind,
+  { label: string; desc: string; defaultW: number; defaultH: number }
+> = {
+  cover: {
+    label: "표지",
+    desc: "행사명 + 일정 히어로",
+    defaultW: 1920,
+    defaultH: 1080,
+  },
+  stats3year: {
+    label: "3년 통계",
+    desc: "방문객·해외바이어 카드",
+    defaultW: 1600,
+    defaultH: 600,
+  },
+  adGoals4: {
+    label: "광고 목적 4",
+    desc: "타입 1~4 그리드",
+    defaultW: 1600,
+    defaultH: 700,
+  },
+  benefits4: {
+    label: "혜택 4",
+    desc: "Sponsor Benefits 카드",
+    defaultW: 1600,
+    defaultH: 700,
+  },
+  steps4: {
+    label: "신청 절차 4",
+    desc: "01~04 번호 카드",
+    defaultW: 1600,
+    defaultH: 600,
+  },
+  textHero: {
+    label: "큰 텍스트",
+    desc: "여러 줄 디스플레이",
+    defaultW: 1200,
+    defaultH: 500,
+  },
+  bigStat: {
+    label: "큰 숫자",
+    desc: "70,000명 / 4일",
+    defaultW: 1200,
+    defaultH: 500,
+  },
+  cta: {
+    label: "CTA (빨강)",
+    desc: "빨강 풀브리드 + 버튼",
+    defaultW: 1920,
+    defaultH: 1080,
+  },
+  slotsTeaser: {
+    label: "슬롯 미리보기",
+    desc: "카테고리 카드 그리드",
+    defaultW: 1600,
+    defaultH: 600,
+  },
+  richText: {
+    label: "본문 텍스트",
+    desc: "긴 텍스트 블록",
+    defaultW: 1200,
+    defaultH: 500,
+  },
+};
+
+function defaultComponentData(kind: CanvasComponentKind): Record<string, unknown> {
+  switch (kind) {
+    case "cover":
+      return {
+        eyebrow: "Sponsorship",
+        title: "행사명",
+        subtitle: "일정 · 장소",
+      };
+    case "stats3year":
+      return {
+        eyebrow: "scale",
+        headline: "참관 규모",
+        years: [
+          { year: 2023, visitors: 70163, overseas: 3029 },
+          { year: 2024, visitors: 70760, overseas: 4274 },
+          { year: 2025, visitors: 72507, overseas: 4941 },
+        ],
+        footnote: "전체 방문객의 70% 이상 B2B 참관객.",
+      };
+    case "adGoals4":
+      return {
+        eyebrow: "ad goals",
+        headline: "어떤 목적으로 스폰서십을 진행하시나요?",
+        cards: [
+          { label: "브랜드 확산형", description: "전 동선 통합 노출" },
+          { label: "현장 방문객 유도형", description: "부스로 유도" },
+          { label: "신제품 홍보형", description: "제품 인지 확보" },
+          { label: "맞춤형 타겟팅", description: "결정권자 직접 도달" },
+        ],
+      };
+    case "benefits4":
+      return {
+        eyebrow: "sponsors benefits",
+        headline: "스폰서 참가사 4가지 혜택",
+        cards: [
+          { title: "상위 고정", description: "검색 상단 노출" },
+          { title: "스폰서 뱃지", description: "참가업체 카드 강조" },
+          { title: "홈페이지 배너", description: "추가 노출" },
+          { title: "도면 내 로고", description: "도면 표기" },
+        ],
+      };
+    case "steps4":
+      return {
+        eyebrow: "application",
+        headline: "신청 절차",
+        steps: [
+          { title: "신청 상담", description: "사무국 문의" },
+          { title: "견적서 발송", description: "체크리스트 후" },
+          { title: "입금", description: "마감일까지" },
+          { title: "관련 서류", description: "계산서 발행" },
+        ],
+      };
+    case "textHero":
+      return {
+        eyebrow: "exposure",
+        lines: ["모든 동선 위에", "*당신의 브랜드를."],
+        description: "4일간 모든 참관객이 거치는 동선 위에서.",
+      };
+    case "bigStat":
+      return {
+        eyebrow: "scale",
+        value: "70,000",
+        valueSuffix: "명",
+        label: "이 4일간 다녀갑니다.",
+      };
+    case "cta":
+      return {
+        eyebrow: "get in touch",
+        lines: ["어떤 자리에", "들어갈지,", "먼저 둘러보세요."],
+        primaryLabel: "스폰서십 둘러보기",
+        secondaryLabel: "바로 문의하기",
+        showContact: true,
+      };
+    case "slotsTeaser":
+      return {
+        eyebrow: "spotlight",
+        headline: "추천 슬롯",
+        categorySlugs: [],
+        layout: "grid",
+      };
+    case "richText":
+      return {
+        eyebrow: "",
+        headline: "",
+        body: "본문 텍스트를 자유롭게 입력하세요.",
+      };
+  }
+}
 
 /**
  * 1920×1080 캔버스 자유 배치 에디터.
@@ -101,6 +260,26 @@ export function CanvasEditor({
     setSelectedId(n.id);
   };
 
+  const addComponent = (kind: CanvasComponentKind) => {
+    const meta = COMPONENT_META[kind];
+    const w = Math.min(meta.defaultW, CANVAS_W - 200);
+    const h = Math.min(meta.defaultH, CANVAS_H - 200);
+    const node: CanvasComponentNode = {
+      id: randomId(),
+      rect: {
+        x: snap((CANVAS_W - w) / 2),
+        y: snap((CANVAS_H - h) / 2),
+        w: snap(w),
+        h: snap(h),
+      },
+      type: "component",
+      componentKind: kind,
+      data: defaultComponentData(kind),
+    };
+    onChange({ ...page, nodes: [...page.nodes, node] });
+    setSelectedId(node.id);
+  };
+
   const deleteNode = (id: string) => {
     onChange({ ...page, nodes: page.nodes.filter((n) => n.id !== id) });
     setSelectedId(null);
@@ -118,30 +297,183 @@ export function CanvasEditor({
     setSelectedId(copy.id);
   };
 
-  // 키보드 — Delete 키
+  // 이미지 Blob 을 받아 Storage 업로드 후 캔버스 중앙에 이미지 노드 생성
+  const addImageFromBlob = useCallback(
+    async (blob: Blob, suggestedName = "paste.png") => {
+      try {
+        const file =
+          blob instanceof File
+            ? blob
+            : new File([blob], suggestedName, { type: blob.type || "image/png" });
+        const path = buildStoragePath("landing/canvas-paste", file.name);
+        const result = await uploadFile(file, path);
+
+        // 이미지 본래 크기로 노드 만들고 캔버스 안에서 80% 이내로 맞춤
+        const dims = await loadImageDims(result.url);
+        const max = 800;
+        let w = dims.w;
+        let h = dims.h;
+        const ratio = w / h;
+        if (w > max) {
+          w = max;
+          h = Math.round(max / ratio);
+        }
+        if (h > 800) {
+          h = 800;
+          w = Math.round(800 * ratio);
+        }
+
+        const node: CanvasNode = {
+          id: randomId(),
+          rect: {
+            x: snap((CANVAS_W - w) / 2),
+            y: snap((CANVAS_H - h) / 2),
+            w,
+            h,
+          },
+          type: "image",
+          data: { url: result.url, fit: "cover", radius: 0 },
+        };
+        onChange({ ...page, nodes: [...page.nodes, node] });
+        setSelectedId(node.id);
+      } catch (e) {
+        alert(
+          `이미지 업로드 실패: ${e instanceof Error ? e.message : String(e)}`
+        );
+      }
+    },
+    [page, onChange]
+  );
+
+  // 클립보드 텍스트 → 텍스트 노드 (또는 선택된 텍스트 노드 안에 채움)
+  const addTextFromString = useCallback(
+    (text: string) => {
+      const trimmed = text.replace(/\r\n/g, "\n");
+      if (!trimmed.trim()) return;
+
+      // 선택된 텍스트 노드가 있으면 거기에 추가/대체 (Cmd+V on focused empty text)
+      if (selectedId) {
+        const n = page.nodes.find((nn) => nn.id === selectedId);
+        if (n && n.type === "text" && !n.data.content?.trim()) {
+          onChange({
+            ...page,
+            nodes: page.nodes.map((nn) => {
+              if (nn.id !== selectedId) return nn;
+              if (nn.type !== "text") return nn;
+              return {
+                ...nn,
+                data: { ...nn.data, content: trimmed },
+              };
+            }),
+          });
+          return;
+        }
+      }
+
+      // 새 텍스트 노드 — 줄 수·길이로 적당한 크기 추정
+      const lines = trimmed.split("\n");
+      const longest = lines.reduce((m, l) => Math.max(m, l.length), 0);
+      const fontSize = lines.length === 1 && longest < 20 ? 64 : 32;
+      const w = Math.min(1200, Math.max(300, longest * fontSize * 0.55));
+      const h = Math.max(80, lines.length * fontSize * 1.4);
+      const node: CanvasNode = {
+        id: randomId(),
+        rect: {
+          x: snap((CANVAS_W - w) / 2),
+          y: snap((CANVAS_H - h) / 2),
+          w: snap(w),
+          h: snap(h),
+        },
+        type: "text",
+        data: {
+          content: trimmed,
+          fontSize,
+          fontWeight: 500,
+          align: "left",
+        },
+      };
+      onChange({ ...page, nodes: [...page.nodes, node] });
+      setSelectedId(node.id);
+    },
+    [page, selectedId, onChange]
+  );
+
+  // 키보드: Delete, Cmd/Ctrl+D 복제, Cmd/Ctrl+C/V (외부 텍스트·이미지 paste)
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement | null;
+      const inField =
+        target?.tagName === "INPUT" ||
+        target?.tagName === "TEXTAREA" ||
+        target?.isContentEditable;
+
       if (
+        !inField &&
         (e.key === "Delete" || e.key === "Backspace") &&
-        selectedId &&
-        (e.target as HTMLElement)?.tagName !== "INPUT" &&
-        (e.target as HTMLElement)?.tagName !== "TEXTAREA"
+        selectedId
       ) {
         e.preventDefault();
         deleteNode(selectedId);
       }
+      // Cmd/Ctrl + D = 복제
+      if (!inField && (e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "d") {
+        if (selectedId) {
+          e.preventDefault();
+          duplicateNode(selectedId);
+        }
+      }
     };
+
+    const onPaste = (e: ClipboardEvent) => {
+      const target = e.target as HTMLElement | null;
+      // 입력 필드 안에서 Ctrl+V 는 정상 동작 (캔버스용 핸들러 무시)
+      if (
+        target?.tagName === "INPUT" ||
+        target?.tagName === "TEXTAREA" ||
+        target?.isContentEditable
+      ) {
+        return;
+      }
+
+      const items = e.clipboardData?.items;
+      if (!items) return;
+
+      // 1) 이미지 — 우선
+      for (let i = 0; i < items.length; i++) {
+        const it = items[i];
+        if (it.kind === "file" && it.type.startsWith("image/")) {
+          const file = it.getAsFile();
+          if (file) {
+            e.preventDefault();
+            void addImageFromBlob(file);
+            return;
+          }
+        }
+      }
+
+      // 2) 텍스트 — fallback
+      const text = e.clipboardData?.getData("text/plain");
+      if (text && text.trim()) {
+        e.preventDefault();
+        addTextFromString(text);
+      }
+    };
+
     window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
+    window.addEventListener("paste", onPaste);
+    return () => {
+      window.removeEventListener("keydown", onKey);
+      window.removeEventListener("paste", onPaste);
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedId, page]);
+  }, [selectedId, page, addImageFromBlob, addTextFromString]);
 
   return (
     <div className="grid grid-cols-[180px_1fr_300px] gap-3 h-[calc(100vh-200px)] min-h-[600px]">
       {/* 좌측 — 노드 추가 툴바 */}
       <aside className="bg-white border border-ink-100 rounded-card overflow-hidden flex flex-col">
         <div className="px-3 py-2 border-b border-ink-100 text-[11px] uppercase tracking-wide font-bold text-ink-700">
-          노드 추가
+          기본 도형
         </div>
         <div className="p-2 grid grid-cols-2 gap-1">
           <ToolButton
@@ -171,12 +503,37 @@ export function CanvasEditor({
           />
         </div>
 
-        <div className="px-3 py-2 border-t border-ink-100 mt-auto">
-          <div className="text-[11px] uppercase tracking-wide font-bold text-ink-700 mb-1.5">
-            노드 {page.nodes.length}개
-          </div>
-          <div className="text-[10.5px] text-ink-500 leading-snug">
-            클릭=선택 · 드래그=이동 · 모서리=리사이즈 · Delete=삭제
+        <div className="px-3 py-2 border-y border-ink-100 text-[11px] uppercase tracking-wide font-bold text-ink-700 flex items-center gap-1.5">
+          <span className="text-brand-500">★</span>
+          컴포넌트
+        </div>
+        <div className="p-2 grid grid-cols-1 gap-1 overflow-y-auto flex-1">
+          {(Object.keys(COMPONENT_META) as CanvasComponentKind[]).map((k) => {
+            const meta = COMPONENT_META[k];
+            return (
+              <button
+                key={k}
+                type="button"
+                onClick={() => addComponent(k)}
+                className="text-left px-2.5 py-2 rounded-btn border border-ink-100 hover:border-brand-500 hover:bg-brand-50 transition-colors"
+              >
+                <div className="text-[12px] font-bold text-ink-900 leading-tight">
+                  {meta.label}
+                </div>
+                <div className="text-[10px] text-ink-500 mt-0.5 leading-snug truncate">
+                  {meta.desc}
+                </div>
+              </button>
+            );
+          })}
+        </div>
+
+        <div className="px-3 py-2 border-t border-ink-100 space-y-2">
+          <div className="text-[10.5px] text-ink-500 leading-snug space-y-0.5">
+            <div>노드 <strong className="text-ink-900">{page.nodes.length}</strong>개</div>
+            <div>· 드래그=이동 · 모서리=리사이즈</div>
+            <div>· Delete · Cmd+D=복제</div>
+            <div>· Ctrl+V=이미지/텍스트 붙여넣기</div>
           </div>
         </div>
       </aside>
@@ -554,6 +911,24 @@ function NodePreview({ node }: { node: CanvasNode }) {
           ▶ 동영상
         </div>
       );
+    case "component": {
+      const meta = COMPONENT_META[node.componentKind];
+      return (
+        <div className="w-full h-full bg-brand-50 border-2 border-dashed border-brand-500 rounded p-3 pointer-events-none overflow-hidden">
+          <div className="font-num text-[10px] uppercase tracking-widest text-brand-500 font-bold">
+            ★ {meta.label}
+          </div>
+          <div className="text-[11px] text-ink-700 mt-1 leading-snug">
+            {(node.data as { headline?: string; title?: string }).headline ||
+              (node.data as { title?: string }).title ||
+              meta.desc}
+          </div>
+          <div className="text-[9px] text-ink-500 mt-2 font-mono">
+            컴포넌트 — 인스펙터에서 내용 편집
+          </div>
+        </div>
+      );
+    }
   }
 }
 
@@ -694,6 +1069,9 @@ function NodeInspector({
         )}
         {node.type === "video" && (
           <VideoNodeInspector node={node} onUpdateData={onUpdateData} />
+        )}
+        {node.type === "component" && (
+          <ComponentNodeInspector node={node} onUpdateData={onUpdateData} />
         )}
 
         <hr className="border-ink-100" />
@@ -1067,6 +1445,255 @@ function VideoNodeInspector({
   );
 }
 
+// ──────────────────────────────────────────────────────────────────────────
+// Component 노드 인스펙터 — kind 별 텍스트 필드 노출
+// ──────────────────────────────────────────────────────────────────────────
+
+function ComponentNodeInspector({
+  node,
+  onUpdateData,
+}: {
+  node: CanvasComponentNode;
+  onUpdateData: (p: Record<string, unknown>) => void;
+}) {
+  const meta = COMPONENT_META[node.componentKind];
+  const d = node.data as Record<string, unknown>;
+
+  return (
+    <div className="space-y-3">
+      <div className="bg-brand-50 border border-brand-500 rounded-btn px-3 py-2 text-[11px]">
+        <div className="font-num font-bold text-brand-500 uppercase tracking-widest text-[10px] mb-1">
+          ★ {meta.label}
+        </div>
+        <div className="text-ink-700">{meta.desc}</div>
+      </div>
+
+      {/* 공통 텍스트 필드 (있는 경우만) */}
+      {"eyebrow" in d && (
+        <StringField
+          label="상단 라벨 (eyebrow)"
+          value={(d.eyebrow as string) ?? ""}
+          onChange={(v) => onUpdateData({ eyebrow: v })}
+        />
+      )}
+      {"title" in d && (
+        <StringField
+          label="제목"
+          value={(d.title as string) ?? ""}
+          onChange={(v) => onUpdateData({ title: v })}
+        />
+      )}
+      {"subtitle" in d && (
+        <StringField
+          label="부제"
+          value={(d.subtitle as string) ?? ""}
+          onChange={(v) => onUpdateData({ subtitle: v })}
+        />
+      )}
+      {"headline" in d && (
+        <StringField
+          label="헤드라인"
+          value={(d.headline as string) ?? ""}
+          onChange={(v) => onUpdateData({ headline: v })}
+        />
+      )}
+      {"description" in d && (
+        <StringField
+          label="설명"
+          value={(d.description as string) ?? ""}
+          onChange={(v) => onUpdateData({ description: v })}
+          multiline
+        />
+      )}
+      {"footnote" in d && (
+        <StringField
+          label="각주"
+          value={(d.footnote as string) ?? ""}
+          onChange={(v) => onUpdateData({ footnote: v })}
+          multiline
+        />
+      )}
+
+      {/* bigStat */}
+      {node.componentKind === "bigStat" && (
+        <>
+          <StringField
+            label="큰 숫자"
+            value={(d.value as string) ?? ""}
+            onChange={(v) => onUpdateData({ value: v })}
+          />
+          <StringField
+            label="단위"
+            value={(d.valueSuffix as string) ?? ""}
+            onChange={(v) => onUpdateData({ valueSuffix: v })}
+          />
+          <StringField
+            label="라벨"
+            value={(d.label as string) ?? ""}
+            onChange={(v) => onUpdateData({ label: v })}
+          />
+        </>
+      )}
+
+      {/* textHero / cta — lines */}
+      {(node.componentKind === "textHero" || node.componentKind === "cta") && (
+        <StringField
+          label="줄별 (한 줄에 1행, * 시작 = 빨강 강조)"
+          value={((d.lines as string[]) ?? []).join("\n")}
+          onChange={(v) => onUpdateData({ lines: v.split("\n") })}
+          multiline
+        />
+      )}
+
+      {/* cta 버튼 */}
+      {node.componentKind === "cta" && (
+        <>
+          <StringField
+            label="기본 버튼 라벨"
+            value={(d.primaryLabel as string) ?? ""}
+            onChange={(v) => onUpdateData({ primaryLabel: v })}
+          />
+          <StringField
+            label="기본 버튼 링크"
+            value={(d.primaryHref as string) ?? ""}
+            onChange={(v) => onUpdateData({ primaryHref: v })}
+            mono
+          />
+          <StringField
+            label="보조 버튼 라벨"
+            value={(d.secondaryLabel as string) ?? ""}
+            onChange={(v) => onUpdateData({ secondaryLabel: v })}
+          />
+          <StringField
+            label="보조 버튼 링크"
+            value={(d.secondaryHref as string) ?? ""}
+            onChange={(v) => onUpdateData({ secondaryHref: v })}
+            mono
+          />
+          <label className="flex items-center gap-2 text-[12px] cursor-pointer">
+            <input
+              type="checkbox"
+              checked={(d.showContact as boolean) ?? false}
+              onChange={(e) =>
+                onUpdateData({ showContact: e.target.checked })
+              }
+              className="accent-ink-900"
+            />
+            사무국 연락처 노출
+          </label>
+        </>
+      )}
+
+      {/* slotsTeaser */}
+      {node.componentKind === "slotsTeaser" && (
+        <>
+          <StringField
+            label="카테고리 slug (콤마 구분)"
+            value={((d.categorySlugs as string[]) ?? []).join(", ")}
+            onChange={(v) =>
+              onUpdateData({
+                categorySlugs: v
+                  .split(",")
+                  .map((s) => s.trim())
+                  .filter(Boolean),
+              })
+            }
+            mono
+          />
+          <Field label="레이아웃">
+            <select
+              value={(d.layout as string) ?? "grid"}
+              onChange={(e) => onUpdateData({ layout: e.target.value })}
+              className={inputCls()}
+            >
+              <option value="grid">그리드</option>
+              <option value="row">가로 스크롤</option>
+            </select>
+          </Field>
+        </>
+      )}
+
+      {/* richText */}
+      {node.componentKind === "richText" && (
+        <StringField
+          label="본문"
+          value={(d.body as string) ?? ""}
+          onChange={(v) => onUpdateData({ body: v })}
+          multiline
+        />
+      )}
+
+      {/* 배열형 (cards / steps / years) — JSON 편집 */}
+      {(["cards", "steps", "years"] as const).map((k) =>
+        Array.isArray(d[k]) ? (
+          <div key={k}>
+            <Field
+              label={
+                k === "cards" ? "카드 (JSON)" : k === "steps" ? "단계 (JSON)" : "연도 (JSON)"
+              }
+            >
+              <textarea
+                defaultValue={JSON.stringify(d[k], null, 2)}
+                onBlur={(e) => {
+                  try {
+                    const parsed = JSON.parse(e.target.value);
+                    if (Array.isArray(parsed)) onUpdateData({ [k]: parsed });
+                  } catch {
+                    alert("JSON 파싱 실패. 형식을 확인하세요.");
+                  }
+                }}
+                className={inputCls() + " font-mono text-[11px] min-h-[180px]"}
+              />
+            </Field>
+          </div>
+        ) : null
+      )}
+
+      <p className="text-[10.5px] text-ink-500 leading-snug pt-2 border-t border-ink-100">
+        💡 컴포넌트는 노드 크기 안에 자동 맞춤. 더 큰 디자인이 필요하면 노드를
+        리사이즈하세요.
+      </p>
+    </div>
+  );
+}
+
+function StringField({
+  label,
+  value,
+  onChange,
+  multiline,
+  mono,
+}: {
+  label: string;
+  value: string;
+  onChange: (v: string) => void;
+  multiline?: boolean;
+  mono?: boolean;
+}) {
+  return (
+    <Field label={label}>
+      {multiline ? (
+        <textarea
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          className={
+            inputCls() +
+            " min-h-[60px] " +
+            (mono ? "font-mono text-[11px]" : "")
+          }
+        />
+      ) : (
+        <input
+          type="text"
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          className={inputCls() + (mono ? " font-mono text-[11px]" : "")}
+        />
+      )}
+    </Field>
+  );
+}
+
 // ── 작은 헬퍼 ────────────────────────────────────────────────────────────
 
 function ToolButton({
@@ -1141,6 +1768,7 @@ const NODE_TYPE_LABEL: Record<CanvasNodeType, string> = {
   shape: "도형",
   button: "버튼",
   video: "동영상",
+  component: "컴포넌트",
 };
 
 function snap(v: number): number {
@@ -1200,6 +1828,14 @@ function makeNode(type: CanvasNodeType): CanvasNode {
         type: "video",
         data: { url: "" },
       };
+    case "component":
+      // makeNode 는 primitives 전용. component 는 addComponent(kind) 별도 경로.
+      return {
+        ...base,
+        type: "component",
+        componentKind: "cover",
+        data: defaultComponentData("cover"),
+      };
   }
 }
 
@@ -1210,5 +1846,19 @@ function resolveBg(bg?: string): string | undefined {
   if (bg === "ink") return "#0A0A0A";
   if (bg === "brand") return "var(--brand-500)";
   return bg;
+}
+
+/** 이미지 URL에서 원본 해상도 측정 */
+function loadImageDims(url: string): Promise<{ w: number; h: number }> {
+  return new Promise((resolve) => {
+    if (typeof window === "undefined") {
+      resolve({ w: 800, h: 450 });
+      return;
+    }
+    const img = new window.Image();
+    img.onload = () => resolve({ w: img.naturalWidth, h: img.naturalHeight });
+    img.onerror = () => resolve({ w: 800, h: 450 });
+    img.src = url;
+  });
 }
 

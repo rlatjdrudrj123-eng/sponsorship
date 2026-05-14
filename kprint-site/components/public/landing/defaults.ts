@@ -6,13 +6,17 @@ import type { LandingBlock, LandingBlockType, SiteSettings } from "@/lib/types";
  * - 어드민이 [랜딩 빌더]에서 직접 블록을 만들지 않은 경우 fallback 으로 사용
  * - "기본값 채우기" 버튼이 이 함수를 호출해 settings.landing 을 시드
  */
+/**
+ * 기본 랜딩 — 캔버스 페이지 시퀀스로 자동 생성.
+ * 각 슬라이드 = 1 CanvasPage, 페이지 중앙에 풀-크기 컴포넌트 1개.
+ * 사용자는 어드민에서 페이지마다 컴포넌트·텍스트·이미지를 자유 배치.
+ */
 export function buildDefaultBlocks(settings: SiteSettings | null): LandingBlock[] {
   const eventName = settings?.event.nameKo || "Sponsorship";
   const dateRange = settings?.event.dateRange || "";
   const venue = settings?.event.venue || "";
   const subtitleParts = [dateRange, venue].filter(Boolean);
 
-  // chartData가 있으면 stats3year 채움
   const years = (settings?.why?.chartData ?? [])
     .filter((c) => c.year && c.visitors)
     .slice(-3)
@@ -22,7 +26,6 @@ export function buildDefaultBlocks(settings: SiteSettings | null): LandingBlock[
       overseas: c.exhibitors > 0 ? c.exhibitors : undefined,
     }));
 
-  // applicationSteps가 있으면 그걸로, 없으면 KIMES 기본
   const steps =
     (settings?.applicationSteps ?? []).length > 0
       ? settings!.applicationSteps.map((s) => ({
@@ -30,140 +33,118 @@ export function buildDefaultBlocks(settings: SiteSettings | null): LandingBlock[
           description: s.desc,
         }))
       : [
-          {
-            title: "신청 상담",
-            description: "사무국 문의 후 관심 슬롯 확인",
-          },
+          { title: "신청 상담", description: "사무국 문의 후 관심 슬롯 확인" },
           { title: "견적서 발송", description: "체크리스트 신청 후 견적 수령" },
           { title: "입금", description: "마감일까지 전액 현금 완납" },
           { title: "관련 서류", description: "계산서 발행 (개막 1개월 전)" },
         ];
 
-  const blocks: LandingBlock[] = [
-    {
-      id: id(),
-      type: "cover",
-      data: {
-        eyebrow: "Sponsorship",
-        title: eventName,
-        subtitle: subtitleParts.join("   ·   "),
-        bgImageUrl: settings?.kv?.desktopUrl,
+  // 캔버스 페이지 한 장 짜리 헬퍼 — 가운데에 풀 크기 컴포넌트 1개 배치
+  const canvasPageWith = (
+    name: string,
+    componentKind:
+      | "cover"
+      | "stats3year"
+      | "adGoals4"
+      | "benefits4"
+      | "steps4"
+      | "textHero"
+      | "cta",
+    data: Record<string, unknown>
+  ): LandingBlock => ({
+    id: id(),
+    type: "canvasPage",
+    data: {
+      page: {
+        id: id(),
+        name,
+        bg: componentKind === "cta" ? "brand" : "canvas",
+        nodes: [
+          {
+            id: id(),
+            type: "component",
+            componentKind,
+            rect: { x: 0, y: 0, w: 1920, h: 1080 },
+            data,
+          },
+        ],
       },
     },
+  });
+
+  const blocks: LandingBlock[] = [
+    canvasPageWith("표지", "cover", {
+      eyebrow: "Sponsorship",
+      title: eventName,
+      subtitle: subtitleParts.join("   ·   "),
+      bgImageUrl: settings?.kv?.desktopUrl,
+    }),
   ];
 
   if (years.length > 0) {
-    blocks.push({
-      id: id(),
-      type: "stats3year",
-      data: {
+    blocks.push(
+      canvasPageWith("3년 통계", "stats3year", {
         eyebrow: "scale",
         headline: settings?.why?.headline || "참관 규모",
         years,
         footnote:
-          "전체 방문객의 70% 이상이 B2B 참관객. 의료/병원·제조/무역/유통·언론/기관까지 핵심 결정권자가 한자리에.",
-      },
-    });
+          "전체 방문객의 70% 이상이 B2B 참관객. 의료/병원·제조/무역/유통·언론/기관까지 핵심 결정권자.",
+      })
+    );
   }
 
-  blocks.push({
-    id: id(),
-    type: "textHero",
-    data: {
+  blocks.push(
+    canvasPageWith("브랜드 메시지", "textHero", {
       eyebrow: "exposure",
       lines: ["모든 동선 위에", "*당신의 브랜드를."],
       description:
         "주차장 → 로비 → 전시홀 → 세미나실. 4일간 모든 참관객이 거치는 동선 위에서 자연스럽게 인지됩니다.",
-    },
-  });
+    })
+  );
 
-  blocks.push({
-    id: id(),
-    type: "adGoals4",
-    data: {
+  blocks.push(
+    canvasPageWith("광고 목적", "adGoals4", {
       eyebrow: "ad goals",
       headline: "어떤 목적으로 스폰서십을 진행하시나요?",
       cards: [
-        {
-          label: "브랜드 확산형",
-          description:
-            "전 동선 통합 노출. 옥외 LED, 천장 배너, 등록대 등 대형 채널 위주.",
-          emoji: "🚀",
-        },
-        {
-          label: "현장 방문객 유도형",
-          description:
-            "참관객 동선 위에서 부스로 유도. 등록대, 라이팅월, 도면 등.",
-          emoji: "🧭",
-        },
-        {
-          label: "신제품 홍보형",
-          description:
-            "쇼가이드 광고, SNS 인터뷰, 카드뉴스로 제품 인지 확보.",
-          emoji: "📰",
-        },
-        {
-          label: "맞춤형 타겟팅 광고",
-          description:
-            "참관등록·세미나·검색 페이지 배너로 결정권자 직접 도달.",
-          emoji: "🎯",
-        },
+        { label: "브랜드 확산형", description: "전 동선 통합 노출.", emoji: "🚀" },
+        { label: "현장 방문객 유도형", description: "참관객 동선 위.", emoji: "🧭" },
+        { label: "신제품 홍보형", description: "쇼가이드·SNS 인터뷰.", emoji: "📰" },
+        { label: "맞춤형 타겟팅", description: "결정권자 직접 도달.", emoji: "🎯" },
       ],
-    },
-  });
+    })
+  );
 
-  blocks.push({
-    id: id(),
-    type: "benefits4",
-    data: {
+  blocks.push(
+    canvasPageWith("스폰서 혜택", "benefits4", {
       eyebrow: "sponsors benefits",
       headline: "스폰서 참가사에게 드리는 4가지 혜택",
       cards: [
-        {
-          title: "참가업체 검색 페이지 상위 고정",
-          description: "검색 결과 상단에 우선 노출됩니다.",
-          emoji: "📌",
-        },
-        {
-          title: "스폰서 참가사 뱃지 표기",
-          description: "참가업체 카드에 별도 뱃지로 강조 표시.",
-          emoji: "🏅",
-        },
-        {
-          title: "홈페이지 배너 노출",
-          description: "공식 사이트 배너 영역에 추가 노출.",
-          emoji: "🌐",
-        },
-        {
-          title: "도면 내 로고 표기",
-          description: "전시장 도면 위에 참가사 로고가 함께 표시됩니다.",
-          emoji: "🗺️",
-        },
+        { title: "참가업체 검색 상위 고정", description: "검색 상단 노출", emoji: "📌" },
+        { title: "스폰서 뱃지", description: "참가업체 카드 강조", emoji: "🏅" },
+        { title: "홈페이지 배너", description: "공식 사이트 배너", emoji: "🌐" },
+        { title: "도면 내 로고", description: "전시장 도면 표기", emoji: "🗺️" },
       ],
-    },
-  });
+    })
+  );
 
-  blocks.push({
-    id: id(),
-    type: "steps4",
-    data: {
+  blocks.push(
+    canvasPageWith("신청 절차", "steps4", {
       eyebrow: "application",
       headline: "신청 절차",
       steps: steps.slice(0, 4),
-    },
-  });
+    })
+  );
 
-  blocks.push({
-    id: id(),
-    type: "cta",
-    data: {
+  blocks.push(
+    canvasPageWith("CTA", "cta", {
       eyebrow: "get in touch",
       lines: ["어떤 자리에", "들어갈지,", "먼저 둘러보세요."],
       primaryLabel: "스폰서십 둘러보기",
       secondaryLabel: "바로 문의하기",
       showContact: true,
-    },
-  });
+    })
+  );
 
   return blocks;
 }
@@ -294,25 +275,31 @@ export function emptyBlock(type: LandingBlockType): LandingBlock {
 
 export const BLOCK_TYPE_META: Record<
   LandingBlockType,
-  { label: string; desc: string; group: "main" | "media" | "layout" | "advanced" }
+  { label: string; desc: string; group: "main" | "media" | "layout" | "advanced" | "legacy"; hidden?: boolean }
 > = {
-  cover: { label: "표지 (Cover)", desc: "행사명 + 일정 · 큰 히어로", group: "main" },
-  stats3year: { label: "3년 통계", desc: "방문객·해외바이어 연도별 카드", group: "main" },
-  adGoals4: { label: "4가지 광고 목적", desc: "타입 1~4 카드 그리드", group: "main" },
-  benefits4: { label: "4가지 혜택", desc: "Sponsor Benefits 카드", group: "main" },
-  steps4: { label: "신청 절차 4단계", desc: "01~04 번호 카드", group: "main" },
-  textHero: { label: "큰 텍스트", desc: '"모든 동선 위에 / 당신의 브랜드를"', group: "main" },
-  bigStat: { label: "큰 숫자 한 개", desc: '"70,000명이 / 4일간 다녀갑니다"', group: "main" },
-  cta: { label: "CTA (빨강)", desc: "빨강 풀브리드 + 버튼 2개", group: "main" },
-  buttonRow: { label: "버튼 행", desc: "여러 버튼 가로 배치", group: "main" },
-  richText: { label: "긴 텍스트 본문", desc: "여러 줄 본문 텍스트", group: "main" },
-  twoColumn: { label: "2-컬럼", desc: "좌우 분할 (텍스트+이미지 자유 조합)", group: "layout" },
-  image: { label: "이미지", desc: "단일 이미지 슬라이드", group: "media" },
-  imageGrid: { label: "이미지 그리드", desc: "2~6열 이미지 갤러리", group: "media" },
-  videoEmbed: { label: "동영상", desc: "YouTube / Vimeo / mp4 임베드", group: "media" },
-  divider: { label: "구분선", desc: "섹션 사이 헤어라인 또는 라벨", group: "layout" },
-  spacer: { label: "여백", desc: "수직 빈 공간", group: "layout" },
-  slotsTeaser: { label: "슬롯 미리보기", desc: "선택한 카테고리들을 카드로", group: "advanced" },
-  customHtml: { label: "자유 HTML", desc: "직접 마크업 (위험 — 신뢰 전제)", group: "advanced" },
-  canvasPage: { label: "캔버스 (자유 배치)", desc: "1920×1080 Figma-스타일 — 자유 노드 배치, 모바일 자동 스택", group: "advanced" },
+  // 메인 — 캔버스만 권장. 기존 블록들은 캔버스의 컴포넌트로 흡수됨.
+  canvasPage: {
+    label: "캔버스 페이지",
+    desc: "1920×1080 자유 배치 — 텍스트·이미지·도형·컴포넌트 (Cover/통계/혜택/CTA 등)",
+    group: "main",
+  },
+  // 캔버스가 아닌 옛 블록들 — 호환을 위해 남기지만 새로 추가하지는 못하게 (hidden)
+  cover: { label: "표지 (Cover)", desc: "행사명 + 일정 · 큰 히어로", group: "legacy", hidden: true },
+  stats3year: { label: "3년 통계", desc: "방문객·해외바이어 연도별 카드", group: "legacy", hidden: true },
+  adGoals4: { label: "4가지 광고 목적", desc: "타입 1~4 카드 그리드", group: "legacy", hidden: true },
+  benefits4: { label: "4가지 혜택", desc: "Sponsor Benefits 카드", group: "legacy", hidden: true },
+  steps4: { label: "신청 절차 4단계", desc: "01~04 번호 카드", group: "legacy", hidden: true },
+  textHero: { label: "큰 텍스트", desc: '"모든 동선 위에 / 당신의 브랜드를"', group: "legacy", hidden: true },
+  bigStat: { label: "큰 숫자 한 개", desc: '"70,000명이 / 4일간 다녀갑니다"', group: "legacy", hidden: true },
+  cta: { label: "CTA (빨강)", desc: "빨강 풀브리드 + 버튼 2개", group: "legacy", hidden: true },
+  buttonRow: { label: "버튼 행", desc: "여러 버튼 가로 배치", group: "legacy", hidden: true },
+  richText: { label: "긴 텍스트 본문", desc: "여러 줄 본문 텍스트", group: "legacy", hidden: true },
+  twoColumn: { label: "2-컬럼", desc: "좌우 분할 (텍스트+이미지 자유 조합)", group: "legacy", hidden: true },
+  image: { label: "이미지", desc: "단일 이미지 슬라이드", group: "legacy", hidden: true },
+  imageGrid: { label: "이미지 그리드", desc: "2~6열 이미지 갤러리", group: "legacy", hidden: true },
+  videoEmbed: { label: "동영상", desc: "YouTube / Vimeo / mp4 임베드", group: "legacy", hidden: true },
+  divider: { label: "구분선", desc: "섹션 사이 헤어라인 또는 라벨", group: "legacy", hidden: true },
+  spacer: { label: "여백", desc: "수직 빈 공간", group: "legacy", hidden: true },
+  slotsTeaser: { label: "슬롯 미리보기", desc: "선택한 카테고리들을 카드로", group: "legacy", hidden: true },
+  customHtml: { label: "자유 HTML", desc: "직접 마크업 (위험 — 신뢰 전제)", group: "legacy", hidden: true },
 };
