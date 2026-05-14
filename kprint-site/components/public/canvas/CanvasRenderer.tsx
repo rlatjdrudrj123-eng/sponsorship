@@ -4,16 +4,20 @@ import Link from "next/link";
 import { useEffect, useState, type CSSProperties } from "react";
 import type {
   CanvasButtonNode,
+  CanvasChartNode,
+  CanvasIconNode,
   CanvasImageNode,
   CanvasNode,
   CanvasPage,
   CanvasShapeNode,
   CanvasTextNode,
   CanvasVideoNode,
+  ChartSeries,
   ShapeFill,
   SiteSettings,
 } from "@/lib/types";
 import { ComponentNodeRenderer } from "./ComponentNodeRenderer";
+import * as LucideIcons from "lucide-react";
 
 /**
  * 캔버스 페이지 렌더러.
@@ -101,14 +105,16 @@ function CanvasDesktop({
             className="absolute inset-0 w-full h-full object-cover pointer-events-none"
           />
         )}
-        {page.nodes.map((n) => (
-          <NodeRenderer
-            key={n.id}
-            node={n}
-            eventId={eventId}
-            settings={settings}
-          />
-        ))}
+        {page.nodes
+          .filter((n) => !n.hidden)
+          .map((n) => (
+            <NodeRenderer
+              key={n.id}
+              node={n}
+              eventId={eventId}
+              settings={settings}
+            />
+          ))}
       </div>
       {/* 화면 폭에 맞춘 scale 자동 보정 */}
       <CanvasScale />
@@ -145,7 +151,7 @@ function CanvasMobileStack({
   settings: SiteSettings | null;
 }) {
   const visible = page.nodes
-    .filter((n) => !n.mobile?.hidden)
+    .filter((n) => !n.hidden && !n.mobile?.hidden)
     .sort((a, b) => {
       const ao = a.mobile?.order ?? a.rect.y;
       const bo = b.mobile?.order ?? b.rect.y;
@@ -230,6 +236,10 @@ function NodeInner({
       return <ButtonNodeView node={node} eventId={eventId} />;
     case "video":
       return <VideoNodeView node={node} />;
+    case "chart":
+      return <ChartNodeView node={node} />;
+    case "icon":
+      return <IconNodeView node={node} />;
     case "component":
       return (
         <ComponentNodeRenderer
@@ -296,6 +306,14 @@ function NodeRendererMobile({
           <VideoNodeView node={node} />
         </div>
       );
+    case "chart":
+      return (
+        <div className="w-full" style={{ aspectRatio: "16 / 9" }}>
+          <ChartNodeView node={node} />
+        </div>
+      );
+    case "icon":
+      return <IconNodeView node={node} />;
     case "component":
       // 모바일: 컴포넌트는 자체 레이아웃으로 렌더 (캔버스 좌표 무시)
       return (
@@ -472,6 +490,7 @@ export function ShapeSVG({ data }: { data: CanvasShapeNode["data"] }) {
         const strokeAttr = stroke && strokeWidth > 0 ? stroke : undefined;
         const strokeW =
           stroke && strokeWidth > 0 ? strokeWidth * (100 / 100) : 0;
+        const dashAttr = data.strokeDasharray;
         switch (shape) {
           case "rect": {
             const r = (data.radius ?? 0) * (100 / 100);
@@ -486,6 +505,7 @@ export function ShapeSVG({ data }: { data: CanvasShapeNode["data"] }) {
                 fill={fillAttr}
                 stroke={strokeAttr}
                 strokeWidth={strokeW}
+                strokeDasharray={dashAttr}
                 vectorEffect="non-scaling-stroke"
               />
             );
@@ -515,6 +535,7 @@ export function ShapeSVG({ data }: { data: CanvasShapeNode["data"] }) {
                   (fill.kind === "solid" ? fill.color : "#0A0A0A")
                 }
                 strokeWidth={Math.max(strokeW, 2)}
+                strokeDasharray={dashAttr}
                 vectorEffect="non-scaling-stroke"
               />
             );
@@ -676,6 +697,351 @@ function VideoNodeView({ node }: { node: CanvasVideoNode }) {
       src={embed.url}
       controls
       className="w-full h-full object-contain bg-black"
+    />
+  );
+}
+
+// ============================================================================
+// 차트 노드 — SVG 기반 line / bar / area / mixed
+// ============================================================================
+
+const CHART_PALETTE = [
+  "var(--brand-500, #DB0711)",
+  "#0A0A0A",
+  "#9CA3AF",
+  "#F59E0B",
+  "#10B981",
+  "#3B82F6",
+];
+
+export function ChartNodeView({ node }: { node: CanvasChartNode }) {
+  const d = node.data;
+  const W = 1000;
+  const H = 600;
+  const PAD = { top: 50, right: 80, bottom: 60, left: 70 };
+  const innerW = W - PAD.left - PAD.right;
+  const innerH = H - PAD.top - PAD.bottom;
+
+  const categories = d.categories ?? [];
+  const series = d.series ?? [];
+  const cw = categories.length > 0 ? innerW / categories.length : innerW;
+
+  // y 범위 계산
+  const allY = series.flatMap((s) => s.data);
+  const dataMin = allY.length ? Math.min(...allY) : 0;
+  const dataMax = allY.length ? Math.max(...allY) : 100;
+  const yMin = d.yMin ?? Math.min(0, dataMin);
+  const yMax = d.yMax ?? dataMax + (dataMax - dataMin) * 0.15;
+  const yRange = Math.max(1, yMax - yMin);
+  const yToPx = (v: number) => PAD.top + innerH - ((v - yMin) / yRange) * innerH;
+  const xToPx = (idx: number) => PAD.left + idx * cw + cw / 2;
+
+  // y 축 그리드 (5칸)
+  const gridSteps = 5;
+  const gridLines = Array.from({ length: gridSteps + 1 }, (_, i) => {
+    const v = yMin + (yRange * i) / gridSteps;
+    return { v, y: yToPx(v) };
+  });
+
+  return (
+    <svg
+      viewBox={`0 0 ${W} ${H}`}
+      preserveAspectRatio="xMidYMid meet"
+      style={{ width: "100%", height: "100%", display: "block" }}
+      role="img"
+      aria-label={d.kind + " chart"}
+    >
+      {/* 그리드 */}
+      {(d.showGrid ?? true) &&
+        gridLines.map((g, i) => (
+          <line
+            key={`grid-${i}`}
+            x1={PAD.left}
+            x2={W - PAD.right}
+            y1={g.y}
+            y2={g.y}
+            stroke="#E5E5E5"
+            strokeWidth={1}
+          />
+        ))}
+
+      {/* y축 라벨 */}
+      {(d.showAxes ?? true) &&
+        gridLines.map((g, i) => (
+          <text
+            key={`yl-${i}`}
+            x={PAD.left - 10}
+            y={g.y + 4}
+            textAnchor="end"
+            fontSize={14}
+            fill="#737373"
+          >
+            {formatChartNumber(g.v)}
+          </text>
+        ))}
+
+      {/* x축 라벨 */}
+      {(d.showAxes ?? true) &&
+        categories.map((c, i) => (
+          <text
+            key={`xl-${i}`}
+            x={xToPx(i)}
+            y={H - PAD.bottom + 22}
+            textAnchor="middle"
+            fontSize={14}
+            fill="#737373"
+          >
+            {c}
+          </text>
+        ))}
+
+      {/* 시리즈 — 막대 먼저, 라인/면적 나중에 (위에 얹기) */}
+      {series.map((s, si) => {
+        const kind = s.kind ?? (d.kind === "mixed" ? "line" : d.kind);
+        if (kind !== "bar") return null;
+        const color = s.color ?? CHART_PALETTE[si % CHART_PALETTE.length];
+        const barCount = series.filter((ss) => (ss.kind ?? d.kind) === "bar").length;
+        const barW = (cw * 0.6) / Math.max(1, barCount);
+        const barIdx = series.filter((ss, j) => j < si && (ss.kind ?? d.kind) === "bar").length;
+        return (
+          <g key={`bar-${si}`}>
+            {s.data.map((v, i) => {
+              const x = xToPx(i) - (cw * 0.3) + barIdx * barW;
+              const y = yToPx(Math.max(v, yMin));
+              const h = Math.max(0, yToPx(yMin) - y);
+              return (
+                <g key={i}>
+                  <rect x={x} y={y} width={barW} height={h} fill={color} rx={2} />
+                  {s.showLabels && (
+                    <text
+                      x={x + barW / 2}
+                      y={y - 8}
+                      textAnchor="middle"
+                      fontSize={13}
+                      fill="#0A0A0A"
+                      fontWeight={600}
+                    >
+                      {formatChartNumber(v)}
+                    </text>
+                  )}
+                </g>
+              );
+            })}
+          </g>
+        );
+      })}
+
+      {/* area 시리즈 */}
+      {series.map((s, si) => {
+        const kind = s.kind ?? (d.kind === "mixed" ? "line" : d.kind);
+        if (kind !== "area") return null;
+        const color = s.color ?? CHART_PALETTE[si % CHART_PALETTE.length];
+        const pts = s.data.map((v, i) => [xToPx(i), yToPx(v)] as const);
+        if (pts.length === 0) return null;
+        const linePath = pts.map(([x, y], i) => (i === 0 ? `M ${x} ${y}` : `L ${x} ${y}`)).join(" ");
+        const areaPath =
+          linePath +
+          ` L ${pts[pts.length - 1][0]} ${yToPx(yMin)} L ${pts[0][0]} ${yToPx(yMin)} Z`;
+        return (
+          <g key={`area-${si}`}>
+            <path d={areaPath} fill={color} fillOpacity={0.15} />
+            <path d={linePath} stroke={color} strokeWidth={3} fill="none" strokeLinejoin="round" strokeLinecap="round" />
+            {(s.showDots ?? true) &&
+              pts.map(([x, y], i) => (
+                <circle key={i} cx={x} cy={y} r={4} fill="#fff" stroke={color} strokeWidth={2} />
+              ))}
+          </g>
+        );
+      })}
+
+      {/* line 시리즈 */}
+      {series.map((s, si) => {
+        const kind = s.kind ?? (d.kind === "mixed" ? "line" : d.kind);
+        if (kind !== "line") return null;
+        const color = s.color ?? CHART_PALETTE[si % CHART_PALETTE.length];
+        const pts = s.data.map((v, i) => [xToPx(i), yToPx(v)] as const);
+        if (pts.length === 0) return null;
+        const linePath = pts.map(([x, y], i) => (i === 0 ? `M ${x} ${y}` : `L ${x} ${y}`)).join(" ");
+        return (
+          <g key={`line-${si}`}>
+            <path d={linePath} stroke={color} strokeWidth={3} fill="none" strokeLinejoin="round" strokeLinecap="round" />
+            {(s.showDots ?? true) &&
+              pts.map(([x, y], i) => (
+                <circle key={i} cx={x} cy={y} r={5} fill="#fff" stroke={color} strokeWidth={2.5} />
+              ))}
+            {s.showLabels &&
+              pts.map(([x, y], i) => (
+                <text
+                  key={`lbl-${i}`}
+                  x={x}
+                  y={y - 14}
+                  textAnchor="middle"
+                  fontSize={13}
+                  fill="#0A0A0A"
+                  fontWeight={600}
+                >
+                  {formatChartNumber(s.data[i])}
+                </text>
+              ))}
+          </g>
+        );
+      })}
+
+      {/* 주석 */}
+      {(d.annotations ?? []).map((a, i) => {
+        if (a.kind === "vline") {
+          const x = xToPx(a.at ?? 0);
+          return (
+            <g key={`an-${i}`}>
+              <line
+                x1={x}
+                x2={x}
+                y1={PAD.top}
+                y2={H - PAD.bottom}
+                stroke={a.color ?? "#9CA3AF"}
+                strokeWidth={1}
+                strokeDasharray="4 4"
+              />
+              {a.text && (
+                <text x={x} y={PAD.top - 10} textAnchor="middle" fontSize={14} fontWeight={700} fill={a.color ?? "#0A0A0A"}>
+                  {a.text}
+                </text>
+              )}
+            </g>
+          );
+        }
+        if (a.kind === "hline") {
+          const y = yToPx(a.at ?? 0);
+          return (
+            <g key={`an-${i}`}>
+              <line
+                x1={PAD.left}
+                x2={W - PAD.right}
+                y1={y}
+                y2={y}
+                stroke={a.color ?? "#9CA3AF"}
+                strokeWidth={1}
+                strokeDasharray="4 4"
+              />
+              {a.text && (
+                <text x={W - PAD.right + 4} y={y + 4} fontSize={13} fontWeight={600} fill={a.color ?? "#0A0A0A"}>
+                  {a.text}
+                </text>
+              )}
+            </g>
+          );
+        }
+        if (a.kind === "label" && a.text) {
+          const x = xToPx(a.at ?? 0);
+          const y = yToPx(yMax) - 20;
+          return (
+            <g key={`an-${i}`}>
+              <rect
+                x={x - 70}
+                y={y - 14}
+                width={140}
+                height={28}
+                rx={14}
+                fill="#E5E5E5"
+              />
+              <text x={x} y={y + 5} textAnchor="middle" fontSize={13} fontWeight={600} fill="#404040">
+                {a.text}
+              </text>
+            </g>
+          );
+        }
+        if (a.kind === "bracket" && a.text != null) {
+          const x1 = xToPx(a.from ?? 0);
+          const x2 = xToPx(a.to ?? categories.length - 1);
+          const y = H - PAD.bottom + 38;
+          return (
+            <g key={`an-${i}`}>
+              <line x1={x1} x2={x2} y1={y} y2={y} stroke={a.color ?? "var(--brand-500, #DB0711)"} strokeWidth={1.5} />
+              <line x1={x1} x2={x1} y1={y - 4} y2={y + 4} stroke={a.color ?? "var(--brand-500, #DB0711)"} strokeWidth={1.5} />
+              <line x1={x2} x2={x2} y1={y - 4} y2={y + 4} stroke={a.color ?? "var(--brand-500, #DB0711)"} strokeWidth={1.5} />
+              <text x={(x1 + x2) / 2} y={y - 10} textAnchor="middle" fontSize={13} fontWeight={600} fill={a.color ?? "var(--brand-500, #DB0711)"}>
+                {a.text}
+              </text>
+            </g>
+          );
+        }
+        return null;
+      })}
+
+      {/* 범례 */}
+      {(d.showLegend ?? true) && series.length > 0 && (
+        <g>
+          {series.map((s, si) => {
+            const color = s.color ?? CHART_PALETTE[si % CHART_PALETTE.length];
+            const x = PAD.left + si * 140;
+            const y = 24;
+            const kind = s.kind ?? (d.kind === "mixed" ? "line" : d.kind);
+            return (
+              <g key={`lg-${si}`}>
+                {kind === "bar" ? (
+                  <rect x={x} y={y - 7} width={14} height={14} fill={color} rx={2} />
+                ) : (
+                  <circle cx={x + 7} cy={y} r={6} fill="#fff" stroke={color} strokeWidth={2.5} />
+                )}
+                <text x={x + 22} y={y + 5} fontSize={14} fill="#404040">
+                  {s.name}
+                </text>
+              </g>
+            );
+          })}
+        </g>
+      )}
+    </svg>
+  );
+}
+
+function formatChartNumber(v: number): string {
+  if (Math.abs(v) >= 10000) return v.toLocaleString();
+  if (Number.isInteger(v)) return String(v);
+  return v.toFixed(1);
+}
+
+// ChartSeries 가 import 만 되고 안 쓰여 lint 에러 — 명시적 사용
+void (null as unknown as ChartSeries);
+
+// ============================================================================
+// 아이콘 노드 — lucide-react 모든 아이콘 또는 emoji 한 글자
+// ============================================================================
+
+export function IconNodeView({ node }: { node: CanvasIconNode }) {
+  const { set, name, color, strokeWidth } = node.data;
+  if (set === "emoji") {
+    return (
+      <div
+        style={{
+          width: "100%",
+          height: "100%",
+          display: "grid",
+          placeItems: "center",
+          fontSize: "min(100%, 90cqw)",
+          lineHeight: 1,
+          containerType: "size",
+        }}
+      >
+        <span style={{ fontSize: "0.9em" }}>{name}</span>
+      </div>
+    );
+  }
+  // lucide
+  const Icon = (LucideIcons as unknown as Record<string, React.ComponentType<{ color?: string; strokeWidth?: number; width?: string | number; height?: string | number }>>)[name];
+  if (!Icon) {
+    return (
+      <div className="w-full h-full grid place-items-center bg-ink-50 text-ink-300 text-[10px]">
+        {name}?
+      </div>
+    );
+  }
+  return (
+    <Icon
+      width="100%"
+      height="100%"
+      color={color ?? "currentColor"}
+      strokeWidth={strokeWidth ?? 1.5}
     />
   );
 }

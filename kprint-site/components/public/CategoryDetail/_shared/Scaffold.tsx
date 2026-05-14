@@ -1,6 +1,7 @@
 "use client";
 
 import type { ReactNode } from "react";
+import { useSearchParams } from "next/navigation";
 import type { Category, SiteSettings, Slot, Subcategory } from "@/lib/types";
 import { CategoryHero } from "./CategoryHero";
 import { SpecCard } from "./SpecCard";
@@ -25,6 +26,9 @@ export function Scaffold({
   settings,
   children,
 }: Props) {
+  // ?embed=1 (모달 iframe 안에서 렌더 시) — 카테고리 간 네비/푸터 숨김
+  const sp = useSearchParams();
+  const embed = sp?.get("embed") === "1";
   const total = slots.length;
   const available = slots.filter((s) => s.status === "available").length;
   return (
@@ -43,9 +47,9 @@ export function Scaffold({
             <CaseStudies items={category.caseStudies} />
           )}
         </div>
-        <CategoryPageNav current={category} all={allCategories} />
+        {!embed && <CategoryPageNav current={category} all={allCategories} />}
       </main>
-      <Footer settings={settings} />
+      {!embed && <Footer settings={settings} />}
     </>
   );
 }

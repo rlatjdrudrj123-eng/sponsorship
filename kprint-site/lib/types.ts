@@ -598,6 +598,9 @@ export type CanvasNodeBase = {
   mobile?: CanvasMobile;
   opacity?: number;        // 0~1
   lockAspect?: boolean;    // 리사이즈 시 비율 잠금
+  locked?: boolean;        // 편집 잠금 (이동·리사이즈 불가)
+  hidden?: boolean;        // 에디터·렌더 모두 숨김
+  name?: string;           // 레이어 패널 표시명 (없으면 type 기준 자동)
 };
 
 export type CanvasTextNode = CanvasNodeBase & {
@@ -655,6 +658,7 @@ export type CanvasShapeNode = CanvasNodeBase & {
     fill?: string | ShapeFill;
     stroke?: string;
     strokeWidth?: number;
+    strokeDasharray?: string;    // SVG 대시 패턴 (예: "4 4")
     radius?: number;             // rect only
     sides?: number;              // polygon only (3~12)
     points?: number;             // star only
@@ -688,6 +692,54 @@ export type CanvasVideoNode = CanvasNodeBase & {
   };
 };
 
+/** 차트 노드 — 슬라이드 1·2 류의 데이터 시각화 */
+export type ChartSeries = {
+  name: string;
+  color?: string;             // 라인/막대 색 (없으면 자동 팔레트)
+  data: number[];             // 카테고리 길이와 일치
+  kind?: "line" | "bar" | "area"; // 시리즈별 종류 (혼합 차트)
+  showDots?: boolean;         // 라인 위 마커
+  showLabels?: boolean;       // 데이터 포인트마다 값 표시
+};
+
+export type CanvasChartNode = CanvasNodeBase & {
+  type: "chart";
+  data: {
+    kind: "line" | "bar" | "area" | "mixed"; // 기본 종류
+    categories: string[];                     // x축 라벨
+    series: ChartSeries[];
+    showLegend?: boolean;
+    showGrid?: boolean;
+    showAxes?: boolean;
+    xLabel?: string;
+    yLabel?: string;
+    yMin?: number;
+    yMax?: number;
+    annotations?: Array<{
+      kind: "vline" | "hline" | "label" | "bracket";
+      // vline/hline: at = 카테고리 인덱스 또는 y값
+      // label: at + text + (offsetX/Y)
+      // bracket: fromIdx, toIdx, text
+      at?: number;
+      from?: number;
+      to?: number;
+      text?: string;
+      color?: string;
+    }>;
+  };
+};
+
+/** 아이콘 노드 — lucide-react 아이콘 또는 3D emoji */
+export type CanvasIconNode = CanvasNodeBase & {
+  type: "icon";
+  data: {
+    set: "lucide" | "emoji";
+    name: string;             // lucide: "Pin", "Star", ... / emoji: 단일 emoji 문자
+    color?: string;            // lucide 만
+    strokeWidth?: number;      // lucide 만
+  };
+};
+
 /**
  * 캔버스 위에 놓는 "디자인 완성된 컴포넌트" — 어드민이 정해진 디자인의 위젯을 자유 위치에 배치.
  * 기존 블록 시스템의 컴포넌트들 (Cover, Stats3Year, AdGoals4, Benefits4, Steps4, TextHero, BigStat, CTA, SlotsTeaser)
@@ -718,6 +770,8 @@ export type CanvasNode =
   | CanvasShapeNode
   | CanvasButtonNode
   | CanvasVideoNode
+  | CanvasChartNode
+  | CanvasIconNode
   | CanvasComponentNode;
 
 export type CanvasNodeType = CanvasNode["type"];

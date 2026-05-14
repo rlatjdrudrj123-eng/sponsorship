@@ -24,10 +24,7 @@ import {
 } from "lucide-react";
 import { getDb } from "@/lib/firebase/firestore";
 import { PersonaCourses, matchesPersona } from "@/components/public/PersonaCourses";
-import {
-  PersonaAiChat,
-  PersonaAiChatTrigger,
-} from "@/components/public/PersonaAiChat";
+import { PersonaAiChat } from "@/components/public/PersonaAiChat";
 import type {
   Category,
   Channel,
@@ -209,8 +206,13 @@ export default function SponsorshipsPage() {
   );
   const [advancedOpen, setAdvancedOpen] = useState(false);
   const [aiChatOpen, setAiChatOpen] = useState(false);
+  const [aiChatInitial, setAiChatInitial] = useState<
+    "first" | "repeat" | "regular" | null
+  >(null);
   // 비교 모드 — 카드에서 직접 체크해 모은다 (카트 거치지 않고 바로 compare로)
   const [compareIds, setCompareIds] = useState<Set<string>>(new Set());
+  // 도면·사례 모달 — 페이지 이동 대신 이 상태에 slug 를 넣어 iframe 모달로 표시
+  const [detailModalSlug, setDetailModalSlug] = useState<string | null>(null);
 
   const toggleCompare = (key: string) => {
     setCompareIds((prev) => {
@@ -388,13 +390,7 @@ export default function SponsorshipsPage() {
     setSearch("");
   };
 
-  // 페르소나 선택 시 목적 필터 자동 적용 (단일 진실원)
-  const pickPersona = (p: Persona) => {
-    setSelectedPersona(p);
-    if (p.purposes && p.purposes.length > 0) {
-      setActivePurposes(new Set(p.purposes));
-    }
-  };
+  // 페르소나 클리어 — pickPersona 는 onPick no-op 로 변경되며 더 이상 사용 안 함
   const clearPersona = () => {
     setSelectedPersona(null);
     setActivePurposes(new Set());
@@ -437,6 +433,7 @@ export default function SponsorshipsPage() {
           onOpenFilter={() => setSheetOpen(true)}
           hasActiveFilter={hasActiveFilter}
           eventId={eventId}
+          onOpenDetail={setDetailModalSlug}
         />
       ) : (
         <>
@@ -465,26 +462,139 @@ export default function SponsorshipsPage() {
               </div>
             </header>
 
-            {/* 페르소나 추천 코스 */}
+            {/* 메인 — 스폰서십 진단 진입.
+                 좌측: 비즈니스 카피 / 우측: 인라인 채팅 형태로 첫 질문 노출 */}
+            <section className="bg-canvas border-b border-ink-100">
+              <div className="max-w-7xl mx-auto px-6 md:px-16 py-14 md:py-24">
+                <div className="grid lg:grid-cols-[1fr_1.35fr] gap-12 lg:gap-20 items-start">
+                  {/* 좌측 — 안내 카피 (비즈니스 포멀) */}
+                  <div>
+                    <div className="font-num text-[11px] uppercase tracking-[0.3em] text-brand-500 font-bold flex items-center gap-2 mb-5">
+                      <span className="w-6 h-px bg-brand-500" />
+                      Sponsorship Advisor
+                    </div>
+                    <h2 className="text-[34px] md:text-[52px] font-bold text-ink-900 leading-[1.04] tracking-tight">
+                      참가 목표 기반
+                      <br />
+                      <span className="text-brand-500">맞춤 스폰서십 진단</span>
+                    </h2>
+                    <p className="text-[14px] md:text-[16px] text-ink-700 mt-6 leading-[1.7] max-w-md">
+                      참가 이력·예산·타깃 산업·전년 성과를 종합 분석해 가장 효율
+                      높은 노출 조합을 즉시 제안합니다. 클릭 응답 기반,
+                      소요 시간 1분.
+                    </p>
+                    <ul className="mt-7 space-y-2.5 text-[13px] text-ink-700 leading-relaxed">
+                      {[
+                        "예산 대비 도달 효율 (CPM 추정) 기반 점수화",
+                        "전년 동일 유형 참가사 콤보 데이터 반영",
+                        "온·오프라인 채널 균형 자동 조정",
+                      ].map((t) => (
+                        <li key={t} className="flex items-start gap-2">
+                          <span className="w-1.5 h-1.5 rounded-full bg-brand-500 mt-2 shrink-0" />
+                          <span>{t}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+
+                  {/* 우측 — 채팅 카드 (첫 질문 노출, 칩 클릭 = 모달 진입) */}
+                  <div className="bg-surface border border-ink-100 rounded-card shadow-card overflow-hidden">
+                    <div className="px-5 py-3 bg-ink-50 border-b border-ink-100 flex items-center gap-2.5">
+                      <div className="w-8 h-8 rounded-full bg-ink-900 grid place-items-center text-white text-[11px] font-bold tracking-wider">
+                        SA
+                      </div>
+                      <div className="text-[12.5px] text-ink-700 font-semibold">
+                        Sponsorship Advisor
+                        <span className="ml-2 inline-flex items-center gap-1 text-[10.5px] font-num text-ink-500">
+                          <span
+                            className="w-1.5 h-1.5 rounded-full"
+                            style={{ background: "#10B981" }}
+                          />
+                          준비됨
+                        </span>
+                      </div>
+                    </div>
+                    <div className="p-5 md:p-6 space-y-4">
+                      <div className="flex items-start gap-2.5">
+                        <div className="w-8 h-8 rounded-full bg-ink-900 grid place-items-center text-white text-[10px] font-bold shrink-0 tracking-wider">
+                          SA
+                        </div>
+                        <div className="bg-ink-50 rounded-2xl rounded-tl-sm px-4 py-2.5 text-[13.5px] text-ink-900 max-w-[88%] leading-relaxed">
+                          참가 목표와 예산을 기반으로 최적 노출 조합을
+                          제안드리겠습니다. 7개 항목 응답 후 즉시 결과를
+                          확인하실 수 있습니다.
+                        </div>
+                      </div>
+                      <div className="flex items-start gap-2.5">
+                        <div className="w-8 h-8 rounded-full bg-ink-900 grid place-items-center text-white text-[10px] font-bold shrink-0 tracking-wider">
+                          SA
+                        </div>
+                        <div className="bg-ink-50 rounded-2xl rounded-tl-sm px-4 py-2.5 text-[13.5px] text-ink-900 max-w-[88%] leading-relaxed">
+                          본 행사 참가 경험은 어떻게 되십니까?
+                        </div>
+                      </div>
+
+                      <div className="pl-10 space-y-2">
+                        {[
+                          {
+                            label: "신규 참가",
+                            value: "first",
+                            hint: "진입 채널 중심 — 검색 노출·뉴스레터 우선 구성",
+                          },
+                          {
+                            label: "재참가 (전년 참가)",
+                            value: "repeat",
+                            hint: "전년 성과 분석 후 확장·보완 채널 제안",
+                          },
+                          {
+                            label: "정기 참가 (3년 이상)",
+                            value: "regular",
+                            hint: "시그니처·프리미엄 통합 패키지 우선 검토",
+                          },
+                        ].map((c) => (
+                          <button
+                            key={c.value}
+                            type="button"
+                            onClick={() => {
+                              setAiChatInitial(c.value as "first" | "repeat" | "regular");
+                              setAiChatOpen(true);
+                            }}
+                            className="w-full text-left px-4 py-3 rounded-2xl border-[1.5px] border-ink-100 hover:border-brand-500 hover:bg-brand-50 transition-colors group flex items-center justify-between gap-3"
+                          >
+                            <div className="min-w-0">
+                              <div className="text-[14px] font-semibold text-ink-900">
+                                {c.label}
+                              </div>
+                              <div className="text-[11.5px] text-ink-500 mt-0.5">
+                                {c.hint}
+                              </div>
+                            </div>
+                            <ArrowRight className="w-4 h-4 text-ink-300 group-hover:text-brand-500 group-hover:translate-x-0.5 transition-all shrink-0" />
+                          </button>
+                        ))}
+                      </div>
+
+                      <div className="text-center text-[11px] text-ink-400 pt-2 font-num tracking-wider">
+                        STEP 1 OF 7 · 응답 시간 약 60초
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </section>
+
+            {/* 페르소나 카드 — 서브 (대화 안하고 빠르게 골라보고 싶을 때) */}
             <PersonaCourses
               personas={personas}
               categories={categories}
               packages={packages}
               selectedPersonaId={selectedPersona?.id ?? null}
-              onPick={({ persona }) => pickPersona(persona)}
+              onPick={() => {
+                /* 필터는 적용하지 않음 — 추천 콤보만 보여주기 위한 카드 */
+              }}
               onClear={clearPersona}
+              compact
             />
-
-            {/* AI 대화형 추천 진입 */}
-            <div className="bg-canvas border-b border-ink-100">
-              <div className="max-w-7xl mx-auto px-6 md:px-16 pb-10 md:pb-12 -mt-3 flex items-center justify-between gap-3 flex-wrap">
-                <p className="text-[12.5px] md:text-[13px] text-ink-500 max-w-xl leading-relaxed">
-                  골랐는데도 결정이 어려우시면 — <strong className="text-ink-900">AI 에게 대화로 추천 받기</strong> 도 가능해요.
-                  예산·목적·작년 경험을 답하면 페르소나와 콤보를 직접 짜드립니다.
-                </p>
-                <PersonaAiChatTrigger onClick={() => setAiChatOpen(true)} />
-              </div>
-            </div>
 
             <div className="lg:grid lg:grid-cols-[260px_1fr] lg:gap-8 px-6 md:px-16 py-10 max-w-7xl mx-auto">
               {/* Mobile filter bar */}
@@ -592,10 +702,10 @@ export default function SponsorshipsPage() {
                     )}
                     <CardGrid
                       items={filtered}
-                      eventId={eventId}
                       packages={packages}
                       compareIds={compareIds}
                       onToggleCompare={toggleCompare}
+                      onOpenDetail={setDetailModalSlug}
                     />
                   </>
                 )}
@@ -723,7 +833,10 @@ export default function SponsorshipsPage() {
       {/* AI 대화형 페르소나 추천 모달 */}
       <PersonaAiChat
         open={aiChatOpen}
-        onClose={() => setAiChatOpen(false)}
+        onClose={() => {
+          setAiChatOpen(false);
+          setAiChatInitial(null);
+        }}
         eventName={settings?.event.nameKo ?? eventId}
         eventId={eventId}
         personas={personas}
@@ -731,8 +844,74 @@ export default function SponsorshipsPage() {
         subcategories={subcategories}
         slots={slots}
         packages={packages}
+        initialExperience={aiChatInitial ?? undefined}
       />
+
+      {/* 도면·사례 상세 모달 — 페이지 이동 대신 iframe 으로 띄움 */}
+      {detailModalSlug && (
+        <DetailModal
+          eventId={eventId}
+          slug={detailModalSlug}
+          onClose={() => setDetailModalSlug(null)}
+        />
+      )}
     </>
+  );
+}
+
+function DetailModal({
+  eventId,
+  slug,
+  onClose,
+}: {
+  eventId: string;
+  slug: string;
+  onClose: () => void;
+}) {
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
+    window.addEventListener("keydown", onKey);
+    document.body.style.overflow = "hidden";
+    return () => {
+      window.removeEventListener("keydown", onKey);
+      document.body.style.overflow = "";
+    };
+  }, [onClose]);
+
+  return (
+    <div
+      className="fixed inset-0 z-[60] bg-ink-900/60 backdrop-blur-[2px] flex items-stretch justify-center p-3 md:p-6"
+      onClick={onClose}
+    >
+      <div
+        role="dialog"
+        aria-modal="true"
+        onClick={(e) => e.stopPropagation()}
+        className="bg-white w-full max-w-[1400px] rounded-card overflow-hidden shadow-2xl flex flex-col"
+      >
+        <header className="px-4 py-3 border-b border-ink-100 flex items-center justify-between shrink-0">
+          <span className="text-[13px] font-num font-bold text-ink-700 uppercase tracking-wide">
+            도면 · 사례 상세
+          </span>
+          <button
+            type="button"
+            onClick={onClose}
+            className="px-3 py-1.5 rounded-btn border border-ink-100 hover:border-ink-900 text-[12px] font-semibold flex items-center gap-1.5"
+            title="닫기 (Esc)"
+          >
+            <X className="w-3.5 h-3.5" />
+            닫기
+          </button>
+        </header>
+        <iframe
+          src={`/${eventId}/sponsorships/${slug}?embed=1`}
+          className="flex-1 w-full border-0"
+          title="상세"
+        />
+      </div>
+    </div>
   );
 }
 
@@ -1338,16 +1517,16 @@ function PackageSection({ packages, eventId }: { packages: Package[]; eventId: s
 
 function CardGrid({
   items,
-  eventId,
   packages,
   compareIds,
   onToggleCompare,
+  onOpenDetail,
 }: {
   items: EnrichedCategory[];
-  eventId: string;
   packages: Package[];
   compareIds: Set<string>;
   onToggleCompare: (key: string) => void;
+  onOpenDetail: (slug: string) => void;
 }) {
   const locale = useLocale((s) => s.locale);
   const packagesById = useMemo(() => {
@@ -1362,10 +1541,18 @@ function CardGrid({
         const compareKey = `slot-cat:${c.id}`; // 카테고리 단위로 비교 추가 (대표 슬롯 자동 선정은 compare 페이지에서)
         const inCompare = compareIds.has(compareKey);
         return (
-          <Link
+          <div
             key={c.id}
-            href={`/${eventId}/sponsorships/${c.slug}`}
-            className="group bg-surface border border-ink-100 rounded-card overflow-hidden hover:border-brand-500 hover:shadow-card transition-all flex flex-col h-full relative"
+            role="button"
+            tabIndex={0}
+            onClick={() => onOpenDetail(c.slug)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault();
+                onOpenDetail(c.slug);
+              }
+            }}
+            className="group bg-surface border border-ink-100 rounded-card overflow-hidden hover:border-brand-500 hover:shadow-card transition-all flex flex-col h-full relative text-left cursor-pointer focus:outline-none focus:ring-2 focus:ring-brand-500"
           >
             <div className="aspect-[4/3] bg-ink-100 relative shrink-0">
               {hero ? (
@@ -1502,7 +1689,7 @@ function CardGrid({
                 </span>
               </div>
             </div>
-          </Link>
+          </div>
         );
       })}
     </div>
@@ -1522,6 +1709,7 @@ function SlideStream({
   onOpenFilter,
   hasActiveFilter,
   eventId,
+  onOpenDetail,
 }: {
   items: EnrichedCategory[];
   subcategories: Subcategory[];
@@ -1531,6 +1719,7 @@ function SlideStream({
   onOpenFilter: () => void;
   hasActiveFilter: boolean;
   eventId: string;
+  onOpenDetail: (slug: string) => void;
 }) {
   const locale = useLocale((s) => s.locale);
   return (
@@ -1609,7 +1798,7 @@ function SlideStream({
                 slots={catSlots}
                 index={i}
                 total={items.length}
-                eventId={eventId}
+                onOpenDetail={onOpenDetail}
               />
             );
           })}
@@ -1625,14 +1814,14 @@ function SlideSection({
   slots,
   index,
   total,
-  eventId,
+  onOpenDetail,
 }: {
   item: EnrichedCategory;
   subcategories: Subcategory[];
   slots: Slot[];
   index: number;
-  eventId: string;
   total: number;
+  onOpenDetail: (slug: string) => void;
 }) {
   const locale = useLocale((s) => s.locale);
   const [pickerOpen, setPickerOpen] = useState(false);
@@ -1756,12 +1945,13 @@ function SlideSection({
                   {t("spons.designGuide", locale)}
                 </a>
               )}
-              <Link
-                href={`/${eventId}/sponsorships/${item.slug}`}
+              <button
+                type="button"
+                onClick={() => onOpenDetail(item.slug)}
                 className="text-[12.5px] font-num font-bold text-ink-500 hover:text-brand-500 underline-offset-2 hover:underline ml-1"
               >
                 도면·사례 보기 →
-              </Link>
+              </button>
             </div>
 
             {/* 가격 — 최하단 */}
@@ -1819,8 +2009,11 @@ function SlideSection({
           item={item}
           subcategories={subcategories}
           slots={slots}
-          eventId={eventId}
           onClose={() => setPickerOpen(false)}
+          onOpenDetail={(slug) => {
+            setPickerOpen(false);
+            onOpenDetail(slug);
+          }}
         />
       )}
     </>
@@ -1831,14 +2024,14 @@ function SlotPickerModal({
   item,
   subcategories,
   slots,
-  eventId,
   onClose,
+  onOpenDetail,
 }: {
   item: EnrichedCategory;
   subcategories: Subcategory[];
   slots: Slot[];
-  eventId: string;
   onClose: () => void;
+  onOpenDetail: (slug: string) => void;
 }) {
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -1897,13 +2090,14 @@ function SlotPickerModal({
           <p className="text-[11.5px] text-ink-500">
             구좌를 클릭하면 관심 표시되며, 우상단 카트에서 확인할 수 있어요.
           </p>
-          <Link
-            href={`/${eventId}/sponsorships/${item.slug}`}
+          <button
+            type="button"
+            onClick={() => onOpenDetail(item.slug)}
             className="text-[12.5px] font-num font-bold text-brand-500 hover:text-brand-700 flex items-center gap-1"
           >
             도면·사례 자세히 보기
             <ArrowRight className="w-3.5 h-3.5" />
-          </Link>
+          </button>
         </footer>
       </div>
     </div>

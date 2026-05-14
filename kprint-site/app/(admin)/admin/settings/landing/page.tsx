@@ -27,6 +27,7 @@ import {
   emptyBlock,
 } from "@/components/public/landing/defaults";
 import { BlockEditor } from "./BlockEditor";
+import { MultiArtboardEditor } from "./canvas/MultiArtboardEditor";
 
 /**
  * 랜딩 빌더 — settings.landing 의 블록 배열을 추가/삭제/순서/인라인 편집.
@@ -41,6 +42,7 @@ export default function LandingBuilderPage() {
   >("idle");
   const [adderOpen, setAdderOpen] = useState(false);
   const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
+  const [viewMode, setViewMode] = useState<"blocks" | "artboard">("blocks");
   const initRef = useRef(false);
 
   useEffect(() => {
@@ -180,6 +182,33 @@ export default function LandingBuilderPage() {
         </div>
         <div className="flex items-center gap-2 flex-wrap">
           <SaveBadge status={saveStatus} />
+          {/* 보기 모드 토글 — 블록 / 대지 */}
+          <div className="flex items-center bg-ink-100 rounded-btn p-0.5">
+            <button
+              type="button"
+              onClick={() => setViewMode("blocks")}
+              className={
+                "px-3 py-1.5 rounded text-[12.5px] font-semibold transition-colors " +
+                (viewMode === "blocks"
+                  ? "bg-white text-ink-900 shadow-sm"
+                  : "text-ink-500 hover:text-ink-900")
+              }
+            >
+              블록 리스트
+            </button>
+            <button
+              type="button"
+              onClick={() => setViewMode("artboard")}
+              className={
+                "px-3 py-1.5 rounded text-[12.5px] font-semibold transition-colors " +
+                (viewMode === "artboard"
+                  ? "bg-white text-ink-900 shadow-sm"
+                  : "text-ink-500 hover:text-ink-900")
+              }
+            >
+              대지 (모든 슬라이드)
+            </button>
+          </div>
           <Link
             href={`/${eventId}`}
             target="_blank"
@@ -213,6 +242,66 @@ export default function LandingBuilderPage() {
         </div>
       </header>
 
+      {viewMode === "artboard" ? (
+        <div className="bg-white border border-ink-100 rounded-card overflow-hidden h-[calc(100vh-180px)] min-h-[640px]">
+          <MultiArtboardEditor
+            pages={blocks
+              .map((b, blockIdx) =>
+                b.type === "canvasPage"
+                  ? { blockId: b.id, page: b.data.page, blockIdx }
+                  : null
+              )
+              .filter(
+                (
+                  x
+                ): x is {
+                  blockId: string;
+                  page: import("@/lib/types").CanvasPage;
+                  blockIdx: number;
+                } => x !== null
+              )}
+            onUpdatePage={(idx, page) => {
+              const canvasIndices = blocks
+                .map((b, i) => (b.type === "canvasPage" ? i : -1))
+                .filter((i) => i >= 0);
+              const blockIdx = canvasIndices[idx];
+              const b = blocks[blockIdx];
+              if (b?.type !== "canvasPage") return;
+              void updateBlock(blockIdx, { ...b, data: { page } });
+            }}
+            onAddPage={() => {
+              const b = emptyBlock("canvasPage");
+              const next = [...blocks, b];
+              setBlocks(next);
+              void persist(next);
+            }}
+            onRemovePage={(idx) => {
+              const canvasIndices = blocks
+                .map((b, i) => (b.type === "canvasPage" ? i : -1))
+                .filter((i) => i >= 0);
+              const blockIdx = canvasIndices[idx];
+              if (blockIdx < 0) return;
+              if (!confirm("이 아트보드를 삭제할까요?")) return;
+              const next = blocks.filter((_, i) => i !== blockIdx);
+              setBlocks(next);
+              void persist(next);
+            }}
+            onMovePage={(from, to) => {
+              const canvasIndices = blocks
+                .map((b, i) => (b.type === "canvasPage" ? i : -1))
+                .filter((i) => i >= 0);
+              const fromBlockIdx = canvasIndices[from];
+              const toBlockIdx = canvasIndices[to];
+              if (fromBlockIdx < 0 || toBlockIdx < 0) return;
+              const next = [...blocks];
+              const [moved] = next.splice(fromBlockIdx, 1);
+              next.splice(toBlockIdx, 0, moved);
+              setBlocks(next);
+              void persist(next);
+            }}
+          />
+        </div>
+      ) : (
       <div className="grid grid-cols-1 lg:grid-cols-[280px_1fr] gap-5">
         {/* 좌측 — 블록 리스트 */}
         <aside className="space-y-2">
@@ -334,6 +423,7 @@ export default function LandingBuilderPage() {
           )}
         </section>
       </div>
+      )}
 
       {adderOpen && (
         <BlockAdderModal

@@ -25,6 +25,7 @@ export function PersonaCourses({
   selectedPersonaId,
   onPick,
   onClear,
+  compact = false,
 }: {
   personas: Persona[];
   categories: Category[];
@@ -32,6 +33,8 @@ export function PersonaCourses({
   selectedPersonaId: string | null;
   onPick: (pick: PersonaPick) => void;
   onClear: () => void;
+  /** 메인 CTA가 따로 있을 때 작게 표시 — 칩 스타일 */
+  compact?: boolean;
 }) {
   const counts = useMemo(() => {
     const result: Record<string, number> = {};
@@ -48,6 +51,62 @@ export function PersonaCourses({
   if (personas.length === 0) return null;
 
   const active = personas.find((p) => p.id === selectedPersonaId) ?? null;
+
+  // ─── 컴팩트 모드 (메인 CTA 가 별도로 있을 때) ───
+  if (compact) {
+    return (
+      <section className="bg-canvas border-b border-ink-100">
+        <div className="max-w-7xl mx-auto px-6 md:px-16 py-6 md:py-7">
+          <div className="flex items-center gap-3 mb-3">
+            <span className="text-[11px] uppercase tracking-[0.25em] text-ink-500 font-bold">
+              빠르게 페르소나로 둘러보기
+            </span>
+            {selectedPersonaId && (
+              <button
+                type="button"
+                onClick={onClear}
+                className="ml-auto text-[11.5px] text-ink-500 hover:text-ink-900 font-semibold underline-offset-2 hover:underline"
+              >
+                전체 다시 보기
+              </button>
+            )}
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {personas
+              .filter((p) => p.isActive)
+              .sort((a, b) => a.order - b.order)
+              .map((p) => {
+                const isActive = selectedPersonaId === p.id;
+                return (
+                  <button
+                    key={p.id}
+                    type="button"
+                    onClick={() => onPick({ id: p.id, persona: p })}
+                    className={
+                      "inline-flex items-center gap-2 px-3.5 py-2 rounded-pill border-[1.5px] text-[12.5px] font-semibold transition-colors " +
+                      (isActive
+                        ? "bg-brand-500 border-brand-500 text-white"
+                        : "bg-white border-ink-100 text-ink-900 hover:border-ink-900")
+                    }
+                  >
+                    <span className="text-[15px]">{p.emoji}</span>
+                    <span>{p.title}</span>
+                    <span
+                      className={
+                        "font-num text-[10.5px] " +
+                        (isActive ? "text-white/80" : "text-ink-400")
+                      }
+                    >
+                      {counts[p.id] ?? 0}
+                    </span>
+                  </button>
+                );
+              })}
+          </div>
+        </div>
+      </section>
+    );
+  }
 
   return (
     <section className="bg-canvas border-b border-ink-100">

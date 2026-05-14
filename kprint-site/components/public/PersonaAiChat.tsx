@@ -141,6 +141,7 @@ export function PersonaAiChat({
   subcategories,
   slots,
   packages,
+  initialExperience,
 }: {
   open: boolean;
   onClose: () => void;
@@ -151,6 +152,8 @@ export function PersonaAiChat({
   subcategories: Subcategory[];
   slots: Slot[];
   packages: Package[];
+  /** 페이지에서 첫 질문 칩을 미리 누르고 열었을 때 — 모달은 바로 2번째 질문부터 */
+  initialExperience?: Experience;
 }) {
   const [messages, setMessages] = useState<Msg[]>([]);
   const [stage, setStage] = useState<Stage>("experience");
@@ -158,7 +161,7 @@ export function PersonaAiChat({
   const [thinking, setThinking] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
 
-  // 모달 열릴 때 초기화
+  // 모달 열릴 때 초기화 (initialExperience 가 있으면 1번 질문 자동 답변 후 2번부터)
   useEffect(() => {
     if (!open) return;
     setMessages([
@@ -171,10 +174,33 @@ export function PersonaAiChat({
     setStage("experience");
     setCollected({});
     setThinking(false);
-    const t = setTimeout(() => say(QUESTIONS.experience.intro), 450);
-    return () => clearTimeout(t);
+
+    const timers: ReturnType<typeof setTimeout>[] = [];
+    timers.push(setTimeout(() => say(QUESTIONS.experience.intro), 450));
+
+    if (initialExperience) {
+      const chip = QUESTIONS.experience.chips!.find(
+        (c) => c.value === initialExperience
+      );
+      if (chip) {
+        // intro 가 보인 직후, 사용자가 칩을 누른 것처럼 진행
+        timers.push(
+          setTimeout(() => {
+            userSay(chip.label);
+            const next: Collected = {
+              experience: chip.value as Experience,
+              experienceLabel: chip.label,
+            };
+            setCollected(next);
+            advance(next, "experience");
+          }, 1100)
+        );
+      }
+    }
+
+    return () => timers.forEach((t) => clearTimeout(t));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open]);
+  }, [open, initialExperience]);
 
   useEffect(() => {
     scrollRef.current?.scrollTo({

@@ -6,18 +6,27 @@ import {
   AlignLeft,
   AlignCenter,
   AlignRight,
+  BarChart3,
+  ChevronDown,
+  ChevronUp,
   Copy,
   Eye,
   EyeOff,
   ImageIcon,
+  Lock,
   MousePointer,
+  Sparkles,
   Square,
   TextCursorInput,
   Trash2,
+  Type as TypeIcon,
+  Unlock,
   Video,
 } from "lucide-react";
 import type {
+  CanvasChartNode,
   CanvasComponentNode,
+  CanvasIconNode,
   CanvasNode,
   CanvasNodeType,
   CanvasPage,
@@ -26,7 +35,11 @@ import type {
   Gradient,
   ShapeFill,
 } from "@/lib/types";
-import { ShapeSVG } from "@/components/public/canvas/CanvasRenderer";
+import {
+  ShapeSVG,
+  ChartNodeView,
+  IconNodeView,
+} from "@/components/public/canvas/CanvasRenderer";
 
 // CanvasTextNode 는 TextNodeInspector 시그니처에서 직접 쓰임 (아래)
 
@@ -232,27 +245,86 @@ export function CanvasEditor({
     });
   };
 
-  // 그룹 이동 — 선택된 모든 노드를 같은 델타만큼 이동
+  // 그룹 이동 — 선택된 모든 노드를 같은 델타만큼 이동 (잠긴 노드는 제외)
   const groupMove = (dx: number, dy: number) => {
     if (selectedIds.size === 0) return;
     onChange({
       ...page,
       nodes: page.nodes.map((n) =>
-        selectedIds.has(n.id)
+        selectedIds.has(n.id) && !n.locked
           ? { ...n, rect: { ...n.rect, x: n.rect.x + dx, y: n.rect.y + dy } }
           : n
       ),
     });
   };
 
-  // 그룹 삭제
+  // 그룹 삭제 (잠긴 노드는 보존)
   const deleteSelected = () => {
     if (selectedIds.size === 0) return;
     onChange({
       ...page,
-      nodes: page.nodes.filter((n) => !selectedIds.has(n.id)),
+      nodes: page.nodes.filter((n) => !selectedIds.has(n.id) || n.locked),
     });
-    setSelectedIds(new Set());
+    setSelectedIds((prev) => {
+      const next = new Set<string>();
+      prev.forEach((id) => {
+        const n = page.nodes.find((nn) => nn.id === id);
+        if (n?.locked) next.add(id);
+      });
+      return next;
+    });
+  };
+
+  // z-index 순서 변경
+  const reorderNode = (id: string, dir: "front" | "back" | "forward" | "backward") => {
+    const sorted = [...page.nodes].sort(
+      (a, b) => (a.rect.z ?? 0) - (b.rect.z ?? 0)
+    );
+    const idx = sorted.findIndex((n) => n.id === id);
+    if (idx < 0) return;
+    if (dir === "front") {
+      const maxZ = Math.max(0, ...page.nodes.map((n) => n.rect.z ?? 0));
+      onChange({
+        ...page,
+        nodes: page.nodes.map((n) =>
+          n.id === id ? { ...n, rect: { ...n.rect, z: maxZ + 1 } } : n
+        ),
+      });
+    } else if (dir === "back") {
+      const minZ = Math.min(0, ...page.nodes.map((n) => n.rect.z ?? 0));
+      onChange({
+        ...page,
+        nodes: page.nodes.map((n) =>
+          n.id === id ? { ...n, rect: { ...n.rect, z: minZ - 1 } } : n
+        ),
+      });
+    } else if (dir === "forward" && idx < sorted.length - 1) {
+      const cur = sorted[idx];
+      const next = sorted[idx + 1];
+      const curZ = cur.rect.z ?? 0;
+      const nextZ = next.rect.z ?? 0;
+      onChange({
+        ...page,
+        nodes: page.nodes.map((n) => {
+          if (n.id === cur.id) return { ...n, rect: { ...n.rect, z: nextZ } };
+          if (n.id === next.id) return { ...n, rect: { ...n.rect, z: curZ } };
+          return n;
+        }),
+      });
+    } else if (dir === "backward" && idx > 0) {
+      const cur = sorted[idx];
+      const prev = sorted[idx - 1];
+      const curZ = cur.rect.z ?? 0;
+      const prevZ = prev.rect.z ?? 0;
+      onChange({
+        ...page,
+        nodes: page.nodes.map((n) => {
+          if (n.id === cur.id) return { ...n, rect: { ...n.rect, z: prevZ } };
+          if (n.id === prev.id) return { ...n, rect: { ...n.rect, z: curZ } };
+          return n;
+        }),
+      });
+    }
   };
 
   // 정렬 — 선택된 노드들을 기준으로
@@ -401,6 +473,15 @@ export function CanvasEditor({
   // (deprecated) 컴포넌트 추가 — 새 노드 생성은 ToolButton (primitives) 으로만.
   void _defaultComponentDataDeprecated;
 
+  // 슬라이드 템플릿 — 미리 만든 노드 묶음을 현재 페이지에 한꺼번에 추가
+  const insertTemplate = (key: SlideTemplateKey) => {
+    const tpl = SLIDE_TEMPLATES.find((t) => t.key === key);
+    if (!tpl) return;
+    const nodes = tpl.make();
+    onChange({ ...page, nodes: [...page.nodes, ...nodes] });
+    setSelectedIds(new Set(nodes.map((n) => n.id)));
+  };
+
   const deleteNode = (id: string) => {
     onChange({ ...page, nodes: page.nodes.filter((n) => n.id !== id) });
     setSelectedId(null);
@@ -519,6 +600,43 @@ export function CanvasEditor({
     [page, selectedId, onChange]
   );
 
+  // 실행 취소 / 다시 실행 — page prop 변경을 추적해서 스택 유지
+  const [past, setPast] = useState<CanvasPage[]>([]);
+  const [future, setFuture] = useState<CanvasPage[]>([]);
+  const prevPageRef = useRef<CanvasPage>(page);
+  const skipHistoryRef = useRef(false);
+  useEffect(() => {
+    if (prevPageRef.current !== page) {
+      if (skipHistoryRef.current) {
+        skipHistoryRef.current = false;
+      } else {
+        setPast((p) => [...p, prevPageRef.current].slice(-50));
+        setFuture([]);
+      }
+      prevPageRef.current = page;
+    }
+  }, [page]);
+  const undo = useCallback(() => {
+    setPast((p) => {
+      if (p.length === 0) return p;
+      const prev = p[p.length - 1];
+      setFuture((f) => [...f, page]);
+      skipHistoryRef.current = true;
+      onChange(prev);
+      return p.slice(0, -1);
+    });
+  }, [page, onChange]);
+  const redo = useCallback(() => {
+    setFuture((f) => {
+      if (f.length === 0) return f;
+      const next = f[f.length - 1];
+      setPast((p) => [...p, page]);
+      skipHistoryRef.current = true;
+      onChange(next);
+      return f.slice(0, -1);
+    });
+  }, [page, onChange]);
+
   // 키보드: Figma 호환 단축키
   //   V=선택(deselect), T=텍스트, R=사각형, O=원, L=선
   //   Delete=삭제, Cmd/Ctrl+D=복제, ←↑↓→=1px 이동, Shift+화살표=10px
@@ -542,6 +660,19 @@ export function CanvasEditor({
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "a") {
         e.preventDefault();
         setSelectedIds(new Set(page.nodes.map((n) => n.id)));
+        return;
+      }
+      // Cmd/Ctrl + Z — 실행 취소 / Cmd/Ctrl + Shift + Z — 다시 실행
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "z") {
+        e.preventDefault();
+        if (e.shiftKey) redo();
+        else undo();
+        return;
+      }
+      // Cmd/Ctrl + Y — 다시 실행 (Windows)
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "y") {
+        e.preventDefault();
+        redo();
         return;
       }
       // Cmd/Ctrl + D = 복제
@@ -626,7 +757,7 @@ export function CanvasEditor({
       const items = e.clipboardData?.items;
       if (!items) return;
 
-      // 1) 이미지 — 우선
+      // 1) 이미지 파일 — 우선 (스크린샷, 일반 이미지 복사)
       for (let i = 0; i < items.length; i++) {
         const it = items[i];
         if (it.kind === "file" && it.type.startsWith("image/")) {
@@ -639,9 +770,36 @@ export function CanvasEditor({
         }
       }
 
-      // 2) 텍스트 — fallback
+      // 2) Figma 호환 — Figma 는 SVG 를 text/html 안에 넣어 줌
+      const html = e.clipboardData?.getData("text/html");
+      if (html && html.includes("<svg")) {
+        const m = html.match(/<svg[\s\S]*?<\/svg>/i);
+        if (m) {
+          e.preventDefault();
+          const blob = new Blob([m[0]], { type: "image/svg+xml" });
+          void addImageFromBlob(blob, "figma-paste.svg");
+          return;
+        }
+      }
+
+      // 3) image/svg+xml 직접 — 일부 브라우저·앱
+      for (let i = 0; i < items.length; i++) {
+        const it = items[i];
+        if (it.type === "image/svg+xml") {
+          e.preventDefault();
+          it.getAsString((s) => {
+            if (s && s.includes("<svg")) {
+              const blob = new Blob([s], { type: "image/svg+xml" });
+              void addImageFromBlob(blob, "paste.svg");
+            }
+          });
+          return;
+        }
+      }
+
+      // 4) 텍스트 — 마지막 fallback (Figma 메타 텍스트는 거름)
       const text = e.clipboardData?.getData("text/plain");
-      if (text && text.trim()) {
+      if (text && text.trim() && !/^FIGMA-/i.test(text)) {
         e.preventDefault();
         addTextFromString(text);
       }
@@ -654,10 +812,16 @@ export function CanvasEditor({
       window.removeEventListener("paste", onPaste);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedIds, page, addImageFromBlob, addTextFromString]);
+  }, [selectedIds, page, addImageFromBlob, addTextFromString, undo, redo]);
 
   // 풀스크린 상태 — 캔버스 작업 시 모달처럼 viewport 전체 사용
   const [fullscreen, setFullscreen] = useState(false);
+
+  // 스냅 가이드 — 드래그 중 활성화된 정렬선들
+  const [guides, setGuides] = useState<{ v: number[]; h: number[] }>({
+    v: [],
+    h: [],
+  });
 
   const editor = (
     <div
@@ -697,33 +861,68 @@ export function CanvasEditor({
             label="동영상"
             onClick={() => addNode("video")}
           />
+          <ToolButton
+            icon={<BarChart3 className="w-4 h-4" />}
+            label="차트"
+            onClick={() => addNode("chart")}
+          />
+          <ToolButton
+            icon={<Sparkles className="w-4 h-4" />}
+            label="아이콘"
+            onClick={() => addNode("icon")}
+          />
         </div>
 
-        <div className="px-3 py-2 border-t border-ink-100 flex-1 overflow-y-auto">
-          <div className="text-[10.5px] uppercase tracking-wide font-bold text-ink-500 mb-2">
-            단축키 (Figma 호환)
+        {/* 슬라이드 템플릿 */}
+        <div className="border-t border-ink-100 px-2 py-2">
+          <div className="text-[10.5px] uppercase tracking-wide font-bold text-ink-500 mb-1.5 px-1">
+            템플릿 (현재 슬라이드에 추가)
           </div>
-          <div className="text-[10.5px] text-ink-500 leading-snug space-y-0.5 font-mono">
-            <div>V · 선택</div>
-            <div>T · 텍스트</div>
-            <div>R · 사각형</div>
-            <div>O · 원</div>
-            <div>L · 선</div>
+          <div className="grid grid-cols-1 gap-1">
+            {SLIDE_TEMPLATES.map((t) => (
+              <button
+                key={t.key}
+                type="button"
+                onClick={() => insertTemplate(t.key)}
+                className="text-left px-2 py-1.5 rounded border border-ink-100 hover:border-ink-900 hover:bg-ink-50 text-[10.5px] font-semibold text-ink-700 leading-tight"
+                title={t.desc}
+              >
+                {t.label}
+              </button>
+            ))}
           </div>
-          <div className="text-[10.5px] uppercase tracking-wide font-bold text-ink-500 mt-3 mb-2">
-            편집
+        </div>
+
+        {/* 레이어 패널 — z-index 정렬·가시성·잠금 */}
+        <div className="border-t border-ink-100 flex-1 min-h-0 flex flex-col">
+          <div className="px-3 py-2 text-[10.5px] uppercase tracking-wide font-bold text-ink-700 flex items-center justify-between">
+            <span>레이어 ({page.nodes.length})</span>
           </div>
-          <div className="text-[10.5px] text-ink-500 leading-snug space-y-0.5">
-            <div>· 드래그 = 이동</div>
-            <div>· 모서리 = 리사이즈</div>
-            <div>· ←↑↓→ = 1px 이동</div>
-            <div>· Shift+화살표 = 10px</div>
-            <div>· Cmd/Ctrl+D = 복제</div>
-            <div>· Delete = 삭제</div>
-            <div>· Ctrl+V = 이미지·텍스트 붙여넣기</div>
-          </div>
-          <div className="text-[10.5px] text-ink-500 mt-3 pt-2 border-t border-ink-100">
-            노드 <strong className="text-ink-900">{page.nodes.length}</strong>개
+          <div className="flex-1 overflow-y-auto px-1.5 pb-1.5">
+            {page.nodes.length === 0 ? (
+              <div className="px-2 py-3 text-[10.5px] text-ink-400 leading-snug">
+                노드 없음 — 위 도구로 추가
+              </div>
+            ) : (
+              [...page.nodes]
+                .sort((a, b) => (b.rect.z ?? 0) - (a.rect.z ?? 0))
+                .map((n) => (
+                  <LayerRow
+                    key={n.id}
+                    node={n}
+                    selected={selectedIds.has(n.id)}
+                    onSelect={(shift) => toggleSelect(n.id, shift)}
+                    onToggleHidden={() =>
+                      updateNode(n.id, { hidden: !n.hidden })
+                    }
+                    onToggleLocked={() =>
+                      updateNode(n.id, { locked: !n.locked })
+                    }
+                    onForward={() => reorderNode(n.id, "forward")}
+                    onBackward={() => reorderNode(n.id, "backward")}
+                  />
+                ))
+            )}
           </div>
         </div>
       </aside>
@@ -777,6 +976,25 @@ export function CanvasEditor({
           )}
 
           <div className="ml-auto flex items-center gap-1">
+            <button
+              type="button"
+              onClick={undo}
+              disabled={past.length === 0}
+              className="w-7 h-7 grid place-items-center rounded hover:bg-ink-100 text-ink-700 disabled:opacity-30 disabled:cursor-not-allowed"
+              title={`실행 취소 (Ctrl+Z) — ${past.length}개`}
+            >
+              ↶
+            </button>
+            <button
+              type="button"
+              onClick={redo}
+              disabled={future.length === 0}
+              className="w-7 h-7 grid place-items-center rounded hover:bg-ink-100 text-ink-700 disabled:opacity-30 disabled:cursor-not-allowed"
+              title={`다시 실행 (Ctrl+Shift+Z) — ${future.length}개`}
+            >
+              ↷
+            </button>
+            <span className="w-px h-4 bg-ink-100 mx-1" />
             <button
               type="button"
               onClick={() => setZoom(Math.max(0.5, zoom - 0.1))}
@@ -843,10 +1061,45 @@ export function CanvasEditor({
                   node={n}
                   selected={selectedIds.has(n.id)}
                   scale={scale}
+                  otherNodes={page.nodes.filter(
+                    (o) => o.id !== n.id && !selectedIds.has(o.id)
+                  )}
                   onSelect={(shift) => toggleSelect(n.id, shift)}
                   onMove={(rect) => updateNode(n.id, { rect })}
                   onGroupMove={(dx, dy) => groupMove(dx, dy)}
                   isGroup={selectedIds.size > 1 && selectedIds.has(n.id)}
+                  onGuides={(v, h) => setGuides({ v, h })}
+                  onDragEnd={() => setGuides({ v: [], h: [] })}
+                />
+              ))}
+
+              {/* 스냅 가이드 — 빨간 점선 */}
+              {guides.v.map((x, i) => (
+                <div
+                  key={`gv-${i}`}
+                  className="absolute pointer-events-none"
+                  style={{
+                    left: x,
+                    top: 0,
+                    bottom: 0,
+                    width: 1,
+                    background: "var(--brand-500)",
+                    boxShadow: "0 0 2px var(--brand-500)",
+                  }}
+                />
+              ))}
+              {guides.h.map((y, i) => (
+                <div
+                  key={`gh-${i}`}
+                  className="absolute pointer-events-none"
+                  style={{
+                    top: y,
+                    left: 0,
+                    right: 0,
+                    height: 1,
+                    background: "var(--brand-500)",
+                    boxShadow: "0 0 2px var(--brand-500)",
+                  }}
                 />
               ))}
             </div>
@@ -956,18 +1209,24 @@ function NodeFrame({
   node,
   selected,
   scale,
+  otherNodes,
   onSelect,
   onMove,
   onGroupMove,
   isGroup,
+  onGuides,
+  onDragEnd,
 }: {
   node: CanvasNode;
   selected: boolean;
   scale: number;
+  otherNodes: CanvasNode[];
   onSelect: (additive: boolean) => void;
   onMove: (rect: CanvasNode["rect"]) => void;
   onGroupMove: (dx: number, dy: number) => void;
   isGroup: boolean;
+  onGuides: (v: number[], h: number[]) => void;
+  onDragEnd: () => void;
 }) {
   const dragStateRef = useRef<{
     mode: "move" | "resize";
@@ -990,6 +1249,8 @@ function NodeFrame({
     if (e.shiftKey || !selected) {
       onSelect(e.shiftKey);
     }
+    // 잠긴 노드는 선택은 허용하되 이동·리사이즈 차단
+    if (node.locked) return;
     dragStateRef.current = {
       mode,
       handle,
@@ -1009,10 +1270,22 @@ function NodeFrame({
     const dx = (e.clientX - s.startX) / scale;
     const dy = (e.clientY - s.startY) / scale;
     if (s.mode === "move") {
-      const nx = snap(s.startRect.x + dx);
-      const ny = snap(s.startRect.y + dy);
+      const rawX = snap(s.startRect.x + dx);
+      const rawY = snap(s.startRect.y + dy);
+      // 스냅 — 다른 노드들의 가장자리·중심에 자석
+      const snapResult = applySnap(
+        rawX,
+        rawY,
+        s.startRect.w,
+        s.startRect.h,
+        otherNodes,
+        8 / scale
+      );
+      const nx = snapResult.x;
+      const ny = snapResult.y;
+      onGuides(snapResult.guidesV, snapResult.guidesH);
+
       if (isGroup) {
-        // 다중 선택 — 같은 델타만큼 다른 노드들도 이동
         const ddx = nx - s.startRect.x - lastDeltaRef.current.dx;
         const ddy = ny - s.startRect.y - lastDeltaRef.current.dy;
         if (ddx !== 0 || ddy !== 0) {
@@ -1046,6 +1319,7 @@ function NodeFrame({
 
   const onPointerUp = () => {
     dragStateRef.current = null;
+    onDragEnd();
     window.removeEventListener("pointermove", onPointerMove);
     window.removeEventListener("pointerup", onPointerUp);
   };
@@ -1060,14 +1334,20 @@ function NodeFrame({
         width: node.rect.w,
         height: node.rect.h,
         zIndex: node.rect.z ?? 0,
-        opacity: node.opacity ?? 1,
+        opacity: (node.opacity ?? 1) * (node.hidden ? 0.25 : 1),
         transform: node.rect.rotate
           ? `rotate(${node.rect.rotate}deg)`
           : undefined,
         outline: selected
           ? "2px solid var(--brand-500)"
-          : "1px dashed transparent",
-        cursor: dragStateRef.current?.mode === "move" ? "grabbing" : "grab",
+          : node.locked
+            ? "1px dashed rgba(0,0,0,0.15)"
+            : "1px dashed transparent",
+        cursor: node.locked
+          ? "default"
+          : dragStateRef.current?.mode === "move"
+            ? "grabbing"
+            : "grab",
         touchAction: "none",
       }}
       className={
@@ -1078,7 +1358,7 @@ function NodeFrame({
     >
       <NodePreview node={node} />
 
-      {selected && (
+      {selected && !node.locked && (
         <>
           {/* 리사이즈 핸들 8개 */}
           {(["nw", "n", "ne", "e", "se", "s", "sw", "w"] as const).map((h) => (
@@ -1122,7 +1402,7 @@ function handleCursor(h: string): string {
 // 노드 미리보기 (캔버스 안에서 그려지는 모습)
 // ============================================================================
 
-function NodePreview({ node }: { node: CanvasNode }) {
+export function NodePreview({ node }: { node: CanvasNode }) {
   switch (node.type) {
     case "text": {
       const d = node.data;
@@ -1205,6 +1485,18 @@ function NodePreview({ node }: { node: CanvasNode }) {
           ▶ 동영상
         </div>
       );
+    case "chart":
+      return (
+        <div className="w-full h-full bg-white pointer-events-none">
+          <ChartNodeView node={node} />
+        </div>
+      );
+    case "icon":
+      return (
+        <div className="w-full h-full pointer-events-none" style={{ color: node.data.color ?? "var(--brand-500)" }}>
+          <IconNodeView node={node} />
+        </div>
+      );
     case "component": {
       // (deprecated) 옛 페이지가 가진 component 노드 — 백워드 호환만.
       // 어드민에서 더 이상 새로 추가 불가. 인스펙터에서 삭제만 가능.
@@ -1262,7 +1554,13 @@ function PageInspector({
           />
         </div>
       </Field>
-      <Field label="배경 이미지 URL">
+      <Field label="배경 이미지 파일 업로드">
+        <PageBgUploader
+          current={page.bgImageUrl ?? ""}
+          onChange={(url) => onChange({ ...page, bgImageUrl: url })}
+        />
+      </Field>
+      <Field label="또는 배경 이미지 URL">
         <input
           type="text"
           value={page.bgImageUrl ?? ""}
@@ -1272,6 +1570,59 @@ function PageInspector({
         />
       </Field>
     </div>
+  );
+}
+
+function PageBgUploader({
+  current,
+  onChange,
+}: {
+  current: string;
+  onChange: (url: string) => void;
+}) {
+  const [uploading, setUploading] = useState(false);
+  const [progress, setProgress] = useState(0);
+  return (
+    <label
+      className={
+        "block w-full px-3 py-2.5 rounded-btn border-[1.5px] border-dashed text-[12px] font-semibold text-center cursor-pointer transition-colors " +
+        (uploading
+          ? "border-brand-500 bg-brand-50 text-brand-700"
+          : "border-ink-300 text-ink-500 hover:border-ink-900 hover:text-ink-900")
+      }
+    >
+      <input
+        type="file"
+        accept="image/*"
+        disabled={uploading}
+        className="hidden"
+        onChange={async (e) => {
+          const file = e.target.files?.[0];
+          if (!file) return;
+          setUploading(true);
+          setProgress(0);
+          try {
+            const path = buildStoragePath("landing/canvas-page-bg", file.name);
+            const { url } = await uploadFile(file, path, (p) => setProgress(p));
+            onChange(url);
+          } catch (err) {
+            alert(
+              "업로드 실패: " +
+                (err instanceof Error ? err.message : String(err))
+            );
+          } finally {
+            setUploading(false);
+            setProgress(0);
+            e.target.value = "";
+          }
+        }}
+      />
+      {uploading
+        ? `업로드 중… ${progress}%`
+        : current
+          ? "다른 이미지로 교체 (클릭)"
+          : "배경 이미지 파일 선택 (클릭)"}
+    </label>
   );
 }
 
@@ -1360,6 +1711,12 @@ function NodeInspector({
         )}
         {node.type === "video" && (
           <VideoNodeInspector node={node} onUpdateData={onUpdateData} />
+        )}
+        {node.type === "chart" && (
+          <ChartNodeInspector node={node} onUpdateData={onUpdateData} />
+        )}
+        {node.type === "icon" && (
+          <IconNodeInspector node={node} onUpdateData={onUpdateData} />
         )}
         {node.type === "component" && (
           <ComponentNodeInspector node={node} onUpdateData={onUpdateData} />
@@ -1564,9 +1921,59 @@ function ImageNodeInspector({
   onUpdateData: (p: Record<string, unknown>) => void;
 }) {
   const d = node.data;
+  const [uploading, setUploading] = useState(false);
+  const [progress, setProgress] = useState(0);
   return (
     <div className="space-y-3">
-      <Field label="이미지 URL">
+      <Field label="파일 업로드 (PC에서)">
+        <label
+          className={
+            "block w-full px-3 py-2.5 rounded-btn border-[1.5px] border-dashed text-[12px] font-semibold text-center cursor-pointer transition-colors " +
+            (uploading
+              ? "border-brand-500 bg-brand-50 text-brand-700"
+              : "border-ink-300 text-ink-500 hover:border-ink-900 hover:text-ink-900")
+          }
+        >
+          <input
+            type="file"
+            accept="image/*"
+            disabled={uploading}
+            className="hidden"
+            onChange={async (e) => {
+              const file = e.target.files?.[0];
+              if (!file) return;
+              setUploading(true);
+              setProgress(0);
+              try {
+                const path = buildStoragePath(
+                  "landing/canvas-upload",
+                  file.name
+                );
+                const { url } = await uploadFile(file, path, (p) =>
+                  setProgress(p)
+                );
+                onUpdateData({ url });
+              } catch (err) {
+                alert(
+                  "업로드 실패: " +
+                    (err instanceof Error ? err.message : String(err))
+                );
+              } finally {
+                setUploading(false);
+                setProgress(0);
+                // 같은 파일 재선택 가능하도록 초기화
+                e.target.value = "";
+              }
+            }}
+          />
+          {uploading
+            ? `업로드 중… ${progress}%`
+            : d.url
+              ? "다른 이미지로 교체 (클릭)"
+              : "이미지 파일 선택 (클릭)"}
+        </label>
+      </Field>
+      <Field label="또는 이미지 URL 직접 입력">
         <input
           type="text"
           value={d.url}
@@ -2037,6 +2444,338 @@ function VideoNodeInspector({
 }
 
 // ──────────────────────────────────────────────────────────────────────────
+// Chart 노드 인스펙터 — 카테고리·시리즈 데이터 편집
+// ──────────────────────────────────────────────────────────────────────────
+
+function ChartNodeInspector({
+  node,
+  onUpdateData,
+}: {
+  node: CanvasChartNode;
+  onUpdateData: (p: Record<string, unknown>) => void;
+}) {
+  const d = node.data;
+  const updateSeries = (idx: number, patch: Partial<ChartSeriesLike>) => {
+    const next = [...d.series];
+    next[idx] = { ...next[idx], ...patch };
+    onUpdateData({ series: next });
+  };
+  const removeSeries = (idx: number) => {
+    onUpdateData({ series: d.series.filter((_, i) => i !== idx) });
+  };
+  const addSeries = () => {
+    onUpdateData({
+      series: [
+        ...d.series,
+        {
+          name: `시리즈 ${d.series.length + 1}`,
+          data: d.categories.map(() => 0),
+        },
+      ],
+    });
+  };
+
+  return (
+    <div className="space-y-3">
+      <Field label="차트 종류">
+        <select
+          value={d.kind}
+          onChange={(e) => onUpdateData({ kind: e.target.value })}
+          className={inputCls()}
+        >
+          <option value="line">선 차트</option>
+          <option value="bar">막대 차트</option>
+          <option value="area">면적 차트</option>
+          <option value="mixed">혼합 (시리즈별)</option>
+        </select>
+      </Field>
+
+      <Field label="카테고리 (쉼표 구분, x축 라벨)">
+        <input
+          type="text"
+          value={d.categories.join(",")}
+          onChange={(e) => {
+            const cats = e.target.value.split(",").map((s) => s.trim());
+            const series = d.series.map((s) => ({
+              ...s,
+              data: cats.map((_, i) => s.data[i] ?? 0),
+            }));
+            onUpdateData({ categories: cats, series });
+          }}
+          className={inputCls()}
+        />
+      </Field>
+
+      <div className="flex items-center justify-between text-[11px] uppercase tracking-wide font-bold text-ink-700">
+        <span>시리즈</span>
+        <button
+          type="button"
+          onClick={addSeries}
+          className="text-[10.5px] font-semibold text-brand-500 hover:underline"
+        >
+          + 추가
+        </button>
+      </div>
+
+      {d.series.map((s, i) => (
+        <div
+          key={i}
+          className="rounded border border-ink-100 p-2 space-y-1.5 bg-ink-50"
+        >
+          <div className="flex items-center gap-1.5">
+            <input
+              type="text"
+              value={s.name}
+              onChange={(e) => updateSeries(i, { name: e.target.value })}
+              className={inputCls() + " flex-1"}
+              placeholder="시리즈 이름"
+            />
+            <input
+              type="color"
+              value={normalizeColorForInput(s.color)}
+              onChange={(e) => updateSeries(i, { color: e.target.value })}
+              className="w-7 h-7 rounded border border-ink-100 cursor-pointer p-0"
+            />
+            <button
+              type="button"
+              onClick={() => removeSeries(i)}
+              className="w-7 h-7 grid place-items-center rounded hover:bg-red-50 text-ink-400 hover:text-red-700"
+              title="삭제"
+            >
+              <Trash2 className="w-3 h-3" />
+            </button>
+          </div>
+          {d.kind === "mixed" && (
+            <select
+              value={s.kind ?? "line"}
+              onChange={(e) =>
+                updateSeries(i, {
+                  kind: e.target.value as "line" | "bar" | "area",
+                })
+              }
+              className={inputCls() + " text-[11px]"}
+            >
+              <option value="line">선</option>
+              <option value="bar">막대</option>
+              <option value="area">면적</option>
+            </select>
+          )}
+          <input
+            type="text"
+            value={s.data.join(",")}
+            onChange={(e) =>
+              updateSeries(i, {
+                data: e.target.value
+                  .split(",")
+                  .map((v) => Number(v.trim()) || 0),
+              })
+            }
+            className={inputCls() + " font-mono text-[11px]"}
+            placeholder="값 (쉼표 구분)"
+          />
+          <div className="flex gap-2 text-[10.5px] text-ink-500">
+            <label className="flex items-center gap-1 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={s.showLabels ?? false}
+                onChange={(e) =>
+                  updateSeries(i, { showLabels: e.target.checked })
+                }
+                className="accent-ink-900"
+              />
+              값 표시
+            </label>
+            <label className="flex items-center gap-1 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={s.showDots ?? true}
+                onChange={(e) =>
+                  updateSeries(i, { showDots: e.target.checked })
+                }
+                className="accent-ink-900"
+              />
+              점 표시
+            </label>
+          </div>
+        </div>
+      ))}
+
+      <hr className="border-ink-100" />
+      <div className="grid grid-cols-2 gap-2 text-[10.5px]">
+        <label className="flex items-center gap-1 cursor-pointer">
+          <input
+            type="checkbox"
+            checked={d.showLegend ?? true}
+            onChange={(e) => onUpdateData({ showLegend: e.target.checked })}
+            className="accent-ink-900"
+          />
+          범례
+        </label>
+        <label className="flex items-center gap-1 cursor-pointer">
+          <input
+            type="checkbox"
+            checked={d.showGrid ?? true}
+            onChange={(e) => onUpdateData({ showGrid: e.target.checked })}
+            className="accent-ink-900"
+          />
+          그리드
+        </label>
+        <label className="flex items-center gap-1 cursor-pointer">
+          <input
+            type="checkbox"
+            checked={d.showAxes ?? true}
+            onChange={(e) => onUpdateData({ showAxes: e.target.checked })}
+            className="accent-ink-900"
+          />
+          축 라벨
+        </label>
+      </div>
+    </div>
+  );
+}
+
+type ChartSeriesLike = CanvasChartNode["data"]["series"][number];
+
+function normalizeColorForInput(c: string | undefined): string {
+  if (!c) return "#DB0711";
+  if (c.startsWith("#")) return c;
+  // CSS var or named → fallback
+  return "#DB0711";
+}
+
+// ──────────────────────────────────────────────────────────────────────────
+// Icon 노드 인스펙터 — lucide 이름 + 색·두께 / emoji 모드
+// ──────────────────────────────────────────────────────────────────────────
+
+function IconNodeInspector({
+  node,
+  onUpdateData,
+}: {
+  node: CanvasIconNode;
+  onUpdateData: (p: Record<string, unknown>) => void;
+}) {
+  const d = node.data;
+  return (
+    <div className="space-y-2">
+      <Field label="아이콘 세트">
+        <select
+          value={d.set}
+          onChange={(e) => onUpdateData({ set: e.target.value })}
+          className={inputCls()}
+        >
+          <option value="lucide">Lucide (선 아이콘)</option>
+          <option value="emoji">Emoji</option>
+        </select>
+      </Field>
+      {d.set === "lucide" ? (
+        <>
+          <Field
+            label="아이콘 이름 (예: Star, Pin, Award, MapPin, Flag, BarChart3)"
+          >
+            <input
+              type="text"
+              value={d.name}
+              onChange={(e) => onUpdateData({ name: e.target.value })}
+              className={inputCls() + " font-mono text-[11px]"}
+              placeholder="Star"
+            />
+          </Field>
+          <div className="grid grid-cols-2 gap-2 items-center">
+            <Field label="색">
+              <input
+                type="color"
+                value={normalizeColorForInput(d.color)}
+                onChange={(e) => onUpdateData({ color: e.target.value })}
+                className="w-full h-8 rounded border border-ink-100 cursor-pointer p-0"
+              />
+            </Field>
+            <Field label="선 두께">
+              <input
+                type="number"
+                step={0.25}
+                min={0.5}
+                max={4}
+                value={d.strokeWidth ?? 1.5}
+                onChange={(e) =>
+                  onUpdateData({ strokeWidth: Number(e.target.value) })
+                }
+                className={inputCls()}
+              />
+            </Field>
+          </div>
+          <div className="text-[10.5px] text-ink-500 leading-snug">
+            아이콘 검색 →{" "}
+            <a
+              href="https://lucide.dev/icons/"
+              target="_blank"
+              rel="noreferrer"
+              className="text-brand-500 underline"
+            >
+              lucide.dev
+            </a>{" "}
+            (PascalCase 그대로 입력)
+          </div>
+          <div className="grid grid-cols-6 gap-1 mt-2">
+            {ICON_PRESETS.map((name) => (
+              <button
+                key={name}
+                type="button"
+                onClick={() => onUpdateData({ name })}
+                className={
+                  "aspect-square grid place-items-center rounded border text-ink-700 " +
+                  (d.name === name
+                    ? "border-brand-500 bg-brand-50"
+                    : "border-ink-100 hover:border-ink-900 hover:bg-ink-50")
+                }
+                title={name}
+              >
+                <IconNodeView
+                  node={{
+                    ...node,
+                    data: { ...d, name, set: "lucide" },
+                  }}
+                />
+              </button>
+            ))}
+          </div>
+        </>
+      ) : (
+        <Field label="Emoji (한 글자)">
+          <input
+            type="text"
+            value={d.name}
+            onChange={(e) => onUpdateData({ name: e.target.value })}
+            className={inputCls() + " text-[20px] text-center"}
+            placeholder="📌"
+          />
+        </Field>
+      )}
+    </div>
+  );
+}
+
+const ICON_PRESETS = [
+  "Pin",
+  "Star",
+  "Award",
+  "MapPin",
+  "Flag",
+  "Sparkles",
+  "Bookmark",
+  "Trophy",
+  "Target",
+  "Crown",
+  "Heart",
+  "Zap",
+  "TrendingUp",
+  "Check",
+  "ArrowRight",
+  "ChevronRight",
+  "Circle",
+  "Square",
+];
+
+// ──────────────────────────────────────────────────────────────────────────
 // Component 노드 인스펙터 — kind 별 텍스트 필드 노출
 // ──────────────────────────────────────────────────────────────────────────
 
@@ -2332,6 +3071,102 @@ function AlignBtn({
   );
 }
 
+function LayerRow({
+  node,
+  selected,
+  onSelect,
+  onToggleHidden,
+  onToggleLocked,
+  onForward,
+  onBackward,
+}: {
+  node: CanvasNode;
+  selected: boolean;
+  onSelect: (additive: boolean) => void;
+  onToggleHidden: () => void;
+  onToggleLocked: () => void;
+  onForward: () => void;
+  onBackward: () => void;
+}) {
+  const label =
+    node.name ||
+    (node.type === "text"
+      ? (node as CanvasTextNode).data.content?.slice(0, 14) || "텍스트"
+      : NODE_TYPE_LABEL[node.type] || node.type);
+  const Icon =
+    node.type === "text"
+      ? TypeIcon
+      : node.type === "image"
+        ? ImageIcon
+        : node.type === "shape"
+          ? Square
+          : node.type === "button"
+            ? MousePointer
+            : node.type === "video"
+              ? Video
+              : Square;
+  return (
+    <div
+      onClick={(e) => onSelect(e.shiftKey)}
+      className={
+        "group flex items-center gap-1 px-1.5 py-1 rounded text-[11px] cursor-pointer " +
+        (selected ? "bg-brand-50 text-ink-900" : "hover:bg-ink-50 text-ink-700")
+      }
+      style={{ opacity: node.hidden ? 0.45 : 1 }}
+    >
+      <button
+        type="button"
+        onClick={(e) => {
+          e.stopPropagation();
+          onToggleHidden();
+        }}
+        className="w-5 h-5 grid place-items-center rounded hover:bg-ink-100 text-ink-500"
+        title={node.hidden ? "표시" : "숨김"}
+      >
+        {node.hidden ? <EyeOff className="w-3 h-3" /> : <Eye className="w-3 h-3" />}
+      </button>
+      <button
+        type="button"
+        onClick={(e) => {
+          e.stopPropagation();
+          onToggleLocked();
+        }}
+        className="w-5 h-5 grid place-items-center rounded hover:bg-ink-100 text-ink-500"
+        title={node.locked ? "잠금 해제" : "잠금"}
+      >
+        {node.locked ? <Lock className="w-3 h-3" /> : <Unlock className="w-3 h-3 opacity-30" />}
+      </button>
+      <Icon className="w-3 h-3 text-ink-400 shrink-0" />
+      <span className="truncate flex-1 min-w-0">{label}</span>
+      <div className="flex opacity-0 group-hover:opacity-100">
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            onForward();
+          }}
+          className="w-5 h-5 grid place-items-center rounded hover:bg-ink-100 text-ink-500"
+          title="위로 (앞으로)"
+        >
+          <ChevronUp className="w-3 h-3" />
+        </button>
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            onBackward();
+          }}
+          className="w-5 h-5 grid place-items-center rounded hover:bg-ink-100 text-ink-500"
+          title="아래로 (뒤로)"
+        >
+          <ChevronDown className="w-3 h-3" />
+        </button>
+      </div>
+    </div>
+  );
+}
+
+
 function NumberField({
   label,
   value,
@@ -2383,11 +3218,90 @@ const NODE_TYPE_LABEL: Record<CanvasNodeType, string> = {
   shape: "도형",
   button: "버튼",
   video: "동영상",
+  chart: "차트",
+  icon: "아이콘",
   component: "컴포넌트",
 };
 
 function snap(v: number): number {
   return Math.round(v / GRID) * GRID;
+}
+
+/**
+ * 드래그 중 다른 노드의 가장자리·중심·캔버스 중앙에 자석 스냅.
+ * 임계값(threshold) 안이면 좌표를 끌어당기고, 정렬된 라인을 가이드로 반환.
+ */
+function applySnap(
+  rawX: number,
+  rawY: number,
+  w: number,
+  h: number,
+  otherNodes: CanvasNode[],
+  threshold: number
+): { x: number; y: number; guidesV: number[]; guidesH: number[] } {
+  // 현재 드래그 중 노드의 후보 라인 (left/centerX/right) × (top/centerY/bottom)
+  const myXs = [rawX, rawX + w / 2, rawX + w];
+  const myYs = [rawY, rawY + h / 2, rawY + h];
+
+  // 정렬 후보 라인 — 다른 노드들 + 캔버스 좌·중앙·우
+  const targetXs: number[] = [0, CANVAS_W / 2, CANVAS_W];
+  const targetYs: number[] = [0, CANVAS_H / 2, CANVAS_H];
+  for (const n of otherNodes) {
+    targetXs.push(n.rect.x, n.rect.x + n.rect.w / 2, n.rect.x + n.rect.w);
+    targetYs.push(n.rect.y, n.rect.y + n.rect.h / 2, n.rect.y + n.rect.h);
+  }
+
+  // X축 — 가장 가까운 한 쌍 (myXs[i], targetXs[j])
+  let bestDx = Infinity;
+  let snappedX = rawX;
+  const guidesV: number[] = [];
+  for (let i = 0; i < myXs.length; i++) {
+    for (const t of targetXs) {
+      const d = Math.abs(myXs[i] - t);
+      if (d <= threshold && d < bestDx) {
+        bestDx = d;
+        // myXs[i] 가 t에 맞춰지도록 rawX 보정
+        snappedX = t - (myXs[i] - rawX);
+      }
+    }
+  }
+  // 스냅 발생 시 정렬된 라인을 가이드로 (스냅 후 좌표 기준)
+  if (bestDx <= threshold) {
+    const myXsAfter = [snappedX, snappedX + w / 2, snappedX + w];
+    for (const mx of myXsAfter) {
+      for (const t of targetXs) {
+        if (Math.abs(mx - t) < 0.5) {
+          if (!guidesV.includes(t)) guidesV.push(t);
+        }
+      }
+    }
+  }
+
+  // Y축 — 동일 로직
+  let bestDy = Infinity;
+  let snappedY = rawY;
+  const guidesH: number[] = [];
+  for (let i = 0; i < myYs.length; i++) {
+    for (const t of targetYs) {
+      const d = Math.abs(myYs[i] - t);
+      if (d <= threshold && d < bestDy) {
+        bestDy = d;
+        snappedY = t - (myYs[i] - rawY);
+      }
+    }
+  }
+  if (bestDy <= threshold) {
+    const myYsAfter = [snappedY, snappedY + h / 2, snappedY + h];
+    for (const my of myYsAfter) {
+      for (const t of targetYs) {
+        if (Math.abs(my - t) < 0.5) {
+          if (!guidesH.includes(t)) guidesH.push(t);
+        }
+      }
+    }
+  }
+
+  return { x: snappedX, y: snappedY, guidesV, guidesH };
 }
 
 function randomId(): string {
@@ -2443,6 +3357,34 @@ function makeNode(type: CanvasNodeType): CanvasNode {
         type: "video",
         data: { url: "" },
       };
+    case "chart":
+      return {
+        ...base,
+        rect: { ...base.rect, w: 900, h: 540 },
+        type: "chart",
+        data: {
+          kind: "line",
+          categories: ["2023", "2024", "2025"],
+          series: [
+            {
+              name: "방문객",
+              data: [70163, 70760, 72507],
+              showDots: true,
+              showLabels: true,
+            },
+          ],
+          showLegend: true,
+          showGrid: true,
+          showAxes: true,
+        },
+      };
+    case "icon":
+      return {
+        ...base,
+        rect: { ...base.rect, w: 120, h: 120 },
+        type: "icon",
+        data: { set: "lucide", name: "Star", color: "var(--brand-500)", strokeWidth: 1.5 },
+      };
     case "component":
       // (deprecated) makeNode 는 primitives 전용. component 는 어드민에서 더 이상 추가 불가.
       // 옛 데이터 호환을 위해 fallback 만 반환.
@@ -2455,7 +3397,743 @@ function makeNode(type: CanvasNodeType): CanvasNode {
   }
 }
 
-function resolveBg(bg?: string): string | undefined {
+// ============================================================================
+// 슬라이드 템플릿 — 참고 슬라이드 5장 수준의 구도를 한 번에 깔아주는 노드 묶음
+// ============================================================================
+
+type SlideTemplateKey =
+  | "chartHero"
+  | "growthCallout"
+  | "benefits4"
+  | "process4"
+  | "menuGrid"
+  | "bigTitle";
+
+function tplNode<T extends CanvasNode>(n: T): T {
+  return { ...n, id: randomId() } as T;
+}
+
+const SLIDE_TEMPLATES: ReadonlyArray<{
+  key: SlideTemplateKey;
+  label: string;
+  desc: string;
+  make: () => CanvasNode[];
+}> = [
+  {
+    key: "chartHero",
+    label: "방문객 차트 + 헤드라인 (KIMES 슬라이드 446)",
+    desc: "원본 Figma 픽셀 좌표 그대로 — 전체 참관객 라인 + 해외바이어 막대 + 잠재/유망고객 카드",
+    make: () => chartHeroNodes(),
+  },
+  {
+    key: "growthCallout",
+    label: "성장 라인 차트 + 큰 카피",
+    desc: "상단 헤드라인 / 하단 라인 차트 + 주석 (슬라이드 2번 류)",
+    make: () => [
+      tplNode<CanvasTextNode>({
+        id: "",
+        rect: { x: 100, y: 120, w: 1200, h: 100 },
+        type: "text",
+        data: { content: "스폰서십 진행 기업 고객 유입데이터", fontSize: 56, fontWeight: 800, color: "#0A0A0A" },
+      }),
+      tplNode<CanvasTextNode>({
+        id: "",
+        rect: { x: 100, y: 260, w: 1000, h: 160 },
+        type: "text",
+        data: {
+          content:
+            "스폰서십의 효과에 대해 고민하고 계신가요?\n참가업체 검색 페이지 내 상위 고정을 통해\n타기업 대비 14배의 노출 효과를 누리실 수 있습니다.",
+          fontSize: 22,
+          fontWeight: 500,
+          lineHeight: 1.6,
+          color: "#404040",
+        },
+      }),
+      tplNode<CanvasChartNode>({
+        id: "",
+        rect: { x: 100, y: 480, w: 1720, h: 500 },
+        type: "chart",
+        data: {
+          kind: "line",
+          categories: ["", "", "시점", "", "", "", "", ""],
+          series: [
+            { name: "진행 기업", color: "var(--brand-500)", kind: "area", data: [3, 4, 5, 30, 70, 90, 92, 93], showDots: false },
+            { name: "미진행 기업", color: "#0A0A0A", kind: "line", data: [3, 4, 5, 6, 7, 8, 9, 10], showDots: false },
+          ],
+          showLegend: false,
+          showGrid: true,
+          showAxes: false,
+          annotations: [
+            { kind: "vline", at: 2, text: "스폰서십 진행 시점" },
+            { kind: "label", at: 5, text: "비활용 기업 대비 14배 상승" },
+            { kind: "bracket", from: 2, to: 7, text: "스폰서십 광고 진행 이후 유입" },
+          ],
+        },
+      }),
+    ],
+  },
+  {
+    key: "benefits4",
+    label: "혜택 카드 2×2",
+    desc: "좌측 큰 타이틀 / 우측 4개 카드 (슬라이드 3번 류)",
+    make: () => [
+      tplNode<CanvasTextNode>({
+        id: "",
+        rect: { x: 100, y: 380, w: 700, h: 100 },
+        type: "text",
+        data: { content: "Sponsors Benefits", fontSize: 72, fontWeight: 800, color: "#0A0A0A" },
+      }),
+      tplNode<CanvasTextNode>({
+        id: "",
+        rect: { x: 100, y: 500, w: 700, h: 100 },
+        type: "text",
+        data: { content: "2026 스폰서십 리뉴얼 기념\n신청 기업 대상 특별 이벤트!", fontSize: 22, fontWeight: 500, lineHeight: 1.6, color: "#737373" },
+      }),
+      ...benefitCards(),
+    ],
+  },
+  {
+    key: "process4",
+    label: "신청 절차 4단계",
+    desc: "01 02 03 04 카드 4개 (슬라이드 4번 류)",
+    make: () => [
+      tplNode<CanvasTextNode>({
+        id: "",
+        rect: { x: 100, y: 120, w: 1720, h: 100 },
+        type: "text",
+        data: { content: "신청 절차", fontSize: 64, fontWeight: 800, align: "center", color: "#0A0A0A" },
+      }),
+      ...processCards(),
+    ],
+  },
+  {
+    key: "menuGrid",
+    label: "메뉴 그리드 3×4 (탭)",
+    desc: "탭 헤더 + 12개 메뉴 칩 (슬라이드 5번 류)",
+    make: () => [
+      tplNode<CanvasTextNode>({
+        id: "",
+        rect: { x: 100, y: 80, w: 1720, h: 100 },
+        type: "text",
+        data: { content: "KIMES 스폰서십 한눈에 보기", fontSize: 48, fontWeight: 800, align: "center", color: "#0A0A0A" },
+      }),
+      ...tabHeaders(),
+      ...menuGridChips(),
+    ],
+  },
+  {
+    key: "bigTitle",
+    label: "타이틀 + 부제",
+    desc: "중앙 큰 헤드라인 한 줄",
+    make: () => [
+      tplNode<CanvasTextNode>({
+        id: "",
+        rect: { x: 200, y: 400, w: 1520, h: 160 },
+        type: "text",
+        data: { content: "큰 타이틀을 입력하세요", fontSize: 96, fontWeight: 800, align: "center", color: "#0A0A0A" },
+      }),
+      tplNode<CanvasTextNode>({
+        id: "",
+        rect: { x: 200, y: 580, w: 1520, h: 80 },
+        type: "text",
+        data: { content: "부제 텍스트", fontSize: 28, fontWeight: 500, align: "center", color: "#737373" },
+      }),
+    ],
+  },
+];
+
+// 원본 Figma "Slide 16:9 - 446" 픽셀 좌표 그대로 옮긴 차트 슬라이드
+function chartHeroNodes(): CanvasNode[] {
+  const brand = "#DB0711";
+  const dashGray = "#989898";
+  const out: CanvasNode[] = [];
+
+  // ─── 메인 헤드라인 (우상단, 빨간 굵은 글씨) ───
+  out.push(
+    tplNode<CanvasTextNode>({
+      id: "",
+      rect: { x: 1155, y: 219, w: 632, h: 154, z: 10 },
+      type: "text",
+      data: {
+        content: "매년 70,000명 이상이 방문하는\nKIMES에서 브랜드를 홍보하세요!",
+        fontSize: 48,
+        fontWeight: 700,
+        lineHeight: 1.6,
+        color: brand,
+      },
+    }),
+  );
+
+  // ─── 범례 (좌상단 — 전체 참관객 / 해외바이어) ───
+  out.push(
+    tplNode<CanvasShapeNode>({
+      id: "",
+      rect: { x: 156, y: 167, w: 12, h: 12, z: 10 },
+      type: "shape",
+      data: { shape: "ellipse", fill: "#F6F6F6", stroke: brand, strokeWidth: 2 },
+    }),
+    tplNode<CanvasTextNode>({
+      id: "",
+      rect: { x: 203, y: 158, w: 180, h: 28, z: 10 },
+      type: "text",
+      data: { content: "전체 참관객", fontSize: 20, fontWeight: 400, color: "#0A0A0A" },
+    }),
+    tplNode<CanvasShapeNode>({
+      id: "",
+      rect: { x: 143, y: 217, w: 40, h: 40, z: 10 },
+      type: "shape",
+      data: { shape: "rect", fill: "#DADADA" },
+    }),
+    tplNode<CanvasTextNode>({
+      id: "",
+      rect: { x: 203, y: 222, w: 180, h: 28, z: 10 },
+      type: "text",
+      data: { content: "해외바이어", fontSize: 20, fontWeight: 400, color: "#0A0A0A" },
+    }),
+  );
+
+  // ─── 점선 세로선 (각 라인 포인트에서 baseline 까지) ───
+  // 2023: x=185.55, 길이 482, top=451.86 → y 범위 451.86 → 933.86
+  // 2024: x=444.55, 길이 523, top=410.86 → y 범위 410.86 → 933.86
+  // 2025: x=722.55, 길이 662, top=271.86 → y 범위 271.86 → 933.86
+  out.push(
+    tplNode<CanvasShapeNode>({
+      id: "",
+      rect: { x: 184, y: 451, w: 2, h: 482, z: 1 },
+      type: "shape",
+      data: { shape: "rect", fill: dashGray, strokeDasharray: "0", strokeWidth: 0 },
+    }),
+    tplNode<CanvasShapeNode>({
+      id: "",
+      rect: { x: 444, y: 410, w: 2, h: 523, z: 1 },
+      type: "shape",
+      data: { shape: "rect", fill: dashGray, strokeWidth: 0 },
+    }),
+    tplNode<CanvasShapeNode>({
+      id: "",
+      rect: { x: 722, y: 271, w: 2, h: 662, z: 1 },
+      type: "shape",
+      data: { shape: "rect", fill: dashGray, strokeWidth: 0 },
+    }),
+  );
+  // 점선 가로 (72,507명 점에서 우측 스택바까지)
+  out.push(
+    tplNode<CanvasShapeNode>({
+      id: "",
+      rect: { x: 723, y: 269, w: 117, h: 2, z: 1 },
+      type: "shape",
+      data: { shape: "rect", fill: dashGray, strokeWidth: 0 },
+    }),
+  );
+
+  // ─── 회색 막대 (해외바이어 — 2023/2024/2025) ───
+  out.push(
+    tplNode<CanvasShapeNode>({
+      id: "",
+      rect: { x: 170, y: 823, w: 32, h: 110, z: 3 },
+      type: "shape",
+      data: { shape: "rect", fill: "#DADADA" },
+    }),
+    tplNode<CanvasShapeNode>({
+      id: "",
+      rect: { x: 430, y: 729, w: 32, h: 204, z: 3 },
+      type: "shape",
+      data: { shape: "rect", fill: "#DADADA" },
+    }),
+    tplNode<CanvasShapeNode>({
+      id: "",
+      rect: { x: 707, y: 651, w: 32, h: 282, z: 3 },
+      type: "shape",
+      data: { shape: "rect", fill: "#DADADA" },
+    }),
+  );
+
+  // ─── 라인 차트 선분 (라인은 shape line 으로 구현 못하므로 좁고 긴 사각형으로 근사)
+  // 70,163 (185,451) → 70,760 (445,410) : 가로 거리 260, 세로 거리 -41 → 각도 -9°
+  // 70,760 (445,410) → 72,507 (723,271) : 가로 거리 278, 세로 거리 -139 → 각도 -27°
+  // 단순화: 가로 막대 + rotate
+  out.push(
+    tplNode<CanvasShapeNode>({
+      id: "",
+      rect: { x: 185, y: 430, w: 264, h: 2, z: 4, rotate: -9 },
+      type: "shape",
+      data: { shape: "rect", fill: brand },
+    }),
+    tplNode<CanvasShapeNode>({
+      id: "",
+      rect: { x: 445, y: 340, w: 312, h: 2, z: 4, rotate: -26.5 },
+      type: "shape",
+      data: { shape: "rect", fill: brand },
+    }),
+  );
+
+  // ─── 라인 차트 포인트 (흰 원 + 빨간 테두리) ───
+  out.push(
+    tplNode<CanvasShapeNode>({
+      id: "",
+      rect: { x: 180, y: 444, w: 12, h: 12, z: 5 },
+      type: "shape",
+      data: { shape: "ellipse", fill: "#F6F6F6", stroke: brand, strokeWidth: 2 },
+    }),
+    tplNode<CanvasShapeNode>({
+      id: "",
+      rect: { x: 439, y: 402, w: 12, h: 12, z: 5 },
+      type: "shape",
+      data: { shape: "ellipse", fill: "#F6F6F6", stroke: brand, strokeWidth: 2 },
+    }),
+    tplNode<CanvasShapeNode>({
+      id: "",
+      rect: { x: 717, y: 265, w: 12, h: 12, z: 5 },
+      type: "shape",
+      data: { shape: "ellipse", fill: "#F6F6F6", stroke: brand, strokeWidth: 2 },
+    }),
+  );
+
+  // ─── 빨간 테두리 박스 (3 라인 포인트를 감싸는 사각형) ───
+  out.push(
+    tplNode<CanvasShapeNode>({
+      id: "",
+      rect: { x: 185, y: 269, w: 538, h: 182, z: 2 },
+      type: "shape",
+      data: { shape: "rect", fill: "transparent", stroke: brand, strokeWidth: 2 },
+    }),
+  );
+
+  // ─── 데이터 값 라벨 ───
+  const dataLabel = (x: number, y: number, text: string) =>
+    tplNode<CanvasTextNode>({
+      id: "",
+      rect: { x, y, w: 100, h: 29, z: 6 },
+      type: "text",
+      data: { content: text, fontSize: 18, fontWeight: 400, color: "#0A0A0A" },
+    });
+  out.push(
+    dataLabel(156, 403, "70,163명"),
+    dataLabel(153, 788, "3,029명"),
+    dataLabel(415, 356, "70,760명"),
+    dataLabel(412, 694, "4,274명"),
+    dataLabel(693, 215, "72,507명"),
+    dataLabel(701, 622, "4,941명"),
+  );
+
+  // ─── x축 라벨 (2023 / 2024 / 2025 / KIMES 방문객 현황) ───
+  // x축 라인
+  out.push(
+    tplNode<CanvasShapeNode>({
+      id: "",
+      rect: { x: 84, y: 935, w: 1724, h: 2, z: 1 },
+      type: "shape",
+      data: { shape: "rect", fill: "#A9A9A9" },
+    }),
+  );
+  out.push(
+    tplNode<CanvasTextNode>({
+      id: "",
+      rect: { x: 171, y: 952, w: 60, h: 29, z: 6 },
+      type: "text",
+      data: { content: "2023", fontSize: 18, fontWeight: 400, color: "#0A0A0A" },
+    }),
+    tplNode<CanvasTextNode>({
+      id: "",
+      rect: { x: 422, y: 952, w: 60, h: 29, z: 6 },
+      type: "text",
+      data: { content: "2024", fontSize: 18, fontWeight: 400, color: "#0A0A0A" },
+    }),
+    tplNode<CanvasTextNode>({
+      id: "",
+      rect: { x: 701, y: 952, w: 60, h: 29, z: 6 },
+      type: "text",
+      data: { content: "2025", fontSize: 18, fontWeight: 400, color: "#0A0A0A" },
+    }),
+    tplNode<CanvasTextNode>({
+      id: "",
+      rect: { x: 438, y: 1008, w: 200, h: 32, z: 6 },
+      type: "text",
+      data: { content: "KIMES 방문객 현황", fontSize: 20, fontWeight: 500, color: "#0A0A0A" },
+    }),
+  );
+
+  // ─── 스택 바 (오른쪽, 의료/제조/언론 3색) ───
+  out.push(
+    // 의료/병원 — 어두운 빨강 (top)
+    tplNode<CanvasShapeNode>({
+      id: "",
+      rect: { x: 839, y: 270, w: 12, h: 252, z: 3 },
+      type: "shape",
+      data: { shape: "rect", fill: "#AA0008" },
+    }),
+    // 제조/무역/유통 — 브랜드 빨강 (middle)
+    tplNode<CanvasShapeNode>({
+      id: "",
+      rect: { x: 839, y: 522, w: 12, h: 268, z: 3 },
+      type: "shape",
+      data: { shape: "rect", fill: brand },
+    }),
+    // 언론/기관/일반 — 회색 (bottom)
+    tplNode<CanvasShapeNode>({
+      id: "",
+      rect: { x: 839, y: 790, w: 12, h: 145, z: 3 },
+      type: "shape",
+      data: { shape: "rect", fill: "#A9A9A9" },
+    }),
+  );
+
+  // ─── 스택 바 옆 빨간 짧은 라인 (구분 마커) ───
+  out.push(
+    tplNode<CanvasShapeNode>({
+      id: "",
+      rect: { x: 851, y: 663, w: 31, h: 2, z: 4 },
+      type: "shape",
+      data: { shape: "rect", fill: brand },
+    }),
+  );
+
+  // ─── 70% 텍스트 ───
+  out.push(
+    tplNode<CanvasTextNode>({
+      id: "",
+      rect: { x: 915, y: 617, w: 242, h: 93, z: 10 },
+      type: "text",
+      data: {
+        content: "전체방문객의 70% 이상\nB2B 참관객",
+        fontSize: 24,
+        fontWeight: 400,
+        lineHeight: 1.6,
+        color: "#0A0A0A",
+      },
+    }),
+  );
+
+  // ─── 서브 범례 (의료/제조/언론) ───
+  out.push(
+    tplNode<CanvasShapeNode>({
+      id: "",
+      rect: { x: 908, y: 836, w: 8, h: 8, z: 10 },
+      type: "shape",
+      data: { shape: "rect", fill: "#AA0008" },
+    }),
+    tplNode<CanvasTextNode>({
+      id: "",
+      rect: { x: 933, y: 829, w: 200, h: 20, z: 10 },
+      type: "text",
+      data: { content: "의료/병원 종사자", fontSize: 14, fontWeight: 500, color: "#443105" },
+    }),
+    tplNode<CanvasShapeNode>({
+      id: "",
+      rect: { x: 908, y: 862, w: 8, h: 8, z: 10 },
+      type: "shape",
+      data: { shape: "rect", fill: brand },
+    }),
+    tplNode<CanvasTextNode>({
+      id: "",
+      rect: { x: 933, y: 855, w: 200, h: 20, z: 10 },
+      type: "text",
+      data: { content: "제조/무역/유통 관계자", fontSize: 14, fontWeight: 500, color: "#443105" },
+    }),
+    tplNode<CanvasShapeNode>({
+      id: "",
+      rect: { x: 908, y: 888, w: 8, h: 8, z: 10 },
+      type: "shape",
+      data: { shape: "rect", fill: "#A9A9A9" },
+    }),
+    tplNode<CanvasTextNode>({
+      id: "",
+      rect: { x: 933, y: 881, w: 200, h: 20, z: 10 },
+      type: "text",
+      data: { content: "언론/기관/일반/기타", fontSize: 14, fontWeight: 500, color: "#443105" },
+    }),
+  );
+
+  // ─── 우측 흰 알약 카드 — 잠재고객 ───
+  out.push(
+    tplNode<CanvasShapeNode>({
+      id: "",
+      rect: { x: 1243, y: 498, w: 455, h: 110, z: 8 },
+      type: "shape",
+      data: {
+        shape: "rect",
+        fill: "#FFFFFF",
+        radius: 50,
+        shadow: { x: 0, y: 4, blur: 10, color: "rgba(0,0,0,0.25)" },
+      },
+    }),
+    tplNode<CanvasTextNode>({
+      id: "",
+      rect: { x: 1263, y: 528, w: 415, h: 51, z: 9 },
+      type: "text",
+      data: {
+        content: "잠재고객 발굴 업체당 66.2건",
+        fontSize: 32,
+        fontWeight: 400,
+        align: "right",
+        color: "#0A0A0A",
+      },
+    }),
+  );
+  // 화살표 (잠재고객 → 유망고객)
+  out.push(
+    tplNode<CanvasShapeNode>({
+      id: "",
+      rect: { x: 1465, y: 612, w: 2, h: 34, z: 8 },
+      type: "shape",
+      data: { shape: "rect", fill: "#000000" },
+    }),
+    tplNode<CanvasShapeNode>({
+      id: "",
+      rect: { x: 1458, y: 638, w: 16, h: 12, z: 8, rotate: 45 },
+      type: "shape",
+      data: { shape: "triangle", fill: "#000000" },
+    }),
+  );
+  // ─── 우측 흰 알약 카드 — 유망고객 ───
+  out.push(
+    tplNode<CanvasShapeNode>({
+      id: "",
+      rect: { x: 1243, y: 682, w: 455, h: 110, z: 8 },
+      type: "shape",
+      data: {
+        shape: "rect",
+        fill: "#FFFFFF",
+        radius: 50,
+        shadow: { x: 0, y: 4, blur: 10, color: "rgba(0,0,0,0.25)" },
+      },
+    }),
+    tplNode<CanvasTextNode>({
+      id: "",
+      rect: { x: 1263, y: 712, w: 415, h: 51, z: 9 },
+      type: "text",
+      data: {
+        content: "유망고객 확보 업체당 30.1건",
+        fontSize: 32,
+        fontWeight: 400,
+        align: "right",
+        color: "#0A0A0A",
+      },
+    }),
+  );
+
+  // ─── 출처 (우하단) ───
+  out.push(
+    tplNode<CanvasTextNode>({
+      id: "",
+      rect: { x: 1331, y: 999, w: 477, h: 36, z: 10 },
+      type: "text",
+      data: {
+        content:
+          "Source: Certified data by Association of Korea Exhibition Industry (AKEI)\nSource: Exhibition & Convention Institute. Economic Impact Analysis of KIMES 2025.",
+        fontSize: 13,
+        fontWeight: 300,
+        align: "right",
+        lineHeight: 1.4,
+        color: "#808080",
+      },
+    }),
+  );
+
+  return out;
+}
+
+function benefitCards(): CanvasNode[] {
+  const items = [
+    { tag: "혜택 1", title: "참가업체 검색 페이지\n상위 고정", icon: "Pin" },
+    { tag: "혜택 2", title: "스폰서 참가업체\n뱃지 표기", icon: "Award", sub: "참가업체 검색 페이지" },
+    { tag: "혜택 3", title: "도면 내 로고 표기", icon: "MapPin" },
+    { tag: "혜택 3", title: "홈페이지 배너", icon: "Flag", sub: "참가업체 검색 또는 전시품 검색 페이지\n(선착순 5개사)" },
+  ];
+  const out: CanvasNode[] = [];
+  const startX = 900;
+  const startY = 100;
+  const cardW = 440;
+  const cardH = 400;
+  const gap = 40;
+  items.forEach((it, i) => {
+    const col = i % 2;
+    const row = Math.floor(i / 2);
+    const x = startX + col * (cardW + gap);
+    const y = startY + row * (cardH + gap);
+    out.push(
+      tplNode<CanvasShapeNode>({
+        id: "",
+        rect: { x, y, w: cardW, h: cardH },
+        type: "shape",
+        data: { shape: "rect", fill: "#F4F4F4", radius: 16 },
+      }),
+      tplNode<CanvasTextNode>({
+        id: "",
+        rect: { x: x + 32, y: y + 32, w: cardW - 64, h: 30, z: 1 },
+        type: "text",
+        data: { content: it.tag, fontSize: 16, fontWeight: 600, color: "#9CA3AF" },
+      }),
+      tplNode<CanvasTextNode>({
+        id: "",
+        rect: { x: x + 32, y: y + 64, w: cardW - 64, h: 100, z: 1 },
+        type: "text",
+        data: { content: it.title, fontSize: 30, fontWeight: 800, lineHeight: 1.3, color: "#0A0A0A" },
+      }),
+      ...(it.sub
+        ? [
+            tplNode<CanvasTextNode>({
+              id: "",
+              rect: { x: x + 32, y: y + 170, w: cardW - 64, h: 60, z: 1 },
+              type: "text",
+              data: { content: it.sub, fontSize: 14, fontWeight: 500, color: "#737373", lineHeight: 1.5 },
+            }),
+          ]
+        : []),
+      tplNode<CanvasIconNode>({
+        id: "",
+        rect: { x: x + cardW - 160, y: y + cardH - 160, w: 120, h: 120, z: 1 },
+        type: "icon",
+        data: { set: "lucide", name: it.icon, color: "var(--brand-500)", strokeWidth: 1.5 },
+      }),
+    );
+  });
+  return out;
+}
+
+function processCards(): CanvasNode[] {
+  const items = [
+    { num: "01", title: "신청상담", body: "사무국과 상담을 통해 스폰서십 진행에 대한\n혜택 및 견적 관련 상세 안내", footer: "문의\n02-551-0102\nkimes@kimes.kr" },
+    { num: "02", title: "체크리스트 신청", body: "참가업체 체크리스트 로그인\n↓\n선택제출 - 온/오프라인 광고 신청\n↓\n희망 스폰서십 항목 신청", footer: "*일부 항목은 조기 마감될 수 있습니다" },
+    { num: "03", title: "입금", body: "견적서 발송\n체크리스트 내 신청 후 사무국 문의\n\n입금 마감\n2026년 2월 28일(토)\n\n계산서 발행\n전시회 개막 1개월 전", footer: "" },
+    { num: "04", title: "디자인 파일 제출", body: "제출기한: 스폰서십별 상이", footer: "* 전달 주시는 이미지와 영상 등이 산업 분야와\n상이하다고 판단할 경우 파일을\n재요청 드릴 수 있습니다." },
+  ];
+  const out: CanvasNode[] = [];
+  const startX = 110;
+  const cardW = 420;
+  const cardH = 700;
+  const gap = 16;
+  const y = 260;
+  items.forEach((it, i) => {
+    const x = startX + i * (cardW + gap);
+    out.push(
+      tplNode<CanvasShapeNode>({
+        id: "",
+        rect: { x, y, w: cardW, h: cardH },
+        type: "shape",
+        data: { shape: "rect", fill: "#FFFFFF", radius: 24, shadow: { x: 0, y: 4, blur: 24, color: "rgba(0,0,0,0.06)" } },
+      }),
+      tplNode<CanvasTextNode>({
+        id: "",
+        rect: { x: x + 24, y: y + 40, w: cardW - 48, h: 50, z: 1 },
+        type: "text",
+        data: { content: it.num, fontSize: 28, fontWeight: 700, align: "center", color: "var(--brand-500)" },
+      }),
+      tplNode<CanvasShapeNode>({
+        id: "",
+        rect: { x: x + cardW / 2 - 24, y: y + 90, w: 48, h: 2, z: 1 },
+        type: "shape",
+        data: { shape: "rect", fill: "var(--brand-500)" },
+      }),
+      tplNode<CanvasTextNode>({
+        id: "",
+        rect: { x: x + 24, y: y + 110, w: cardW - 48, h: 50, z: 1 },
+        type: "text",
+        data: { content: it.title, fontSize: 28, fontWeight: 800, align: "center", color: "#0A0A0A" },
+      }),
+      tplNode<CanvasTextNode>({
+        id: "",
+        rect: { x: x + 24, y: y + 200, w: cardW - 48, h: 360, z: 1 },
+        type: "text",
+        data: { content: it.body, fontSize: 16, fontWeight: 500, align: "center", lineHeight: 1.7, color: "#404040" },
+      }),
+      ...(it.footer
+        ? [
+            tplNode<CanvasTextNode>({
+              id: "",
+              rect: { x: x + 24, y: y + cardH - 130, w: cardW - 48, h: 100, z: 1 },
+              type: "text",
+              data: { content: it.footer, fontSize: 14, fontWeight: 500, align: "center", lineHeight: 1.6, color: "#737373" },
+            }),
+          ]
+        : []),
+    );
+  });
+  return out;
+}
+
+function tabHeaders(): CanvasNode[] {
+  const tabs = ["브랜드 확산형", "현장 방문객 유도형", "신제품 홍보형", "맞춤형 타겟팅 광고"];
+  const startX = 420;
+  const y = 240;
+  const gap = 220;
+  const out: CanvasNode[] = [];
+  tabs.forEach((t, i) => {
+    const x = startX + i * gap;
+    out.push(
+      tplNode<CanvasTextNode>({
+        id: "",
+        rect: { x, y, w: 220, h: 40 },
+        type: "text",
+        data: { content: t, fontSize: 20, fontWeight: i === 0 ? 800 : 500, align: "center", color: i === 0 ? "#0A0A0A" : i === 3 ? "#D4D4D4" : "#737373" },
+      }),
+    );
+    if (i === 0) {
+      out.push(
+        tplNode<CanvasShapeNode>({
+          id: "",
+          rect: { x: x + 30, y: y + 50, w: 160, h: 3 },
+          type: "shape",
+          data: { shape: "rect", fill: "#0A0A0A" },
+        }),
+      );
+    }
+  });
+  return out;
+}
+
+function menuGridChips(): CanvasNode[] {
+  const items = [
+    { label: "전광판 광고(XPACE)", off: true },
+    { label: "천장배너", off: true },
+    { label: "참관객 목걸이", off: true },
+    { label: "등록대(출입증 발급대)", off: true },
+    { label: "현장 쇼가이드", off: true },
+    { label: "참관등록 페이지 배너", off: false },
+    { label: "참가업체 검색 페이지 배너", off: false },
+    { label: "국내 뉴스레터 배너", off: false },
+    { label: "해외 뉴스레터 배너", off: false },
+    { label: "경품이벤트 LED 광고", off: true },
+    { label: "도면 내 참가기업 로고 표기", off: true },
+    { label: "APP 메인 페이지 팝업", off: false },
+  ];
+  const startX = 260;
+  const startY = 380;
+  const cardW = 460;
+  const cardH = 76;
+  const gapX = 28;
+  const gapY = 24;
+  const out: CanvasNode[] = [];
+  items.forEach((it, i) => {
+    const col = i % 3;
+    const row = Math.floor(i / 3);
+    const x = startX + col * (cardW + gapX);
+    const y = startY + row * (cardH + gapY);
+    out.push(
+      tplNode<CanvasShapeNode>({
+        id: "",
+        rect: { x, y, w: cardW, h: cardH },
+        type: "shape",
+        data: { shape: "rect", fill: "#FFFFFF", radius: 999, shadow: { x: 0, y: 2, blur: 14, color: "rgba(0,0,0,0.05)" } },
+      }),
+      tplNode<CanvasTextNode>({
+        id: "",
+        rect: { x: x + 32, y, w: cardW - 80, h: cardH, z: 1 },
+        type: "text",
+        data: { content: it.label, fontSize: 18, fontWeight: 700, align: "center", lineHeight: cardH / 18, color: "#0A0A0A" },
+      }),
+      tplNode<CanvasShapeNode>({
+        id: "",
+        rect: { x: x + cardW - 36, y: y + cardH / 2 - 6, w: 12, h: 12, z: 1 },
+        type: "shape",
+        data: { shape: "ellipse", fill: it.off ? "var(--brand-500)" : "#FBCFD2" },
+      }),
+    );
+  });
+  return out;
+}
+
+export function resolveBg(bg?: string): string | undefined {
   if (!bg) return undefined;
   if (bg === "canvas") return "#F6F6F6";
   if (bg === "surface") return "#FFFFFF";
