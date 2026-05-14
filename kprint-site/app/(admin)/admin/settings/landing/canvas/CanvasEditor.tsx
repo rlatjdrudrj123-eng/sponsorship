@@ -212,7 +212,135 @@ export function CanvasEditor({
   page: CanvasPage;
   onChange: (next: CanvasPage) => void;
 }) {
-  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  // 단일 선택 — 인스펙터에 1개 노드 편집 띄울 때만 의미
+  const selectedId =
+    selectedIds.size === 1 ? Array.from(selectedIds)[0] : null;
+  const setSelectedId = (id: string | null) => {
+    setSelectedIds(id ? new Set([id]) : new Set());
+  };
+  // shift-aware 선택 — NodeFrame 에서 호출
+  const toggleSelect = (id: string, additive: boolean) => {
+    setSelectedIds((prev) => {
+      if (additive) {
+        const next = new Set(prev);
+        if (next.has(id)) next.delete(id);
+        else next.add(id);
+        return next;
+      }
+      return new Set([id]);
+    });
+  };
+
+  // 그룹 이동 — 선택된 모든 노드를 같은 델타만큼 이동
+  const groupMove = (dx: number, dy: number) => {
+    if (selectedIds.size === 0) return;
+    onChange({
+      ...page,
+      nodes: page.nodes.map((n) =>
+        selectedIds.has(n.id)
+          ? { ...n, rect: { ...n.rect, x: n.rect.x + dx, y: n.rect.y + dy } }
+          : n
+      ),
+    });
+  };
+
+  // 그룹 삭제
+  const deleteSelected = () => {
+    if (selectedIds.size === 0) return;
+    onChange({
+      ...page,
+      nodes: page.nodes.filter((n) => !selectedIds.has(n.id)),
+    });
+    setSelectedIds(new Set());
+  };
+
+  // 정렬 — 선택된 노드들을 기준으로
+  const alignNodes = (
+    axis:
+      | "left"
+      | "center-x"
+      | "right"
+      | "top"
+      | "center-y"
+      | "bottom"
+      | "distribute-x"
+      | "distribute-y"
+  ) => {
+    if (selectedIds.size < 2) return;
+    const sel = page.nodes.filter((n) => selectedIds.has(n.id));
+    if (sel.length < 2) return;
+
+    const updates: Record<string, { x: number; y: number }> = {};
+
+    if (axis === "left") {
+      const x = Math.min(...sel.map((n) => n.rect.x));
+      sel.forEach((n) => (updates[n.id] = { x, y: n.rect.y }));
+    } else if (axis === "right") {
+      const right = Math.max(...sel.map((n) => n.rect.x + n.rect.w));
+      sel.forEach(
+        (n) => (updates[n.id] = { x: right - n.rect.w, y: n.rect.y })
+      );
+    } else if (axis === "center-x") {
+      const minX = Math.min(...sel.map((n) => n.rect.x));
+      const maxX = Math.max(...sel.map((n) => n.rect.x + n.rect.w));
+      const center = (minX + maxX) / 2;
+      sel.forEach(
+        (n) => (updates[n.id] = { x: center - n.rect.w / 2, y: n.rect.y })
+      );
+    } else if (axis === "top") {
+      const y = Math.min(...sel.map((n) => n.rect.y));
+      sel.forEach((n) => (updates[n.id] = { x: n.rect.x, y }));
+    } else if (axis === "bottom") {
+      const bottom = Math.max(...sel.map((n) => n.rect.y + n.rect.h));
+      sel.forEach(
+        (n) => (updates[n.id] = { x: n.rect.x, y: bottom - n.rect.h })
+      );
+    } else if (axis === "center-y") {
+      const minY = Math.min(...sel.map((n) => n.rect.y));
+      const maxY = Math.max(...sel.map((n) => n.rect.y + n.rect.h));
+      const center = (minY + maxY) / 2;
+      sel.forEach(
+        (n) => (updates[n.id] = { x: n.rect.x, y: center - n.rect.h / 2 })
+      );
+    } else if (axis === "distribute-x" && sel.length >= 3) {
+      // 가로 균등 분배 — 양 끝은 그대로, 중간 노드들 같은 간격
+      const sorted = [...sel].sort((a, b) => a.rect.x - b.rect.x);
+      const first = sorted[0];
+      const last = sorted[sorted.length - 1];
+      const total = last.rect.x - first.rect.x;
+      const step = total / (sorted.length - 1);
+      sorted.forEach((n, i) => {
+        if (i === 0 || i === sorted.length - 1) {
+          updates[n.id] = { x: n.rect.x, y: n.rect.y };
+        } else {
+          updates[n.id] = { x: first.rect.x + step * i, y: n.rect.y };
+        }
+      });
+    } else if (axis === "distribute-y" && sel.length >= 3) {
+      const sorted = [...sel].sort((a, b) => a.rect.y - b.rect.y);
+      const first = sorted[0];
+      const last = sorted[sorted.length - 1];
+      const total = last.rect.y - first.rect.y;
+      const step = total / (sorted.length - 1);
+      sorted.forEach((n, i) => {
+        if (i === 0 || i === sorted.length - 1) {
+          updates[n.id] = { x: n.rect.x, y: n.rect.y };
+        } else {
+          updates[n.id] = { x: n.rect.x, y: first.rect.y + step * i };
+        }
+      });
+    }
+
+    onChange({
+      ...page,
+      nodes: page.nodes.map((n) => {
+        const u = updates[n.id];
+        if (!u) return n;
+        return { ...n, rect: { ...n.rect, x: Math.round(u.x), y: Math.round(u.y) } };
+      }),
+    });
+  };
   const [zoom, setZoom] = useState(1); // 사용자 zoom 제어 (1 = fit)
   const wrapRef = useRef<HTMLDivElement>(null);
   const [fitScale, setFitScale] = useState(0.5);
@@ -403,10 +531,17 @@ export function CanvasEditor({
         target?.isContentEditable;
       if (inField) return;
 
-      // Delete / Backspace
-      if ((e.key === "Delete" || e.key === "Backspace") && selectedId) {
+      // Delete / Backspace — 그룹 삭제
+      if ((e.key === "Delete" || e.key === "Backspace") && selectedIds.size > 0) {
         e.preventDefault();
-        deleteNode(selectedId);
+        if (selectedIds.size === 1) deleteNode(Array.from(selectedIds)[0]);
+        else deleteSelected();
+        return;
+      }
+      // Cmd/Ctrl + A — 전체 선택
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "a") {
+        e.preventDefault();
+        setSelectedIds(new Set(page.nodes.map((n) => n.id)));
         return;
       }
       // Cmd/Ctrl + D = 복제
@@ -462,20 +597,16 @@ export function CanvasEditor({
           setSelectedId(n.id);
           return;
         }
-        // 화살표 키 — 선택된 노드 nudge
+        // 화살표 키 — 선택된 노드(들) nudge
         if (
-          selectedId &&
+          selectedIds.size > 0 &&
           ["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown"].includes(e.key)
         ) {
           e.preventDefault();
           const step = e.shiftKey ? 10 : 1;
-          const n = page.nodes.find((nn) => nn.id === selectedId);
-          if (!n) return;
           const dx = e.key === "ArrowLeft" ? -step : e.key === "ArrowRight" ? step : 0;
           const dy = e.key === "ArrowUp" ? -step : e.key === "ArrowDown" ? step : 0;
-          updateNode(selectedId, {
-            rect: { ...n.rect, x: n.rect.x + dx, y: n.rect.y + dy },
-          });
+          groupMove(dx, dy);
           return;
         }
       }
@@ -523,7 +654,7 @@ export function CanvasEditor({
       window.removeEventListener("paste", onPaste);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedId, page, addImageFromBlob, addTextFromString]);
+  }, [selectedIds, page, addImageFromBlob, addTextFromString]);
 
   // 풀스크린 상태 — 캔버스 작업 시 모달처럼 viewport 전체 사용
   const [fullscreen, setFullscreen] = useState(false);
@@ -611,6 +742,40 @@ export function CanvasEditor({
           <span className="text-ink-500">
             scale {(scale * 100).toFixed(0)}%
           </span>
+
+          {/* 정렬 툴바 — 2개 이상 선택 시 */}
+          {selectedIds.size >= 2 && (
+            <div className="flex items-center gap-0.5 ml-3 pl-3 border-l border-ink-100">
+              <span className="font-num text-[10.5px] text-brand-500 font-bold mr-1.5">
+                {selectedIds.size}개 선택
+              </span>
+              <AlignBtn title="왼쪽 정렬" onClick={() => alignNodes("left")}>⫷</AlignBtn>
+              <AlignBtn title="가운데 정렬 (가로)" onClick={() => alignNodes("center-x")}>↔</AlignBtn>
+              <AlignBtn title="오른쪽 정렬" onClick={() => alignNodes("right")}>⫸</AlignBtn>
+              <span className="w-px h-4 bg-ink-100 mx-1" />
+              <AlignBtn title="위 정렬" onClick={() => alignNodes("top")}>⫯</AlignBtn>
+              <AlignBtn title="가운데 정렬 (세로)" onClick={() => alignNodes("center-y")}>↕</AlignBtn>
+              <AlignBtn title="아래 정렬" onClick={() => alignNodes("bottom")}>⫰</AlignBtn>
+              {selectedIds.size >= 3 && (
+                <>
+                  <span className="w-px h-4 bg-ink-100 mx-1" />
+                  <AlignBtn
+                    title="가로 균등 분배"
+                    onClick={() => alignNodes("distribute-x")}
+                  >
+                    ⇿
+                  </AlignBtn>
+                  <AlignBtn
+                    title="세로 균등 분배"
+                    onClick={() => alignNodes("distribute-y")}
+                  >
+                    ⇳
+                  </AlignBtn>
+                </>
+              )}
+            </div>
+          )}
+
           <div className="ml-auto flex items-center gap-1">
             <button
               type="button"
@@ -676,10 +841,12 @@ export function CanvasEditor({
                 <NodeFrame
                   key={n.id}
                   node={n}
-                  selected={selectedId === n.id}
+                  selected={selectedIds.has(n.id)}
                   scale={scale}
-                  onSelect={() => setSelectedId(n.id)}
+                  onSelect={(shift) => toggleSelect(n.id, shift)}
                   onMove={(rect) => updateNode(n.id, { rect })}
+                  onGroupMove={(dx, dy) => groupMove(dx, dy)}
+                  isGroup={selectedIds.size > 1 && selectedIds.has(n.id)}
                 />
               ))}
             </div>
@@ -689,19 +856,45 @@ export function CanvasEditor({
 
       {/* 우측 — 인스펙터 */}
       <aside className="bg-white border border-ink-100 rounded-card overflow-hidden flex flex-col">
-        {!selected ? (
+        {selectedIds.size === 0 ? (
           <div className="p-4 text-[12px] text-ink-500">
             <div className="font-bold text-ink-900 mb-1.5">캔버스 페이지 설정</div>
             <PageInspector page={page} onChange={onChange} />
           </div>
+        ) : selectedIds.size > 1 ? (
+          <div className="p-4 space-y-3">
+            <div className="font-num text-[11px] uppercase tracking-wide text-brand-500 font-bold">
+              {selectedIds.size}개 노드 선택됨
+            </div>
+            <p className="text-[12px] text-ink-500 leading-snug">
+              상단 정렬 도구로 좌·우·중·분배 적용 가능. 화살표 키로 같이 이동.
+              Delete = 한꺼번에 삭제.
+            </p>
+            <button
+              type="button"
+              onClick={deleteSelected}
+              className="w-full px-3 py-2 rounded-btn border border-ink-100 text-[12px] font-semibold text-red-700 hover:bg-red-50 hover:border-red-200"
+            >
+              선택 항목 모두 삭제
+            </button>
+            <button
+              type="button"
+              onClick={() => setSelectedIds(new Set())}
+              className="w-full px-3 py-2 rounded-btn border border-ink-100 text-[12px] font-semibold text-ink-700 hover:bg-ink-50"
+            >
+              선택 해제
+            </button>
+          </div>
         ) : (
-          <NodeInspector
-            node={selected}
-            onUpdateNode={(p) => updateNode(selected.id, p)}
-            onUpdateData={(p) => updateNodeData(selected.id, p)}
-            onDelete={() => deleteNode(selected.id)}
-            onDuplicate={() => duplicateNode(selected.id)}
-          />
+          selected && (
+            <NodeInspector
+              node={selected}
+              onUpdateNode={(p) => updateNode(selected.id, p)}
+              onUpdateData={(p) => updateNodeData(selected.id, p)}
+              onDelete={() => deleteNode(selected.id)}
+              onDuplicate={() => duplicateNode(selected.id)}
+            />
+          )
         )}
       </aside>
     </div>
@@ -765,12 +958,16 @@ function NodeFrame({
   scale,
   onSelect,
   onMove,
+  onGroupMove,
+  isGroup,
 }: {
   node: CanvasNode;
   selected: boolean;
   scale: number;
-  onSelect: () => void;
+  onSelect: (additive: boolean) => void;
   onMove: (rect: CanvasNode["rect"]) => void;
+  onGroupMove: (dx: number, dy: number) => void;
+  isGroup: boolean;
 }) {
   const dragStateRef = useRef<{
     mode: "move" | "resize";
@@ -780,14 +977,19 @@ function NodeFrame({
     handle?: "se" | "sw" | "ne" | "nw" | "e" | "w" | "n" | "s";
   } | null>(null);
 
+  const lastDeltaRef = useRef<{ dx: number; dy: number }>({ dx: 0, dy: 0 });
+
   const onDown = (
-    e: React.MouseEvent,
+    e: React.PointerEvent,
     mode: "move" | "resize",
     handle?: "se" | "sw" | "ne" | "nw" | "e" | "w" | "n" | "s"
   ) => {
     e.preventDefault();
     e.stopPropagation();
-    onSelect();
+    // 이미 선택된 노드를 쉬프트 없이 클릭 → 선택 유지(그룹 드래그 위해)
+    if (e.shiftKey || !selected) {
+      onSelect(e.shiftKey);
+    }
     dragStateRef.current = {
       mode,
       handle,
@@ -795,11 +997,13 @@ function NodeFrame({
       startY: e.clientY,
       startRect: { ...node.rect },
     };
-    window.addEventListener("mousemove", onMouseMove);
-    window.addEventListener("mouseup", onMouseUp);
+    lastDeltaRef.current = { dx: 0, dy: 0 };
+    (e.target as Element).setPointerCapture?.(e.pointerId);
+    window.addEventListener("pointermove", onPointerMove);
+    window.addEventListener("pointerup", onPointerUp);
   };
 
-  const onMouseMove = (e: MouseEvent) => {
+  const onPointerMove = (e: PointerEvent) => {
     const s = dragStateRef.current;
     if (!s) return;
     const dx = (e.clientX - s.startX) / scale;
@@ -807,7 +1011,20 @@ function NodeFrame({
     if (s.mode === "move") {
       const nx = snap(s.startRect.x + dx);
       const ny = snap(s.startRect.y + dy);
-      onMove({ ...node.rect, x: nx, y: ny });
+      if (isGroup) {
+        // 다중 선택 — 같은 델타만큼 다른 노드들도 이동
+        const ddx = nx - s.startRect.x - lastDeltaRef.current.dx;
+        const ddy = ny - s.startRect.y - lastDeltaRef.current.dy;
+        if (ddx !== 0 || ddy !== 0) {
+          onGroupMove(ddx, ddy);
+          lastDeltaRef.current = {
+            dx: nx - s.startRect.x,
+            dy: ny - s.startRect.y,
+          };
+        }
+      } else {
+        onMove({ ...node.rect, x: nx, y: ny });
+      }
     } else {
       const r = { ...s.startRect };
       const h = s.handle ?? "se";
@@ -827,15 +1044,15 @@ function NodeFrame({
     }
   };
 
-  const onMouseUp = () => {
+  const onPointerUp = () => {
     dragStateRef.current = null;
-    window.removeEventListener("mousemove", onMouseMove);
-    window.removeEventListener("mouseup", onMouseUp);
+    window.removeEventListener("pointermove", onPointerMove);
+    window.removeEventListener("pointerup", onPointerUp);
   };
 
   return (
     <div
-      onMouseDown={(e) => onDown(e, "move")}
+      onPointerDown={(e) => onDown(e, "move")}
       style={{
         position: "absolute",
         left: node.rect.x,
@@ -851,6 +1068,7 @@ function NodeFrame({
           ? "2px solid var(--brand-500)"
           : "1px dashed transparent",
         cursor: dragStateRef.current?.mode === "move" ? "grabbing" : "grab",
+        touchAction: "none",
       }}
       className={
         selected
@@ -866,11 +1084,12 @@ function NodeFrame({
           {(["nw", "n", "ne", "e", "se", "s", "sw", "w"] as const).map((h) => (
             <div
               key={h}
-              onMouseDown={(e) => onDown(e, "resize", h)}
+              onPointerDown={(e) => onDown(e, "resize", h)}
               className="absolute w-3 h-3 bg-white border-2 border-brand-500 rounded-sm"
               style={{
                 ...handlePos(h),
                 cursor: handleCursor(h),
+                touchAction: "none",
               }}
             />
           ))}
@@ -2088,6 +2307,27 @@ function ToolButton({
     >
       {icon}
       {label}
+    </button>
+  );
+}
+
+function AlignBtn({
+  title,
+  onClick,
+  children,
+}: {
+  title: string;
+  onClick: () => void;
+  children: React.ReactNode;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      title={title}
+      className="w-7 h-7 grid place-items-center rounded hover:bg-ink-100 text-ink-700 text-[14px] font-bold"
+    >
+      {children}
     </button>
   );
 }
