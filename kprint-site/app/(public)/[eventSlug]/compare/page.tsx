@@ -194,7 +194,7 @@ function CompareContent() {
           purposeLabels: purps.map((p) => PURPOSE_META[p].ko),
           timing: cat.timingOverride ?? [],
           location: cat.locationOverride ?? [],
-          href: `/${eventId}/sponsorships/${cat.slug}`,
+          href: `/${eventId}/sponsorships?view=card&detail=${cat.slug}`,
           lastYearBuyers: cat.lastYear?.buyers,
         });
       } else if (it.kind === "cat") {
@@ -219,7 +219,7 @@ function CompareContent() {
           purposeLabels: purps.map((p) => PURPOSE_META[p].ko),
           timing: cat.timingOverride ?? [],
           location: cat.locationOverride ?? [],
-          href: `/${eventId}/sponsorships/${cat.slug}`,
+          href: `/${eventId}/sponsorships?view=card&detail=${cat.slug}`,
           lastYearBuyers: cat.lastYear?.buyers,
         });
       } else {

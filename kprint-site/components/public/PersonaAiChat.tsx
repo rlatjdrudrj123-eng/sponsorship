@@ -35,15 +35,25 @@ import { derivePurposes } from "@/lib/purposes";
  */
 
 type Stage =
+  | "segment"
+  | "companySize"
   | "experience"
   | "goal"
-  | "audience"
   | "budget"
   | "location"
   | "result";
 
 type Experience = "first" | "repeat" | "regular";
-type Audience = "domestic_b2b" | "global" | "media" | "any";
+type Segment =
+  | "offset"
+  | "digital"
+  | "packaging"
+  | "label"
+  | "post_press"
+  | "sign"
+  | "supply"
+  | "other";
+type CompanySize = "solo" | "small" | "mid" | "large";
 type LocationPref =
   | "hall_a"
   | "hall_b"
@@ -53,13 +63,15 @@ type LocationPref =
   | "online"
   | "any";
 
-type Collected = {
+export type Collected = {
+  segment?: Segment;
+  segmentLabel?: string;
+  companySize?: CompanySize;
+  companySizeLabel?: string;
   experience?: Experience;
   experienceLabel?: string;
   purpose?: Purpose;
   purposeLabel?: string;
-  audience?: Audience;
-  audienceLabel?: string;
   budget?: number;
   budgetLabel?: string;
   location?: LocationPref;
@@ -68,48 +80,72 @@ type Collected = {
 
 type Msg = { role: "user" | "bot"; content: string };
 
-type Chip = { label: string; value: string; hint?: string };
+export type Chip = { label: string; value: string; hint?: string };
 
-const STAGES: Stage[] = [
+export const STAGES: Stage[] = [
+  "segment",
+  "companySize",
   "experience",
   "goal",
-  "audience",
   "budget",
   "location",
 ];
 
-const QUESTIONS: Record<
+/**
+ * K-PRINT 스폰서십 진단 — 6단계 (분야 lead).
+ * 사용자 지적: "참가 경험"보다 "어떤 분야 회사이신가" 가 훨씬 강한 lead question.
+ * 분야가 정해지면 그에 맞는 채널·예산 가이드가 즉시 나옴.
+ */
+export const QUESTIONS: Record<
   Stage,
-  { intro: string; chips?: Chip[] }
+  { intro: string; chips?: Chip[]; why?: string }
 > = {
-  experience: {
-    intro: "이번이 이 행사 참가는 어떻게 되세요?",
+  segment: {
+    intro: "어떤 분야의 회사이신가요?",
+    why: "분야 기준으로 가장 효율 좋은 노출 채널이 달라집니다. (예: 패키징은 샘플북·도면 / 디지털인쇄는 온라인 우선)",
     chips: [
-      { label: "🌱 처음 참가해요", value: "first", hint: "진입 채널 위주 추천" },
-      { label: "♻️ 작년에도 했어요", value: "repeat", hint: "확장 후보 추천" },
-      { label: "📌 매년 참가합니다", value: "regular", hint: "프리미엄·시그니처 후보" },
+      { label: "🖨 일반 인쇄 (오프셋·UV)", value: "offset", hint: "도면·옥외 + 검색 페이지" },
+      { label: "💻 디지털 인쇄·POD", value: "digital", hint: "온라인 배너 + 뉴스레터 우선" },
+      { label: "📦 패키징·박스", value: "packaging", hint: "샘플북·도면 우선" },
+      { label: "🏷 라벨·스티커", value: "label", hint: "시그니처 + 도면" },
+      { label: "✂ 후가공·바인딩", value: "post_press", hint: "쇼가이드 + 검색" },
+      { label: "🪧 사인·디스플레이", value: "sign", hint: "옥외 + 전광판" },
+      { label: "⚙ 잉크·소재·기자재", value: "supply", hint: "참관객 목걸이 + 쇼가이드" },
+      { label: "기타 / 정하지 않음", value: "other" },
+    ],
+  },
+  companySize: {
+    intro: "회사 규모는 어느 정도이신가요?",
+    why: "규모는 예산 가용성과 패키지 적합도에 영향. 1인·스타트업은 단품 위주, 중견·대기업은 시그니처 통합 패키지가 효율적.",
+    chips: [
+      { label: "👤 1인 / 스타트업 (1-5명)", value: "solo", hint: "단품·진입 채널" },
+      { label: "👥 소기업 (5-30명)", value: "small", hint: "프라임 스팟 + 단품" },
+      { label: "🏢 중견 (30-100명)", value: "mid", hint: "패키지 권장" },
+      { label: "🏛 대기업 (100명+)", value: "large", hint: "시그니처 패키지 + 통합 노출" },
+    ],
+  },
+  experience: {
+    intro: "이번이 K-PRINT 참가는 어떻게 되시나요?",
+    why: "신규 참가는 진입 채널 (검색 페이지·뉴스레터) 위주, 재참가·정기 참가는 확장·시그니처 후보 우선.",
+    chips: [
+      { label: "🌱 신규 참가", value: "first", hint: "진입 채널 위주 추천" },
+      { label: "♻️ 재참가 (전년)", value: "repeat", hint: "확장 후보 추천" },
+      { label: "📌 정기 참가 (3년+)", value: "regular", hint: "프리미엄·시그니처 후보" },
     ],
   },
   goal: {
-    intro: "이번에 가장 우선하는 결과는 무엇인가요?",
+    intro: "이번 참가의 최우선 목표는 무엇입니까?",
+    why: "목표에 따라 채널 믹스가 달라짐 — 부스 트래픽은 도면·목걸이, 브랜드는 전광판·천장배너, 해외는 영문 뉴스레터·쇼가이드.",
     chips: [
-      { label: "🧭 부스로 사람 끌어오기", value: "traffic_driver" },
+      { label: "🧭 부스로 사람 끌어오기 (트래픽)", value: "traffic_driver" },
       { label: "🚀 브랜드 인지도 확보", value: "brand_awareness" },
       { label: "🎯 해외/특정 바이어 도달", value: "buyer_reach" },
       { label: "📰 행사 후 콘텐츠 자산", value: "post_asset" },
     ],
   },
-  audience: {
-    intro: "주 타겟이 누구세요?",
-    chips: [
-      { label: "🏥 국내 B2B (의료·산업)", value: "domestic_b2b" },
-      { label: "🌏 해외 바이어/글로벌", value: "global" },
-      { label: "📰 언론·일반 인지", value: "media" },
-      { label: "특별히 정하진 않음", value: "any" },
-    ],
-  },
   budget: {
-    intro: "전체 스폰서십 예산 범위는?",
+    intro: "전체 스폰서십 예산 범위를 알려주세요.",
+    why: "예산은 추천에서 가장 무거운 가중치 — 범위를 벗어나는 항목은 자동 제외, 평균에 가까운 콤보 우선.",
     chips: [
       { label: "💰 500만원 이하", value: "5000000" },
       { label: "💰 500~1,500만원", value: "15000000" },
@@ -118,19 +154,36 @@ const QUESTIONS: Record<
     ],
   },
   location: {
-    intro: "선호하는 위치가 있나요? 없으면 가장 효과 좋은 위치로 추천드릴게요.",
+    intro: "선호하는 노출 위치가 있으신가요?",
+    why: "위치는 약한 가중치 — 없으면 효율 우선으로 자동 추천.",
     chips: [
       { label: "Hall A", value: "hall_a" },
       { label: "Hall B", value: "hall_b" },
       { label: "Hall C", value: "hall_c" },
       { label: "Hall D", value: "hall_d" },
-      { label: "옥외/도로변", value: "outdoor" },
+      { label: "옥외 / 전광판", value: "outdoor" },
       { label: "온라인 중심", value: "online" },
-      { label: "선호 없음", value: "any" },
+      { label: "선호 없음 — 효율 우선", value: "any" },
     ],
   },
   result: { intro: "" },
 };
+
+/**
+ * 스코어링 가중치 — 어드민에서 확인 가능.
+ * findBestPersona 가 이 가중치를 활용해 페르소나 별 점수를 계산.
+ */
+export const SCORING_WEIGHTS = {
+  segmentMatch: 35,        // 분야 일치 (가장 강함)
+  budgetInRange: 30,       // 예산 범위 일치
+  budgetDistancePenalty: 0.00000005, // 평균과의 거리 * 이 값 만큼 감점
+  experienceFirst: 25,     // 신규 + 진입형 페르소나
+  experienceRegular: 15,   // 정기 + 시그니처 페르소나
+  companySizeLarge: 20,    // 대기업 + 시그니처 가중
+  companySizeSolo: 15,     // 1인 + 단품 가중
+  goalMatch: 20,           // 목표(purpose) 일치
+  locationMatch: 10,       // 위치 약한 가중
+} as const;
 
 export function PersonaAiChat({
   open,
@@ -141,7 +194,7 @@ export function PersonaAiChat({
   subcategories,
   slots,
   packages,
-  initialExperience,
+  initialSegment,
 }: {
   open: boolean;
   onClose: () => void;
@@ -152,8 +205,8 @@ export function PersonaAiChat({
   subcategories: Subcategory[];
   slots: Slot[];
   packages: Package[];
-  /** 페이지에서 첫 질문 칩을 미리 누르고 열었을 때 — 모달은 바로 2번째 질문부터 */
-  initialExperience?: Experience;
+  /** 페이지에서 첫 질문(분야) 칩을 미리 누르고 열었을 때 — 모달은 바로 2번째 질문부터 */
+  initialSegment?: Segment;
 }) {
   const [messages, setMessages] = useState<Msg[]>([]);
   const [stage, setStage] = useState<Stage>("experience");
@@ -161,26 +214,26 @@ export function PersonaAiChat({
   const [thinking, setThinking] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
 
-  // 모달 열릴 때 초기화 (initialExperience 가 있으면 1번 질문 자동 답변 후 2번부터)
+  // 모달 열릴 때 초기화 (initialSegment 가 있으면 1번 질문 자동 답변 후 2번부터)
   useEffect(() => {
     if (!open) return;
     setMessages([
       {
         role: "bot",
         content:
-          "안녕하세요. 5가지 짧게 여쭙고 가장 잘 맞는 스폰서십 조합을 추천드릴게요. 답은 보기에서 클릭만 해주시면 됩니다.",
+          "안녕하세요. K-PRINT 스폰서십 어드바이저입니다. 6가지 짧게 여쭙고 가장 효율 좋은 노출 조합을 추천드릴게요. 답은 보기에서 클릭만 해주시면 됩니다.",
       },
     ]);
-    setStage("experience");
+    setStage("segment");
     setCollected({});
     setThinking(false);
 
     const timers: ReturnType<typeof setTimeout>[] = [];
-    timers.push(setTimeout(() => say(QUESTIONS.experience.intro), 450));
+    timers.push(setTimeout(() => say(QUESTIONS.segment.intro), 450));
 
-    if (initialExperience) {
-      const chip = QUESTIONS.experience.chips!.find(
-        (c) => c.value === initialExperience
+    if (initialSegment) {
+      const chip = QUESTIONS.segment.chips!.find(
+        (c) => c.value === initialSegment
       );
       if (chip) {
         // intro 가 보인 직후, 사용자가 칩을 누른 것처럼 진행
@@ -188,11 +241,11 @@ export function PersonaAiChat({
           setTimeout(() => {
             userSay(chip.label);
             const next: Collected = {
-              experience: chip.value as Experience,
-              experienceLabel: chip.label,
+              segment: chip.value as Segment,
+              segmentLabel: chip.label,
             };
             setCollected(next);
-            advance(next, "experience");
+            advance(next, "segment");
           }, 1100)
         );
       }
@@ -200,7 +253,7 @@ export function PersonaAiChat({
 
     return () => timers.forEach((t) => clearTimeout(t));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, initialExperience]);
+  }, [open, initialSegment]);
 
   useEffect(() => {
     scrollRef.current?.scrollTo({
@@ -239,15 +292,18 @@ export function PersonaAiChat({
   const onChip = (chip: Chip) => {
     userSay(chip.label);
     const next: Collected = { ...collected };
-    if (stage === "experience") {
+    if (stage === "segment") {
+      next.segment = chip.value as Segment;
+      next.segmentLabel = chip.label;
+    } else if (stage === "companySize") {
+      next.companySize = chip.value as CompanySize;
+      next.companySizeLabel = chip.label;
+    } else if (stage === "experience") {
       next.experience = chip.value as Experience;
       next.experienceLabel = chip.label;
     } else if (stage === "goal") {
       next.purpose = chip.value as Purpose;
       next.purposeLabel = chip.label;
-    } else if (stage === "audience") {
-      next.audience = chip.value as Audience;
-      next.audienceLabel = chip.label;
     } else if (stage === "budget") {
       next.budget = parseInt(chip.value, 10);
       next.budgetLabel = chip.label.replace("💰 ", "");
@@ -677,22 +733,22 @@ function ResultCard({
 
 function ackFor(stage: Stage, c: Collected): string {
   switch (stage) {
+    case "segment":
+      return `${c.segmentLabel} 분야시군요. 그 분야 효율 좋은 채널 위주로 보겠습니다.`;
+    case "companySize":
+      return c.companySize === "solo"
+        ? "단품·진입 채널 우선으로 추리겠습니다."
+        : c.companySize === "large"
+          ? "통합 시그니처 패키지 후보도 함께 보여드릴게요."
+          : `${c.companySizeLabel} 규모에 맞는 조합으로 짜드릴게요.`;
     case "experience":
       return c.experience === "first"
-        ? "처음 참가시면 안정적인 진입 채널 위주로 잡아드릴게요."
+        ? "신규 참가시면 안정적인 진입 채널 위주로 잡아드릴게요."
         : c.experience === "regular"
-          ? "매년 참가하시는 분이면 시그니처·풀패키지 후보도 같이 봐드릴게요."
+          ? "정기 참가시면 시그니처·풀패키지 후보도 같이 봐드릴게요."
           : "확장 후보까지 같이 보겠습니다.";
     case "goal":
       return `좋아요. 「${c.purposeLabel}」 우선으로 잡고 가겠습니다.`;
-    case "audience":
-      return c.audience === "global"
-        ? "글로벌 채널 비중을 높일게요."
-        : c.audience === "domestic_b2b"
-          ? "국내 산업종사자 도달 채널을 우선으로 보겠습니다."
-          : c.audience === "media"
-            ? "노출·콘텐츠 채널 위주로 잡을게요."
-            : "타겟 제약 없이 효율 좋은 채널로 추리겠습니다.";
     case "budget":
       return `예산 ${c.budgetLabel} 안에서 조합해드릴게요.`;
     case "location":
@@ -706,9 +762,10 @@ function ackFor(stage: Stage, c: Collected): string {
 
 function buildSummary(c: Collected, persona: Persona | null): string {
   const parts: string[] = ["정리하면:"];
-  if (c.experienceLabel) parts.push(`· ${c.experienceLabel}`);
+  if (c.segmentLabel) parts.push(`· 분야: ${c.segmentLabel.replace(/^.+?\s/, "")}`);
+  if (c.companySizeLabel) parts.push(`· 규모: ${c.companySizeLabel.replace(/^.+?\s/, "")}`);
+  if (c.experienceLabel) parts.push(`· 경험: ${c.experienceLabel.replace(/^.+?\s/, "")}`);
   if (c.purposeLabel) parts.push(`· 목적: ${c.purposeLabel.replace(/^.+?\s/, "")}`);
-  if (c.audienceLabel) parts.push(`· 타겟: ${c.audienceLabel.replace(/^.+?\s/, "")}`);
   if (c.budgetLabel) parts.push(`· 예산: ${c.budgetLabel}`);
   if (c.location && c.location !== "any" && c.locationLabel)
     parts.push(`· 위치: ${c.locationLabel}`);
@@ -725,48 +782,88 @@ function buildSummary(c: Collected, persona: Persona | null): string {
   return parts.join("\n");
 }
 
-function findBestPersona(
+/**
+ * K-PRINT 기준 다층 가중치 스코어링.
+ * 분야(segment)·예산이 가장 무거운 가중치. 어드민 페이지에서 SCORING_WEIGHTS 그대로 확인 가능.
+ */
+export function findBestPersona(
   personas: Persona[],
   c: Collected
 ): Persona | null {
   const active = personas.filter((p) => p.isActive);
   if (active.length === 0) return null;
 
+  const W = SCORING_WEIGHTS;
+
   const scored = active.map((p) => {
     let score = 0;
-    // 목적 매칭
-    if (c.purpose && p.purposes?.includes(c.purpose)) score += 30;
-    // 예산 범위 매칭
+
+    // 1. 분야(segment) 매칭 — 페르소나 targetTags 또는 id 에 분야가 들어있으면 강한 가중
+    if (c.segment) {
+      const tags = (p.targetTags ?? []).map((t) => t.toLowerCase());
+      const idLow = p.id.toLowerCase();
+      const titleLow = p.title.toLowerCase();
+      const segKey = c.segment;
+      const segKeywords: Record<Segment, string[]> = {
+        offset: ["offset", "인쇄", "오프셋"],
+        digital: ["digital", "디지털", "pod"],
+        packaging: ["packaging", "패키지", "박스"],
+        label: ["label", "라벨", "스티커"],
+        post_press: ["post", "후가공", "바인딩"],
+        sign: ["sign", "사인", "디스플레이"],
+        supply: ["supply", "잉크", "소재", "기자재"],
+        other: [],
+      };
+      const kws = segKeywords[segKey];
+      if (
+        kws.some(
+          (kw) =>
+            tags.includes(kw) || idLow.includes(kw) || titleLow.includes(kw)
+        )
+      ) {
+        score += W.segmentMatch;
+      }
+    }
+
+    // 2. 예산 범위 매칭 — 범위 안이면 +30, 평균 가까울수록 감점 작게
     if (c.budget !== undefined) {
       const min = p.budgetMin ?? 0;
       const max = p.budgetMax ?? Number.POSITIVE_INFINITY;
-      if (c.budget >= min && c.budget <= max) score += 20;
-      // 평균 거리 패널티
+      if (c.budget >= min && c.budget <= max) score += W.budgetInRange;
       const mid = (min + Math.min(max, 100_000_000)) / 2;
-      score -= Math.abs(c.budget - mid) / 20_000_000;
+      score -= Math.abs(c.budget - mid) * W.budgetDistancePenalty;
     }
-    // experience
+
+    // 3. 참가 경험
     if (c.experience === "first") {
-      if (p.id.endsWith("first-time") || p.title.includes("처음")) score += 30;
+      if (p.id.endsWith("first-time") || p.title.includes("처음") || p.title.includes("신규"))
+        score += W.experienceFirst;
       if (p.packageTier === "signature") score -= 10;
     }
     if (c.experience === "regular") {
-      if (p.packageTier === "signature" || p.title.includes("인지도"))
-        score += 15;
+      if (p.packageTier === "signature" || p.title.includes("정기") || p.title.includes("프리미엄"))
+        score += W.experienceRegular;
     }
-    // audience
-    if (c.audience === "global" && (p.id.includes("global") || p.title.includes("글로벌")))
-      score += 25;
+
+    // 4. 회사 규모
+    if (c.companySize === "large" && p.packageTier === "signature")
+      score += W.companySizeLarge;
     if (
-      c.audience === "domestic_b2b" &&
-      (p.id.includes("industry") || p.title.includes("산업"))
+      c.companySize === "solo" &&
+      (p.title.includes("진입") || p.title.includes("단품") || p.budgetMax && p.budgetMax < 10_000_000)
     )
-      score += 25;
-    if (
-      c.audience === "media" &&
-      (p.title.includes("콘텐츠") || p.title.includes("브랜드"))
-    )
-      score += 15;
+      score += W.companySizeSolo;
+
+    // 5. 목표 매칭 (purpose)
+    if (c.purpose && p.purposes?.includes(c.purpose)) score += W.goalMatch;
+
+    // 6. 위치 — 약한 가중치, "any" 일 땐 패스
+    if (c.location && c.location !== "any") {
+      const loc = c.location.toLowerCase();
+      const titleLow = p.title.toLowerCase();
+      if (titleLow.includes(loc.replace("_", " "))) score += W.locationMatch;
+    }
+
     return { p, score };
   });
   scored.sort((a, b) => b.score - a.score);
@@ -837,20 +934,31 @@ function computeCombo(
       score += 40;
       reasons.push(`${c.locationLabel} 위치 매칭`);
     }
-    if (c.audience === "global" && (cat.tags ?? []).some((t) => /글로벌|해외/.test(t))) {
-      score += 25;
-      reasons.push("글로벌 채널");
+    // 분야(segment) 별 채널 보너스
+    if (c.segment === "digital" && (cat.type === "digital_banner" || cat.type === "mailing")) {
+      score += 30;
+      reasons.push("디지털인쇄 분야 — 온라인 채널 적합");
     }
-    if (
-      c.audience === "domestic_b2b" &&
-      (cat.tags ?? []).some((t) => /산업|등록|직접/.test(t))
-    ) {
+    if (c.segment === "packaging" && (cat.type === "print_page" || cat.type === "floor_plan")) {
       score += 25;
-      reasons.push("산업 종사자 도달");
+      reasons.push("패키징 분야 — 도면·샘플북 적합");
     }
-    if (c.audience === "media" && (cat.type === "content" || cat.type === "print_page")) {
+    if (c.segment === "sign" && cat.type === "xpace") {
+      score += 30;
+      reasons.push("사인 분야 — 옥외·전광판 적합");
+    }
+    if (c.segment === "supply" && (cat.type === "quantity" || cat.type === "media")) {
       score += 20;
-      reasons.push("콘텐츠·인쇄");
+      reasons.push("소재·기자재 — 참관객 도달 적합");
+    }
+    // 회사 규모 별 가격 적합도
+    if (c.companySize === "solo" && sub.priceKRW < 5_000_000) {
+      score += 20;
+      reasons.push("1인·스타트업 친화 가격");
+    }
+    if (c.companySize === "large" && sub.priceKRW >= 10_000_000) {
+      score += 15;
+      reasons.push("대기업 규모 효율");
     }
     if (c.experience === "first" && sub.priceKRW < 5_000_000) {
       score += 15;

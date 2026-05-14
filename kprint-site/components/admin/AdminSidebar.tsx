@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState, type ComponentType, type SVGProps } from "react";
 import {
+  Brain,
   CalendarDays,
   Database,
   FileText,
@@ -91,6 +92,7 @@ export function AdminSidebar() {
       items: [
         { href: "/admin/settings", label: "사이트 설정", Icon: Settings, exact: true },
         { href: "/admin/settings/landing", label: "랜딩 빌더", Icon: LayoutDashboard },
+        { href: "/admin/settings/diagnosis", label: "진단 로직", Icon: Brain },
         { href: "/admin/settings/taxonomy", label: "분류·태그", Icon: Tags },
         { href: "/admin/settings/quote", label: "견적서 설정", Icon: FileText },
         { href: "/admin/events", label: "행사 관리", Icon: CalendarDays },

@@ -21,6 +21,7 @@ import type {
   CanvasTextNode,
 } from "@/lib/types";
 import { NodePreview, resolveBg } from "./CanvasEditor";
+import { buildStoragePath, uploadFile } from "@/lib/firebase/storage";
 
 /**
  * Figma 식 멀티 아트보드 에디터.
@@ -72,8 +73,10 @@ export function MultiArtboardEditor({
   const [layersOpen, setLayersOpen] = useState(true);
   const [expandedPages, setExpandedPages] = useState<Set<number>>(new Set());
   const [editing, setEditing] = useState<Selection | null>(null);
+  const [uploading, setUploading] = useState(false);
   const spaceRef = useRef(false);
   const wrapRef = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const sel = selections[0] ?? null;
   const selectedNode =
@@ -184,7 +187,10 @@ export function MultiArtboardEditor({
         else if (k === "h") setTool("hand");
         else if (k === "t") setTool("text");
         else if (k === "r") setTool("rect");
-        else if (k === "i") setTool("image");
+        else if (k === "i") {
+          if (pages.length === 0) return;
+          fileInputRef.current?.click();
+        }
         // 화살표 키 nudge
         else if (
           selections.length > 0 &&
@@ -710,12 +716,53 @@ export function MultiArtboardEditor({
             <TypeIcon className="w-4 h-4" />
           </ToolBtn>
           <ToolBtn
-            active={tool === "image"}
-            onClick={() => setTool("image")}
-            title="이미지 (I)"
+            active={uploading}
+            onClick={() => {
+              if (pages.length === 0) {
+                alert("먼저 아트보드를 추가해주세요.");
+                return;
+              }
+              fileInputRef.current?.click();
+            }}
+            title="이미지 업로드 (I) — 클릭하면 파일 선택 다이얼로그"
           >
             <ImageIcon className="w-4 h-4" />
           </ToolBtn>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*"
+            className="hidden"
+            onChange={async (e) => {
+              const file = e.target.files?.[0];
+              if (!file) return;
+              setUploading(true);
+              try {
+                const path = buildStoragePath(
+                  "landing/canvas-multi",
+                  file.name
+                );
+                const { url } = await uploadFile(file, path);
+                // 첫 아트보드 가운데에 800×600 으로 배치 (또는 마지막 선택된 아트보드)
+                const targetPageIdx = sel?.pageIdx ?? 0;
+                const node: CanvasImageNode = {
+                  id: randomId(),
+                  rect: { x: 560, y: 240, w: 800, h: 600 },
+                  type: "image",
+                  data: { url, fit: "cover", radius: 0 },
+                };
+                addNode(targetPageIdx, node);
+              } catch (err) {
+                alert(
+                  "업로드 실패: " +
+                    (err instanceof Error ? err.message : String(err))
+                );
+              } finally {
+                setUploading(false);
+                e.target.value = "";
+              }
+            }}
+          />
           <span className="w-px h-5 bg-white/10 mx-1" />
           <button
             type="button"

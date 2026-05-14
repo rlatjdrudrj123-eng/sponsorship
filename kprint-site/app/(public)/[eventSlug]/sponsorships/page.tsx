@@ -207,12 +207,23 @@ export default function SponsorshipsPage() {
   const [advancedOpen, setAdvancedOpen] = useState(false);
   const [aiChatOpen, setAiChatOpen] = useState(false);
   const [aiChatInitial, setAiChatInitial] = useState<
-    "first" | "repeat" | "regular" | null
+    | "offset"
+    | "digital"
+    | "packaging"
+    | "label"
+    | "post_press"
+    | "sign"
+    | "supply"
+    | "other"
+    | null
   >(null);
   // 비교 모드 — 카드에서 직접 체크해 모은다 (카트 거치지 않고 바로 compare로)
   const [compareIds, setCompareIds] = useState<Set<string>>(new Set());
-  // 도면·사례 모달 — 페이지 이동 대신 이 상태에 slug 를 넣어 iframe 모달로 표시
-  const [detailModalSlug, setDetailModalSlug] = useState<string | null>(null);
+  // 도면·사례 모달 — 카드 클릭 시 SlideSection 형 모달.
+  // ?detail=<slug> 로 자동 오픈 가능 (compare 페이지에서 돌아올 때).
+  const [detailModalSlug, setDetailModalSlug] = useState<string | null>(
+    searchParams?.get("detail") ?? null
+  );
 
   const toggleCompare = (key: string) => {
     setCompareIds((prev) => {
@@ -521,7 +532,7 @@ export default function SponsorshipsPage() {
                         </div>
                         <div className="bg-ink-50 rounded-2xl rounded-tl-sm px-4 py-2.5 text-[13.5px] text-ink-900 max-w-[88%] leading-relaxed">
                           참가 목표와 예산을 기반으로 최적 노출 조합을
-                          제안드리겠습니다. 7개 항목 응답 후 즉시 결과를
+                          제안드리겠습니다. 6개 항목 응답 후 즉시 결과를
                           확인하실 수 있습니다.
                         </div>
                       </div>
@@ -530,52 +541,52 @@ export default function SponsorshipsPage() {
                           SA
                         </div>
                         <div className="bg-ink-50 rounded-2xl rounded-tl-sm px-4 py-2.5 text-[13.5px] text-ink-900 max-w-[88%] leading-relaxed">
-                          본 행사 참가 경험은 어떻게 되십니까?
+                          어떤 분야의 회사이신가요?
                         </div>
                       </div>
 
-                      <div className="pl-10 space-y-2">
+                      <div className="pl-10 grid grid-cols-2 gap-2">
                         {[
-                          {
-                            label: "신규 참가",
-                            value: "first",
-                            hint: "진입 채널 중심 — 검색 노출·뉴스레터 우선 구성",
-                          },
-                          {
-                            label: "재참가 (전년 참가)",
-                            value: "repeat",
-                            hint: "전년 성과 분석 후 확장·보완 채널 제안",
-                          },
-                          {
-                            label: "정기 참가 (3년 이상)",
-                            value: "regular",
-                            hint: "시그니처·프리미엄 통합 패키지 우선 검토",
-                          },
+                          { label: "🖨 일반 인쇄", value: "offset", hint: "오프셋·UV" },
+                          { label: "💻 디지털·POD", value: "digital", hint: "온라인 우선" },
+                          { label: "📦 패키징·박스", value: "packaging", hint: "샘플북·도면" },
+                          { label: "🏷 라벨·스티커", value: "label", hint: "시그니처" },
+                          { label: "✂ 후가공", value: "post_press", hint: "쇼가이드 우선" },
+                          { label: "🪧 사인", value: "sign", hint: "옥외·전광판" },
+                          { label: "⚙ 잉크·기자재", value: "supply", hint: "참관객 도달" },
+                          { label: "기타 / 미정", value: "other", hint: "전체 카탈로그" },
                         ].map((c) => (
                           <button
                             key={c.value}
                             type="button"
                             onClick={() => {
-                              setAiChatInitial(c.value as "first" | "repeat" | "regular");
+                              setAiChatInitial(
+                                c.value as
+                                  | "offset"
+                                  | "digital"
+                                  | "packaging"
+                                  | "label"
+                                  | "post_press"
+                                  | "sign"
+                                  | "supply"
+                                  | "other"
+                              );
                               setAiChatOpen(true);
                             }}
-                            className="w-full text-left px-4 py-3 rounded-2xl border-[1.5px] border-ink-100 hover:border-brand-500 hover:bg-brand-50 transition-colors group flex items-center justify-between gap-3"
+                            className="w-full text-left px-3 py-2.5 rounded-2xl border-[1.5px] border-ink-100 hover:border-brand-500 hover:bg-brand-50 transition-colors group"
                           >
-                            <div className="min-w-0">
-                              <div className="text-[14px] font-semibold text-ink-900">
-                                {c.label}
-                              </div>
-                              <div className="text-[11.5px] text-ink-500 mt-0.5">
-                                {c.hint}
-                              </div>
+                            <div className="text-[12.5px] font-semibold text-ink-900 leading-tight">
+                              {c.label}
                             </div>
-                            <ArrowRight className="w-4 h-4 text-ink-300 group-hover:text-brand-500 group-hover:translate-x-0.5 transition-all shrink-0" />
+                            <div className="text-[11px] text-ink-500 mt-0.5">
+                              {c.hint}
+                            </div>
                           </button>
                         ))}
                       </div>
 
                       <div className="text-center text-[11px] text-ink-400 pt-2 font-num tracking-wider">
-                        STEP 1 OF 7 · 응답 시간 약 60초
+                        STEP 1 OF 6 · 응답 시간 약 60초
                       </div>
                     </div>
                   </div>
@@ -844,33 +855,73 @@ export default function SponsorshipsPage() {
         subcategories={subcategories}
         slots={slots}
         packages={packages}
-        initialExperience={aiChatInitial ?? undefined}
+        initialSegment={aiChatInitial ?? undefined}
       />
 
-      {/* 도면·사례 상세 모달 — 페이지 이동 대신 iframe 으로 띄움 */}
-      {detailModalSlug && (
-        <DetailModal
-          eventId={eventId}
-          slug={detailModalSlug}
-          onClose={() => setDetailModalSlug(null)}
-        />
-      )}
+      {/* 도면·사례 상세 모달 — 슬라이드형(SlideSection) 그대로 띄움.
+           카드 / 슬라이드 / 모달 — 한 컴포넌트로 통일. iframe 제거. */}
+      {detailModalSlug && (() => {
+        const item = filtered.find((c) => c.slug === detailModalSlug);
+        if (!item) return null;
+        const itemIdx = filtered.findIndex((c) => c.slug === detailModalSlug);
+        const itemSubs = subcategories
+          .filter((s) => s.categoryId === item.id)
+          .sort((a, b) => a.order - b.order);
+        const itemSlots = slots
+          .filter((s) => s.categoryId === item.id)
+          .sort((a, b) => a.order - b.order);
+        const goPrev =
+          itemIdx > 0
+            ? () => setDetailModalSlug(filtered[itemIdx - 1].slug)
+            : undefined;
+        const goNext =
+          itemIdx < filtered.length - 1
+            ? () => setDetailModalSlug(filtered[itemIdx + 1].slug)
+            : undefined;
+        return (
+          <DetailSlideModal
+            item={item}
+            subcategories={itemSubs}
+            slots={itemSlots}
+            index={itemIdx}
+            total={filtered.length}
+            onPrev={goPrev}
+            onNext={goNext}
+            onClose={() => setDetailModalSlug(null)}
+            onOpenDetail={setDetailModalSlug}
+          />
+        );
+      })()}
     </>
   );
 }
 
-function DetailModal({
-  eventId,
-  slug,
+function DetailSlideModal({
+  item,
+  subcategories,
+  slots,
+  index,
+  total,
+  onPrev,
+  onNext,
   onClose,
+  onOpenDetail,
 }: {
-  eventId: string;
-  slug: string;
+  item: EnrichedCategory;
+  subcategories: Subcategory[];
+  slots: Slot[];
+  index: number;
+  total: number;
+  onPrev?: () => void;
+  onNext?: () => void;
   onClose: () => void;
+  onOpenDetail: (slug: string) => void;
 }) {
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") onClose();
+      if (e.key === "ArrowLeft" && onPrev) onPrev();
+      if (e.key === "ArrowRight" && onNext) onNext();
     };
     window.addEventListener("keydown", onKey);
     document.body.style.overflow = "hidden";
@@ -878,38 +929,71 @@ function DetailModal({
       window.removeEventListener("keydown", onKey);
       document.body.style.overflow = "";
     };
-  }, [onClose]);
+  }, [onClose, onPrev, onNext]);
 
   return (
     <div
-      className="fixed inset-0 z-[60] bg-ink-900/60 backdrop-blur-[2px] flex items-stretch justify-center p-3 md:p-6"
+      className="fixed inset-0 z-[60] bg-ink-900/70 backdrop-blur-sm flex items-stretch justify-center"
       onClick={onClose}
     >
       <div
         role="dialog"
         aria-modal="true"
         onClick={(e) => e.stopPropagation()}
-        className="bg-white w-full max-w-[1400px] rounded-card overflow-hidden shadow-2xl flex flex-col"
+        className="bg-canvas w-full h-full flex flex-col"
       >
-        <header className="px-4 py-3 border-b border-ink-100 flex items-center justify-between shrink-0">
-          <span className="text-[13px] font-num font-bold text-ink-700 uppercase tracking-wide">
-            도면 · 사례 상세
-          </span>
-          <button
-            type="button"
-            onClick={onClose}
-            className="px-3 py-1.5 rounded-btn border border-ink-100 hover:border-ink-900 text-[12px] font-semibold flex items-center gap-1.5"
-            title="닫기 (Esc)"
-          >
-            <X className="w-3.5 h-3.5" />
-            닫기
-          </button>
+        <header className="px-5 py-3 border-b border-ink-100 bg-white flex items-center justify-between shrink-0">
+          <div className="flex items-center gap-3">
+            <span className="font-num text-[11px] uppercase tracking-[0.3em] text-brand-500 font-bold">
+              스폰서십 상세
+            </span>
+            <span className="text-[12px] text-ink-500 font-num">
+              {String(index + 1).padStart(2, "0")} / {String(total).padStart(2, "0")}
+            </span>
+          </div>
+          <div className="flex items-center gap-1.5">
+            <button
+              type="button"
+              onClick={onPrev}
+              disabled={!onPrev}
+              className="px-3 py-1.5 rounded-btn border border-ink-100 hover:border-ink-900 text-[12px] font-semibold flex items-center gap-1 disabled:opacity-30 disabled:cursor-not-allowed"
+              title="이전 (←)"
+            >
+              <ArrowLeft className="w-3.5 h-3.5" />
+              이전
+            </button>
+            <button
+              type="button"
+              onClick={onNext}
+              disabled={!onNext}
+              className="px-3 py-1.5 rounded-btn border border-ink-100 hover:border-ink-900 text-[12px] font-semibold flex items-center gap-1 disabled:opacity-30 disabled:cursor-not-allowed"
+              title="다음 (→)"
+            >
+              다음
+              <ArrowRight className="w-3.5 h-3.5" />
+            </button>
+            <span className="w-px h-5 bg-ink-100 mx-1" />
+            <button
+              type="button"
+              onClick={onClose}
+              className="px-3 py-1.5 rounded-btn border border-ink-100 hover:border-ink-900 text-[12px] font-semibold flex items-center gap-1"
+              title="닫기 (Esc)"
+            >
+              <X className="w-3.5 h-3.5" />
+              닫기
+            </button>
+          </div>
         </header>
-        <iframe
-          src={`/${eventId}/sponsorships/${slug}?embed=1`}
-          className="flex-1 w-full border-0"
-          title="상세"
-        />
+        <div className="flex-1 overflow-auto">
+          <SlideSection
+            item={item}
+            subcategories={subcategories}
+            slots={slots}
+            index={index}
+            total={total}
+            onOpenDetail={onOpenDetail}
+          />
+        </div>
       </div>
     </div>
   );

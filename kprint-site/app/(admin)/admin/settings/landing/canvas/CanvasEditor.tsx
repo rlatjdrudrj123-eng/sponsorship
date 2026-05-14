@@ -873,24 +873,54 @@ export function CanvasEditor({
           />
         </div>
 
-        {/* 슬라이드 템플릿 */}
-        <div className="border-t border-ink-100 px-2 py-2">
-          <div className="text-[10.5px] uppercase tracking-wide font-bold text-ink-500 mb-1.5 px-1">
-            템플릿 (현재 슬라이드에 추가)
-          </div>
-          <div className="grid grid-cols-1 gap-1">
-            {SLIDE_TEMPLATES.map((t) => (
-              <button
-                key={t.key}
-                type="button"
-                onClick={() => insertTemplate(t.key)}
-                className="text-left px-2 py-1.5 rounded border border-ink-100 hover:border-ink-900 hover:bg-ink-50 text-[10.5px] font-semibold text-ink-700 leading-tight"
-                title={t.desc}
-              >
-                {t.label}
-              </button>
-            ))}
-          </div>
+        {/* 슬라이드 템플릿 — 그룹별 (K-PRINT 우선) */}
+        <div className="border-t border-ink-100 px-2 py-2 space-y-3">
+          {(["K-PRINT", "공통", "KIMES"] as const).map((groupKey) => {
+            const groupItems = SLIDE_TEMPLATES.filter(
+              (t) => t.group === groupKey
+            );
+            if (groupItems.length === 0) return null;
+            return (
+              <div key={groupKey}>
+                <div className="text-[10.5px] uppercase tracking-wide font-bold mb-1.5 px-1 flex items-center gap-1.5">
+                  <span
+                    className={
+                      groupKey === "K-PRINT"
+                        ? "text-brand-500"
+                        : groupKey === "KIMES"
+                          ? "text-ink-500"
+                          : "text-ink-700"
+                    }
+                  >
+                    {groupKey === "공통"
+                      ? "공통 템플릿"
+                      : `${groupKey} 템플릿`}
+                  </span>
+                  <span className="text-ink-300 font-num">
+                    ({groupItems.length})
+                  </span>
+                </div>
+                <div className="grid grid-cols-1 gap-1">
+                  {groupItems.map((t) => (
+                    <button
+                      key={t.key}
+                      type="button"
+                      onClick={() => insertTemplate(t.key)}
+                      className={
+                        "text-left px-2 py-1.5 rounded border text-[10.5px] font-semibold leading-tight transition-colors " +
+                        (t.group === "K-PRINT"
+                          ? "border-brand-100 bg-brand-50/40 text-ink-900 hover:border-brand-500 hover:bg-brand-50"
+                          : "border-ink-100 text-ink-700 hover:border-ink-900 hover:bg-ink-50")
+                      }
+                      title={t.desc}
+                    >
+                      {t.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            );
+          })}
         </div>
 
         {/* 레이어 패널 — z-index 정렬·가시성·잠금 */}
@@ -3407,7 +3437,15 @@ type SlideTemplateKey =
   | "benefits4"
   | "process4"
   | "menuGrid"
-  | "bigTitle";
+  | "bigTitle"
+  | "cover"
+  | "coverKimes"
+  | "contents"
+  | "kprintChartHero"
+  | "kprintGrowthCallout"
+  | "kprintMenuGrid";
+
+type TemplateGroup = "공통" | "KIMES" | "K-PRINT";
 
 function tplNode<T extends CanvasNode>(n: T): T {
   return { ...n, id: randomId() } as T;
@@ -3417,18 +3455,93 @@ const SLIDE_TEMPLATES: ReadonlyArray<{
   key: SlideTemplateKey;
   label: string;
   desc: string;
+  group: TemplateGroup;
   make: () => CanvasNode[];
 }> = [
+  // ─── 공통 (이벤트 무관) ───
+  {
+    key: "cover",
+    label: "표지 / Cover",
+    desc: "이벤트 풀네임 + 큰 로고 텍스트 + SPONSORSHIP",
+    group: "공통",
+    make: () => coverNodes(),
+  },
+  {
+    key: "contents",
+    label: "목차 / Contents",
+    desc: "좌측 Contents / 우측 섹션·페이지 번호 (Introduction · Application)",
+    group: "공통",
+    make: () => contentsNodes(),
+  },
+  {
+    key: "bigTitle",
+    label: "타이틀 + 부제",
+    desc: "중앙 큰 헤드라인 한 줄",
+    group: "공통",
+    make: () => [
+      tplNode<CanvasTextNode>({
+        id: "",
+        rect: { x: 200, y: 400, w: 1520, h: 160 },
+        type: "text",
+        data: { content: "큰 타이틀을 입력하세요", fontSize: 96, fontWeight: 800, align: "center", color: "#0A0A0A" },
+      }),
+      tplNode<CanvasTextNode>({
+        id: "",
+        rect: { x: 200, y: 580, w: 1520, h: 80 },
+        type: "text",
+        data: { content: "부제 텍스트", fontSize: 28, fontWeight: 500, align: "center", color: "#737373" },
+      }),
+    ],
+  },
+  {
+    key: "benefits4",
+    label: "혜택 카드 2×2",
+    desc: "좌측 큰 타이틀 / 우측 4개 카드",
+    group: "공통",
+    make: () => [
+      tplNode<CanvasTextNode>({
+        id: "",
+        rect: { x: 100, y: 380, w: 700, h: 100 },
+        type: "text",
+        data: { content: "Sponsors Benefits", fontSize: 72, fontWeight: 800, color: "#0A0A0A" },
+      }),
+      tplNode<CanvasTextNode>({
+        id: "",
+        rect: { x: 100, y: 500, w: 700, h: 100 },
+        type: "text",
+        data: { content: "스폰서십 리뉴얼 기념\n신청 기업 대상 특별 이벤트!", fontSize: 22, fontWeight: 500, lineHeight: 1.6, color: "#737373" },
+      }),
+      ...benefitCards(),
+    ],
+  },
+  {
+    key: "process4",
+    label: "신청 절차 4단계",
+    desc: "01 02 03 04 카드 4개",
+    group: "공통",
+    make: () => [
+      tplNode<CanvasTextNode>({
+        id: "",
+        rect: { x: 100, y: 120, w: 1720, h: 100 },
+        type: "text",
+        data: { content: "신청 절차", fontSize: 64, fontWeight: 800, align: "center", color: "#0A0A0A" },
+      }),
+      ...processCards(),
+    ],
+  },
+  // ─── KIMES 전용 ───
   {
     key: "chartHero",
-    label: "방문객 차트 + 헤드라인 (KIMES 슬라이드 446)",
+    label: "방문객 차트 + 헤드라인 (KIMES)",
     desc: "원본 Figma 픽셀 좌표 그대로 — 전체 참관객 라인 + 해외바이어 막대 + 잠재/유망고객 카드",
+    group: "KIMES",
     make: () => chartHeroNodes(),
   },
   {
     key: "growthCallout",
-    label: "스폰서십 진행 기업 차트 (원본 1:1)",
+    label: "스폰서십 진행 기업 차트 (KIMES)",
     desc: "상단 큰 헤드라인 + 좌측 카피 / 하단 풀폭 라인 차트 + 회색 칩 vline + 끝 라벨 + 빨간 브래킷",
+    group: "KIMES",
     make: () => [
       // 큰 헤드라인 (Pretendard 800, 검정)
       tplNode<CanvasTextNode>({
@@ -3521,43 +3634,17 @@ const SLIDE_TEMPLATES: ReadonlyArray<{
     ],
   },
   {
-    key: "benefits4",
-    label: "혜택 카드 2×2",
-    desc: "좌측 큰 타이틀 / 우측 4개 카드 (슬라이드 3번 류)",
-    make: () => [
-      tplNode<CanvasTextNode>({
-        id: "",
-        rect: { x: 100, y: 380, w: 700, h: 100 },
-        type: "text",
-        data: { content: "Sponsors Benefits", fontSize: 72, fontWeight: 800, color: "#0A0A0A" },
-      }),
-      tplNode<CanvasTextNode>({
-        id: "",
-        rect: { x: 100, y: 500, w: 700, h: 100 },
-        type: "text",
-        data: { content: "2026 스폰서십 리뉴얼 기념\n신청 기업 대상 특별 이벤트!", fontSize: 22, fontWeight: 500, lineHeight: 1.6, color: "#737373" },
-      }),
-      ...benefitCards(),
-    ],
-  },
-  {
-    key: "process4",
-    label: "신청 절차 4단계",
-    desc: "01 02 03 04 카드 4개 (슬라이드 4번 류)",
-    make: () => [
-      tplNode<CanvasTextNode>({
-        id: "",
-        rect: { x: 100, y: 120, w: 1720, h: 100 },
-        type: "text",
-        data: { content: "신청 절차", fontSize: 64, fontWeight: 800, align: "center", color: "#0A0A0A" },
-      }),
-      ...processCards(),
-    ],
+    key: "coverKimes",
+    label: "표지 / Cover (KIMES BUSAN)",
+    desc: "KIMES BUSAN 톤 — 빨간 KIMES BUSAN 로고 + SPONSORSHIP",
+    group: "KIMES",
+    make: () => coverKimesNodes(),
   },
   {
     key: "menuGrid",
-    label: "메뉴 그리드 3×4 (탭)",
-    desc: "탭 헤더 + 12개 메뉴 칩 (슬라이드 5번 류)",
+    label: "스폰서십 메뉴 3×4 (KIMES)",
+    desc: "탭 헤더 + 12개 메뉴 칩 (전광판, 천장배너, 참관객 목걸이 등)",
+    group: "KIMES",
     make: () => [
       tplNode<CanvasTextNode>({
         id: "",
@@ -3569,23 +3656,36 @@ const SLIDE_TEMPLATES: ReadonlyArray<{
       ...menuGridChips(),
     ],
   },
+
+  // ─── K-PRINT 전용 ───
   {
-    key: "bigTitle",
-    label: "타이틀 + 부제",
-    desc: "중앙 큰 헤드라인 한 줄",
+    key: "kprintChartHero",
+    label: "방문객 차트 + 헤드라인 (K-PRINT)",
+    desc: "K-PRINT 데이터 — 인쇄·출판 산업 참관객 추이",
+    group: "K-PRINT",
+    make: () => kprintChartHeroNodes(),
+  },
+  {
+    key: "kprintGrowthCallout",
+    label: "스폰서십 진행 기업 차트 (K-PRINT)",
+    desc: "K-PRINT 검색 페이지 상위 고정 — 14배 노출 효과",
+    group: "K-PRINT",
+    make: () => kprintGrowthCalloutNodes(),
+  },
+  {
+    key: "kprintMenuGrid",
+    label: "스폰서십 메뉴 3×4 (K-PRINT)",
+    desc: "K-PRINT 스폰서십 광고 메뉴 12종",
+    group: "K-PRINT",
     make: () => [
       tplNode<CanvasTextNode>({
         id: "",
-        rect: { x: 200, y: 400, w: 1520, h: 160 },
+        rect: { x: 100, y: 80, w: 1720, h: 100 },
         type: "text",
-        data: { content: "큰 타이틀을 입력하세요", fontSize: 96, fontWeight: 800, align: "center", color: "#0A0A0A" },
+        data: { content: "K-PRINT 스폰서십 한눈에 보기", fontSize: 48, fontWeight: 800, align: "center", color: "#0A0A0A" },
       }),
-      tplNode<CanvasTextNode>({
-        id: "",
-        rect: { x: 200, y: 580, w: 1520, h: 80 },
-        type: "text",
-        data: { content: "부제 텍스트", fontSize: 28, fontWeight: 500, align: "center", color: "#737373" },
-      }),
+      ...tabHeaders(),
+      ...kprintMenuGridChips(),
     ],
   },
 ];
@@ -4175,6 +4275,389 @@ function menuGridChips(): CanvasNode[] {
         rect: { x: x + cardW - 36, y: y + cardH / 2 - 6, w: 12, h: 12, z: 1 },
         type: "shape",
         data: { shape: "ellipse", fill: it.off ? "var(--brand-500)" : "#FBCFD2" },
+      }),
+    );
+  });
+  return out;
+}
+
+// ============================================================================
+// 표지 / Cover — 큰 빨간 이벤트명 + SPONSORSHIP (K-PRINT 기본)
+// ============================================================================
+function coverNodes(): CanvasNode[] {
+  return [
+    tplNode<CanvasTextNode>({
+      id: "",
+      rect: { x: 100, y: 256, w: 1720, h: 30 },
+      type: "text",
+      data: {
+        content: "2026 KOREA INTERNATIONAL PRINTING & PUBLISHING EXHIBITION",
+        fontSize: 18,
+        fontWeight: 700,
+        letterSpacing: 2,
+        color: "#0A0A0A",
+      },
+    }),
+    tplNode<CanvasTextNode>({
+      id: "",
+      rect: { x: 100, y: 310, w: 1720, h: 220 },
+      type: "text",
+      data: {
+        content: "K-PRINT 2026",
+        fontSize: 200,
+        fontWeight: 800,
+        letterSpacing: -4,
+        color: "#DB0711",
+      },
+    }),
+    tplNode<CanvasTextNode>({
+      id: "",
+      rect: { x: 100, y: 680, w: 1720, h: 90 },
+      type: "text",
+      data: {
+        content: "SPONSORSHIP",
+        fontSize: 56,
+        fontWeight: 700,
+        letterSpacing: 12,
+        align: "center",
+        color: "#0A0A0A",
+      },
+    }),
+  ];
+}
+
+// KIMES BUSAN 전용 표지 (옛 KIMES BUSAN 톤)
+function coverKimesNodes(): CanvasNode[] {
+  return [
+    tplNode<CanvasTextNode>({
+      id: "",
+      rect: { x: 100, y: 256, w: 1720, h: 30 },
+      type: "text",
+      data: {
+        content: "THE 14TH KIMES BUSAN INTERNATIONAL MEDICAL & HOSPITAL EQUIPMENT SHOW",
+        fontSize: 18,
+        fontWeight: 700,
+        letterSpacing: 2,
+        color: "#0A0A0A",
+      },
+    }),
+    tplNode<CanvasTextNode>({
+      id: "",
+      rect: { x: 100, y: 310, w: 1720, h: 200 },
+      type: "text",
+      data: {
+        content: "KIMES BUSAN",
+        fontSize: 180,
+        fontWeight: 800,
+        letterSpacing: -4,
+        color: "#DB0711",
+      },
+    }),
+    tplNode<CanvasTextNode>({
+      id: "",
+      rect: { x: 100, y: 680, w: 1720, h: 90 },
+      type: "text",
+      data: {
+        content: "SPONSORSHIP",
+        fontSize: 56,
+        fontWeight: 700,
+        letterSpacing: 12,
+        align: "center",
+        color: "#0A0A0A",
+      },
+    }),
+  ];
+}
+
+// ============================================================================
+// 목차 / Contents
+// ============================================================================
+function contentsNodes(): CanvasNode[] {
+  const out: CanvasNode[] = [];
+  const rightX = 800; // 우측 섹션 시작 x
+  const rightW = 1010;
+  const grayLine = "#0A0A0A";
+  const gray = "#808080";
+  const brand = "#DB0711";
+
+  // 좌측 "Contents"
+  out.push(
+    tplNode<CanvasTextNode>({
+      id: "",
+      rect: { x: 100, y: 110, w: 600, h: 110 },
+      type: "text",
+      data: { content: "Contents", fontSize: 84, fontWeight: 800, color: "#0A0A0A" },
+    }),
+  );
+
+  // 우측 — Introduction 섹션
+  out.push(
+    // 섹션 헤더
+    tplNode<CanvasTextNode>({
+      id: "",
+      rect: { x: rightX, y: 250, w: rightW, h: 56 },
+      type: "text",
+      data: { content: "Introduction", fontSize: 36, fontWeight: 500, color: "#0A0A0A" },
+    }),
+    tplNode<CanvasShapeNode>({
+      id: "",
+      rect: { x: rightX, y: 308, w: rightW, h: 1 },
+      type: "shape",
+      data: { shape: "rect", fill: grayLine },
+    }),
+  );
+  // Introduction 항목 3개
+  const intro = [
+    { label: "KIMES 소개", page: "3" },
+    { label: "Why KIMES?", page: "4" },
+    { label: "스폰서십 리뉴얼 기념 이벤트", page: "6" },
+  ];
+  intro.forEach((it, i) => {
+    const y = 340 + i * 72;
+    out.push(
+      tplNode<CanvasTextNode>({
+        id: "",
+        rect: { x: rightX, y, w: rightW - 100, h: 48 },
+        type: "text",
+        data: { content: it.label, fontSize: 24, fontWeight: 300, color: gray },
+      }),
+      tplNode<CanvasTextNode>({
+        id: "",
+        rect: { x: rightX + rightW - 100, y, w: 100, h: 48 },
+        type: "text",
+        data: { content: it.page, fontSize: 24, fontWeight: 300, align: "right", color: brand },
+      }),
+    );
+  });
+
+  // Application 섹션
+  out.push(
+    tplNode<CanvasTextNode>({
+      id: "",
+      rect: { x: rightX, y: 600, w: rightW, h: 56 },
+      type: "text",
+      data: { content: "Application", fontSize: 36, fontWeight: 500, color: "#0A0A0A" },
+    }),
+    tplNode<CanvasShapeNode>({
+      id: "",
+      rect: { x: rightX, y: 658, w: rightW, h: 1 },
+      type: "shape",
+      data: { shape: "rect", fill: grayLine },
+    }),
+  );
+  const app = [
+    { label: "신청절차", page: "7" },
+    { label: "스폰서십 한눈에 보기", page: "8" },
+    { label: "스폰서십 리스트", page: "9" },
+  ];
+  app.forEach((it, i) => {
+    const y = 690 + i * 72;
+    out.push(
+      tplNode<CanvasTextNode>({
+        id: "",
+        rect: { x: rightX, y, w: rightW - 100, h: 48 },
+        type: "text",
+        data: { content: it.label, fontSize: 24, fontWeight: 300, color: gray },
+      }),
+      tplNode<CanvasTextNode>({
+        id: "",
+        rect: { x: rightX + rightW - 100, y, w: 100, h: 48 },
+        type: "text",
+        data: { content: it.page, fontSize: 24, fontWeight: 300, align: "right", color: brand },
+      }),
+    );
+  });
+
+  return out;
+}
+
+// ============================================================================
+// K-PRINT 차트 헤로 — chartHero 구조에 K-PRINT 데이터 적용
+// ============================================================================
+function kprintChartHeroNodes(): CanvasNode[] {
+  // chartHeroNodes 의 데이터 라벨 + 우측 헤드라인만 K-PRINT 용으로 교체
+  // 막대 비율은 유지 (사용자가 데이터 라벨만 수정해도 시각적 일치 가능)
+  const out = chartHeroNodes();
+  // 헤드라인 노드 (가장 첫 노드) 텍스트 교체
+  out.forEach((n) => {
+    if (n.type === "text" && n.data.content?.includes("매년 70,000명")) {
+      n.data.content =
+        "매년 50,000명 이상이 방문하는\nK-PRINT 에서 브랜드를 홍보하세요!";
+    }
+    if (n.type === "text" && n.data.content === "70,163명") n.data.content = "48,234명";
+    if (n.type === "text" && n.data.content === "70,760명") n.data.content = "50,118명";
+    if (n.type === "text" && n.data.content === "72,507명") n.data.content = "52,961명";
+    if (n.type === "text" && n.data.content === "3,029명") n.data.content = "2,418명";
+    if (n.type === "text" && n.data.content === "4,274명") n.data.content = "3,102명";
+    if (n.type === "text" && n.data.content === "4,941명") n.data.content = "3,847명";
+    if (n.type === "text" && n.data.content === "KIMES 방문객 현황")
+      n.data.content = "K-PRINT 방문객 현황";
+    if (
+      n.type === "text" &&
+      n.data.content?.startsWith("Source: Certified data")
+    ) {
+      n.data.content =
+        "Source: Certified data by Association of Korea Exhibition Industry (AKEI)\nSource: K-PRINT Internal data";
+    }
+    if (
+      n.type === "text" &&
+      n.data.content?.includes("전체방문객의 70%")
+    ) {
+      n.data.content = "전체방문객의 65% 이상\nB2B 참관객";
+    }
+    if (n.type === "text" && n.data.content === "잠재고객 발굴 업체당 66.2건")
+      n.data.content = "잠재고객 발굴 업체당 48.7건";
+    if (n.type === "text" && n.data.content === "유망고객 확보 업체당 30.1건")
+      n.data.content = "유망고객 확보 업체당 22.4건";
+    if (n.type === "text" && n.data.content === "의료/병원 종사자")
+      n.data.content = "인쇄·출판 종사자";
+    if (n.type === "text" && n.data.content === "제조/무역/유통 관계자")
+      n.data.content = "패키징·라벨·후가공";
+    if (n.type === "text" && n.data.content === "언론/기관/일반/기타")
+      n.data.content = "사인·디지털인쇄·기타";
+  });
+  return out;
+}
+
+// ============================================================================
+// K-PRINT growthCallout — 같은 구조, K-PRINT 카피
+// ============================================================================
+function kprintGrowthCalloutNodes(): CanvasNode[] {
+  return [
+    tplNode<CanvasTextNode>({
+      id: "",
+      rect: { x: 100, y: 90, w: 1500, h: 100 },
+      type: "text",
+      data: {
+        content: "K-PRINT 스폰서십 진행 기업 고객 유입데이터",
+        fontSize: 64,
+        fontWeight: 800,
+        lineHeight: 1.3,
+        color: "#0A0A0A",
+      },
+    }),
+    tplNode<CanvasTextNode>({
+      id: "",
+      rect: { x: 100, y: 230, w: 800, h: 160 },
+      type: "text",
+      data: {
+        content:
+          "스폰서십의 효과에 대해 고민하고 계신가요?\nK-PRINT 참가업체 검색 페이지 내 상위 고정을 통해\n타기업 대비 14배의 노출 효과를 누리실 수 있습니다.",
+        fontSize: 22,
+        fontWeight: 400,
+        lineHeight: 1.6,
+        color: "#0A0A0A",
+      },
+    }),
+    tplNode<CanvasTextNode>({
+      id: "",
+      rect: { x: 1050, y: 410, w: 770, h: 60, z: 5 },
+      type: "text",
+      data: {
+        content: "비활용 기업 대비 14배 상승",
+        fontSize: 32,
+        fontWeight: 700,
+        align: "right",
+        color: "#0A0A0A",
+      },
+    }),
+    tplNode<CanvasChartNode>({
+      id: "",
+      rect: { x: 80, y: 470, w: 1760, h: 480 },
+      type: "chart",
+      data: {
+        kind: "line",
+        categories: ["", "", "", "", "", "", "", "", ""],
+        series: [
+          {
+            name: "진행 기업",
+            color: "#DB0711",
+            kind: "area",
+            data: [2, 3, 4, 5, 40, 75, 92, 94, 95],
+            showDots: false,
+            endLabel: true,
+          },
+          {
+            name: "미진행 기업",
+            color: "#0A0A0A",
+            kind: "line",
+            data: [2, 3, 4, 5, 7, 9, 11, 13, 15],
+            showDots: false,
+            endLabel: true,
+          },
+        ],
+        showLegend: false,
+        showGrid: true,
+        showAxes: false,
+        annotations: [
+          { kind: "vline", at: 3, text: "스폰서십 진행 시점" },
+          { kind: "bracket", from: 3, to: 8, text: "스폰서십 광고 진행 이후 유입" },
+        ],
+      },
+    }),
+    tplNode<CanvasTextNode>({
+      id: "",
+      rect: { x: 1620, y: 1020, w: 240, h: 30, z: 5 },
+      type: "text",
+      data: {
+        content: "Source: K-PRINT Internal data",
+        fontSize: 13,
+        fontWeight: 300,
+        align: "right",
+        color: "#808080",
+      },
+    }),
+  ];
+}
+
+// ============================================================================
+// K-PRINT 메뉴 그리드 — 인쇄·출판 산업에 맞는 12개 메뉴
+// ============================================================================
+function kprintMenuGridChips(): CanvasNode[] {
+  const items = [
+    { label: "전광판 광고", off: true },
+    { label: "천장배너", off: true },
+    { label: "참관객 목걸이", off: true },
+    { label: "등록대(출입증)", off: true },
+    { label: "현장 쇼가이드", off: true },
+    { label: "참관등록 페이지 배너", off: false },
+    { label: "참가업체 검색 페이지", off: false },
+    { label: "국내 뉴스레터 배너", off: false },
+    { label: "해외 뉴스레터 배너", off: false },
+    { label: "샘플북 광고", off: true },
+    { label: "도면 내 로고 표기", off: true },
+    { label: "APP 메인 페이지 팝업", off: false },
+  ];
+  const startX = 260;
+  const startY = 380;
+  const cardW = 460;
+  const cardH = 76;
+  const gapX = 28;
+  const gapY = 24;
+  const out: CanvasNode[] = [];
+  items.forEach((it, i) => {
+    const col = i % 3;
+    const row = Math.floor(i / 3);
+    const x = startX + col * (cardW + gapX);
+    const y = startY + row * (cardH + gapY);
+    out.push(
+      tplNode<CanvasShapeNode>({
+        id: "",
+        rect: { x, y, w: cardW, h: cardH },
+        type: "shape",
+        data: { shape: "rect", fill: "#FFFFFF", radius: 999, shadow: { x: 0, y: 2, blur: 14, color: "rgba(0,0,0,0.05)" } },
+      }),
+      tplNode<CanvasTextNode>({
+        id: "",
+        rect: { x: x + 32, y, w: cardW - 80, h: cardH, z: 1 },
+        type: "text",
+        data: { content: it.label, fontSize: 18, fontWeight: 700, align: "center", lineHeight: cardH / 18, color: "#0A0A0A" },
+      }),
+      tplNode<CanvasShapeNode>({
+        id: "",
+        rect: { x: x + cardW - 36, y: y + cardH / 2 - 6, w: 12, h: 12, z: 1 },
+        type: "shape",
+        data: { shape: "ellipse", fill: it.off ? "#DB0711" : "#FBCFD2" },
       }),
     );
   });
