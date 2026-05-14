@@ -887,25 +887,70 @@ export function ChartNodeView({ node }: { node: CanvasChartNode }) {
         );
       })}
 
+      {/* 시리즈 끝 라벨 (오른쪽 마지막 데이터 포인트 옆) */}
+      {series.map((s, si) => {
+        if (!s.endLabel) return null;
+        const color = s.color ?? CHART_PALETTE[si % CHART_PALETTE.length];
+        const lastIdx = s.data.length - 1;
+        if (lastIdx < 0) return null;
+        return (
+          <text
+            key={`endlbl-${si}`}
+            x={xToPx(lastIdx) + 16}
+            y={yToPx(s.data[lastIdx]) + 5}
+            fontSize={16}
+            fontWeight={500}
+            fill={color}
+          >
+            {s.name}
+          </text>
+        );
+      })}
+
       {/* 주석 */}
       {(d.annotations ?? []).map((a, i) => {
         if (a.kind === "vline") {
           const x = xToPx(a.at ?? 0);
+          const chipColor = a.color ?? "#9CA3AF";
           return (
             <g key={`an-${i}`}>
               <line
                 x1={x}
                 x2={x}
-                y1={PAD.top}
+                y1={PAD.top + 30}
                 y2={H - PAD.bottom}
-                stroke={a.color ?? "#9CA3AF"}
-                strokeWidth={1}
+                stroke={chipColor}
+                strokeWidth={1.5}
                 strokeDasharray="4 4"
               />
               {a.text && (
-                <text x={x} y={PAD.top - 10} textAnchor="middle" fontSize={14} fontWeight={700} fill={a.color ?? "#0A0A0A"}>
-                  {a.text}
-                </text>
+                <>
+                  {/* 회색 둥근 칩 */}
+                  <rect
+                    x={x - (a.text.length * 8 + 24) / 2}
+                    y={H - PAD.bottom - 70}
+                    width={a.text.length * 8 + 24}
+                    height={32}
+                    rx={16}
+                    fill="#EBEBEB"
+                  />
+                  {/* 아래 가리키는 작은 삼각형 */}
+                  <polygon
+                    points={`${x - 6},${H - PAD.bottom - 38} ${x + 6},${H - PAD.bottom - 38} ${x},${H - PAD.bottom - 28}`}
+                    fill="#EBEBEB"
+                  />
+                  <text
+                    x={x}
+                    y={H - PAD.bottom - 50}
+                    textAnchor="middle"
+                    fontSize={15}
+                    fontWeight={500}
+                    fill="#404040"
+                    dominantBaseline="middle"
+                  >
+                    {a.text}
+                  </text>
+                </>
               )}
             </g>
           );
@@ -932,22 +977,27 @@ export function ChartNodeView({ node }: { node: CanvasChartNode }) {
           );
         }
         if (a.kind === "label" && a.text) {
-          const x = xToPx(a.at ?? 0);
-          const y = yToPx(yMax) - 20;
+          // 큰 볼드 텍스트 — chip 배경 없이, 우상단 영역에 배치
+          // at 은 카테고리 인덱스 (기준점). 텍스트는 오른쪽 정렬.
+          const x = xToPx(a.at ?? categories.length - 1);
+          const y = PAD.top + 12;
           return (
-            <g key={`an-${i}`}>
-              <rect
-                x={x - 70}
-                y={y - 14}
-                width={140}
-                height={28}
-                rx={14}
-                fill="#E5E5E5"
-              />
-              <text x={x} y={y + 5} textAnchor="middle" fontSize={13} fontWeight={600} fill="#404040">
-                {a.text}
-              </text>
-            </g>
+            <text
+              key={`an-${i}`}
+              x={x}
+              y={y}
+              textAnchor="end"
+              fontSize={26}
+              fontWeight={700}
+              fill={a.color ?? "#0A0A0A"}
+            >
+              {a.text.split("__BRAND__").map((part, pi, arr) => (
+                <tspan key={pi} fill={pi % 2 === 1 ? "#DB0711" : (a.color ?? "#0A0A0A")}>
+                  {part}
+                  {pi < arr.length - 1 ? "" : ""}
+                </tspan>
+              ))}
+            </text>
           );
         }
         if (a.kind === "bracket" && a.text != null) {
@@ -956,10 +1006,27 @@ export function ChartNodeView({ node }: { node: CanvasChartNode }) {
           const y = H - PAD.bottom + 38;
           return (
             <g key={`an-${i}`}>
-              <line x1={x1} x2={x2} y1={y} y2={y} stroke={a.color ?? "var(--brand-500, #DB0711)"} strokeWidth={1.5} />
-              <line x1={x1} x2={x1} y1={y - 4} y2={y + 4} stroke={a.color ?? "var(--brand-500, #DB0711)"} strokeWidth={1.5} />
-              <line x1={x2} x2={x2} y1={y - 4} y2={y + 4} stroke={a.color ?? "var(--brand-500, #DB0711)"} strokeWidth={1.5} />
-              <text x={(x1 + x2) / 2} y={y - 10} textAnchor="middle" fontSize={13} fontWeight={600} fill={a.color ?? "var(--brand-500, #DB0711)"}>
+              <line x1={x1} x2={x2} y1={y} y2={y} stroke={a.color ?? "#DB0711"} strokeWidth={1.5} />
+              <line x1={x1} x2={x1} y1={y - 6} y2={y + 6} stroke={a.color ?? "#DB0711"} strokeWidth={1.5} />
+              <line x1={x2} x2={x2} y1={y - 6} y2={y + 6} stroke={a.color ?? "#DB0711"} strokeWidth={1.5} />
+              {/* 작은 화살촉 */}
+              <polygon
+                points={`${x1},${y} ${x1 + 8},${y - 4} ${x1 + 8},${y + 4}`}
+                fill={a.color ?? "#DB0711"}
+              />
+              <polygon
+                points={`${x2},${y} ${x2 - 8},${y - 4} ${x2 - 8},${y + 4}`}
+                fill={a.color ?? "#DB0711"}
+              />
+              {/* 배경 있는 라벨 (선 위에 가리키도록 흰색 배경) */}
+              <rect
+                x={(x1 + x2) / 2 - (a.text.length * 8 + 20) / 2}
+                y={y - 12}
+                width={a.text.length * 8 + 20}
+                height={24}
+                fill="#F6F6F6"
+              />
+              <text x={(x1 + x2) / 2} y={y + 5} textAnchor="middle" fontSize={14} fontWeight={500} fill={a.color ?? "#DB0711"}>
                 {a.text}
               </text>
             </g>

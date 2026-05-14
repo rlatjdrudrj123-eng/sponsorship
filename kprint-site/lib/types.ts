@@ -700,6 +700,7 @@ export type ChartSeries = {
   kind?: "line" | "bar" | "area"; // 시리즈별 종류 (혼합 차트)
   showDots?: boolean;         // 라인 위 마커
   showLabels?: boolean;       // 데이터 포인트마다 값 표시
+  endLabel?: boolean;         // 마지막 데이터 포인트 오른쪽에 시리즈 이름 표시
 };
 
 export type CanvasChartNode = CanvasNodeBase & {

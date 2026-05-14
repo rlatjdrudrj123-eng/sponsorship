@@ -3427,47 +3427,95 @@ const SLIDE_TEMPLATES: ReadonlyArray<{
   },
   {
     key: "growthCallout",
-    label: "성장 라인 차트 + 큰 카피",
-    desc: "상단 헤드라인 / 하단 라인 차트 + 주석 (슬라이드 2번 류)",
+    label: "스폰서십 진행 기업 차트 (원본 1:1)",
+    desc: "상단 큰 헤드라인 + 좌측 카피 / 하단 풀폭 라인 차트 + 회색 칩 vline + 끝 라벨 + 빨간 브래킷",
     make: () => [
+      // 큰 헤드라인 (Pretendard 800, 검정)
       tplNode<CanvasTextNode>({
         id: "",
-        rect: { x: 100, y: 120, w: 1200, h: 100 },
+        rect: { x: 100, y: 90, w: 1500, h: 100 },
         type: "text",
-        data: { content: "스폰서십 진행 기업 고객 유입데이터", fontSize: 56, fontWeight: 800, color: "#0A0A0A" },
+        data: {
+          content: "스폰서십 진행 기업 고객 유입데이터",
+          fontSize: 64,
+          fontWeight: 800,
+          lineHeight: 1.3,
+          color: "#0A0A0A",
+        },
       }),
+      // 설명 카피 (좌측, 회색)
       tplNode<CanvasTextNode>({
         id: "",
-        rect: { x: 100, y: 260, w: 1000, h: 160 },
+        rect: { x: 100, y: 230, w: 800, h: 160 },
         type: "text",
         data: {
           content:
             "스폰서십의 효과에 대해 고민하고 계신가요?\n참가업체 검색 페이지 내 상위 고정을 통해\n타기업 대비 14배의 노출 효과를 누리실 수 있습니다.",
           fontSize: 22,
-          fontWeight: 500,
+          fontWeight: 400,
           lineHeight: 1.6,
-          color: "#404040",
+          color: "#0A0A0A",
         },
       }),
+      // "비활용 기업 대비 14배 상승" — 차트 위쪽 굵은 글씨 (별도 텍스트 노드로)
+      tplNode<CanvasTextNode>({
+        id: "",
+        rect: { x: 1050, y: 410, w: 770, h: 60, z: 5 },
+        type: "text",
+        data: {
+          content: "비활용 기업 대비 14배 상승",
+          fontSize: 32,
+          fontWeight: 700,
+          align: "right",
+          color: "#0A0A0A",
+        },
+      }),
+      // 차트 자체 — 풀폭, 어노테이션은 vline + bracket + 시리즈 끝 라벨
       tplNode<CanvasChartNode>({
         id: "",
-        rect: { x: 100, y: 480, w: 1720, h: 500 },
+        rect: { x: 80, y: 470, w: 1760, h: 480 },
         type: "chart",
         data: {
           kind: "line",
-          categories: ["", "", "시점", "", "", "", "", ""],
+          categories: ["", "", "", "", "", "", "", "", ""],
           series: [
-            { name: "진행 기업", color: "var(--brand-500)", kind: "area", data: [3, 4, 5, 30, 70, 90, 92, 93], showDots: false },
-            { name: "미진행 기업", color: "#0A0A0A", kind: "line", data: [3, 4, 5, 6, 7, 8, 9, 10], showDots: false },
+            {
+              name: "진행 기업",
+              color: "#DB0711",
+              kind: "area",
+              data: [2, 3, 4, 5, 40, 75, 92, 94, 95],
+              showDots: false,
+              endLabel: true,
+            },
+            {
+              name: "미진행 기업",
+              color: "#0A0A0A",
+              kind: "line",
+              data: [2, 3, 4, 5, 7, 9, 11, 13, 15],
+              showDots: false,
+              endLabel: true,
+            },
           ],
           showLegend: false,
           showGrid: true,
           showAxes: false,
           annotations: [
-            { kind: "vline", at: 2, text: "스폰서십 진행 시점" },
-            { kind: "label", at: 5, text: "비활용 기업 대비 14배 상승" },
-            { kind: "bracket", from: 2, to: 7, text: "스폰서십 광고 진행 이후 유입" },
+            { kind: "vline", at: 3, text: "스폰서십 진행 시점" },
+            { kind: "bracket", from: 3, to: 8, text: "스폰서십 광고 진행 이후 유입" },
           ],
+        },
+      }),
+      // 출처 (우하단)
+      tplNode<CanvasTextNode>({
+        id: "",
+        rect: { x: 1620, y: 1020, w: 240, h: 30, z: 5 },
+        type: "text",
+        data: {
+          content: "Source: KIMES Internal data",
+          fontSize: 13,
+          fontWeight: 300,
+          align: "right",
+          color: "#808080",
         },
       }),
     ],

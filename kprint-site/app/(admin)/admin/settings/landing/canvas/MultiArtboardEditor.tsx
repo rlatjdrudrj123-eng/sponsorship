@@ -71,6 +71,7 @@ export function MultiArtboardEditor({
   const [tool, setTool] = useState<Tool>("select");
   const [layersOpen, setLayersOpen] = useState(true);
   const [expandedPages, setExpandedPages] = useState<Set<number>>(new Set());
+  const [editing, setEditing] = useState<Selection | null>(null);
   const spaceRef = useRef(false);
   const wrapRef = useRef<HTMLDivElement>(null);
 
@@ -449,6 +450,45 @@ export function MultiArtboardEditor({
         r.h = newH;
       }
       patchNode(pageIdx, nodeId, { rect: r });
+    };
+    const onPointerUp = () => {
+      window.removeEventListener("pointermove", onMove);
+      window.removeEventListener("pointerup", onPointerUp);
+    };
+    window.addEventListener("pointermove", onMove);
+    window.addEventListener("pointerup", onPointerUp);
+  };
+
+  // ─── 회전 핸들 ───
+  // 노드 중심 기준으로 마우스 위치까지의 각도를 계산해 rect.rotate 갱신
+  const onRotateDown = (
+    e: React.PointerEvent,
+    pageIdx: number,
+    nodeId: string,
+    startRect: CanvasNode["rect"]
+  ) => {
+    e.stopPropagation();
+    e.preventDefault();
+    // 화면상의 노드 중심 좌표 (현재 회전이 적용된 상태에서 측정)
+    const handleEl = e.currentTarget as HTMLElement;
+    const parentEl = handleEl.parentElement;
+    if (!parentEl) return;
+    const rect = parentEl.getBoundingClientRect();
+    const cx = rect.left + rect.width / 2;
+    const cy = rect.top + rect.height / 2;
+    // 시작 각도 (마우스가 처음 잡았을 때 중심으로부터의 각도)
+    const startAngle = Math.atan2(e.clientY - cy, e.clientX - cx);
+    const initialRotate = startRect.rotate ?? 0;
+    const onMove = (ev: PointerEvent) => {
+      const currentAngle = Math.atan2(ev.clientY - cy, ev.clientX - cx);
+      const delta = ((currentAngle - startAngle) * 180) / Math.PI;
+      let rotated = Math.round(initialRotate + delta);
+      // Shift 누르면 15° snap
+      if (ev.shiftKey) rotated = Math.round(rotated / 15) * 15;
+      // -180 ~ 180 정규화
+      while (rotated > 180) rotated -= 360;
+      while (rotated < -180) rotated += 360;
+      patchNode(pageIdx, nodeId, { rect: { ...startRect, rotate: rotated } });
     };
     const onPointerUp = () => {
       window.removeEventListener("pointermove", onMove);
@@ -878,12 +918,24 @@ export function MultiArtboardEditor({
                         const isSel = selections.some(
                           (s) => s.pageIdx === idx && s.nodeId === n.id
                         );
+                        const isEditing =
+                          editing?.pageIdx === idx &&
+                          editing?.nodeId === n.id &&
+                          n.type === "text";
                         return (
                           <div
                             key={n.id}
-                            onPointerDown={(e) =>
-                              onNodePointerDown(e, idx, n.id, n.rect)
-                            }
+                            onPointerDown={(e) => {
+                              if (isEditing) return; // 편집 중이면 드래그 무시
+                              onNodePointerDown(e, idx, n.id, n.rect);
+                            }}
+                            onDoubleClick={(e) => {
+                              if (n.type === "text" && !n.locked) {
+                                e.stopPropagation();
+                                setEditing({ pageIdx: idx, nodeId: n.id });
+                                setSelections([{ pageIdx: idx, nodeId: n.id }]);
+                              }
+                            }}
                             style={{
                               position: "absolute",
                               left: n.rect.x,
@@ -898,21 +950,36 @@ export function MultiArtboardEditor({
                                 : undefined,
                               cursor: n.locked
                                 ? "default"
-                                : tool === "select"
-                                  ? "move"
-                                  : "default",
+                                : isEditing
+                                  ? "text"
+                                  : tool === "select"
+                                    ? "move"
+                                    : "default",
                               outline: isSel
-                                ? "2px solid #0D99FF"
-                                : "1px solid transparent",
-                              outlineOffset: isSel ? 0 : 0,
+                                ? `${2 / zoom}px solid #0D99FF`
+                                : `${1 / zoom}px solid transparent`,
+                              outlineOffset: 0,
                               touchAction: "none",
                             }}
                             className="hover:!outline-blue-400/40 hover:!outline-[1.5px]"
                           >
-                            <NodePreview node={n} />
+                            {isEditing && n.type === "text" ? (
+                              <TextEditOverlay
+                                node={n}
+                                onCommit={(newContent) => {
+                                  patchNodeData(idx, n.id, {
+                                    content: newContent,
+                                  });
+                                  setEditing(null);
+                                }}
+                                onCancel={() => setEditing(null)}
+                              />
+                            ) : (
+                              <NodePreview node={n} />
+                            )}
 
-                            {/* 선택 시 8개 리사이즈 핸들 + 라벨 */}
-                            {isSel && !n.locked && (
+                            {/* 선택 시 8개 리사이즈 핸들 + 회전 핸들 + W×H 라벨 */}
+                            {isSel && !n.locked && !isEditing && (
                               <>
                                 {(
                                   [
@@ -950,7 +1017,56 @@ export function MultiArtboardEditor({
                                     }}
                                   />
                                 ))}
-                                {/* W × H 라벨 */}
+                                {/* 회전 핸들 — 위쪽 30px 거리, 곡선 화살표 아이콘 */}
+                                <div
+                                  onPointerDown={(e) =>
+                                    onRotateDown(e, idx, n.id, n.rect)
+                                  }
+                                  style={{
+                                    position: "absolute",
+                                    left: "50%",
+                                    top: -36 / zoom,
+                                    width: 16 / zoom,
+                                    height: 16 / zoom,
+                                    marginLeft: -8 / zoom,
+                                    background: "#fff",
+                                    border: `${2 / zoom}px solid #0D99FF`,
+                                    borderRadius: "50%",
+                                    cursor: "grab",
+                                    display: "grid",
+                                    placeItems: "center",
+                                    touchAction: "none",
+                                  }}
+                                  title="드래그 = 회전"
+                                >
+                                  <svg
+                                    width={10 / zoom}
+                                    height={10 / zoom}
+                                    viewBox="0 0 24 24"
+                                    fill="none"
+                                    stroke="#0D99FF"
+                                    strokeWidth="2.5"
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    style={{ pointerEvents: "none" }}
+                                  >
+                                    <path d="M3 12a9 9 0 1 0 9-9" />
+                                    <polyline points="12 1 12 7 18 7" />
+                                  </svg>
+                                </div>
+                                {/* 핸들과 노드 사이 연결선 */}
+                                <div
+                                  style={{
+                                    position: "absolute",
+                                    left: "50%",
+                                    top: -28 / zoom,
+                                    width: 1 / zoom,
+                                    height: 28 / zoom,
+                                    background: "#0D99FF",
+                                    pointerEvents: "none",
+                                  }}
+                                />
+                                {/* W × H 라벨 (회전 중에는 각도) */}
                                 <div
                                   style={{
                                     position: "absolute",
@@ -967,7 +1083,9 @@ export function MultiArtboardEditor({
                                     pointerEvents: "none",
                                   }}
                                 >
-                                  {n.rect.w} × {n.rect.h}
+                                  {n.rect.rotate
+                                    ? `${Math.round(n.rect.rotate)}°`
+                                    : `${n.rect.w} × ${n.rect.h}`}
                                 </div>
                               </>
                             )}
@@ -1119,6 +1237,79 @@ export function MultiArtboardEditor({
 // ─────────────────────────────────────────────────────────────────────
 // 노드 타입 인스펙터 (다크)
 // ─────────────────────────────────────────────────────────────────────
+
+// ─────────────────────────────────────────────────────────────────────
+// 인라인 텍스트 편집 — 텍스트 노드 위에 contentEditable div 를 띄움
+// ─────────────────────────────────────────────────────────────────────
+
+function TextEditOverlay({
+  node,
+  onCommit,
+  onCancel,
+}: {
+  node: CanvasTextNode;
+  onCommit: (newContent: string) => void;
+  onCancel: () => void;
+}) {
+  const ref = useRef<HTMLDivElement>(null);
+  const d = node.data;
+  useEffect(() => {
+    // 마운트 시 자동 포커스 + 전체 선택
+    const el = ref.current;
+    if (el) {
+      el.focus();
+      const range = document.createRange();
+      range.selectNodeContents(el);
+      const sel = window.getSelection();
+      sel?.removeAllRanges();
+      sel?.addRange(range);
+    }
+  }, []);
+  return (
+    <div
+      ref={ref}
+      contentEditable
+      suppressContentEditableWarning
+      onPointerDown={(e) => e.stopPropagation()}
+      onBlur={(e) => onCommit(e.currentTarget.innerText)}
+      onKeyDown={(e) => {
+        e.stopPropagation();
+        if (e.key === "Escape") {
+          e.preventDefault();
+          onCancel();
+        }
+        // Cmd/Ctrl + Enter = 커밋
+        if ((e.metaKey || e.ctrlKey) && e.key === "Enter") {
+          e.preventDefault();
+          onCommit((e.currentTarget as HTMLDivElement).innerText);
+        }
+      }}
+      style={{
+        fontSize: d.fontSize ?? 32,
+        fontWeight: d.fontWeight ?? 500,
+        color: d.color ?? "#0A0A0A",
+        textAlign: d.align ?? "left",
+        lineHeight: d.lineHeight ?? 1.3,
+        letterSpacing: d.letterSpacing ? `${d.letterSpacing}px` : undefined,
+        whiteSpace: "pre-wrap",
+        wordBreak: "keep-all",
+        width: "100%",
+        height: "100%",
+        outline: "none",
+        cursor: "text",
+        background: "rgba(13, 153, 255, 0.05)",
+        fontFamily:
+          d.family === "num"
+            ? "var(--font-inter), Inter, sans-serif"
+            : d.family === "mono"
+              ? "var(--font-jetbrains-mono), monospace"
+              : undefined,
+      }}
+    >
+      {d.content || ""}
+    </div>
+  );
+}
 
 function NodeInspectorDark({
   node,
