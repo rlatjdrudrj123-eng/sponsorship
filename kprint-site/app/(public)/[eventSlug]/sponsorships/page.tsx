@@ -24,6 +24,10 @@ import {
 } from "lucide-react";
 import { getDb } from "@/lib/firebase/firestore";
 import { PersonaCourses, matchesPersona } from "@/components/public/PersonaCourses";
+import {
+  PersonaAiChat,
+  PersonaAiChatTrigger,
+} from "@/components/public/PersonaAiChat";
 import type {
   Category,
   Channel,
@@ -204,6 +208,7 @@ export default function SponsorshipsPage() {
     searchParams?.get("view") === "slide" ? "slide" : "card"
   );
   const [advancedOpen, setAdvancedOpen] = useState(false);
+  const [aiChatOpen, setAiChatOpen] = useState(false);
   // 비교 모드 — 카드에서 직접 체크해 모은다 (카트 거치지 않고 바로 compare로)
   const [compareIds, setCompareIds] = useState<Set<string>>(new Set());
 
@@ -470,6 +475,17 @@ export default function SponsorshipsPage() {
               onClear={clearPersona}
             />
 
+            {/* AI 대화형 추천 진입 */}
+            <div className="bg-canvas border-b border-ink-100">
+              <div className="max-w-7xl mx-auto px-6 md:px-16 pb-10 md:pb-12 -mt-3 flex items-center justify-between gap-3 flex-wrap">
+                <p className="text-[12.5px] md:text-[13px] text-ink-500 max-w-xl leading-relaxed">
+                  골랐는데도 결정이 어려우시면 — <strong className="text-ink-900">AI 에게 대화로 추천 받기</strong> 도 가능해요.
+                  예산·목적·작년 경험을 답하면 페르소나와 콤보를 직접 짜드립니다.
+                </p>
+                <PersonaAiChatTrigger onClick={() => setAiChatOpen(true)} />
+              </div>
+            </div>
+
             <div className="lg:grid lg:grid-cols-[260px_1fr] lg:gap-8 px-6 md:px-16 py-10 max-w-7xl mx-auto">
               {/* Mobile filter bar */}
               <div className="lg:hidden flex items-center justify-between mb-4 sticky top-0 z-10 bg-white py-2 border-b border-ink-100">
@@ -703,6 +719,19 @@ export default function SponsorshipsPage() {
           </Link>
         </div>
       )}
+
+      {/* AI 대화형 페르소나 추천 모달 */}
+      <PersonaAiChat
+        open={aiChatOpen}
+        onClose={() => setAiChatOpen(false)}
+        eventName={settings?.event.nameKo ?? eventId}
+        eventId={eventId}
+        personas={personas}
+        categories={categories}
+        subcategories={subcategories}
+        slots={slots}
+        packages={packages}
+      />
     </>
   );
 }
