@@ -17,7 +17,6 @@ import {
   Video,
 } from "lucide-react";
 import type {
-  CanvasComponentKind,
   CanvasComponentNode,
   CanvasNode,
   CanvasNodeType,
@@ -31,9 +30,12 @@ import { ShapeSVG } from "@/components/public/canvas/CanvasRenderer";
 
 // CanvasTextNode 는 TextNodeInspector 시그니처에서 직접 쓰임 (아래)
 
-// 캔버스 위에 놓는 디자인 완성된 컴포넌트들
-const COMPONENT_META: Record<
-  CanvasComponentKind,
+// ─────────────────────────────────────────────────────────────────────────
+// (구) 디자인 완성된 컴포넌트들 — 사용자가 헷갈린다고 해서 UI에서 제거.
+//      백워드 호환을 위해 데이터 타입과 렌더러는 남기지만 어드민에서 새로 추가 불가.
+// ─────────────────────────────────────────────────────────────────────────
+const COMPONENT_META_DEPRECATED: Record<
+  string,
   { label: string; desc: string; defaultW: number; defaultH: number }
 > = {
   cover: {
@@ -98,7 +100,9 @@ const COMPONENT_META: Record<
   },
 };
 
-function defaultComponentData(kind: CanvasComponentKind): Record<string, unknown> {
+// (deprecated) — 옛 데이터 호환만. 실제 사용 안 함.
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+function _defaultComponentDataDeprecated(kind: string): Record<string, unknown> {
   switch (kind) {
     case "cover":
       return {
@@ -184,6 +188,8 @@ function defaultComponentData(kind: CanvasComponentKind): Record<string, unknown
         headline: "",
         body: "본문 텍스트를 자유롭게 입력하세요.",
       };
+    default:
+      return {};
   }
 }
 
@@ -264,25 +270,8 @@ export function CanvasEditor({
     setSelectedId(n.id);
   };
 
-  const addComponent = (kind: CanvasComponentKind) => {
-    const meta = COMPONENT_META[kind];
-    const w = Math.min(meta.defaultW, CANVAS_W - 200);
-    const h = Math.min(meta.defaultH, CANVAS_H - 200);
-    const node: CanvasComponentNode = {
-      id: randomId(),
-      rect: {
-        x: snap((CANVAS_W - w) / 2),
-        y: snap((CANVAS_H - h) / 2),
-        w: snap(w),
-        h: snap(h),
-      },
-      type: "component",
-      componentKind: kind,
-      data: defaultComponentData(kind),
-    };
-    onChange({ ...page, nodes: [...page.nodes, node] });
-    setSelectedId(node.id);
-  };
+  // (deprecated) 컴포넌트 추가 — 새 노드 생성은 ToolButton (primitives) 으로만.
+  void _defaultComponentDataDeprecated;
 
   const deleteNode = (id: string) => {
     onChange({ ...page, nodes: page.nodes.filter((n) => n.id !== id) });
@@ -402,7 +391,9 @@ export function CanvasEditor({
     [page, selectedId, onChange]
   );
 
-  // 키보드: Delete, Cmd/Ctrl+D 복제, Cmd/Ctrl+C/V (외부 텍스트·이미지 paste)
+  // 키보드: Figma 호환 단축키
+  //   V=선택(deselect), T=텍스트, R=사각형, O=원, L=선
+  //   Delete=삭제, Cmd/Ctrl+D=복제, ←↑↓→=1px 이동, Shift+화살표=10px
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       const target = e.target as HTMLElement | null;
@@ -410,20 +401,82 @@ export function CanvasEditor({
         target?.tagName === "INPUT" ||
         target?.tagName === "TEXTAREA" ||
         target?.isContentEditable;
+      if (inField) return;
 
-      if (
-        !inField &&
-        (e.key === "Delete" || e.key === "Backspace") &&
-        selectedId
-      ) {
+      // Delete / Backspace
+      if ((e.key === "Delete" || e.key === "Backspace") && selectedId) {
         e.preventDefault();
         deleteNode(selectedId);
+        return;
       }
       // Cmd/Ctrl + D = 복제
-      if (!inField && (e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "d") {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "d") {
         if (selectedId) {
           e.preventDefault();
           duplicateNode(selectedId);
+        }
+        return;
+      }
+      // Escape = 선택 해제
+      if (e.key === "Escape") {
+        setSelectedId(null);
+        return;
+      }
+      // 단일 키 단축키 (modifier 없을 때만)
+      if (!e.metaKey && !e.ctrlKey && !e.altKey) {
+        const k = e.key.toLowerCase();
+        if (k === "v") {
+          setSelectedId(null);
+          return;
+        }
+        if (k === "t") {
+          e.preventDefault();
+          addNode("text");
+          return;
+        }
+        if (k === "r") {
+          e.preventDefault();
+          addNode("shape");
+          // 추가된 노드는 setSelectedId 안에서 갱신됨
+          return;
+        }
+        if (k === "o") {
+          e.preventDefault();
+          // 원 추가 — addNode("shape") 직후 shape 를 ellipse 로 패치
+          const n = makeNode("shape") as CanvasShapeNode;
+          n.data = { ...n.data, shape: "ellipse" };
+          onChange({ ...page, nodes: [...page.nodes, n] });
+          setSelectedId(n.id);
+          return;
+        }
+        if (k === "l") {
+          e.preventDefault();
+          const n = makeNode("shape") as CanvasShapeNode;
+          n.data = {
+            ...n.data,
+            shape: "line",
+            stroke: "#0A0A0A",
+            strokeWidth: 4,
+          };
+          onChange({ ...page, nodes: [...page.nodes, n] });
+          setSelectedId(n.id);
+          return;
+        }
+        // 화살표 키 — 선택된 노드 nudge
+        if (
+          selectedId &&
+          ["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown"].includes(e.key)
+        ) {
+          e.preventDefault();
+          const step = e.shiftKey ? 10 : 1;
+          const n = page.nodes.find((nn) => nn.id === selectedId);
+          if (!n) return;
+          const dx = e.key === "ArrowLeft" ? -step : e.key === "ArrowRight" ? step : 0;
+          const dy = e.key === "ArrowUp" ? -step : e.key === "ArrowDown" ? step : 0;
+          updateNode(selectedId, {
+            rect: { ...n.rect, x: n.rect.x + dx, y: n.rect.y + dy },
+          });
+          return;
         }
       }
     };
@@ -515,37 +568,31 @@ export function CanvasEditor({
           />
         </div>
 
-        <div className="px-3 py-2 border-y border-ink-100 text-[11px] uppercase tracking-wide font-bold text-ink-700 flex items-center gap-1.5">
-          <span className="text-brand-500">★</span>
-          컴포넌트
-        </div>
-        <div className="p-2 grid grid-cols-1 gap-1 overflow-y-auto flex-1">
-          {(Object.keys(COMPONENT_META) as CanvasComponentKind[]).map((k) => {
-            const meta = COMPONENT_META[k];
-            return (
-              <button
-                key={k}
-                type="button"
-                onClick={() => addComponent(k)}
-                className="text-left px-2.5 py-2 rounded-btn border border-ink-100 hover:border-brand-500 hover:bg-brand-50 transition-colors"
-              >
-                <div className="text-[12px] font-bold text-ink-900 leading-tight">
-                  {meta.label}
-                </div>
-                <div className="text-[10px] text-ink-500 mt-0.5 leading-snug truncate">
-                  {meta.desc}
-                </div>
-              </button>
-            );
-          })}
-        </div>
-
-        <div className="px-3 py-2 border-t border-ink-100 space-y-2">
+        <div className="px-3 py-2 border-t border-ink-100 flex-1 overflow-y-auto">
+          <div className="text-[10.5px] uppercase tracking-wide font-bold text-ink-500 mb-2">
+            단축키 (Figma 호환)
+          </div>
+          <div className="text-[10.5px] text-ink-500 leading-snug space-y-0.5 font-mono">
+            <div>V · 선택</div>
+            <div>T · 텍스트</div>
+            <div>R · 사각형</div>
+            <div>O · 원</div>
+            <div>L · 선</div>
+          </div>
+          <div className="text-[10.5px] uppercase tracking-wide font-bold text-ink-500 mt-3 mb-2">
+            편집
+          </div>
           <div className="text-[10.5px] text-ink-500 leading-snug space-y-0.5">
-            <div>노드 <strong className="text-ink-900">{page.nodes.length}</strong>개</div>
-            <div>· 드래그=이동 · 모서리=리사이즈</div>
-            <div>· Delete · Cmd+D=복제</div>
-            <div>· Ctrl+V=이미지/텍스트 붙여넣기</div>
+            <div>· 드래그 = 이동</div>
+            <div>· 모서리 = 리사이즈</div>
+            <div>· ←↑↓→ = 1px 이동</div>
+            <div>· Shift+화살표 = 10px</div>
+            <div>· Cmd/Ctrl+D = 복제</div>
+            <div>· Delete = 삭제</div>
+            <div>· Ctrl+V = 이미지·텍스트 붙여넣기</div>
+          </div>
+          <div className="text-[10.5px] text-ink-500 mt-3 pt-2 border-t border-ink-100">
+            노드 <strong className="text-ink-900">{page.nodes.length}</strong>개
           </div>
         </div>
       </aside>
@@ -940,19 +987,16 @@ function NodePreview({ node }: { node: CanvasNode }) {
         </div>
       );
     case "component": {
-      const meta = COMPONENT_META[node.componentKind];
+      // (deprecated) 옛 페이지가 가진 component 노드 — 백워드 호환만.
+      // 어드민에서 더 이상 새로 추가 불가. 인스펙터에서 삭제만 가능.
+      const meta = COMPONENT_META_DEPRECATED[node.componentKind];
       return (
-        <div className="w-full h-full bg-brand-50 border-2 border-dashed border-brand-500 rounded p-3 pointer-events-none overflow-hidden">
-          <div className="font-num text-[10px] uppercase tracking-widest text-brand-500 font-bold">
-            ★ {meta.label}
+        <div className="w-full h-full bg-ink-50 border-2 border-dashed border-ink-300 rounded p-3 pointer-events-none overflow-hidden">
+          <div className="font-num text-[10px] uppercase tracking-widest text-ink-500 font-bold">
+            (구) 컴포넌트 — {meta?.label ?? node.componentKind}
           </div>
-          <div className="text-[11px] text-ink-700 mt-1 leading-snug">
-            {(node.data as { headline?: string; title?: string }).headline ||
-              (node.data as { title?: string }).title ||
-              meta.desc}
-          </div>
-          <div className="text-[9px] text-ink-500 mt-2 font-mono">
-            컴포넌트 — 인스펙터에서 내용 편집
+          <div className="text-[10.5px] text-ink-500 mt-1.5 leading-snug">
+            더 이상 지원하지 않습니다. 삭제 후 텍스트·이미지 등으로 새로 만드세요.
           </div>
         </div>
       );
@@ -1784,7 +1828,10 @@ function ComponentNodeInspector({
   node: CanvasComponentNode;
   onUpdateData: (p: Record<string, unknown>) => void;
 }) {
-  const meta = COMPONENT_META[node.componentKind];
+  const meta = COMPONENT_META_DEPRECATED[node.componentKind] ?? {
+    label: node.componentKind,
+    desc: "(구) 컴포넌트 — 더 이상 지원하지 않습니다. 삭제 후 새로 만드세요.",
+  };
   const d = node.data as Record<string, unknown>;
 
   return (
@@ -2157,12 +2204,13 @@ function makeNode(type: CanvasNodeType): CanvasNode {
         data: { url: "" },
       };
     case "component":
-      // makeNode 는 primitives 전용. component 는 addComponent(kind) 별도 경로.
+      // (deprecated) makeNode 는 primitives 전용. component 는 어드민에서 더 이상 추가 불가.
+      // 옛 데이터 호환을 위해 fallback 만 반환.
       return {
         ...base,
         type: "component",
         componentKind: "cover",
-        data: defaultComponentData("cover"),
+        data: _defaultComponentDataDeprecated("cover"),
       };
   }
 }
