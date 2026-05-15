@@ -23,7 +23,7 @@ import {
   X,
 } from "lucide-react";
 import { getDb } from "@/lib/firebase/firestore";
-import { PersonaCourses, matchesPersona } from "@/components/public/PersonaCourses";
+import { matchesPersona } from "@/components/public/PersonaCourses";
 import { PersonaAiChat } from "@/components/public/PersonaAiChat";
 import type {
   Category,
@@ -401,11 +401,6 @@ export default function SponsorshipsPage() {
     setSearch("");
   };
 
-  // 페르소나 클리어 — pickPersona 는 onPick no-op 로 변경되며 더 이상 사용 안 함
-  const clearPersona = () => {
-    setSelectedPersona(null);
-    setActivePurposes(new Set());
-  };
 
   const hasActiveFilter =
     filterChannel !== "all" ||
@@ -594,18 +589,6 @@ export default function SponsorshipsPage() {
               </div>
             </section>
 
-            {/* 페르소나 카드 — 서브 (대화 안하고 빠르게 골라보고 싶을 때) */}
-            <PersonaCourses
-              personas={personas}
-              categories={categories}
-              packages={packages}
-              selectedPersonaId={selectedPersona?.id ?? null}
-              onPick={() => {
-                /* 필터는 적용하지 않음 — 추천 콤보만 보여주기 위한 카드 */
-              }}
-              onClear={clearPersona}
-              compact
-            />
 
             <div className="lg:grid lg:grid-cols-[260px_1fr] lg:gap-8 px-6 md:px-16 py-10 max-w-7xl mx-auto">
               {/* Mobile filter bar */}
@@ -1499,9 +1482,8 @@ function PackageSection({ packages, eventId }: { packages: Package[]; eventId: s
         </span>
         <div className="flex-1 h-px bg-ink-100" />
       </div>
-      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
         {sorted.map((pkg) => {
-          const hero = pkg.heroImages?.images?.[0]?.url;
           const hasDiscount = pkg.originalPrice > 0 && pkg.originalPrice > pkg.discountPrice;
           const isSignature = pkg.tier === "signature";
           return (
@@ -1509,87 +1491,81 @@ function PackageSection({ packages, eventId }: { packages: Package[]; eventId: s
               key={pkg.id}
               href={`/${eventId}/packages/${pkg.id}`}
               className={
-                "group bg-surface border-2 rounded-card overflow-hidden flex flex-col h-full transition-all " +
+                "group bg-surface border-[1.5px] rounded-card p-4 flex flex-col transition-all " +
                 (isSignature
                   ? "border-brand-500 hover:shadow-glow-sm"
-                  : "border-ink-100 hover:border-brand-500 hover:shadow-card")
+                  : "border-ink-100 hover:border-brand-500")
               }
             >
-              <div className="aspect-[4/3] bg-ink-100 relative shrink-0">
-                {hero ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img
-                    src={hero}
-                    alt={localized(pkg.name, locale)}
-                    className="absolute inset-0 w-full h-full object-cover"
-                  />
-                ) : (
-                  <div className="w-full h-full grid place-items-center text-ink-300 text-xs">
-                    {locale === "en" ? "No image" : "이미지 없음"}
-                  </div>
-                )}
-                <div className="absolute top-3 left-3">
-                  <span
-                    className={
-                      "text-[10px] uppercase tracking-wider px-2.5 py-1 rounded-pill font-num font-bold " +
-                      (isSignature
-                        ? "bg-brand-500 text-white shadow-glow-sm"
-                        : "bg-white/90 text-ink-900")
-                    }
-                  >
-                    {isSignature ? "Signature" : "Standard"}
-                  </span>
-                </div>
-              </div>
-              <div className="p-4 flex-1 flex flex-col">
-                <div
+              {/* 헤더 — tier 칩 + 이름 */}
+              <div className="flex items-baseline justify-between gap-2 mb-1.5">
+                <span
                   className={
-                    "font-bold leading-tight tracking-tight transition-colors " +
-                    (isSignature
-                      ? "text-[18px] text-ink-900 group-hover:text-brand-500"
-                      : "text-[15px] text-ink-900 group-hover:text-brand-500")
+                    "text-[9px] uppercase tracking-[0.2em] font-num font-bold " +
+                    (isSignature ? "text-brand-500" : "text-ink-500")
                   }
                 >
-                  {localized(pkg.name, locale)}
-                </div>
-                {pkg.tagline && (
-                  <p className="text-[12px] text-ink-500 mt-1.5 line-clamp-2 leading-snug">
-                    {pkg.tagline}
-                  </p>
-                )}
-                {pkg.includedItems && pkg.includedItems.length > 0 && (
-                  <ul className="mt-2.5 space-y-0.5 text-[11px] text-ink-700">
-                    {pkg.includedItems.slice(0, 3).map((it, i) => (
-                      <li key={i} className="truncate">
-                        · {it.label}
-                      </li>
-                    ))}
-                    {pkg.includedItems.length > 3 && (
-                      <li className="text-ink-500">
-                        … 외 {pkg.includedItems.length - 3}개
-                      </li>
+                  {isSignature ? "★ Signature" : "Standard"}
+                </span>
+                {hasDiscount && (
+                  <span className="text-[9.5px] font-num font-bold text-brand-500 bg-brand-50 px-1.5 py-0.5 rounded">
+                    {Math.round(
+                      ((pkg.originalPrice - pkg.discountPrice) /
+                        pkg.originalPrice) *
+                        100
                     )}
-                  </ul>
+                    % OFF
+                  </span>
                 )}
-                <div className="mt-auto pt-3 flex items-center justify-between">
-                  {hasDiscount ? (
-                    <div>
-                      <div className="text-[10px] text-ink-500 line-through font-mono">
-                        {pkg.originalPrice.toLocaleString()}원
-                      </div>
-                      <div className="text-[14px] font-bold text-brand-700 font-mono">
-                        {pkg.discountPrice.toLocaleString()}원
-                      </div>
-                    </div>
-                  ) : pkg.discountPrice > 0 ? (
-                    <div className="text-[14px] font-bold text-ink-900 font-mono">
-                      {pkg.discountPrice.toLocaleString()}원
-                    </div>
-                  ) : (
-                    <div className="text-[11px] text-ink-500">문의 가격</div>
+              </div>
+              <div
+                className={
+                  "font-bold leading-tight tracking-tight text-ink-900 group-hover:text-brand-500 " +
+                  (isSignature ? "text-[17px]" : "text-[15px]")
+                }
+              >
+                {localized(pkg.name, locale)}
+              </div>
+
+              {/* 포함 항목 — 인라인 작게 */}
+              {pkg.includedItems && pkg.includedItems.length > 0 && (
+                <ul className="mt-2 space-y-0.5 text-[11.5px] text-ink-700">
+                  {pkg.includedItems.slice(0, 3).map((it, i) => (
+                    <li key={i} className="flex items-start gap-1.5 leading-tight">
+                      <span className="text-brand-500 mt-0.5">·</span>
+                      <span className="truncate">{it.label}</span>
+                    </li>
+                  ))}
+                  {pkg.includedItems.length > 3 && (
+                    <li className="text-ink-400 text-[10.5px] pl-3">
+                      … 외 {pkg.includedItems.length - 3}개
+                    </li>
                   )}
-                  <span className="text-ink-300">→</span>
-                </div>
+                </ul>
+              )}
+
+              {/* 가격 — 우측 정렬, 한 줄 */}
+              <div className="mt-3 pt-2 border-t border-ink-100 flex items-baseline justify-end gap-2">
+                {hasDiscount && (
+                  <span className="text-[10.5px] text-ink-400 line-through font-mono">
+                    {pkg.originalPrice.toLocaleString()}
+                  </span>
+                )}
+                {pkg.discountPrice > 0 ? (
+                  <span
+                    className={
+                      "font-num font-bold leading-none " +
+                      (isSignature
+                        ? "text-[18px] text-brand-700"
+                        : "text-[16px] text-ink-900")
+                    }
+                  >
+                    {pkg.discountPrice.toLocaleString()}
+                    <span className="text-[10.5px] ml-0.5 font-semibold">원</span>
+                  </span>
+                ) : (
+                  <span className="text-[11px] text-ink-500">문의</span>
+                )}
               </div>
             </Link>
           );

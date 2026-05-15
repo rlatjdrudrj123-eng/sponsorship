@@ -709,6 +709,7 @@ export type CanvasChartNode = CanvasNodeBase & {
     kind: "line" | "bar" | "area" | "mixed"; // 기본 종류
     categories: string[];                     // x축 라벨
     series: ChartSeries[];
+    background?: string;                      // 차트 배경색 (hex 또는 css 색)
     showLegend?: boolean;
     showGrid?: boolean;
     showAxes?: boolean;

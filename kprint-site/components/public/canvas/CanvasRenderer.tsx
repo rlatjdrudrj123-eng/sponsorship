@@ -43,20 +43,13 @@ export function CanvasRenderer({
   /** PDF 모드 등 강제로 데스크톱 레이아웃을 쓰고 싶을 때 */
   forceDesktop?: boolean;
 }) {
-  const isMobile = useIsMobile() && !forceDesktop;
+  // PC·모바일 동일 레이아웃 — CSS transform scale 로 화면 폭에 맞춤.
+  // (옛 CanvasMobileStack 은 도형·배경이 다 누락되어 디자인과 다른 화면이 나옴 — 폐기)
+  void useIsMobile;
+  void forceDesktop;
 
   const bg = resolveBg(page.bg) ?? "var(--color-canvas, #F6F6F6)";
 
-  if (isMobile) {
-    return (
-      <CanvasMobileStack
-        page={page}
-        bg={bg}
-        eventId={eventId}
-        settings={settings ?? null}
-      />
-    );
-  }
   return (
     <CanvasDesktop
       page={page}
@@ -139,49 +132,7 @@ function CanvasScale() {
   return null;
 }
 
-function CanvasMobileStack({
-  page,
-  bg,
-  eventId,
-  settings,
-}: {
-  page: CanvasPage;
-  bg: string;
-  eventId?: string;
-  settings: SiteSettings | null;
-}) {
-  const visible = page.nodes
-    .filter((n) => !n.hidden && !n.mobile?.hidden)
-    .sort((a, b) => {
-      const ao = a.mobile?.order ?? a.rect.y;
-      const bo = b.mobile?.order ?? b.rect.y;
-      return ao - bo;
-    });
-
-  return (
-    <div className="w-full" style={{ background: bg }}>
-      <div className="max-w-md mx-auto px-5 py-10 flex flex-col gap-5">
-        {page.bgImageUrl && (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            src={page.bgImageUrl}
-            alt=""
-            className="w-full rounded-card object-cover"
-          />
-        )}
-        {visible.map((n) => (
-          <div key={n.id}>
-            <NodeRendererMobile
-              node={n}
-              eventId={eventId}
-              settings={settings}
-            />
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
+// (CanvasMobileStack 제거 — 데스크탑 스케일 방식으로 통일)
 
 // ============================================================================
 // 데스크톱 노드 렌더
@@ -251,81 +202,7 @@ function NodeInner({
   }
 }
 
-// ============================================================================
-// 모바일 노드 렌더 — 폭에 맞춰 자연스럽게
-// ============================================================================
-
-function NodeRendererMobile({
-  node,
-  eventId,
-  settings,
-}: {
-  node: CanvasNode;
-  eventId?: string;
-  settings: SiteSettings | null;
-}) {
-  switch (node.type) {
-    case "text": {
-      // 데스크톱 폰트 크기를 모바일에 맞춰 축소
-      const desktopSize = node.data.fontSize ?? 32;
-      const mobileSize = Math.min(desktopSize, 48); // 너무 큰 건 자름
-      return (
-        <TextNodeView
-          node={{
-            ...node,
-            data: { ...node.data, fontSize: mobileSize },
-          }}
-        />
-      );
-    }
-    case "image":
-      return (
-        <div className="w-full overflow-hidden rounded-card">
-          <ImageNodeView node={node} mobile />
-        </div>
-      );
-    case "shape":
-      // 모바일에서는 shape 의미가 떨어짐 — divider 정도만 표시
-      if (node.data.shape === "line") {
-        return (
-          <hr
-            style={{
-              border: 0,
-              height: node.data.strokeWidth ?? 1,
-              background: node.data.stroke ?? "#0A0A0A",
-            }}
-          />
-        );
-      }
-      return null;
-    case "button":
-      return <ButtonNodeView node={node} eventId={eventId} mobile />;
-    case "video":
-      return (
-        <div className="aspect-video w-full overflow-hidden rounded-card">
-          <VideoNodeView node={node} />
-        </div>
-      );
-    case "chart":
-      return (
-        <div className="w-full" style={{ aspectRatio: "16 / 9" }}>
-          <ChartNodeView node={node} />
-        </div>
-      );
-    case "icon":
-      return <IconNodeView node={node} />;
-    case "component":
-      // 모바일: 컴포넌트는 자체 레이아웃으로 렌더 (캔버스 좌표 무시)
-      return (
-        <ComponentNodeRenderer
-          node={node}
-          eventId={eventId ?? ""}
-          settings={settings}
-          mobile
-        />
-      );
-  }
-}
+// (NodeRendererMobile 제거 — 데스크탑 스케일 방식으로 통일)
 
 // ============================================================================
 // 노드별 뷰
@@ -751,6 +628,10 @@ export function ChartNodeView({ node }: { node: CanvasChartNode }) {
       role="img"
       aria-label={d.kind + " chart"}
     >
+      {/* 배경색 */}
+      {d.background && (
+        <rect x={0} y={0} width={W} height={H} fill={d.background} />
+      )}
       {/* 그리드 */}
       {(d.showGrid ?? true) &&
         gridLines.map((g, i) => (

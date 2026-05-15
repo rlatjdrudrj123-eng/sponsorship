@@ -394,29 +394,66 @@ export function MultiArtboardEditor({
       return;
     }
 
-    // 이미 선택된 노드면 그대로, 아니면 단일 선택
-    setSelections((prev) => {
-      const already = prev.find(
-        (s) => s.pageIdx === pageIdx && s.nodeId === nodeId
-      );
-      return already ? prev : [{ pageIdx, nodeId }];
-    });
+    // 이미 선택된 노드면 그대로 (그룹 드래그를 위해), 아니면 단일 선택
+    const wasAlreadySelected = selections.some(
+      (s) => s.pageIdx === pageIdx && s.nodeId === nodeId
+    );
+    if (!wasAlreadySelected) {
+      setSelections([{ pageIdx, nodeId }]);
+    }
 
     // 잠긴 노드는 이동 불가
     const node = pages[pageIdx]?.page.nodes.find((n) => n.id === nodeId);
     if (node?.locked) return;
+
+    // 드래그할 노드 목록 — 이미 다중 선택이면 그 전체, 아니면 이 노드만
+    const dragTargets: Array<{
+      pageIdx: number;
+      nodeId: string;
+      startRect: CanvasNode["rect"];
+    }> = [];
+    if (wasAlreadySelected && selections.length > 1) {
+      selections.forEach((s) => {
+        const n = pages[s.pageIdx]?.page.nodes.find((nn) => nn.id === s.nodeId);
+        if (n && !n.locked) {
+          dragTargets.push({
+            pageIdx: s.pageIdx,
+            nodeId: s.nodeId,
+            startRect: { ...n.rect },
+          });
+        }
+      });
+    } else {
+      dragTargets.push({ pageIdx, nodeId, startRect: { ...startRect } });
+    }
 
     const startX = e.clientX;
     const startY = e.clientY;
     const onMove = (ev: PointerEvent) => {
       const dx = (ev.clientX - startX) / zoom;
       const dy = (ev.clientY - startY) / zoom;
-      patchNode(pageIdx, nodeId, {
-        rect: {
-          ...startRect,
-          x: snap8(startRect.x + dx),
-          y: snap8(startRect.y + dy),
-        },
+      // 같은 페이지끼리 묶어 한 번에 patch (개별 patchNode 호출 N번 대신)
+      const byPage = new Map<number, Map<string, CanvasNode["rect"]>>();
+      dragTargets.forEach((t) => {
+        const newRect: CanvasNode["rect"] = {
+          ...t.startRect,
+          x: snap8(t.startRect.x + dx),
+          y: snap8(t.startRect.y + dy),
+        };
+        if (!byPage.has(t.pageIdx)) byPage.set(t.pageIdx, new Map());
+        byPage.get(t.pageIdx)!.set(t.nodeId, newRect);
+      });
+      byPage.forEach((nodeMap, pIdx) => {
+        const target = pages[pIdx];
+        if (!target) return;
+        onUpdatePage(pIdx, {
+          ...target.page,
+          nodes: target.page.nodes.map((n) =>
+            nodeMap.has(n.id)
+              ? ({ ...n, rect: nodeMap.get(n.id)! } as CanvasNode)
+              : n
+          ),
+        });
       });
     };
     const onPointerUp = () => {

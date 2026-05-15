@@ -2520,6 +2520,36 @@ function ChartNodeInspector({
         </select>
       </Field>
 
+      <Field label="차트 배경색 (비우면 투명)">
+        <div className="flex gap-1.5">
+          <input
+            type="color"
+            value={d.background ?? "#FFFFFF"}
+            onChange={(e) => onUpdateData({ background: e.target.value })}
+            className="w-9 h-9 rounded border border-ink-100 cursor-pointer p-0"
+          />
+          <input
+            type="text"
+            value={d.background ?? ""}
+            onChange={(e) =>
+              onUpdateData({ background: e.target.value || undefined })
+            }
+            placeholder="투명"
+            className={inputCls() + " font-mono text-[11px] flex-1"}
+          />
+          {d.background && (
+            <button
+              type="button"
+              onClick={() => onUpdateData({ background: undefined })}
+              className="px-2 rounded border border-ink-100 text-[10.5px] text-ink-500 hover:text-ink-900 hover:border-ink-900"
+              title="배경 지우기"
+            >
+              ✕
+            </button>
+          )}
+        </div>
+      </Field>
+
       <Field label="카테고리 (쉼표 구분, x축 라벨)">
         <input
           type="text"
