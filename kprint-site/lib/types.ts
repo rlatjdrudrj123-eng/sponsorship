@@ -608,13 +608,18 @@ export type CanvasTextNode = CanvasNodeBase & {
   data: {
     content: string;             // plain (\n 보존)
     fontSize?: number;           // 16~200, 기본 32
-    fontWeight?: 300 | 400 | 500 | 600 | 700 | 800;
+    fontWeight?: 300 | 400 | 500 | 600 | 700 | 800 | 900;
     color?: string;              // hex
     align?: "left" | "center" | "right";
     lineHeight?: number;         // 0.9~2
     letterSpacing?: number;      // px
     accent?: boolean;            // brand-500 컬러 사용
     family?: "sans" | "num" | "mono";
+    /** 자유 입력 — 우선 적용. 예: "Noto Serif KR" / "Roboto" / "Georgia, serif" */
+    fontFamily?: string;
+    fontStyle?: "normal" | "italic";
+    textDecoration?: "none" | "underline" | "line-through";
+    textTransform?: "none" | "uppercase" | "lowercase" | "capitalize";
   };
 };
 
@@ -803,6 +808,12 @@ export type Tag = {
 export type Taxonomy = {
   tags: Tag[];
   channels: Array<{ id: Channel; label: string }>;
+  /** 분류 관리에서 사용자가 수정·삭제 가능한 매체 유형 버킷. 없으면 코드 기본값. */
+  mediaBuckets?: Array<{ id: string; label: string; description?: string }>;
+  /** 노출 시점 버킷. */
+  timingBuckets?: Array<{ id: string; label: string; description?: string }>;
+  /** 노출 위치 버킷 (K-PRINT 는 Hall 7·8, KIMES 는 Hall A/B/C/D 등). */
+  locationBuckets?: Array<{ id: string; label: string; description?: string }>;
 };
 
 // ============= EVENT (다년도/다행사) =============

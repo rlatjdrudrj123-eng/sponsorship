@@ -413,19 +413,8 @@ export default function SponsorshipsPage() {
     activeTimings.size > 0 ||
     activeLocations.size > 0;
 
-  // 패키지 노출 규칙:
-  //  - 필터 없음 → 전체 패키지
-  //  - 페르소나 + packageTier 일치 → 해당 tier 만
-  //  - 그 외 필터(채널·예산·검색…) → 숨김
-  const packagesToShow = useMemo<Package[]>(() => {
-    if (packages.length === 0) return [];
-    if (selectedPersona) {
-      if (!selectedPersona.packageTier) return [];
-      return packages.filter((p) => p.tier === selectedPersona.packageTier);
-    }
-    if (hasActiveFilter) return [];
-    return packages;
-  }, [packages, selectedPersona, hasActiveFilter]);
+  // 패키지는 필터와 무관하게 항상 별도 섹션 표시 (사용자 요청).
+  // (옛 packagesToShow 노출 규칙 폐기)
 
   return (
     <>
@@ -590,6 +579,15 @@ export default function SponsorshipsPage() {
             </section>
 
 
+            {/* 패키지 — 별도 섹션, 필터 무관 */}
+            {packages.length > 0 && (
+              <section className="border-b border-ink-100 bg-surface">
+                <div className="max-w-7xl mx-auto px-6 md:px-16 py-10">
+                  <PackageSection packages={packages} eventId={eventId} />
+                </div>
+              </section>
+            )}
+
             <div className="lg:grid lg:grid-cols-[260px_1fr] lg:gap-8 px-6 md:px-16 py-10 max-w-7xl mx-auto">
               {/* Mobile filter bar */}
               <div className="lg:hidden flex items-center justify-between mb-4 sticky top-0 z-10 bg-white py-2 border-b border-ink-100">
@@ -666,11 +664,6 @@ export default function SponsorshipsPage() {
                   />
                 )}
 
-                {/* 패키지 전용 섹션 */}
-                {packagesToShow.length > 0 && (
-                  <PackageSection packages={packagesToShow} eventId={eventId} />
-                )}
-
                 {filtered.length === 0 ? (
                   <div className="bg-ink-50 rounded-card py-16 text-center text-sm text-ink-500">
                     조건에 맞는 항목이 없어요.
@@ -685,23 +678,13 @@ export default function SponsorshipsPage() {
                     )}
                   </div>
                 ) : (
-                  <>
-                    {packagesToShow.length > 0 && (
-                      <div className="mt-8 mb-4 flex items-center gap-3">
-                        <span className="text-[10px] uppercase tracking-[0.2em] text-brand-700 font-bold">
-                          개별 구좌
-                        </span>
-                        <div className="flex-1 h-px bg-ink-100" />
-                      </div>
-                    )}
-                    <CardGrid
-                      items={filtered}
-                      packages={packages}
-                      compareIds={compareIds}
-                      onToggleCompare={toggleCompare}
-                      onOpenDetail={setDetailModalSlug}
-                    />
-                  </>
+                  <CardGrid
+                    items={filtered}
+                    packages={packages}
+                    compareIds={compareIds}
+                    onToggleCompare={toggleCompare}
+                    onOpenDetail={setDetailModalSlug}
+                  />
                 )}
               </section>
             </div>
@@ -1468,110 +1451,202 @@ function BadgePill({ badge }: { badge: Badge }) {
 
 function PackageSection({ packages, eventId }: { packages: Package[]; eventId: string }) {
   const locale = useLocale((s) => s.locale);
-  const sorted = [...packages].sort((a, b) => {
-    // 시그니처 먼저, 그다음 order
-    if (a.tier !== b.tier) return a.tier === "signature" ? -1 : 1;
-    return (a.order ?? 0) - (b.order ?? 0);
-  });
+  const signature = packages
+    .filter((p) => p.tier === "signature")
+    .sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
+  const standard = packages
+    .filter((p) => p.tier !== "signature")
+    .sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
 
   return (
-    <section className="mb-2">
-      <div className="flex items-center gap-3 mb-3">
-        <span className="text-[10px] uppercase tracking-[0.2em] text-brand-700 font-bold">
-          {t("spons.packagesSection", locale)}
+    <section className="space-y-10">
+      <header className="text-center max-w-3xl mx-auto">
+        <div className="font-num text-[11px] uppercase tracking-[0.3em] text-brand-500 font-bold mb-2">
+          PACKAGES
+        </div>
+        <h2 className="text-[26px] md:text-[34px] font-bold text-ink-900 leading-tight tracking-tight">
+          패키지 광고 안내
+        </h2>
+        <p className="text-[13.5px] md:text-[15px] text-ink-500 mt-2 leading-relaxed">
+          단품을 묶어 할인된 가격에 — 전시회 핵심 동선 + 노출 채널을 통합 구성한
+          프리미엄 패키지입니다.
+        </p>
+      </header>
+
+      {signature.length > 0 && (
+        <PackageGroup
+          label={`Signature Package`}
+          sub="전시회 핵심 동선과 주요 노출 지면을 중심으로 구성된 프리미엄 패키지"
+          items={signature}
+          eventId={eventId}
+          locale={locale}
+          accent
+        />
+      )}
+      {standard.length > 0 && (
+        <PackageGroup
+          label={`Standard Package`}
+          sub="선택 가능한 스폰서십 항목을 유연하게 구성한 실속형 패키지"
+          items={standard}
+          eventId={eventId}
+          locale={locale}
+        />
+      )}
+
+      <p className="text-[11.5px] text-ink-500 text-center">
+        ※ 패키지 내 광고상품은 별도 표기가 없을 경우 1개 구좌 기준입니다.
+      </p>
+    </section>
+  );
+}
+
+function PackageGroup({
+  label,
+  sub,
+  items,
+  eventId,
+  locale,
+  accent,
+}: {
+  label: string;
+  sub: string;
+  items: Package[];
+  eventId: string;
+  locale: Locale;
+  accent?: boolean;
+}) {
+  return (
+    <div>
+      <div className="flex items-center gap-3 mb-4">
+        <span
+          className={
+            "font-num text-[11px] uppercase tracking-[0.25em] font-bold " +
+            (accent ? "text-brand-500" : "text-ink-700")
+          }
+        >
+          {label}
         </span>
         <div className="flex-1 h-px bg-ink-100" />
+        <span className="text-[11.5px] text-ink-500 hidden md:block">
+          {sub}
+        </span>
       </div>
-      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
-        {sorted.map((pkg) => {
-          const hasDiscount = pkg.originalPrice > 0 && pkg.originalPrice > pkg.discountPrice;
-          const isSignature = pkg.tier === "signature";
-          return (
-            <Link
-              key={pkg.id}
-              href={`/${eventId}/packages/${pkg.id}`}
-              className={
-                "group bg-surface border-[1.5px] rounded-card p-4 flex flex-col transition-all " +
-                (isSignature
-                  ? "border-brand-500 hover:shadow-glow-sm"
-                  : "border-ink-100 hover:border-brand-500")
-              }
-            >
-              {/* 헤더 — tier 칩 + 이름 */}
-              <div className="flex items-baseline justify-between gap-2 mb-1.5">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {items.map((pkg) => (
+          <PackageCard
+            key={pkg.id}
+            pkg={pkg}
+            eventId={eventId}
+            locale={locale}
+            accent={accent}
+          />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function PackageCard({
+  pkg,
+  eventId,
+  locale,
+  accent,
+}: {
+  pkg: Package;
+  eventId: string;
+  locale: Locale;
+  accent?: boolean;
+}) {
+  const hasDiscount =
+    pkg.originalPrice > 0 && pkg.originalPrice > pkg.discountPrice;
+  const discountPct = hasDiscount
+    ? Math.round(
+        ((pkg.originalPrice - pkg.discountPrice) / pkg.originalPrice) * 100
+      )
+    : 0;
+
+  return (
+    <Link
+      href={`/${eventId}/packages/${pkg.id}`}
+      className={
+        "group bg-surface border rounded-card overflow-hidden grid grid-cols-[1fr_auto] transition-all " +
+        (accent
+          ? "border-ink-100 hover:border-brand-500 hover:shadow-glow-sm"
+          : "border-ink-100 hover:border-brand-500 hover:shadow-card")
+      }
+    >
+      {/* 좌측 — 카피·포함 항목 */}
+      <div className="px-6 py-6 min-w-0">
+        {pkg.tagline && (
+          <div className="text-[11.5px] text-brand-500 font-semibold mb-1 leading-snug line-clamp-2">
+            {pkg.tagline}
+          </div>
+        )}
+        <div className="text-[22px] md:text-[26px] font-bold text-ink-900 group-hover:text-brand-500 tracking-tight leading-tight">
+          {localized(pkg.name, locale)}
+        </div>
+
+        {pkg.includedItems && pkg.includedItems.length > 0 && (
+          <ul className="mt-4 space-y-1.5">
+            {pkg.includedItems.map((it, i) => (
+              <li
+                key={i}
+                className="flex items-start gap-2 text-[13.5px] text-ink-900 leading-snug"
+              >
                 <span
                   className={
-                    "text-[9px] uppercase tracking-[0.2em] font-num font-bold " +
-                    (isSignature ? "text-brand-500" : "text-ink-500")
+                    "w-1.5 h-1.5 rounded-full mt-2 shrink-0 " +
+                    (accent ? "bg-brand-500" : "bg-ink-400")
                   }
-                >
-                  {isSignature ? "★ Signature" : "Standard"}
-                </span>
-                {hasDiscount && (
-                  <span className="text-[9.5px] font-num font-bold text-brand-500 bg-brand-50 px-1.5 py-0.5 rounded">
-                    {Math.round(
-                      ((pkg.originalPrice - pkg.discountPrice) /
-                        pkg.originalPrice) *
-                        100
-                    )}
-                    % OFF
-                  </span>
-                )}
-              </div>
-              <div
-                className={
-                  "font-bold leading-tight tracking-tight text-ink-900 group-hover:text-brand-500 " +
-                  (isSignature ? "text-[17px]" : "text-[15px]")
-                }
-              >
-                {localized(pkg.name, locale)}
-              </div>
+                />
+                <span>{it.label}</span>
+              </li>
+            ))}
+          </ul>
+        )}
 
-              {/* 포함 항목 — 인라인 작게 */}
-              {pkg.includedItems && pkg.includedItems.length > 0 && (
-                <ul className="mt-2 space-y-0.5 text-[11.5px] text-ink-700">
-                  {pkg.includedItems.slice(0, 3).map((it, i) => (
-                    <li key={i} className="flex items-start gap-1.5 leading-tight">
-                      <span className="text-brand-500 mt-0.5">·</span>
-                      <span className="truncate">{it.label}</span>
-                    </li>
-                  ))}
-                  {pkg.includedItems.length > 3 && (
-                    <li className="text-ink-400 text-[10.5px] pl-3">
-                      … 외 {pkg.includedItems.length - 3}개
-                    </li>
-                  )}
-                </ul>
-              )}
-
-              {/* 가격 — 우측 정렬, 한 줄 */}
-              <div className="mt-3 pt-2 border-t border-ink-100 flex items-baseline justify-end gap-2">
-                {hasDiscount && (
-                  <span className="text-[10.5px] text-ink-400 line-through font-mono">
-                    {pkg.originalPrice.toLocaleString()}
-                  </span>
-                )}
-                {pkg.discountPrice > 0 ? (
-                  <span
-                    className={
-                      "font-num font-bold leading-none " +
-                      (isSignature
-                        ? "text-[18px] text-brand-700"
-                        : "text-[16px] text-ink-900")
-                    }
-                  >
-                    {pkg.discountPrice.toLocaleString()}
-                    <span className="text-[10.5px] ml-0.5 font-semibold">원</span>
-                  </span>
-                ) : (
-                  <span className="text-[11px] text-ink-500">문의</span>
-                )}
-              </div>
-            </Link>
-          );
-        })}
+        {pkg.priceNote && (
+          <p className="text-[11px] text-ink-500 mt-3 leading-snug">
+            {pkg.priceNote}
+          </p>
+        )}
       </div>
-    </section>
+
+      {/* 우측 — 가격 column (세로 구분선) */}
+      <div className="border-l border-ink-100 px-5 py-6 flex flex-col items-end justify-center min-w-[160px]">
+        {hasDiscount && (
+          <>
+            <div className="flex items-center gap-1.5 text-[11.5px] text-ink-400">
+              <span>기존</span>
+              <span className="line-through font-num">
+                {pkg.originalPrice.toLocaleString()}원
+              </span>
+            </div>
+            <div className="text-[10px] font-num font-bold text-brand-500 mt-0.5">
+              {discountPct}% OFF
+            </div>
+          </>
+        )}
+        <div className="flex items-baseline gap-1.5 mt-1.5">
+          <span className="text-[11.5px] text-ink-900 font-semibold">
+            할인가
+          </span>
+          {pkg.discountPrice > 0 ? (
+            <span
+              className={
+                "font-num font-bold leading-none " +
+                (accent ? "text-[20px] text-brand-700" : "text-[18px] text-ink-900")
+              }
+            >
+              {pkg.discountPrice.toLocaleString()}
+              <span className="text-[11px] ml-0.5 font-semibold">원</span>
+            </span>
+          ) : (
+            <span className="text-[12.5px] text-ink-500">문의</span>
+          )}
+        </div>
+      </div>
+    </Link>
   );
 }
 

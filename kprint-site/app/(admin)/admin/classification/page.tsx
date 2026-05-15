@@ -7,16 +7,20 @@ import {
   doc,
   onSnapshot,
   query,
+  setDoc,
   Timestamp,
   updateDoc,
   where,
 } from "firebase/firestore";
 import {
   AlertCircle,
+  ArrowDown,
+  ArrowUp,
   CheckCircle2,
   Edit2,
   Layers,
   Plus,
+  Save,
   Sparkles,
   Trash2,
   X,
@@ -25,7 +29,7 @@ import { getDb } from "@/lib/firebase/firestore";
 import { useEventFilter } from "@/lib/admin/useEventFilter";
 import { populateClassifications, seedDefaultPersonas } from "@/lib/admin/seedDemo";
 import { PersonaEditModal } from "@/components/admin/PersonaEditModal";
-import type { Category, CategoryType, Persona } from "@/lib/types";
+import type { Category, CategoryType, Persona, Taxonomy } from "@/lib/types";
 
 type Tab = "persona" | "media" | "timing" | "location";
 
@@ -65,11 +69,13 @@ export default function ClassificationPage() {
   const [tab, setTab] = useState<Tab>("persona");
   const [categories, setCategories] = useState<Category[]>([]);
   const [personas, setPersonas] = useState<Persona[]>([]);
+  const [taxonomy, setTaxonomy] = useState<Taxonomy | null>(null);
   const [activeBucket, setActiveBucket] = useState<string | null>(null);
   const [draggingCatId, setDraggingCatId] = useState<string | null>(null);
   const [editPersona, setEditPersona] = useState<Persona | null>(null);
   const [addingPersona, setAddingPersona] = useState(false);
   const [populating, setPopulating] = useState(false);
+  const [editingBuckets, setEditingBuckets] = useState(false);
 
   useEffect(() => {
     if (!ready || !eventId) return;
@@ -82,21 +88,48 @@ export default function ClassificationPage() {
       query(collection(getDb(), "personas"), where("eventId", "==", eventId)),
       (s) => setPersonas(s.docs.map((d) => ({ ...(d.data() as Persona), id: d.id })))
     );
+    const u3 = onSnapshot(doc(getDb(), "taxonomy", eventId), (s) => {
+      setTaxonomy(s.exists() ? (s.data() as Taxonomy) : null);
+    });
     return () => {
       u1();
       u2();
+      u3();
     };
   }, [ready, eventId]);
 
   // 첫 로드 시 활성 버킷 자동 선택
   useEffect(() => {
-    const buckets = getBuckets(tab, personas);
+    const buckets = getBuckets(tab, personas, taxonomy);
     if (buckets.length > 0 && !buckets.some((b) => b.id === activeBucket)) {
       setActiveBucket(buckets[0].id);
     }
-  }, [tab, personas, activeBucket]);
+  }, [tab, personas, taxonomy, activeBucket]);
 
-  const buckets = getBuckets(tab, personas);
+  const buckets = getBuckets(tab, personas, taxonomy);
+
+  // 버킷 저장 (taxonomy 도큐먼트에 머지)
+  const saveBuckets = async (
+    kind: "media" | "timing" | "location",
+    next: Bucket[]
+  ) => {
+    if (!eventId) return;
+    const field =
+      kind === "media"
+        ? "mediaBuckets"
+        : kind === "timing"
+          ? "timingBuckets"
+          : "locationBuckets";
+    try {
+      await setDoc(
+        doc(getDb(), "taxonomy", eventId),
+        { eventId, [field]: next, updatedAt: Timestamp.fromDate(new Date()) },
+        { merge: true }
+      );
+    } catch (e) {
+      alert(`저장 실패: ${e instanceof Error ? e.message : String(e)}`);
+    }
+  };
 
   // 카테고리 분류: 활성 버킷에 속한 것 / 안 속한 것
   const { inBucket, unassigned } = useMemo(() => {
@@ -256,6 +289,32 @@ export default function ClassificationPage() {
           ⓘ 명시 지정이 없으면 자동 추출(휴리스틱) 결과로 동작합니다. 여기서 명시 지정하면 그 값이 우선됩니다.
         </div>
       )}
+
+      {/* 버킷 편집 모드 — 매체/시점/위치 탭에서만 */}
+      {(tab === "media" || tab === "timing" || tab === "location") && (
+        <div className="flex items-center justify-end gap-2">
+          <button
+            type="button"
+            onClick={() => setEditingBuckets((v) => !v)}
+            className={
+              "px-3 py-1.5 rounded-btn border text-[12px] font-semibold flex items-center gap-1.5 " +
+              (editingBuckets
+                ? "bg-ink-900 border-ink-900 text-white"
+                : "border-ink-100 text-ink-700 hover:border-ink-900")
+            }
+          >
+            {editingBuckets ? "편집 완료" : `${tab === "media" ? "매체 유형" : tab === "timing" ? "노출 시점" : "위치"} 항목 편집`}
+          </button>
+        </div>
+      )}
+      {editingBuckets &&
+        (tab === "media" || tab === "timing" || tab === "location") && (
+          <BucketEditor
+            kind={tab}
+            buckets={buckets}
+            onSave={(next) => void saveBuckets(tab, next)}
+          />
+        )}
 
       {buckets.length > 0 && (
         <div className="grid grid-cols-1 lg:grid-cols-[200px_1fr_280px] gap-4 items-start">
@@ -480,16 +539,20 @@ export default function ClassificationPage() {
 // Helpers
 // ============================================================================
 
-function getBuckets(tab: Tab, personas: Persona[]): Bucket[] {
+function getBuckets(
+  tab: Tab,
+  personas: Persona[],
+  taxonomy: Taxonomy | null
+): Bucket[] {
   if (tab === "persona") {
     return personas
       .slice()
       .sort((a, b) => a.order - b.order)
       .map((p) => ({ id: p.id, label: `${p.emoji} ${p.title}` }));
   }
-  if (tab === "media") return MEDIA_BUCKETS;
-  if (tab === "timing") return TIMING_BUCKETS;
-  return LOCATION_BUCKETS;
+  if (tab === "media") return taxonomy?.mediaBuckets ?? MEDIA_BUCKETS;
+  if (tab === "timing") return taxonomy?.timingBuckets ?? TIMING_BUCKETS;
+  return taxonomy?.locationBuckets ?? LOCATION_BUCKETS;
 }
 
 function isInBucket(c: Category, tab: Tab, bucketId: string): boolean {
@@ -530,4 +593,174 @@ function computeBucketUpdate(
   else
     next.delete(bucketId as "hall_a" | "hall_b" | "hall_c" | "hall_d" | "outdoor" | "online");
   return { locationOverride: Array.from(next) };
+}
+
+// ============================================================================
+// 버킷 편집기 — 매체 유형 / 노출 시점 / 위치 항목을 추가·수정·삭제
+// 저장 시 taxonomy/{eventId} 도큐먼트의 mediaBuckets / timingBuckets / locationBuckets 에 머지.
+// ============================================================================
+
+function BucketEditor({
+  kind,
+  buckets,
+  onSave,
+}: {
+  kind: "media" | "timing" | "location";
+  buckets: Bucket[];
+  onSave: (next: Bucket[]) => void;
+}) {
+  const [draft, setDraft] = useState<Bucket[]>(buckets);
+  const [newLabel, setNewLabel] = useState("");
+  const [newId, setNewId] = useState("");
+
+  useEffect(() => {
+    setDraft(buckets);
+  }, [buckets]);
+
+  const kindLabel =
+    kind === "media" ? "매체 유형" : kind === "timing" ? "노출 시점" : "위치";
+
+  return (
+    <div className="bg-white border-2 border-ink-900 rounded-card p-4 space-y-3">
+      <div className="flex items-center justify-between gap-2">
+        <div className="font-bold text-ink-900 text-[14px]">
+          {kindLabel} 항목 편집
+        </div>
+        <div className="text-[11px] text-ink-500">
+          항목 ID 는 카테고리에 저장되는 값. 라벨은 표시용.
+        </div>
+      </div>
+      {kind === "media" && (
+        <div className="text-[11.5px] text-amber-700 bg-amber-50 border border-amber-200 rounded p-2 leading-snug">
+          ⚠ 매체 유형은 카테고리의 <code>type</code> 필드와 매핑됩니다 — ID 를
+          바꾸면 기존 카테고리와 어긋날 수 있으니 신중히. 새 ID 는 코드 유효
+          타입과 일치해야 합니다 (floor_plan / xpace / digital_banner / mailing /
+          print_page / content / quantity / media).
+        </div>
+      )}
+      <ul className="space-y-1.5">
+        {draft.map((b, i) => (
+          <li key={i} className="flex items-center gap-1.5">
+            <input
+              type="text"
+              value={b.id}
+              onChange={(e) => {
+                const next = [...draft];
+                next[i] = { ...next[i], id: e.target.value };
+                setDraft(next);
+              }}
+              placeholder="ID"
+              className="px-2 py-1.5 rounded border border-ink-100 text-[11.5px] font-mono w-[160px] focus:border-ink-900 focus:outline-none"
+            />
+            <input
+              type="text"
+              value={b.label}
+              onChange={(e) => {
+                const next = [...draft];
+                next[i] = { ...next[i], label: e.target.value };
+                setDraft(next);
+              }}
+              placeholder="라벨"
+              className="flex-1 px-2 py-1.5 rounded border border-ink-100 text-[12px] focus:border-ink-900 focus:outline-none"
+            />
+            <button
+              type="button"
+              onClick={() => {
+                if (i > 0) {
+                  const next = [...draft];
+                  [next[i - 1], next[i]] = [next[i], next[i - 1]];
+                  setDraft(next);
+                }
+              }}
+              disabled={i === 0}
+              className="w-7 h-7 grid place-items-center rounded hover:bg-ink-100 text-ink-500 disabled:opacity-30"
+              title="위로"
+            >
+              <ArrowUp className="w-3 h-3" />
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                if (i < draft.length - 1) {
+                  const next = [...draft];
+                  [next[i], next[i + 1]] = [next[i + 1], next[i]];
+                  setDraft(next);
+                }
+              }}
+              disabled={i === draft.length - 1}
+              className="w-7 h-7 grid place-items-center rounded hover:bg-ink-100 text-ink-500 disabled:opacity-30"
+              title="아래로"
+            >
+              <ArrowDown className="w-3 h-3" />
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                if (!confirm(`「${b.label}」 항목을 삭제할까요? (카테고리에 이 ID 가 지정된 경우 다시 분류해야 합니다.)`)) return;
+                setDraft(draft.filter((_, j) => j !== i));
+              }}
+              className="w-7 h-7 grid place-items-center rounded hover:bg-red-50 text-ink-500 hover:text-red-700"
+              title="삭제"
+            >
+              <X className="w-3.5 h-3.5" />
+            </button>
+          </li>
+        ))}
+      </ul>
+      <div className="flex items-center gap-1.5 pt-2 border-t border-ink-100">
+        <input
+          type="text"
+          value={newId}
+          onChange={(e) => setNewId(e.target.value)}
+          placeholder="새 ID (예: hall_7)"
+          className="px-2 py-1.5 rounded border border-ink-100 text-[11.5px] font-mono w-[160px] focus:border-ink-900 focus:outline-none"
+        />
+        <input
+          type="text"
+          value={newLabel}
+          onChange={(e) => setNewLabel(e.target.value)}
+          placeholder="새 라벨 (예: Hall 7)"
+          className="flex-1 px-2 py-1.5 rounded border border-ink-100 text-[12px] focus:border-ink-900 focus:outline-none"
+        />
+        <button
+          type="button"
+          onClick={() => {
+            const id = newId.trim();
+            const label = newLabel.trim();
+            if (!id || !label) {
+              alert("ID 와 라벨을 모두 입력해주세요.");
+              return;
+            }
+            if (draft.some((b) => b.id === id)) {
+              alert("같은 ID 가 이미 있습니다.");
+              return;
+            }
+            setDraft([...draft, { id, label }]);
+            setNewId("");
+            setNewLabel("");
+          }}
+          className="px-3 py-1.5 rounded border border-ink-100 text-[12px] font-semibold hover:border-ink-900"
+        >
+          + 추가
+        </button>
+      </div>
+      <div className="flex items-center justify-end gap-1.5 pt-2 border-t border-ink-100">
+        <button
+          type="button"
+          onClick={() => setDraft(buckets)}
+          className="px-3 py-1.5 rounded text-[12px] font-semibold text-ink-500 hover:text-ink-900"
+        >
+          되돌리기
+        </button>
+        <button
+          type="button"
+          onClick={() => onSave(draft)}
+          className="px-3.5 py-1.5 rounded-btn bg-ink-900 text-white text-[12px] font-bold hover:bg-brand-500 flex items-center gap-1.5"
+        >
+          <Save className="w-3 h-3" />
+          저장
+        </button>
+      </div>
+    </div>
+  );
 }

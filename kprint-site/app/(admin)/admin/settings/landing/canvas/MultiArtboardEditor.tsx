@@ -79,6 +79,13 @@ export function MultiArtboardEditor({
   const fileInputRef = useRef<HTMLInputElement>(null);
   // 클립보드 — Cmd+C 로 노드 복사, Cmd+V 로 같은 아트보드에 +20,+20 옵셋으로 붙여넣기
   const clipboardRef = useRef<CanvasNode[]>([]);
+  // 마키 선택 — 빈 영역 드래그로 사각형 그려 안에 든 노드들 한번에 선택
+  const [marquee, setMarquee] = useState<{
+    sx: number; // screen 좌표 (CSS px)
+    sy: number;
+    ex: number;
+    ey: number;
+  } | null>(null);
 
   const sel = selections[0] ?? null;
   const selectedNode =
@@ -397,7 +404,8 @@ export function MultiArtboardEditor({
     const isBackground =
       target === wrapRef.current ||
       target.dataset.role === "plane" ||
-      target.dataset.role === "canvas-bg";
+      target.dataset.role === "canvas-bg" ||
+      target.dataset.role === "artboard";
     const wantPan = spaceRef.current || tool === "hand" || e.button === 1;
 
     if (wantPan && isBackground) {
@@ -412,6 +420,77 @@ export function MultiArtboardEditor({
         });
       };
       const onPointerUp = () => {
+        window.removeEventListener("pointermove", onMove);
+        window.removeEventListener("pointerup", onPointerUp);
+      };
+      window.addEventListener("pointermove", onMove);
+      window.addEventListener("pointerup", onPointerUp);
+      return;
+    }
+
+    // 선택 도구 + 빈 영역 = 마키 선택 시작
+    if (isBackground && tool === "select") {
+      e.preventDefault();
+      const rect = wrapRef.current?.getBoundingClientRect();
+      if (!rect) return;
+      const sx = e.clientX - rect.left;
+      const sy = e.clientY - rect.top;
+      let moved = false;
+      const startSels = e.shiftKey ? selections : []; // shift: 기존 선택 유지
+      const onMove = (ev: PointerEvent) => {
+        const ex = ev.clientX - rect.left;
+        const ey = ev.clientY - rect.top;
+        if (!moved && (Math.abs(ex - sx) > 4 || Math.abs(ey - sy) > 4)) {
+          moved = true;
+        }
+        if (!moved) return;
+        setMarquee({ sx, sy, ex, ey });
+
+        // 마키 영역 = plane 좌표계로 변환
+        const x1 = Math.min(sx, ex);
+        const y1 = Math.min(sy, ey);
+        const x2 = Math.max(sx, ex);
+        const y2 = Math.max(sy, ey);
+        // screen → plane: (screen - pan) / zoom
+        const px1 = (x1 - pan.x) / zoom;
+        const py1 = (y1 - pan.y) / zoom;
+        const px2 = (x2 - pan.x) / zoom;
+        const py2 = (y2 - pan.y) / zoom;
+
+        // 각 아트보드 안의 노드들과 교차 확인
+        const hits: Selection[] = [];
+        pages.forEach((p, idx) => {
+          const pos = positions[idx];
+          // 아트보드 내부 좌표는 아트보드 본체 (header 아래) 기준
+          const abX = pos.x;
+          const abY = pos.y + HDR;
+          p.page.nodes.forEach((n) => {
+            if (n.hidden) return;
+            const nx1 = abX + n.rect.x;
+            const ny1 = abY + n.rect.y;
+            const nx2 = nx1 + n.rect.w;
+            const ny2 = ny1 + n.rect.h;
+            // 사각형 교차 (intersect, 일부만 걸쳐도 선택)
+            const overlap =
+              nx1 < px2 && nx2 > px1 && ny1 < py2 && ny2 > py1;
+            if (overlap) {
+              hits.push({ pageIdx: idx, nodeId: n.id });
+            }
+          });
+        });
+        // 기존 선택 + 새 선택 (중복 제거)
+        const merged = [...startSels];
+        hits.forEach((h) => {
+          if (!merged.find((m) => m.pageIdx === h.pageIdx && m.nodeId === h.nodeId)) {
+            merged.push(h);
+          }
+        });
+        setSelections(merged);
+      };
+      const onPointerUp = () => {
+        // 클릭만 (이동 없음) = 선택 해제
+        if (!moved && !e.shiftKey) setSelections([]);
+        setMarquee(null);
         window.removeEventListener("pointermove", onMove);
         window.removeEventListener("pointerup", onPointerUp);
       };
@@ -950,6 +1029,23 @@ export function MultiArtboardEditor({
           텍스트
         </div>
 
+        {/* 마키 선택 박스 (스크린 좌표) */}
+        {marquee && (
+          <div
+            style={{
+              position: "absolute",
+              left: Math.min(marquee.sx, marquee.ex),
+              top: Math.min(marquee.sy, marquee.ey),
+              width: Math.abs(marquee.ex - marquee.sx),
+              height: Math.abs(marquee.ey - marquee.sy),
+              border: "1.5px solid #0D99FF",
+              background: "rgba(13, 153, 255, 0.08)",
+              pointerEvents: "none",
+              zIndex: 50,
+            }}
+          />
+        )}
+
         {/* 무한 다크 캔버스 — 닷 그리드 */}
         <div
           ref={wrapRef}
@@ -1080,15 +1176,7 @@ export function MultiArtboardEditor({
                         "0 20px 80px rgba(0,0,0,0.5), 0 0 0 1px rgba(255,255,255,0.05)",
                       overflow: "hidden",
                     }}
-                    onPointerDown={(e) => {
-                      // 빈 아트보드 클릭 = 선택 해제 (select 도구일 때만)
-                      if (tool === "select") {
-                        const tgt = e.target as HTMLElement;
-                        if (tgt.dataset.role === "artboard") {
-                          if (!e.shiftKey) setSelections([]);
-                        }
-                      }
-                    }}
+                    // 클릭/마키 선택은 onWrapDown 에서 일괄 처리 (data-role="artboard" 포함)
                   >
                     {page.bgImageUrl && (
                       // eslint-disable-next-line @next/next/no-img-element
@@ -1490,12 +1578,16 @@ function TextEditOverlay({
         outline: "none",
         cursor: "text",
         background: "rgba(13, 153, 255, 0.05)",
+        fontStyle: d.fontStyle ?? "normal",
+        textDecoration: d.textDecoration ?? "none",
+        textTransform: d.textTransform ?? "none",
         fontFamily:
-          d.family === "num"
+          d.fontFamily ||
+          (d.family === "num"
             ? "var(--font-inter), Inter, sans-serif"
             : d.family === "mono"
               ? "var(--font-jetbrains-mono), monospace"
-              : undefined,
+              : undefined),
       }}
     >
       {d.content || ""}

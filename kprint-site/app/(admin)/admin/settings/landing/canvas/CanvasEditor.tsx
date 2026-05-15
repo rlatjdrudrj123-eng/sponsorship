@@ -1452,12 +1452,16 @@ export function NodePreview({ node }: { node: CanvasNode }) {
             height: "100%",
             overflow: "hidden",
             pointerEvents: "none",
+            fontStyle: d.fontStyle ?? "normal",
+            textDecoration: d.textDecoration ?? "none",
+            textTransform: d.textTransform ?? "none",
             fontFamily:
-              d.family === "num"
+              d.fontFamily ||
+              (d.family === "num"
                 ? "var(--font-inter), Inter, sans-serif"
                 : d.family === "mono"
                   ? "var(--font-jetbrains-mono), monospace"
-                  : undefined,
+                  : undefined),
           }}
         >
           {d.content || "텍스트"}
@@ -1929,7 +1933,7 @@ function TextNodeInspector({
           ))}
         </div>
       </Field>
-      <Field label="폰트 패밀리">
+      <Field label="폰트 패밀리 (프리셋)">
         <select
           value={d.family ?? "sans"}
           onChange={(e) => onUpdateData({ family: e.target.value })}
@@ -1938,6 +1942,75 @@ function TextNodeInspector({
           <option value="sans">Pretendard (한글·기본)</option>
           <option value="num">Inter (숫자)</option>
           <option value="mono">JetBrains Mono</option>
+        </select>
+      </Field>
+      <Field label="폰트 자유 입력 (CSS font-family)">
+        <input
+          type="text"
+          value={d.fontFamily ?? ""}
+          onChange={(e) =>
+            onUpdateData({ fontFamily: e.target.value || undefined })
+          }
+          placeholder="예: 'Noto Serif KR', serif / 'Roboto' / Georgia, serif"
+          className={inputCls() + " font-mono text-[11px]"}
+        />
+        <div className="text-[10px] text-ink-500 mt-1 leading-tight">
+          비우면 프리셋 사용. 입력 시 CSS font-family 그대로 적용 — Google
+          Fonts·시스템 폰트 가능.
+        </div>
+      </Field>
+
+      <Field label="텍스트 스타일">
+        <div className="flex gap-1.5">
+          {[
+            { label: "기울임", value: "italic", current: d.fontStyle },
+            { label: "밑줄", value: "underline", current: d.textDecoration },
+            {
+              label: "취소선",
+              value: "line-through",
+              current: d.textDecoration,
+            },
+          ].map((opt) => {
+            const isOn = opt.current === opt.value;
+            const fieldName =
+              opt.value === "italic" ? "fontStyle" : "textDecoration";
+            return (
+              <button
+                key={opt.label}
+                type="button"
+                onClick={() =>
+                  onUpdateData({
+                    [fieldName]: isOn
+                      ? opt.value === "italic"
+                        ? "normal"
+                        : "none"
+                      : opt.value,
+                  })
+                }
+                className={
+                  "flex-1 px-2 py-1.5 rounded border text-[11px] font-semibold transition-colors " +
+                  (isOn
+                    ? "bg-ink-900 border-ink-900 text-white"
+                    : "border-ink-100 text-ink-700 hover:border-ink-900")
+                }
+              >
+                {opt.label}
+              </button>
+            );
+          })}
+        </div>
+      </Field>
+
+      <Field label="대소문자 변환">
+        <select
+          value={d.textTransform ?? "none"}
+          onChange={(e) => onUpdateData({ textTransform: e.target.value })}
+          className={inputCls()}
+        >
+          <option value="none">변환 없음</option>
+          <option value="uppercase">UPPERCASE</option>
+          <option value="lowercase">lowercase</option>
+          <option value="capitalize">Capitalize</option>
         </select>
       </Field>
     </div>

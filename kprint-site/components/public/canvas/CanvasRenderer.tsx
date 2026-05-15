@@ -219,6 +219,10 @@ function TextNodeView({ node }: { node: CanvasTextNode }) {
     letterSpacing,
     accent,
     family = "sans",
+    fontFamily,
+    fontStyle,
+    textDecoration,
+    textTransform,
   } = node.data;
   return (
     <div
@@ -234,12 +238,17 @@ function TextNodeView({ node }: { node: CanvasTextNode }) {
         width: "100%",
         height: "100%",
         overflow: "hidden",
+        fontStyle: fontStyle ?? "normal",
+        textDecoration: textDecoration ?? "none",
+        textTransform: textTransform ?? "none",
+        // fontFamily 자유 입력이 있으면 우선, 없으면 family 매핑
         fontFamily:
-          family === "num"
+          fontFamily ||
+          (family === "num"
             ? "var(--font-inter), Inter, sans-serif"
             : family === "mono"
               ? "var(--font-jetbrains-mono), monospace"
-              : undefined,
+              : undefined),
       }}
     >
       {content}
