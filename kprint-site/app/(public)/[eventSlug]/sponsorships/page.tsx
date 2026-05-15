@@ -2131,9 +2131,12 @@ function SlideSection({
             </div>
           </div>
 
-          {/* RIGHT: 큰 hero 이미지 */}
-          <div className="flex min-h-0">
-            <div className="flex-1 rounded-card bg-ink-100 overflow-hidden border border-ink-100 relative shadow-card">
+          {/* RIGHT: 큰 hero 이미지 — 4:3 비율 고정 (썸네일과 동일 비율 → 같은 사진이 같은 형태로 보임) */}
+          <div className="flex items-center min-h-0">
+            <div
+              className="w-full rounded-card bg-ink-100 overflow-hidden border border-ink-100 relative shadow-card"
+              style={{ aspectRatio: "4 / 3" }}
+            >
               {hero ? (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img
