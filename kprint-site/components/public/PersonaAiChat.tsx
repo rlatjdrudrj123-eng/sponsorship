@@ -35,12 +35,11 @@ import { derivePurposes } from "@/lib/purposes";
  */
 
 type Stage =
+  | "goal"        // LEAD — 가장 강한 결정 요인
+  | "budget"
   | "segment"
   | "companySize"
   | "experience"
-  | "goal"
-  | "budget"
-  | "channel"
   | "result";
 
 type Experience = "first" | "repeat" | "regular";
@@ -54,15 +53,6 @@ type Segment =
   | "supply"
   | "other";
 type CompanySize = "solo" | "small" | "mid" | "large";
-// K-PRINT 는 KINTEX 한 곳 (Hall 7·8) 이라 "어디 홀" 질문은 의미 없음.
-// 대신 노출 채널 선호를 묻는 것이 실제 추천에 더 유용.
-type ChannelPref =
-  | "entry"        // 등록데스크, 사전등록 페이지, 참관객 목걸이 (입구 동선)
-  | "booth"        // 천장배너, 도면 검색 (부스 노출)
-  | "online"       // 참가업체·전시품 검색, 뉴스레터
-  | "seminar"      // 세미나·컨퍼런스 페이지
-  | "guide_print"  // 가이드북, 초대장 삽지 (인쇄물)
-  | "any";
 
 export type Collected = {
   segment?: Segment;
@@ -75,8 +65,6 @@ export type Collected = {
   purposeLabel?: string;
   budget?: number;
   budgetLabel?: string;
-  channel?: ChannelPref;
-  channelLabel?: string;
 };
 
 type Msg = { role: "user" | "bot"; content: string };
@@ -84,105 +72,101 @@ type Msg = { role: "user" | "bot"; content: string };
 export type Chip = { label: string; value: string; hint?: string };
 
 export const STAGES: Stage[] = [
+  "goal",
+  "budget",
   "segment",
   "companySize",
   "experience",
-  "goal",
-  "budget",
-  "channel",
 ];
 
 /**
- * K-PRINT 스폰서십 진단 — 6단계 (분야 lead).
- * 사용자 지적: "참가 경험"보다 "어떤 분야 회사이신가" 가 훨씬 강한 lead question.
- * 분야가 정해지면 그에 맞는 채널·예산 가이드가 즉시 나옴.
+ * K-PRINT 스폰서십 진단 — 5단계 (목표 lead).
+ * 톤: 사무국 안내문 — "~합니다 / ~입니다", "귀사", 이모지·느낌표 제거.
  */
 export const QUESTIONS: Record<
   Stage,
-  { intro: string; chips?: Chip[]; why?: string }
+  { intro: string; chips?: Chip[]; why?: string; stepLabel?: string }
 > = {
-  segment: {
-    intro: "어떤 분야의 회사이신가요?",
-    why: "분야 기준으로 가장 효율 좋은 노출 채널이 달라집니다. (예: 패키징은 샘플북·도면 / 디지털인쇄는 온라인 우선)",
+  goal: {
+    intro: "이번 K-PRINT 참가의 우선 목표를 선택해 주세요.",
+    stepLabel: "GOAL",
+    why: "목표에 따라 채널 믹스가 달라집니다 — 부스 트래픽은 도면·목걸이, 브랜드 인지는 천장배너, 해외 바이어는 영문 뉴스레터 중심.",
     chips: [
-      { label: "🖨 일반 인쇄 (오프셋·UV)", value: "offset", hint: "도면·옥외 + 검색 페이지" },
-      { label: "💻 디지털 인쇄·POD", value: "digital", hint: "온라인 배너 + 뉴스레터 우선" },
-      { label: "📦 패키징·박스", value: "packaging", hint: "샘플북·도면 우선" },
-      { label: "🏷 라벨·스티커", value: "label", hint: "시그니처 + 도면" },
-      { label: "✂ 후가공·바인딩", value: "post_press", hint: "쇼가이드 + 검색" },
-      { label: "🪧 사인·디스플레이", value: "sign", hint: "옥외 + 전광판" },
-      { label: "⚙ 잉크·소재·기자재", value: "supply", hint: "참관객 목걸이 + 쇼가이드" },
+      { label: "부스 방문 유도", value: "traffic_driver", hint: "도면 검색 · 목걸이 · 등록데스크" },
+      { label: "브랜드 인지 확보", value: "brand_awareness", hint: "천장배너 · 가이드북 · 옥외" },
+      { label: "해외·전문 바이어 도달", value: "buyer_reach", hint: "해외 뉴스레터 · 영문 가이드" },
+      { label: "행사 후 자산 확보", value: "post_asset", hint: "콘텐츠 · 인터뷰 · SNS" },
+    ],
+  },
+  budget: {
+    intro: "집행 가능 예산 범위를 알려주세요.",
+    stepLabel: "BUDGET",
+    why: "예산 범위를 벗어나는 항목은 자동 제외됩니다. 범위 초과는 큰 감점, 범위 미달은 작은 감점이 적용됩니다.",
+    chips: [
+      { label: "500만원 이하", value: "5000000" },
+      { label: "500만 ~ 1,500만원", value: "15000000" },
+      { label: "1,500만 ~ 3,000만원", value: "30000000" },
+      { label: "3,000만원 이상", value: "100000000" },
+    ],
+  },
+  segment: {
+    intro: "귀사의 주력 분야를 선택해 주세요.",
+    stepLabel: "SEGMENT",
+    why: "분야 기준으로 효율 높은 노출 채널이 달라집니다. (예: 패키징은 샘플북·도면 / 디지털 인쇄는 온라인 배너 우선)",
+    chips: [
+      { label: "일반 인쇄 (오프셋·UV)", value: "offset", hint: "도면 · 옥외 · 검색 페이지" },
+      { label: "디지털 인쇄·POD", value: "digital", hint: "온라인 배너 · 뉴스레터 우선" },
+      { label: "패키징·박스", value: "packaging", hint: "샘플북 · 도면 우선" },
+      { label: "라벨·스티커", value: "label", hint: "시그니처 · 도면" },
+      { label: "후가공·바인딩", value: "post_press", hint: "쇼가이드 · 검색" },
+      { label: "사인·디스플레이", value: "sign", hint: "옥외 · 전광판" },
+      { label: "잉크·소재·기자재", value: "supply", hint: "참관객 목걸이 · 쇼가이드" },
       { label: "기타 / 정하지 않음", value: "other" },
     ],
   },
   companySize: {
-    intro: "회사 규모는 어느 정도이신가요?",
-    why: "규모는 예산 가용성과 패키지 적합도에 영향. 1인·스타트업은 단품 위주, 중견·대기업은 시그니처 통합 패키지가 효율적.",
+    intro: "회사 규모를 알려주세요.",
+    stepLabel: "COMPANY SIZE",
+    why: "규모는 예산 가용성과 패키지 적합도에 반영됩니다. 1인·스타트업은 단품 중심, 중견·대기업은 시그니처 통합 패키지가 효율적입니다.",
     chips: [
-      { label: "👤 1인 / 스타트업 (1-5명)", value: "solo", hint: "단품·진입 채널" },
-      { label: "👥 소기업 (5-30명)", value: "small", hint: "프라임 스팟 + 단품" },
-      { label: "🏢 중견 (30-100명)", value: "mid", hint: "패키지 권장" },
-      { label: "🏛 대기업 (100명+)", value: "large", hint: "시그니처 패키지 + 통합 노출" },
+      { label: "1인 / 스타트업 (1~5명)", value: "solo", hint: "단품 · 진입 채널" },
+      { label: "소기업 (5~30명)", value: "small", hint: "프라임 스팟 + 단품" },
+      { label: "중견 (30~100명)", value: "mid", hint: "패키지 권장" },
+      { label: "대기업 (100명 이상)", value: "large", hint: "시그니처 패키지 · 통합 노출" },
     ],
   },
   experience: {
-    intro: "이번이 K-PRINT 참가는 어떻게 되시나요?",
-    why: "신규 참가는 진입 채널 (검색 페이지·뉴스레터) 위주, 재참가·정기 참가는 확장·시그니처 후보 우선.",
+    intro: "K-PRINT 참가 이력은 어떻게 되십니까?",
+    stepLabel: "EXPERIENCE",
+    why: "신규 참가는 진입 채널 (검색 페이지·뉴스레터) 중심, 정기 참가는 확장·시그니처 후보 우선.",
     chips: [
-      { label: "🌱 신규 참가", value: "first", hint: "진입 채널 위주 추천" },
-      { label: "♻️ 재참가 (전년)", value: "repeat", hint: "확장 후보 추천" },
-      { label: "📌 정기 참가 (3년+)", value: "regular", hint: "프리미엄·시그니처 후보" },
-    ],
-  },
-  goal: {
-    intro: "이번 참가의 최우선 목표는 무엇입니까?",
-    why: "목표에 따라 채널 믹스가 달라짐 — 부스 트래픽은 도면·목걸이, 브랜드는 전광판·천장배너, 해외는 영문 뉴스레터·쇼가이드.",
-    chips: [
-      { label: "🧭 부스로 사람 끌어오기 (트래픽)", value: "traffic_driver" },
-      { label: "🚀 브랜드 인지도 확보", value: "brand_awareness" },
-      { label: "🎯 해외/특정 바이어 도달", value: "buyer_reach" },
-      { label: "📰 행사 후 콘텐츠 자산", value: "post_asset" },
-    ],
-  },
-  budget: {
-    intro: "전체 스폰서십 예산 범위를 알려주세요.",
-    why: "예산은 추천에서 가장 무거운 가중치 — 범위를 벗어나는 항목은 자동 제외, 평균에 가까운 콤보 우선.",
-    chips: [
-      { label: "💰 500만원 이하", value: "5000000" },
-      { label: "💰 500~1,500만원", value: "15000000" },
-      { label: "💰 1,500~3,000만원", value: "30000000" },
-      { label: "💰 3,000만원 이상", value: "100000000" },
-    ],
-  },
-  channel: {
-    intro: "어떤 노출 채널이 가장 중요하신가요?",
-    why: "K-PRINT 는 KINTEX Hall 7·8 단일 회장 — 위치 분기 대신 채널 선호로 콤보를 조정. 「무관」 이면 효율 우선 자동 추천.",
-    chips: [
-      { label: "🚪 입구·등록 동선", value: "entry", hint: "등록데스크 · 사전등록 · 목걸이" },
-      { label: "🏭 부스·홀 내부 노출", value: "booth", hint: "천장배너 · 도면 검색" },
-      { label: "💻 온라인 검색·뉴스레터", value: "online", hint: "참가업체 · 전시품 검색 · 국내·해외 NL" },
-      { label: "🎤 세미나·컨퍼런스", value: "seminar", hint: "세미나 페이지 배너" },
-      { label: "📰 가이드북·초대장 인쇄물", value: "guide_print", hint: "GDB·IVL" },
-      { label: "무관 — 효율 우선", value: "any" },
+      { label: "신규 참가", value: "first", hint: "진입 채널 중심" },
+      { label: "재참가 (전년)", value: "repeat", hint: "확장 후보" },
+      { label: "정기 참가 (3년 이상)", value: "regular", hint: "프리미엄·시그니처" },
     ],
   },
   result: { intro: "" },
 };
 
 /**
- * 스코어링 가중치 — 어드민에서 확인 가능.
- * findBestPersona 가 이 가중치를 활용해 페르소나 별 점수를 계산.
+ * 스코어링 가중치 — 사용자 정의 (2026-05 변경).
+ * 목표가 가장 강한 결정 요인, 예산 범위는 강한 hard-rule (over/under 감점),
+ * 분야·규모·경험은 보조 조정.
  */
 export const SCORING_WEIGHTS = {
-  segmentMatch: 35,        // 분야 일치 (가장 강함)
-  budgetInRange: 30,       // 예산 범위 일치
-  budgetDistancePenalty: 0.00000005, // 평균과의 거리 * 이 값 만큼 감점
-  experienceFirst: 25,     // 신규 + 진입형 페르소나
-  experienceRegular: 15,   // 정기 + 시그니처 페르소나
-  companySizeLarge: 20,    // 대기업 + 시그니처 가중
-  companySizeSolo: 15,     // 1인 + 단품 가중
-  goalMatch: 20,           // 목표(purpose) 일치
-  channelMatch: 18,        // 채널 일치 (K-PRINT 는 채널이 의미 있음)
+  goalMatch: 35,           // 목표(purpose) 일치 — LEAD 가중치
+  budgetInRange: 30,       // 예산 범위 적합
+  budgetOverPenalty: 50,   // 예산 초과 (강한 감점)
+  budgetUnderPenalty: 25,  // 예산 미달 (작은 감점)
+  segmentMatch: 20,        // 분야 일치
+  companySizeLarge: 20,    // 대기업 + 시그니처 정합
+  experienceFirst: 15,     // 신규 + 진입형
+  experienceRegular: 15,   // 정기 + 시그니처
+  companySizeSolo: 15,     // 1인 + 단품
+  channelMatch: 18,        // 채널 일치 (목표·분야에서 자동 추출)
+  soloChannelBonus: 8,     // 단독 채널 (해당 분야 단일 강조 채널)
+  lastSlotBonus: 5,        // 잔여 1자리 보너스 (희소성)
+  onOffBalanceBonus: 8,    // 온·오프 균형 콤보
 } as const;
 
 export function PersonaAiChat({
@@ -194,7 +178,7 @@ export function PersonaAiChat({
   subcategories,
   slots,
   packages,
-  initialSegment,
+  initialGoal,
 }: {
   open: boolean;
   onClose: () => void;
@@ -205,8 +189,8 @@ export function PersonaAiChat({
   subcategories: Subcategory[];
   slots: Slot[];
   packages: Package[];
-  /** 페이지에서 첫 질문(분야) 칩을 미리 누르고 열었을 때 — 모달은 바로 2번째 질문부터 */
-  initialSegment?: Segment;
+  /** 페이지에서 첫 질문(GOAL) 칩을 미리 누르고 열었을 때 — 모달은 바로 2번째 질문부터 */
+  initialGoal?: Purpose;
 }) {
   const [messages, setMessages] = useState<Msg[]>([]);
   const [stage, setStage] = useState<Stage>("experience");
@@ -214,26 +198,26 @@ export function PersonaAiChat({
   const [thinking, setThinking] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
 
-  // 모달 열릴 때 초기화 (initialSegment 가 있으면 1번 질문 자동 답변 후 2번부터)
+  // 모달 열릴 때 초기화 (initialGoal 이 있으면 1번 질문 자동 답변 후 2번부터)
   useEffect(() => {
     if (!open) return;
     setMessages([
       {
         role: "bot",
         content:
-          "안녕하세요. K-PRINT 스폰서십 어드바이저입니다. 6가지 짧게 여쭙고 가장 효율 좋은 노출 조합을 추천드릴게요. 답은 보기에서 클릭만 해주시면 됩니다.",
+          "K-PRINT 2026 사무국입니다. 귀사의 참가 목표·예산·분야를 바탕으로 가장 효율이 높은 스폰서십 구성을 검토해 드립니다. 5개 항목, 약 1분이 소요됩니다.",
       },
     ]);
-    setStage("segment");
+    setStage("goal");
     setCollected({});
     setThinking(false);
 
     const timers: ReturnType<typeof setTimeout>[] = [];
-    timers.push(setTimeout(() => say(QUESTIONS.segment.intro), 450));
+    timers.push(setTimeout(() => say(QUESTIONS.goal.intro), 450));
 
-    if (initialSegment) {
-      const chip = QUESTIONS.segment.chips!.find(
-        (c) => c.value === initialSegment
+    if (initialGoal) {
+      const chip = QUESTIONS.goal.chips!.find(
+        (c) => c.value === initialGoal
       );
       if (chip) {
         // intro 가 보인 직후, 사용자가 칩을 누른 것처럼 진행
@@ -241,11 +225,11 @@ export function PersonaAiChat({
           setTimeout(() => {
             userSay(chip.label);
             const next: Collected = {
-              segment: chip.value as Segment,
-              segmentLabel: chip.label,
+              purpose: chip.value as Purpose,
+              purposeLabel: chip.label,
             };
             setCollected(next);
-            advance(next, "segment");
+            advance(next, "goal");
           }, 1100)
         );
       }
@@ -253,7 +237,7 @@ export function PersonaAiChat({
 
     return () => timers.forEach((t) => clearTimeout(t));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, initialSegment]);
+  }, [open, initialGoal]);
 
   useEffect(() => {
     scrollRef.current?.scrollTo({
@@ -292,7 +276,13 @@ export function PersonaAiChat({
   const onChip = (chip: Chip) => {
     userSay(chip.label);
     const next: Collected = { ...collected };
-    if (stage === "segment") {
+    if (stage === "goal") {
+      next.purpose = chip.value as Purpose;
+      next.purposeLabel = chip.label;
+    } else if (stage === "budget") {
+      next.budget = parseInt(chip.value, 10);
+      next.budgetLabel = chip.label;
+    } else if (stage === "segment") {
       next.segment = chip.value as Segment;
       next.segmentLabel = chip.label;
     } else if (stage === "companySize") {
@@ -301,15 +291,6 @@ export function PersonaAiChat({
     } else if (stage === "experience") {
       next.experience = chip.value as Experience;
       next.experienceLabel = chip.label;
-    } else if (stage === "goal") {
-      next.purpose = chip.value as Purpose;
-      next.purposeLabel = chip.label;
-    } else if (stage === "budget") {
-      next.budget = parseInt(chip.value, 10);
-      next.budgetLabel = chip.label.replace("💰 ", "");
-    } else if (stage === "channel") {
-      next.channel = chip.value as ChannelPref;
-      next.channelLabel = chip.label;
     }
     setCollected(next);
     advance(next, stage);
@@ -324,8 +305,7 @@ export function PersonaAiChat({
       // 마지막 → 결과
       setTimeout(() => {
         setStage("result");
-        const persona = findBestPersona(personas, next);
-        say(buildSummary(next, persona));
+        say(buildSummary(next));
       }, 1100);
       return;
     }
@@ -349,11 +329,14 @@ export function PersonaAiChat({
     setTimeout(() => say(QUESTIONS.experience.intro), 450);
   };
 
-  // 추천 산출
-  const persona = useMemo(
-    () => (stage === "result" ? findBestPersona(personas, collected) : null),
-    [stage, collected, personas]
+  // 추천 산출 — 권장안 / 대안 / 절감안 3개 옵션
+  const scoredPersonas = useMemo(
+    () => (stage === "result" ? scoreAllPersonas(personas, collected) : []),
+    [stage, personas, collected]
   );
+  const persona = scoredPersonas[0]?.persona ?? null;
+
+  // 호환을 위한 picks (권장안의 콤보)
   const picks = useMemo(() => {
     if (stage !== "result" || !persona) return [];
     return computeCombo(
@@ -365,6 +348,19 @@ export function PersonaAiChat({
       collected
     );
   }, [stage, persona, categories, subcategories, slots, packages, collected]);
+
+  // 3-옵션 결과
+  const options = useMemo(() => {
+    if (stage !== "result" || scoredPersonas.length === 0) return null;
+    return buildThreeOptions(
+      scoredPersonas,
+      categories,
+      subcategories,
+      slots,
+      packages,
+      collected
+    );
+  }, [stage, scoredPersonas, categories, subcategories, slots, packages, collected]);
 
   if (!open) return null;
 
@@ -386,15 +382,17 @@ export function PersonaAiChat({
         <header className="px-5 py-4 border-b border-ink-100 shrink-0 bg-canvas">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2.5">
-              <div className="w-9 h-9 rounded-full bg-brand-500 grid place-items-center shadow-glow-sm">
-                <Sparkles className="w-4 h-4 text-white" />
+              <div className="w-9 h-9 rounded-full bg-ink-900 grid place-items-center text-white text-[11px] font-bold tracking-wider">
+                SA
               </div>
               <div>
-                <div className="font-num text-[10px] uppercase tracking-[0.3em] text-brand-500 font-bold">
-                  추천 도우미
+                <div className="font-num text-[10px] uppercase tracking-[0.3em] text-ink-500 font-bold">
+                  {stage === "result"
+                    ? "RESULT"
+                    : `STEP ${stageIdx + 1} / ${STAGES.length}${QUESTIONS[stage].stepLabel ? " · " + QUESTIONS[stage].stepLabel : ""}`}
                 </div>
                 <h3 className="text-[15px] font-bold text-ink-900 leading-tight">
-                  대화로 스폰서십 찾기
+                  Sponsorship Advisor
                 </h3>
               </div>
             </div>
@@ -471,11 +469,10 @@ export function PersonaAiChat({
             </div>
           )}
 
-          {/* 결과 카드 */}
-          {stage === "result" && persona && picks.length > 0 && (
-            <ResultCard
-              persona={persona}
-              picks={picks}
+          {/* 결과 카드 — 권장안 / 대안 / 절감안 3-옵션 비교 */}
+          {stage === "result" && options && (
+            <ThreeOptionResult
+              options={options}
               eventId={eventId}
               onClose={onClose}
             />
@@ -586,14 +583,253 @@ type Pick = {
   eventId: string;
 };
 
-function ResultCard({
-  persona,
-  picks,
+// ============================================================================
+// 3-옵션 결과 (권장안 / 대안 / 절감안)
+// ============================================================================
+
+type RecommendationOption = {
+  kind: "recommended" | "alternative" | "thrifty";
+  label: string;
+  description: string;
+  persona: Persona;
+  personaScore: number;
+  personaReasons: string[];
+  picks: Pick[];
+  total: number;
+  budgetRemaining: number;
+  supplementaryPicks: Pick[]; // 잔여 예산 보완 채널
+  reasons: string[]; // 3~4줄 자연어 설명
+};
+
+function buildThreeOptions(
+  scored: Array<{ persona: Persona; score: number; reasons: string[] }>,
+  categories: Category[],
+  subcategories: Subcategory[],
+  slots: Slot[],
+  packages: Package[],
+  c: Collected
+): { recommended: RecommendationOption; alternative?: RecommendationOption; thrifty?: RecommendationOption } | null {
+  if (scored.length === 0) return null;
+
+  const budget = c.budget ?? Number.POSITIVE_INFINITY;
+
+  // 권장안 — 1순위 페르소나의 전체 콤보
+  const top = scored[0];
+  const topPicks = computeCombo(
+    top.persona,
+    categories,
+    subcategories,
+    slots,
+    packages,
+    c
+  );
+  const topTotal = topPicks.reduce((s, p) => s + p.price, 0);
+  const recommended: RecommendationOption = {
+    kind: "recommended",
+    label: "권장안",
+    description: "응답 가중치 합계 최상위",
+    persona: top.persona,
+    personaScore: top.score,
+    personaReasons: top.reasons,
+    picks: topPicks,
+    total: topTotal,
+    budgetRemaining: Math.max(0, budget - topTotal),
+    supplementaryPicks: buildSupplementaryPicks(
+      topPicks,
+      categories,
+      subcategories,
+      slots,
+      Math.max(0, budget - topTotal)
+    ),
+    reasons: buildReasonsParagraph(top.reasons, topPicks, c, "recommended"),
+  };
+
+  // 대안 — 2순위 페르소나가 있으면 그 페르소나의 콤보, 없으면 권장안에서 항목 1개 교체
+  let alternative: RecommendationOption | undefined;
+  if (scored.length > 1) {
+    const alt = scored[1];
+    const altPicks = computeCombo(
+      alt.persona,
+      categories,
+      subcategories,
+      slots,
+      packages,
+      c
+    );
+    if (altPicks.length > 0) {
+      const altTotal = altPicks.reduce((s, p) => s + p.price, 0);
+      alternative = {
+        kind: "alternative",
+        label: "대안",
+        description: "다른 페르소나 기반 대안 구성",
+        persona: alt.persona,
+        personaScore: alt.score,
+        personaReasons: alt.reasons,
+        picks: altPicks,
+        total: altTotal,
+        budgetRemaining: Math.max(0, budget - altTotal),
+        supplementaryPicks: [],
+        reasons: buildReasonsParagraph(alt.reasons, altPicks, c, "alternative"),
+      };
+    }
+  }
+
+  // 절감안 — 권장안에서 가장 비싼 항목을 빼서 예산을 더 줄임
+  let thrifty: RecommendationOption | undefined;
+  if (topPicks.length > 1) {
+    const sortedByPrice = [...topPicks].sort((a, b) => b.price - a.price);
+    const cheapestSet = sortedByPrice.slice(1); // 가장 비싼 1개 제외
+    const cheapestTotal = cheapestSet.reduce((s, p) => s + p.price, 0);
+    thrifty = {
+      kind: "thrifty",
+      label: "절감안",
+      description: "예산 부담을 최소화한 구성",
+      persona: top.persona,
+      personaScore: top.score,
+      personaReasons: top.reasons,
+      picks: cheapestSet,
+      total: cheapestTotal,
+      budgetRemaining: Math.max(0, budget - cheapestTotal),
+      supplementaryPicks: [],
+      reasons: buildReasonsParagraph(top.reasons, cheapestSet, c, "thrifty"),
+    };
+  }
+
+  return { recommended, alternative, thrifty };
+}
+
+function buildSupplementaryPicks(
+  current: Pick[],
+  categories: Category[],
+  subcategories: Subcategory[],
+  slots: Slot[],
+  remaining: number
+): Pick[] {
+  if (remaining <= 0) return [];
+  const usedCatIds = new Set(current.map((p) => p.categoryId).filter(Boolean));
+  const out: Pick[] = [];
+  for (const sub of [...subcategories].sort((a, b) => a.priceKRW - b.priceKRW)) {
+    if (out.length >= 2) break;
+    if (sub.priceKRW > remaining) continue;
+    if (usedCatIds.has(sub.categoryId)) continue;
+    const cat = categories.find((c) => c.id === sub.categoryId);
+    if (!cat) continue;
+    const slot = slots.find(
+      (s) => s.subcategoryId === sub.id && s.status === "available"
+    );
+    if (!slot) continue;
+    out.push({
+      key: slot.id,
+      kind: "slot",
+      eventId: cat.eventId,
+      label: cat.name.ko || cat.code,
+      sublabel: sub.name.ko,
+      categoryId: cat.id,
+      subcategoryId: sub.id,
+      slotId: slot.id,
+      code: slot.code,
+      price: sub.priceKRW,
+      reason: "잔여 예산 보완",
+    });
+  }
+  return out;
+}
+
+function buildReasonsParagraph(
+  scoreReasons: string[],
+  picks: Pick[],
+  c: Collected,
+  kind: "recommended" | "alternative" | "thrifty"
+): string[] {
+  const lines: string[] = [];
+  if (c.purposeLabel) {
+    lines.push(`목표 「${c.purposeLabel}」에 부합하는 채널 위주로 구성하였습니다.`);
+  }
+  if (c.budgetLabel) {
+    const total = picks.reduce((s, p) => s + p.price, 0);
+    lines.push(
+      `예산 ${c.budgetLabel} 범위 내 합계 ${total.toLocaleString()}원 (부가세 별도) 으로 산정되었습니다.`
+    );
+  }
+  if (c.segmentLabel) {
+    lines.push(`귀사 분야 「${c.segmentLabel}」의 효율 가중치를 적용하였습니다.`);
+  }
+  if (scoreReasons.length > 0) {
+    lines.push(
+      `매칭 근거: ${scoreReasons.slice(0, 3).join(" · ")}`
+    );
+  }
+  if (kind === "alternative") {
+    lines.push("권장안과 페르소나가 다른 대안 구성입니다. 비교 검토용으로 활용해 주십시오.");
+  }
+  if (kind === "thrifty") {
+    lines.push("권장안에서 최고가 항목을 제외해 예산 부담을 최소화한 구성입니다.");
+  }
+  return lines;
+}
+function ThreeOptionResult({
+  options,
   eventId,
   onClose,
 }: {
-  persona: Persona;
-  picks: Pick[];
+  options: {
+    recommended: RecommendationOption;
+    alternative?: RecommendationOption;
+    thrifty?: RecommendationOption;
+  };
+  eventId: string;
+  onClose: () => void;
+}) {
+  const list: RecommendationOption[] = [
+    options.recommended,
+    ...(options.alternative ? [options.alternative] : []),
+    ...(options.thrifty ? [options.thrifty] : []),
+  ];
+
+  return (
+    <div className="mt-4 space-y-3">
+      <div className="bg-ink-900 text-white rounded-card px-4 py-3.5">
+        <div className="font-num text-[10px] uppercase tracking-[0.3em] text-white/60 font-bold mb-1">
+          K-PRINT SPONSORSHIP ADVISOR · RESULT
+        </div>
+        <h4 className="text-[15px] font-semibold leading-snug">
+          다음 구성이 부합합니다.
+        </h4>
+        <p className="text-[11.5px] text-white/70 mt-1 leading-relaxed">
+          권장안 / 대안 / 절감안 — 세 가지 구성을 함께 검토해 주십시오.
+        </p>
+      </div>
+
+      {list.map((opt) => (
+        <OptionCard
+          key={opt.kind}
+          option={opt}
+          eventId={eventId}
+          onClose={onClose}
+        />
+      ))}
+
+      <div className="bg-canvas border border-ink-100 rounded-card p-4 text-[12px] text-ink-700 leading-relaxed">
+        본 결과는 K-PRINT 사무국 내부 데이터를 기준으로 산출된 참고안입니다.
+        세부 협의는{" "}
+        <a
+          href="mailto:sales@k-print.kr"
+          className="text-brand-500 font-semibold hover:underline"
+        >
+          sales@k-print.kr
+        </a>{" "}
+        로 문의해 주십시오.
+      </div>
+    </div>
+  );
+}
+
+function OptionCard({
+  option,
+  eventId,
+  onClose,
+}: {
+  option: RecommendationOption;
   eventId: string;
   onClose: () => void;
 }) {
@@ -601,18 +837,14 @@ function ResultCard({
   const addPackage = useCartStore((s) => s.addPackage);
   const hasSlot = useCartStore((s) => s.hasSlot);
   const hasPackage = useCartStore((s) => s.hasPackage);
-
-  const total = picks.reduce((sum, p) => sum + p.price, 0);
-  const allInCart = picks.every((p) =>
-    p.kind === "slot" && p.slotId
-      ? hasSlot(p.slotId)
-      : p.kind === "package" && p.packageId
-        ? hasPackage(p.packageId)
-        : false
-  );
+  const allInCart = option.picks.every((p) => {
+    if (p.kind === "slot" && p.slotId) return hasSlot(p.slotId);
+    if (p.kind === "package" && p.packageId) return hasPackage(p.packageId);
+    return true;
+  });
 
   const addAll = () => {
-    for (const p of picks) {
+    for (const p of option.picks) {
       if (p.kind === "slot" && p.slotId && p.categoryId && p.subcategoryId) {
         if (!hasSlot(p.slotId)) {
           addSlot({
@@ -639,89 +871,142 @@ function ResultCard({
     }
   };
 
+  const isMain = option.kind === "recommended";
+
   return (
-    <div className="mt-4 bg-surface border-2 border-brand-500 rounded-card overflow-hidden shadow-glow-sm">
-      <div className="bg-brand-grad text-white px-4 py-3">
-        <div className="font-num text-[10px] uppercase tracking-[0.3em] text-white/80 font-bold flex items-center gap-1.5">
-          <Sparkles className="w-3 h-3" />
-          맞춤 추천
+    <div
+      className={
+        "border rounded-card overflow-hidden bg-surface " +
+        (isMain ? "border-brand-500 shadow-glow-sm" : "border-ink-100")
+      }
+    >
+      <div
+        className={
+          "px-4 py-3 flex items-baseline justify-between gap-2 " +
+          (isMain ? "bg-brand-500 text-white" : "bg-ink-50 text-ink-900")
+        }
+      >
+        <div>
+          <div
+            className={
+              "font-num text-[10px] uppercase tracking-[0.25em] font-bold " +
+              (isMain ? "text-white/80" : "text-ink-500")
+            }
+          >
+            {option.kind === "recommended"
+              ? "OPTION A · 권장안"
+              : option.kind === "alternative"
+                ? "OPTION B · 대안"
+                : "OPTION C · 절감안"}
+          </div>
+          <div className="text-[14px] font-bold mt-0.5 leading-tight">
+            {option.persona.emoji} {option.persona.title}
+          </div>
         </div>
-        <h4 className="text-[16px] font-bold mt-1 leading-tight">
-          {persona.emoji} {persona.title}
-        </h4>
-        {persona.socialProofNote && (
-          <p className="text-[11.5px] text-white/85 mt-1.5">
-            {persona.socialProofNote}
-          </p>
-        )}
+        <div className="text-right">
+          <div
+            className={
+              "text-[10.5px] font-num " +
+              (isMain ? "text-white/70" : "text-ink-500")
+            }
+          >
+            합계 (부가세 별도)
+          </div>
+          <div className="font-num font-bold text-[16px]">
+            {option.total.toLocaleString()}원
+          </div>
+        </div>
       </div>
 
-      <div className="px-4 py-3">
-        <ul className="space-y-2.5">
-          {picks.map((p) => (
-            <li
-              key={p.key}
-              className="border-b border-ink-100 pb-2.5 last:border-b-0"
-            >
-              <div className="flex items-baseline gap-2">
-                <span className="font-num text-[10px] text-ink-300 w-14 shrink-0 mt-1">
+      <ul className="divide-y divide-ink-100">
+        {option.picks.map((p) => (
+          <li key={p.key} className="px-4 py-2.5 flex items-baseline gap-2">
+            <span className="font-num text-[10px] text-ink-400 w-14 shrink-0">
+              {p.code}
+            </span>
+            <span className="flex-1 min-w-0">
+              <span className="text-[13px] font-semibold text-ink-900">
+                {p.label}
+              </span>
+              {p.sublabel && (
+                <span className="text-[11.5px] text-ink-500 ml-1.5">
+                  · {p.sublabel}
+                </span>
+              )}
+            </span>
+            <span className="font-num text-[12px] text-ink-900 shrink-0">
+              {p.price.toLocaleString()}원
+            </span>
+          </li>
+        ))}
+      </ul>
+
+      {option.supplementaryPicks.length > 0 && (
+        <div className="bg-ink-50 px-4 py-2.5 border-t border-ink-100">
+          <div className="text-[10.5px] uppercase tracking-wider font-bold text-ink-500 mb-1.5">
+            잔여 예산 보완 제안
+          </div>
+          <ul className="space-y-1">
+            {option.supplementaryPicks.map((p) => (
+              <li
+                key={p.key}
+                className="flex items-baseline gap-2 text-[12px]"
+              >
+                <span className="font-num text-[10px] text-ink-400 w-14">
                   {p.code}
                 </span>
-                <span className="flex-1 min-w-0">
-                  <span className="font-bold text-[13px] text-ink-900">
-                    {p.label}
-                  </span>
-                  {p.sublabel && (
-                    <span className="text-ink-500 text-[12px] ml-1.5">
-                      · {p.sublabel}
-                    </span>
-                  )}
-                </span>
-                <span className="font-num text-[12.5px] font-bold text-ink-900 shrink-0">
+                <span className="flex-1 text-ink-700">{p.label}</span>
+                <span className="font-num text-ink-700">
                   {p.price.toLocaleString()}원
                 </span>
-              </div>
-              {p.reason && (
-                <div className="text-[11px] text-ink-500 mt-0.5 ml-16 leading-snug">
-                  {p.reason}
-                </div>
-              )}
-            </li>
-          ))}
-        </ul>
-        <div className="mt-3 pt-3 border-t border-ink-100 flex items-center justify-between gap-2 flex-wrap">
-          <div className="font-num text-[14px] font-bold text-ink-900">
-            합계 {total.toLocaleString()}원
-            <span className="text-[10.5px] text-ink-500 ml-1.5 font-normal">
-              (부가세 별도)
-            </span>
-          </div>
-          <div className="flex items-center gap-2">
-            <Link
-              href={`/${eventId}/compare?ids=${encodeURIComponent(
-                picks.map((p) => p.key).join(",")
-              )}`}
-              onClick={onClose}
-              className="text-[11.5px] text-ink-500 hover:text-ink-900 underline-offset-2 hover:underline"
-            >
-              비교 →
-            </Link>
-            <button
-              type="button"
-              onClick={addAll}
-              disabled={allInCart}
-              className={
-                "px-3.5 py-2 rounded-pill text-[12px] font-bold flex items-center gap-1.5 transition-all " +
-                (allInCart
-                  ? "bg-ink-100 text-ink-500"
-                  : "bg-brand-500 text-white hover:bg-brand-700 hover:shadow-glow-sm")
-              }
-            >
-              <ShoppingBag className="w-3.5 h-3.5" />
-              {allInCart ? "담겨있어요" : "한 번에 담기"}
-            </button>
-          </div>
+              </li>
+            ))}
+          </ul>
         </div>
+      )}
+
+      {option.reasons.length > 0 && (
+        <div className="px-4 py-3 bg-canvas border-t border-ink-100">
+          <div className="text-[10.5px] uppercase tracking-wider font-bold text-ink-500 mb-1.5">
+            권장 사유
+          </div>
+          <ul className="space-y-1 text-[12.5px] text-ink-700 leading-relaxed">
+            {option.reasons.map((r, i) => (
+              <li key={i} className="flex items-start gap-1.5">
+                <span className="w-1 h-1 rounded-full bg-ink-400 mt-2 shrink-0" />
+                <span>{r}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      <div className="px-4 py-3 border-t border-ink-100 flex items-center justify-between gap-2 flex-wrap">
+        <Link
+          href={`/${eventId}/compare?ids=${encodeURIComponent(
+            option.picks.map((p) => p.key).join(",")
+          )}`}
+          onClick={onClose}
+          className="text-[11.5px] text-ink-500 hover:text-ink-900 underline-offset-2 hover:underline"
+        >
+          비교 페이지에서 보기 →
+        </Link>
+        <button
+          type="button"
+          onClick={addAll}
+          disabled={allInCart}
+          className={
+            "px-3.5 py-2 rounded-pill text-[12px] font-bold flex items-center gap-1.5 " +
+            (allInCart
+              ? "bg-ink-100 text-ink-500"
+              : isMain
+                ? "bg-brand-500 text-white hover:bg-brand-700"
+                : "bg-ink-900 text-white hover:bg-ink-700")
+          }
+        >
+          <ShoppingBag className="w-3.5 h-3.5" />
+          {allInCart ? "담겨있음" : "이 구성으로 담기"}
+        </button>
       </div>
     </div>
   );
@@ -733,52 +1018,36 @@ function ResultCard({
 
 function ackFor(stage: Stage, c: Collected): string {
   switch (stage) {
+    case "goal":
+      return `${c.purposeLabel} 목표로 검토합니다.`;
+    case "budget":
+      return `${c.budgetLabel} 범위 내 구성으로 한정합니다.`;
     case "segment":
-      return `${c.segmentLabel} 분야시군요. 그 분야 효율 좋은 채널 위주로 보겠습니다.`;
+      return `${c.segmentLabel} 분야 효율 채널을 우선 반영합니다.`;
     case "companySize":
-      return c.companySize === "solo"
-        ? "단품·진입 채널 우선으로 추리겠습니다."
-        : c.companySize === "large"
-          ? "통합 시그니처 패키지 후보도 함께 보여드릴게요."
-          : `${c.companySizeLabel} 규모에 맞는 조합으로 짜드릴게요.`;
+      return `${c.companySizeLabel} 규모에 적합한 구성으로 조정합니다.`;
     case "experience":
       return c.experience === "first"
-        ? "신규 참가시면 안정적인 진입 채널 위주로 잡아드릴게요."
+        ? "신규 참가 — 진입 채널 중심으로 권장합니다."
         : c.experience === "regular"
-          ? "정기 참가시면 시그니처·풀패키지 후보도 같이 봐드릴게요."
-          : "확장 후보까지 같이 보겠습니다.";
-    case "goal":
-      return `좋아요. 「${c.purposeLabel}」 우선으로 잡고 가겠습니다.`;
-    case "budget":
-      return `예산 ${c.budgetLabel} 안에서 조합해드릴게요.`;
-    case "channel":
-      return c.channel === "any"
-        ? "채널은 효율 좋은 쪽으로 자동 선정합니다."
-        : `${c.channelLabel} 채널 가중치 두고 추리겠습니다.`;
+          ? "정기 참가 — 시그니처·풀패키지 후보를 포함합니다."
+          : "확장 후보까지 함께 검토합니다.";
     case "result":
       return "";
   }
 }
 
-function buildSummary(c: Collected, persona: Persona | null): string {
-  const parts: string[] = ["정리하면:"];
-  if (c.segmentLabel) parts.push(`· 분야: ${c.segmentLabel.replace(/^.+?\s/, "")}`);
-  if (c.companySizeLabel) parts.push(`· 규모: ${c.companySizeLabel.replace(/^.+?\s/, "")}`);
-  if (c.experienceLabel) parts.push(`· 경험: ${c.experienceLabel.replace(/^.+?\s/, "")}`);
-  if (c.purposeLabel) parts.push(`· 목적: ${c.purposeLabel.replace(/^.+?\s/, "")}`);
+function buildSummary(c: Collected): string {
+  const parts: string[] = ["응답 요약입니다."];
+  if (c.purposeLabel) parts.push(`· 목표: ${c.purposeLabel}`);
   if (c.budgetLabel) parts.push(`· 예산: ${c.budgetLabel}`);
-  if (c.channel && c.channel !== "any" && c.channelLabel)
-    parts.push(`· 채널: ${c.channelLabel.replace(/^.+?\s/, "")}`);
+  if (c.segmentLabel) parts.push(`· 분야: ${c.segmentLabel}`);
+  if (c.companySizeLabel) parts.push(`· 규모: ${c.companySizeLabel}`);
+  if (c.experienceLabel) parts.push(`· 참가 이력: ${c.experienceLabel}`);
   parts.push("");
-  if (persona) {
-    parts.push(
-      `이 상황엔 「${persona.emoji} ${persona.title}」 코스가 가장 맞아요.`
-    );
-    if (persona.budgetNote)
-      parts.push(`💰 ${persona.budgetNote}`);
-  }
-  parts.push("");
-  parts.push("아래 콤보 확인하시고, 마음에 들면 한 번에 카트에 담으세요.");
+  parts.push(
+    "위 응답을 기반으로 권장안 / 대안 / 절감안 세 가지 구성을 제안드립니다."
+  );
   return parts.join("\n");
 }
 
@@ -786,24 +1055,59 @@ function buildSummary(c: Collected, persona: Persona | null): string {
  * K-PRINT 기준 다층 가중치 스코어링.
  * 분야(segment)·예산이 가장 무거운 가중치. 어드민 페이지에서 SCORING_WEIGHTS 그대로 확인 가능.
  */
+/**
+ * 페르소나 별 점수 (높을수록 적합).
+ * 2026-05 사용자 정의 가중치: 목표 +35, 예산 범위 +30, 분야 +20, 규모 +20, 경험 ±15,
+ * 예산 초과 -50, 예산 미달 -25. 평균 거리 패널티 제거.
+ */
 export function findBestPersona(
   personas: Persona[],
   c: Collected
 ): Persona | null {
+  return scoreAllPersonas(personas, c)[0]?.persona ?? null;
+}
+
+/** 모든 페르소나의 점수를 내림차순으로 반환 — 3-옵션 결과(권장/대안/절감) 구성 시 사용. */
+export function scoreAllPersonas(
+  personas: Persona[],
+  c: Collected
+): Array<{ persona: Persona; score: number; reasons: string[] }> {
   const active = personas.filter((p) => p.isActive);
-  if (active.length === 0) return null;
+  if (active.length === 0) return [];
 
   const W = SCORING_WEIGHTS;
 
   const scored = active.map((p) => {
     let score = 0;
+    const reasons: string[] = [];
 
-    // 1. 분야(segment) 매칭 — 페르소나 targetTags 또는 id 에 분야가 들어있으면 강한 가중
+    // 1. 목표(GOAL) — 가장 강한 결정 요인
+    if (c.purpose && p.purposes?.includes(c.purpose)) {
+      score += W.goalMatch;
+      reasons.push(`목표 「${c.purposeLabel}」 일치 (+${W.goalMatch})`);
+    }
+
+    // 2. 예산 — 범위 적합 +30, 초과 -50, 미달 -25 (평균 거리 패널티 제거)
+    if (c.budget !== undefined) {
+      const min = p.budgetMin ?? 0;
+      const max = p.budgetMax ?? Number.POSITIVE_INFINITY;
+      if (c.budget >= min && c.budget <= max) {
+        score += W.budgetInRange;
+        reasons.push(`예산 범위 적합 (+${W.budgetInRange})`);
+      } else if (c.budget < min) {
+        score -= W.budgetUnderPenalty;
+        reasons.push(`예산 미달 (-${W.budgetUnderPenalty})`);
+      } else {
+        score -= W.budgetOverPenalty;
+        reasons.push(`예산 초과 (-${W.budgetOverPenalty})`);
+      }
+    }
+
+    // 3. 분야(SEGMENT)
     if (c.segment) {
       const tags = (p.targetTags ?? []).map((t) => t.toLowerCase());
       const idLow = p.id.toLowerCase();
       const titleLow = p.title.toLowerCase();
-      const segKey = c.segment;
       const segKeywords: Record<Segment, string[]> = {
         offset: ["offset", "인쇄", "오프셋"],
         digital: ["digital", "디지털", "pod"],
@@ -814,7 +1118,7 @@ export function findBestPersona(
         supply: ["supply", "잉크", "소재", "기자재"],
         other: [],
       };
-      const kws = segKeywords[segKey];
+      const kws = segKeywords[c.segment];
       if (
         kws.some(
           (kw) =>
@@ -822,60 +1126,55 @@ export function findBestPersona(
         )
       ) {
         score += W.segmentMatch;
+        reasons.push(`분야 「${c.segmentLabel}」 일치 (+${W.segmentMatch})`);
       }
     }
 
-    // 2. 예산 범위 매칭 — 범위 안이면 +30, 평균 가까울수록 감점 작게
-    if (c.budget !== undefined) {
-      const min = p.budgetMin ?? 0;
-      const max = p.budgetMax ?? Number.POSITIVE_INFINITY;
-      if (c.budget >= min && c.budget <= max) score += W.budgetInRange;
-      const mid = (min + Math.min(max, 100_000_000)) / 2;
-      score -= Math.abs(c.budget - mid) * W.budgetDistancePenalty;
-    }
-
-    // 3. 참가 경험
-    if (c.experience === "first") {
-      if (p.id.endsWith("first-time") || p.title.includes("처음") || p.title.includes("신규"))
-        score += W.experienceFirst;
-      if (p.packageTier === "signature") score -= 10;
-    }
-    if (c.experience === "regular") {
-      if (p.packageTier === "signature" || p.title.includes("정기") || p.title.includes("프리미엄"))
-        score += W.experienceRegular;
-    }
-
     // 4. 회사 규모
-    if (c.companySize === "large" && p.packageTier === "signature")
+    if (c.companySize === "large" && p.packageTier === "signature") {
       score += W.companySizeLarge;
+      reasons.push(`대기업 + 시그니처 정합 (+${W.companySizeLarge})`);
+    }
     if (
       c.companySize === "solo" &&
-      (p.title.includes("진입") || p.title.includes("단품") || p.budgetMax && p.budgetMax < 10_000_000)
-    )
+      (p.title.includes("진입") ||
+        p.title.includes("단품") ||
+        (p.budgetMax && p.budgetMax < 10_000_000))
+    ) {
       score += W.companySizeSolo;
-
-    // 5. 목표 매칭 (purpose)
-    if (c.purpose && p.purposes?.includes(c.purpose)) score += W.goalMatch;
-
-    // 6. 채널 — K-PRINT 단일 회장 (Hall 7·8) 이라 위치 대신 채널 일치 가중
-    if (c.channel && c.channel !== "any") {
-      const channelKeywords: Record<ChannelPref, string[]> = {
-        entry: ["입구", "등록", "목걸이", "사전등록"],
-        booth: ["부스", "천장", "도면", "홀"],
-        online: ["온라인", "검색", "뉴스레터", "메일"],
-        seminar: ["세미나", "컨퍼런스"],
-        guide_print: ["가이드", "초대", "인쇄물"],
-        any: [],
-      };
-      const kws = channelKeywords[c.channel];
-      const titleLow = p.title.toLowerCase();
-      if (kws.some((kw) => titleLow.includes(kw))) score += W.channelMatch;
+      reasons.push(`1인 + 단품 정합 (+${W.companySizeSolo})`);
     }
 
-    return { p, score };
+    // 5. 참가 경험
+    if (c.experience === "first") {
+      if (
+        p.id.endsWith("first-time") ||
+        p.title.includes("처음") ||
+        p.title.includes("신규")
+      ) {
+        score += W.experienceFirst;
+        reasons.push(`신규 + 진입형 (+${W.experienceFirst})`);
+      }
+      if (p.packageTier === "signature") {
+        score -= 10;
+        reasons.push("신규 + 시그니처 부적합 (-10)");
+      }
+    }
+    if (c.experience === "regular") {
+      if (
+        p.packageTier === "signature" ||
+        p.title.includes("정기") ||
+        p.title.includes("프리미엄")
+      ) {
+        score += W.experienceRegular;
+        reasons.push(`정기 + 시그니처 정합 (+${W.experienceRegular})`);
+      }
+    }
+
+    return { persona: p, score, reasons };
   });
   scored.sort((a, b) => b.score - a.score);
-  return scored[0]?.p ?? active[0];
+  return scored;
 }
 
 function computeCombo(
@@ -937,21 +1236,35 @@ function computeCombo(
               : "콘텐츠 자산"
       );
     }
-    // 채널 매칭 — 카테고리 타입 기반
-    if (c.channel && c.channel !== "any") {
-      const channelTypes: Record<ChannelPref, string[]> = {
-        entry: ["quantity"],                   // 등록데스크·목걸이 = quantity
-        booth: ["floor_plan", "xpace"],        // 도면·천장배너
-        online: ["digital_banner", "mailing"],
-        seminar: ["content"],                  // 세미나 페이지
-        guide_print: ["print_page"],           // 가이드북·삽지
-        any: [],
+    // 목표(GOAL)에서 자동 추출된 채널 매칭 — 카테고리 타입 기반
+    if (targetPurpose) {
+      const purposeChannelTypes: Record<Purpose, string[]> = {
+        traffic_driver: ["floor_plan", "quantity"], // 도면·등록데스크·목걸이
+        brand_awareness: ["xpace", "floor_plan", "print_page"], // 옥외·천장·가이드북
+        buyer_reach: ["mailing", "print_page"], // 해외 NL · 가이드북
+        post_asset: ["content", "mailing"], // SNS·뉴스레터
       };
-      const types = channelTypes[c.channel];
+      const types = purposeChannelTypes[targetPurpose] ?? [];
       if (types.includes(cat.type)) {
-        score += 40;
-        reasons.push(`${c.channelLabel} 채널 매칭`);
+        score += SCORING_WEIGHTS.channelMatch;
+        reasons.push("목표 채널 적합");
       }
+    }
+    // 잔여 1자리 보너스 (희소성)
+    const sameSubAvailableSlots = slots.filter(
+      (s) => s.subcategoryId === sub.id && s.status === "available"
+    ).length;
+    if (sameSubAvailableSlots === 1) {
+      score += SCORING_WEIGHTS.lastSlotBonus;
+      reasons.push(`잔여 1자리 (+${SCORING_WEIGHTS.lastSlotBonus})`);
+    }
+    // 단독 채널 보너스 — 카테고리에 슬롯이 1개뿐 (희소·시그니처)
+    const totalSlotsForCat = slots.filter(
+      (s) => s.categoryId === cat.id
+    ).length;
+    if (totalSlotsForCat === 1) {
+      score += SCORING_WEIGHTS.soloChannelBonus;
+      reasons.push(`단독 채널 (+${SCORING_WEIGHTS.soloChannelBonus})`);
     }
     // 분야(segment) 별 채널 보너스
     if (c.segment === "digital" && (cat.type === "digital_banner" || cat.type === "mailing")) {

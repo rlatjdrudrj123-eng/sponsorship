@@ -180,13 +180,33 @@ export default function DiagnosisLogicPage() {
               />
               <Row
                 weight={SCORING_WEIGHTS.channelMatch}
-                label="채널 일치 (K-PRINT 특화)"
-                cond="입구·부스·온라인·세미나·인쇄물 키워드 페르소나 title 매칭 (any 가 아닐 때)"
+                label="목표 채널 적합 (콤보 단계)"
+                cond="목표(purpose) 에서 자동 추출된 카테고리 type 과 일치 시"
               />
               <Row
-                weight={-1}
-                label="예산 평균 거리 패널티"
-                cond={`Math.abs(답변 예산 - mid) × ${SCORING_WEIGHTS.budgetDistancePenalty} 만큼 감점`}
+                weight={SCORING_WEIGHTS.soloChannelBonus}
+                label="단독 채널 보너스"
+                cond="카테고리에 슬롯이 1개뿐 (희소·시그니처)"
+              />
+              <Row
+                weight={SCORING_WEIGHTS.lastSlotBonus}
+                label="잔여 1자리 보너스"
+                cond="해당 서브카테고리의 available 슬롯 수 === 1"
+              />
+              <Row
+                weight={SCORING_WEIGHTS.onOffBalanceBonus}
+                label="온·오프 균형 콤보"
+                cond="최종 콤보에 online·offline 카테고리가 모두 포함된 경우 (콤보 단계 보너스)"
+              />
+              <Row
+                weight={-SCORING_WEIGHTS.budgetOverPenalty}
+                label="예산 초과 패널티"
+                cond="답변 예산 > 페르소나 budgetMax (강한 감점)"
+              />
+              <Row
+                weight={-SCORING_WEIGHTS.budgetUnderPenalty}
+                label="예산 미달 패널티"
+                cond="답변 예산 < 페르소나 budgetMin (약한 감점)"
               />
             </tbody>
           </table>

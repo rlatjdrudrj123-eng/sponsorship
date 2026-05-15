@@ -206,16 +206,9 @@ export default function SponsorshipsPage() {
   );
   const [advancedOpen, setAdvancedOpen] = useState(false);
   const [aiChatOpen, setAiChatOpen] = useState(false);
+  // 첫 질문 GOAL 의 4가지 (purpose 값)
   const [aiChatInitial, setAiChatInitial] = useState<
-    | "offset"
-    | "digital"
-    | "packaging"
-    | "label"
-    | "post_press"
-    | "sign"
-    | "supply"
-    | "other"
-    | null
+    "traffic_driver" | "brand_awareness" | "buyer_reach" | "post_asset" | null
   >(null);
   // 비교 모드 — 카드에서 직접 체크해 모은다 (카트 거치지 않고 바로 compare로)
   const [compareIds, setCompareIds] = useState<Set<string>>(new Set());
@@ -433,31 +426,12 @@ export default function SponsorshipsPage() {
       ) : (
         <>
           <main className="min-h-screen bg-canvas">
-            <header className="px-6 md:px-16 pt-16 md:pt-20 pb-8 md:pb-10 border-b border-ink-100 bg-surface">
-              <div className="max-w-7xl mx-auto flex items-start justify-between gap-4">
-                <div className="min-w-0">
-                  <div className="font-num text-[11px] md:text-[12px] uppercase tracking-[0.3em] text-brand-500 font-bold mb-3 flex items-center gap-2">
-                    <span className="w-6 h-px bg-brand-500" />
-                    {localized(
-                      {
-                        ko: settings?.event.nameKo,
-                        en: settings?.event.nameEn,
-                      },
-                      locale
-                    ) || eventId}
-                  </div>
-                  <h1 className="text-[36px] md:text-[64px] font-bold tracking-tight leading-[1.05] text-ink-900">
-                    {t("spons.title", locale)}
-                  </h1>
-                  <p className="text-[14px] md:text-[16px] text-ink-500 mt-3 max-w-xl leading-relaxed">
-                    {t("spons.subtitle", locale)}
-                  </p>
-                </div>
-                <LocaleSwitch />
-              </div>
-            </header>
+            {/* 우측 상단 로케일 스위치만 작게 */}
+            <div className="absolute top-4 right-6 z-30">
+              <LocaleSwitch />
+            </div>
 
-            {/* 메인 — 스폰서십 진단 진입.
+            {/* 메인 — 스폰서십 진단 진입 (페이지의 최상단 배너).
                  좌측: 비즈니스 카피 / 우측: 인라인 채팅 형태로 첫 질문 노출 */}
             <section className="bg-canvas border-b border-ink-100">
               <div className="max-w-7xl mx-auto px-6 md:px-16 py-14 md:py-24">
@@ -515,9 +489,9 @@ export default function SponsorshipsPage() {
                           SA
                         </div>
                         <div className="bg-ink-50 rounded-2xl rounded-tl-sm px-4 py-2.5 text-[13.5px] text-ink-900 max-w-[88%] leading-relaxed">
-                          참가 목표와 예산을 기반으로 최적 노출 조합을
-                          제안드리겠습니다. 6개 항목 응답 후 즉시 결과를
-                          확인하실 수 있습니다.
+                          K-PRINT 2026 사무국입니다. 귀사의 참가 목표·예산·분야를
+                          바탕으로 가장 효율이 높은 스폰서십 구성을 검토해
+                          드립니다. 5개 항목, 약 1분이 소요됩니다.
                         </div>
                       </div>
                       <div className="flex items-start gap-2.5">
@@ -525,20 +499,32 @@ export default function SponsorshipsPage() {
                           SA
                         </div>
                         <div className="bg-ink-50 rounded-2xl rounded-tl-sm px-4 py-2.5 text-[13.5px] text-ink-900 max-w-[88%] leading-relaxed">
-                          어떤 분야의 회사이신가요?
+                          이번 K-PRINT 참가의 우선 목표를 선택해 주세요.
                         </div>
                       </div>
 
                       <div className="pl-10 grid grid-cols-2 gap-2">
                         {[
-                          { label: "🖨 일반 인쇄", value: "offset", hint: "오프셋·UV" },
-                          { label: "💻 디지털·POD", value: "digital", hint: "온라인 우선" },
-                          { label: "📦 패키징·박스", value: "packaging", hint: "샘플북·도면" },
-                          { label: "🏷 라벨·스티커", value: "label", hint: "시그니처" },
-                          { label: "✂ 후가공", value: "post_press", hint: "쇼가이드 우선" },
-                          { label: "🪧 사인", value: "sign", hint: "옥외·전광판" },
-                          { label: "⚙ 잉크·기자재", value: "supply", hint: "참관객 도달" },
-                          { label: "기타 / 미정", value: "other", hint: "전체 카탈로그" },
+                          {
+                            label: "부스 방문 유도",
+                            value: "traffic_driver",
+                            hint: "도면·목걸이·등록데스크",
+                          },
+                          {
+                            label: "브랜드 인지 확보",
+                            value: "brand_awareness",
+                            hint: "천장배너·가이드북·옥외",
+                          },
+                          {
+                            label: "해외·전문 바이어 도달",
+                            value: "buyer_reach",
+                            hint: "해외 뉴스레터·영문 가이드",
+                          },
+                          {
+                            label: "행사 후 자산 확보",
+                            value: "post_asset",
+                            hint: "콘텐츠·인터뷰·SNS",
+                          },
                         ].map((c) => (
                           <button
                             key={c.value}
@@ -546,23 +532,19 @@ export default function SponsorshipsPage() {
                             onClick={() => {
                               setAiChatInitial(
                                 c.value as
-                                  | "offset"
-                                  | "digital"
-                                  | "packaging"
-                                  | "label"
-                                  | "post_press"
-                                  | "sign"
-                                  | "supply"
-                                  | "other"
+                                  | "traffic_driver"
+                                  | "brand_awareness"
+                                  | "buyer_reach"
+                                  | "post_asset"
                               );
                               setAiChatOpen(true);
                             }}
-                            className="w-full text-left px-3 py-2.5 rounded-2xl border-[1.5px] border-ink-100 hover:border-brand-500 hover:bg-brand-50 transition-colors group"
+                            className="w-full text-left px-3.5 py-3 rounded-2xl border-[1.5px] border-ink-100 hover:border-brand-500 hover:bg-brand-50 transition-colors group"
                           >
-                            <div className="text-[12.5px] font-semibold text-ink-900 leading-tight">
+                            <div className="text-[13px] font-semibold text-ink-900 leading-tight">
                               {c.label}
                             </div>
-                            <div className="text-[11px] text-ink-500 mt-0.5">
+                            <div className="text-[11.5px] text-ink-500 mt-0.5">
                               {c.hint}
                             </div>
                           </button>
@@ -570,7 +552,7 @@ export default function SponsorshipsPage() {
                       </div>
 
                       <div className="text-center text-[11px] text-ink-400 pt-2 font-num tracking-wider">
-                        STEP 1 OF 6 · 응답 시간 약 60초
+                        STEP 1 / 5 · GOAL
                       </div>
                     </div>
                   </div>
@@ -588,28 +570,46 @@ export default function SponsorshipsPage() {
               </section>
             )}
 
-            <div className="lg:grid lg:grid-cols-[260px_1fr] lg:gap-8 px-6 md:px-16 py-10 max-w-7xl mx-auto">
-              {/* Mobile filter bar */}
-              <div className="lg:hidden flex items-center justify-between mb-4 sticky top-0 z-10 bg-white py-2 border-b border-ink-100">
-                <button
-                  type="button"
-                  onClick={() => setSheetOpen(true)}
-                  className="px-3 py-1.5 rounded-btn border border-ink-100 text-[13px] font-semibold flex items-center gap-1.5"
-                >
-                  <Filter className="w-3.5 h-3.5" />
-                  {t("spons.filter", locale)}
-                  {hasActiveFilter && (
-                    <span className="w-1.5 h-1.5 rounded-full bg-brand-500 ml-0.5" />
-                  )}
-                </button>
-                <div className="text-[12px] text-ink-500">
-                  <strong className="text-ink-900">{filtered.length}</strong> /{" "}
-                  {totalCount}
+            {/* 단품 섹션 상단 고정 바 — 페이지 어디서 스크롤해도 viewport top 에 붙음 */}
+            <div className="sticky top-0 z-30 bg-canvas/95 backdrop-blur border-b border-ink-100">
+              <div className="max-w-7xl mx-auto px-6 md:px-16 py-3 flex items-center justify-between gap-3">
+                <div className="flex items-baseline gap-3">
+                  <span className="font-num text-[10.5px] uppercase tracking-[0.25em] text-ink-500 font-bold">
+                    개별 스폰서십
+                  </span>
+                  <span className="text-[12.5px] text-ink-700">
+                    전체{" "}
+                    <strong className="text-ink-900 font-num">
+                      {totalCount}
+                    </strong>
+                    개 중{" "}
+                    <strong className="text-brand-500 font-num">
+                      {filtered.length}
+                    </strong>
+                    개
+                  </span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setSheetOpen(true)}
+                    className="lg:hidden px-3 py-1.5 rounded-btn border border-ink-100 text-[12.5px] font-semibold flex items-center gap-1.5"
+                  >
+                    <Filter className="w-3.5 h-3.5" />
+                    {t("spons.filter", locale)}
+                    {hasActiveFilter && (
+                      <span className="w-1.5 h-1.5 rounded-full bg-brand-500 ml-0.5" />
+                    )}
+                  </button>
+                  <ViewModeToggle viewMode={viewMode} setViewMode={setViewMode} />
                 </div>
               </div>
+            </div>
 
-              {/* Desktop sidebar */}
-              <aside className="hidden lg:block lg:sticky lg:top-6 lg:self-start">
+            <div className="lg:grid lg:grid-cols-[260px_1fr] lg:gap-8 px-6 md:px-16 py-10 max-w-7xl mx-auto">
+
+              {/* Desktop sidebar — 상단 바 (sticky 51px) 아래로 붙음 */}
+              <aside className="hidden lg:block lg:sticky lg:top-[68px] lg:self-start">
                 <FilterPanel
                   search={search}
                   setSearch={setSearch}
@@ -640,18 +640,6 @@ export default function SponsorshipsPage() {
 
               {/* Grid */}
               <section>
-                {/* 뷰 모드 토글 */}
-                <div className="hidden lg:flex items-center justify-between mb-4">
-                  <div className="text-[12px] text-ink-500">
-                    전체 <strong className="text-ink-900">{totalCount}</strong>개 중{" "}
-                    <strong className="text-brand-500">{filtered.length}</strong>개
-                  </div>
-                  <ViewModeToggle viewMode={viewMode} setViewMode={setViewMode} />
-                </div>
-                <div className="lg:hidden mb-4 flex justify-end">
-                  <ViewModeToggle viewMode={viewMode} setViewMode={setViewMode} />
-                </div>
-
                 {/* 페르소나 선택 시 추천 콤보 배너 */}
                 {selectedPersona && (
                   <PersonaRecommendation
@@ -821,7 +809,7 @@ export default function SponsorshipsPage() {
         subcategories={subcategories}
         slots={slots}
         packages={packages}
-        initialSegment={aiChatInitial ?? undefined}
+        initialGoal={aiChatInitial ?? undefined}
       />
 
       {/* 도면·사례 상세 모달 — 슬라이드형(SlideSection) 그대로 띄움.
