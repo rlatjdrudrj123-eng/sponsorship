@@ -24,6 +24,7 @@ import {
 } from "lucide-react";
 import { getDb } from "@/lib/firebase/firestore";
 import { matchesPersona } from "@/components/public/PersonaCourses";
+import type { Taxonomy } from "@/lib/types";
 import { PersonaAiChat } from "@/components/public/PersonaAiChat";
 import type {
   Category,
@@ -188,6 +189,7 @@ export default function SponsorshipsPage() {
   const [slots, setSlots] = useState<Slot[]>([]);
   const [packages, setPackages] = useState<Package[]>([]);
   const [settings, setSettings] = useState<SiteSettings | null>(null);
+  const [taxonomy, setTaxonomy] = useState<Taxonomy | null>(null);
 
   const [filterChannel, setFilterChannel] = useState<Channel | "all">("all");
   const [budget, setBudget] = useState<number>(0); // 0 = 필터 X
@@ -233,7 +235,7 @@ export default function SponsorshipsPage() {
     (async () => {
       try {
         const db = getDb();
-        const [catSnap, subSnap, slotSnap, pkgSnap, settingsSnap, personaSnap] = await Promise.all([
+        const [catSnap, subSnap, slotSnap, pkgSnap, settingsSnap, personaSnap, taxonomySnap] = await Promise.all([
           getDocs(
             query(
               collection(db, "categories"),
@@ -258,6 +260,7 @@ export default function SponsorshipsPage() {
           getDocs(
             query(collection(db, "personas"), where("eventId", "==", eventId))
           ),
+          getDoc(doc(db, "taxonomy", eventId)),
         ]);
         setPersonas(
           personaSnap.docs.map((d) => ({ ...(d.data() as Persona), id: d.id }))
@@ -276,6 +279,7 @@ export default function SponsorshipsPage() {
           pkgSnap.docs.map((d) => ({ ...(d.data() as Package), id: d.id }))
         );
         if (settingsSnap.exists()) setSettings(settingsSnap.data() as SiteSettings);
+        if (taxonomySnap.exists()) setTaxonomy(taxonomySnap.data() as Taxonomy);
       } catch (e) {
         console.error(e);
       }
@@ -635,6 +639,7 @@ export default function SponsorshipsPage() {
                   onReset={resetFilters}
                   advancedOpen={advancedOpen}
                   setAdvancedOpen={setAdvancedOpen}
+                  taxonomy={taxonomy}
                 />
               </aside>
 
@@ -729,6 +734,7 @@ export default function SponsorshipsPage() {
                 onReset={resetFilters}
                 advancedOpen={advancedOpen}
                 setAdvancedOpen={setAdvancedOpen}
+                taxonomy={taxonomy}
               />
             </div>
             <footer className="px-5 py-3 border-t border-ink-100 grid grid-cols-2 gap-2 shrink-0">
@@ -997,6 +1003,7 @@ function FilterPanel({
   onReset,
   advancedOpen,
   setAdvancedOpen,
+  taxonomy,
 }: {
   search: string;
   setSearch: (s: string) => void;
@@ -1022,20 +1029,32 @@ function FilterPanel({
   onReset: () => void;
   advancedOpen: boolean;
   setAdvancedOpen: (v: boolean) => void;
+  taxonomy?: Taxonomy | null;
 }) {
   const locale = useLocale((s) => s.locale);
-  const mediaOptions = MEDIA_TYPE_OPTIONS.map((o) => ({
-    id: o.id,
-    label: localized(o.label, locale),
-  }));
-  const timingOptions = TIMING_OPTIONS.map((o) => ({
-    id: o.id,
-    label: localized(o.label, locale),
-  }));
-  const locationOptions = LOCATION_OPTIONS.map((o) => ({
-    id: o.id,
-    label: localized(o.label, locale),
-  }));
+  // taxonomy 도큐먼트의 mediaBuckets / timingBuckets / locationBuckets 우선,
+  // 없으면 코드 상수 fallback. 어드민 「분류 관리 > 항목 편집」 변경이 즉시 반영됨.
+  const mediaOptions = (taxonomy?.mediaBuckets && taxonomy.mediaBuckets.length > 0
+    ? taxonomy.mediaBuckets.map((b) => ({ id: b.id as MediaType, label: b.label }))
+    : MEDIA_TYPE_OPTIONS.map((o) => ({
+        id: o.id,
+        label: localized(o.label, locale),
+      })));
+  const timingOptions = (taxonomy?.timingBuckets && taxonomy.timingBuckets.length > 0
+    ? taxonomy.timingBuckets.map((b) => ({ id: b.id as Timing, label: b.label }))
+    : TIMING_OPTIONS.map((o) => ({
+        id: o.id,
+        label: localized(o.label, locale),
+      })));
+  const locationOptions = (taxonomy?.locationBuckets && taxonomy.locationBuckets.length > 0
+    ? taxonomy.locationBuckets.map((b) => ({
+        id: b.id as LocationTag,
+        label: b.label,
+      }))
+    : LOCATION_OPTIONS.map((o) => ({
+        id: o.id,
+        label: localized(o.label, locale),
+      })));
 
   return (
     <div className="space-y-6">
