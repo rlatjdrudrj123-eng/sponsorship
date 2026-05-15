@@ -77,6 +77,8 @@ export function MultiArtboardEditor({
   const spaceRef = useRef(false);
   const wrapRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  // 클립보드 — Cmd+C 로 노드 복사, Cmd+V 로 같은 아트보드에 +20,+20 옵셋으로 붙여넣기
+  const clipboardRef = useRef<CanvasNode[]>([]);
 
   const sel = selections[0] ?? null;
   const selectedNode =
@@ -147,6 +149,58 @@ export function MultiArtboardEditor({
       });
       setSelections([{ pageIdx, nodeId: node.id }]);
       setTool("select");
+    },
+    [pages, onUpdatePage]
+  );
+
+  // ─── 레이어 순서 (z-index) 변경 ───
+  const reorderInPage = useCallback(
+    (
+      pageIdx: number,
+      nodeId: string,
+      dir: "front" | "back" | "forward" | "backward"
+    ) => {
+      const target = pages[pageIdx];
+      if (!target) return;
+      const sorted = [...target.page.nodes].sort(
+        (a, b) => (a.rect.z ?? 0) - (b.rect.z ?? 0)
+      );
+      const idx = sorted.findIndex((n) => n.id === nodeId);
+      if (idx < 0) return;
+      const zs = target.page.nodes.map((n) => n.rect.z ?? 0);
+      const maxZ = Math.max(0, ...zs);
+      const minZ = Math.min(0, ...zs);
+
+      let updates: Map<string, number> | null = null;
+      if (dir === "front") {
+        updates = new Map([[nodeId, maxZ + 1]]);
+      } else if (dir === "back") {
+        updates = new Map([[nodeId, minZ - 1]]);
+      } else if (dir === "forward" && idx < sorted.length - 1) {
+        const cur = sorted[idx];
+        const next = sorted[idx + 1];
+        updates = new Map([
+          [cur.id, next.rect.z ?? 0],
+          [next.id, cur.rect.z ?? 0],
+        ]);
+      } else if (dir === "backward" && idx > 0) {
+        const cur = sorted[idx];
+        const prev = sorted[idx - 1];
+        updates = new Map([
+          [cur.id, prev.rect.z ?? 0],
+          [prev.id, cur.rect.z ?? 0],
+        ]);
+      }
+      if (!updates) return;
+      const u = updates;
+      onUpdatePage(pageIdx, {
+        ...target.page,
+        nodes: target.page.nodes.map((n) =>
+          u.has(n.id)
+            ? ({ ...n, rect: { ...n.rect, z: u.get(n.id)! } } as CanvasNode)
+            : n
+        ),
+      });
     },
     [pages, onUpdatePage]
   );
@@ -252,6 +306,55 @@ export function MultiArtboardEditor({
       if ((e.metaKey || e.ctrlKey) && e.key === "1") {
         e.preventDefault();
         setZoom(1);
+        return;
+      }
+      // Cmd/Ctrl + C = 복사 (선택 노드)
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "c") {
+        if (selections.length > 0) {
+          e.preventDefault();
+          clipboardRef.current = selections
+            .map((s) => pages[s.pageIdx]?.page.nodes.find((n) => n.id === s.nodeId))
+            .filter((n): n is CanvasNode => !!n)
+            .map((n) => JSON.parse(JSON.stringify(n)) as CanvasNode);
+        }
+        return;
+      }
+      // Cmd/Ctrl + V = 붙여넣기 (선택된 아트보드 또는 첫 아트보드에)
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "v") {
+        if (clipboardRef.current.length === 0) return;
+        e.preventDefault();
+        const targetIdx = sel?.pageIdx ?? 0;
+        const target = pages[targetIdx];
+        if (!target) return;
+        const newSels: Selection[] = [];
+        const newNodes = clipboardRef.current.map((n) => {
+          const copy: CanvasNode = {
+            ...JSON.parse(JSON.stringify(n)),
+            id: randomId(),
+            rect: { ...n.rect, x: n.rect.x + 20, y: n.rect.y + 20 },
+          } as CanvasNode;
+          newSels.push({ pageIdx: targetIdx, nodeId: copy.id });
+          return copy;
+        });
+        onUpdatePage(targetIdx, {
+          ...target.page,
+          nodes: [...target.page.nodes, ...newNodes],
+        });
+        setSelections(newSels);
+        return;
+      }
+      // 레이어 이동 — Cmd+] = 앞으로 / Cmd+[ = 뒤로 / Cmd+Shift+] = 맨앞 / Cmd+Shift+[ = 맨뒤
+      if ((e.metaKey || e.ctrlKey) && (e.key === "]" || e.key === "[")) {
+        if (selections.length === 0) return;
+        e.preventDefault();
+        const dir: "front" | "back" | "forward" | "backward" = e.shiftKey
+          ? e.key === "]"
+            ? "front"
+            : "back"
+          : e.key === "]"
+            ? "forward"
+            : "backward";
+        selections.forEach((s) => reorderInPage(s.pageIdx, s.nodeId, dir));
         return;
       }
     };
@@ -1009,6 +1112,7 @@ export function MultiArtboardEditor({
                         return (
                           <div
                             key={n.id}
+                            data-node-id={n.id}
                             onPointerDown={(e) => {
                               if (isEditing) return; // 편집 중이면 드래그 무시
                               onNodePointerDown(e, idx, n.id, n.rect);
@@ -1287,6 +1391,7 @@ export function MultiArtboardEditor({
                   setSelections([]);
                 }
               }}
+              onReorder={(dir) => sel && reorderInPage(sel.pageIdx, sel.nodeId, dir)}
             />
           ) : (
             <div className="text-[11.5px] text-white/50 leading-relaxed space-y-3">
@@ -1294,9 +1399,12 @@ export function MultiArtboardEditor({
                 <div className="text-white/80 font-semibold mb-1">단축키</div>
                 <div className="space-y-0.5 text-white/55 font-mono text-[10.5px]">
                   <div>V · 선택 / H · 핸드</div>
-                  <div>R · 사각형 / T · 텍스트</div>
+                  <div>R · 사각형 / T · 텍스트 / I · 이미지</div>
                   <div>Space (홀드) · 임시 패닝</div>
                   <div>Ctrl+휠 · 마우스 기준 줌</div>
+                  <div>Ctrl+C / Ctrl+V · 복사 / 붙여넣기</div>
+                  <div>Ctrl+] · 앞으로 / Ctrl+[ · 뒤로</div>
+                  <div>Ctrl+Shift+] · 맨앞 / Ctrl+Shift+[ · 맨뒤</div>
                   <div>Ctrl+0 · 전체 핏</div>
                   <div>Ctrl+1 · 100% 줌</div>
                   <div>Ctrl+D · 복제</div>
@@ -1403,6 +1511,7 @@ function NodeInspectorDark({
   onToggleLocked,
   onToggleHidden,
   onDelete,
+  onReorder,
 }: {
   node: CanvasNode;
   onPatchRect: (rect: CanvasNode["rect"]) => void;
@@ -1411,6 +1520,7 @@ function NodeInspectorDark({
   onToggleLocked: () => void;
   onToggleHidden: () => void;
   onDelete: () => void;
+  onReorder: (dir: "front" | "back" | "forward" | "backward") => void;
 }) {
   return (
     <div className="space-y-3 text-[11.5px]">
@@ -1583,6 +1693,47 @@ function NodeInspectorDark({
           onChange={(e) => onPatchNode({ opacity: Number(e.target.value) / 100 })}
           className="w-full accent-blue-500"
         />
+      </Section>
+
+      {/* 레이어 순서 */}
+      <Section title="레이어 순서 (z-index)">
+        <div className="grid grid-cols-2 gap-1.5">
+          <button
+            type="button"
+            onClick={() => onReorder("front")}
+            className="px-2 py-1.5 rounded border border-white/10 text-white/70 text-[10.5px] font-semibold hover:bg-white/5 hover:text-white"
+            title="Cmd+Shift+]"
+          >
+            ↟ 맨앞으로
+          </button>
+          <button
+            type="button"
+            onClick={() => onReorder("forward")}
+            className="px-2 py-1.5 rounded border border-white/10 text-white/70 text-[10.5px] font-semibold hover:bg-white/5 hover:text-white"
+            title="Cmd+]"
+          >
+            ↑ 앞으로
+          </button>
+          <button
+            type="button"
+            onClick={() => onReorder("backward")}
+            className="px-2 py-1.5 rounded border border-white/10 text-white/70 text-[10.5px] font-semibold hover:bg-white/5 hover:text-white"
+            title="Cmd+["
+          >
+            ↓ 뒤로
+          </button>
+          <button
+            type="button"
+            onClick={() => onReorder("back")}
+            className="px-2 py-1.5 rounded border border-white/10 text-white/70 text-[10.5px] font-semibold hover:bg-white/5 hover:text-white"
+            title="Cmd+Shift+["
+          >
+            ↡ 맨뒤로
+          </button>
+        </div>
+        <div className="text-[10px] text-white/40 mt-1.5">
+          현재 z = <span className="font-num font-bold">{node.rect.z ?? 0}</span>
+        </div>
       </Section>
 
       <button

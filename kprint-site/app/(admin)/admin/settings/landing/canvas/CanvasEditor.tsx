@@ -1356,6 +1356,7 @@ function NodeFrame({
 
   return (
     <div
+      data-node-id={node.id}
       onPointerDown={(e) => onDown(e, "move")}
       style={{
         position: "absolute",
@@ -2690,6 +2691,32 @@ function ChartNodeInspector({
           축 라벨
         </label>
       </div>
+
+      <hr className="border-ink-100" />
+      <div className="space-y-1.5">
+        <div className="text-[10.5px] uppercase tracking-wide font-bold text-ink-500">
+          PNG 추출
+        </div>
+        <div className="grid grid-cols-2 gap-1.5">
+          <button
+            type="button"
+            onClick={() => void downloadChartPng(node.id, 2, false)}
+            className="px-2 py-1.5 rounded border border-ink-100 text-[11px] font-semibold hover:border-ink-900 hover:bg-ink-50"
+          >
+            배경 포함
+          </button>
+          <button
+            type="button"
+            onClick={() => void downloadChartPng(node.id, 2, true)}
+            className="px-2 py-1.5 rounded border border-ink-100 text-[11px] font-semibold hover:border-ink-900 hover:bg-ink-50"
+          >
+            투명 배경
+          </button>
+        </div>
+        <p className="text-[10.5px] text-ink-500 leading-snug">
+          2배 해상도로 다운로드. 투명 배경은 차트 위에 다른 디자인 얹을 때 사용.
+        </p>
+      </div>
     </div>
   );
 }
@@ -2701,6 +2728,90 @@ function normalizeColorForInput(c: string | undefined): string {
   if (c.startsWith("#")) return c;
   // CSS var or named → fallback
   return "#DB0711";
+}
+
+/**
+ * 차트 노드 PNG 추출 — DOM 에 렌더링된 차트 SVG 를 캔버스로 변환해 다운로드.
+ * 투명 배경 옵션: data.background 가 비어있으면 자동으로 투명.
+ */
+async function downloadChartPng(
+  nodeId: string,
+  scale = 2,
+  transparent = false
+): Promise<void> {
+  // 캔버스 안의 해당 노드 element 안에서 SVG 찾기
+  // 가장 안전: 임시로 chartNode 의 ChartNodeView 를 새 SVG 로 렌더 → serialize
+  // 여기서는 페이지에 이미 렌더된 SVG 를 잡아 변환.
+  const all = document.querySelectorAll(`[data-node-id="${nodeId}"] svg`);
+  const svgEl = all[0] as SVGSVGElement | undefined;
+  if (!svgEl) {
+    alert("차트 SVG 를 찾지 못했습니다. 캔버스에 보이는 상태에서 시도해주세요.");
+    return;
+  }
+  // 사이즈 추정 (viewBox 우선)
+  const vb = svgEl.viewBox.baseVal;
+  const W = vb && vb.width > 0 ? vb.width : svgEl.clientWidth || 1000;
+  const H = vb && vb.height > 0 ? vb.height : svgEl.clientHeight || 600;
+
+  // SVG 직렬화
+  const clone = svgEl.cloneNode(true) as SVGSVGElement;
+  if (!clone.getAttribute("xmlns"))
+    clone.setAttribute("xmlns", "http://www.w3.org/2000/svg");
+  // 투명 배경 옵션: 첫 rect (배경) 가 있으면 제거
+  if (transparent) {
+    const firstRect = clone.querySelector("rect");
+    if (
+      firstRect &&
+      firstRect.getAttribute("x") === "0" &&
+      firstRect.getAttribute("y") === "0" &&
+      firstRect.getAttribute("width") === String(W) &&
+      firstRect.getAttribute("height") === String(H)
+    ) {
+      firstRect.remove();
+    }
+  }
+  const xml = new XMLSerializer().serializeToString(clone);
+  const svgBlob = new Blob([xml], { type: "image/svg+xml;charset=utf-8" });
+  const url = URL.createObjectURL(svgBlob);
+
+  // <img> → canvas → PNG
+  await new Promise<void>((resolve, reject) => {
+    const img = new window.Image();
+    img.onload = () => {
+      try {
+        const canvas = document.createElement("canvas");
+        canvas.width = W * scale;
+        canvas.height = H * scale;
+        const ctx = canvas.getContext("2d");
+        if (!ctx) {
+          reject(new Error("Canvas 2D context 실패"));
+          return;
+        }
+        ctx.scale(scale, scale);
+        ctx.drawImage(img, 0, 0, W, H);
+        canvas.toBlob((blob) => {
+          if (!blob) {
+            reject(new Error("toBlob 실패"));
+            return;
+          }
+          const pngUrl = URL.createObjectURL(blob);
+          const a = document.createElement("a");
+          a.href = pngUrl;
+          a.download = `chart-${nodeId.slice(0, 6)}${transparent ? "-transparent" : ""}.png`;
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+          URL.revokeObjectURL(pngUrl);
+          URL.revokeObjectURL(url);
+          resolve();
+        }, "image/png");
+      } catch (e) {
+        reject(e);
+      }
+    };
+    img.onerror = () => reject(new Error("SVG 로드 실패"));
+    img.src = url;
+  });
 }
 
 // ──────────────────────────────────────────────────────────────────────────
