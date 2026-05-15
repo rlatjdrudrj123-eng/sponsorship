@@ -3652,6 +3652,7 @@ type SlideTemplateKey =
   | "process4"
   | "menuGrid"
   | "bigTitle"
+  | "introWithVideo"
   | "cover"
   | "coverKimes"
   | "contents"
@@ -3686,6 +3687,13 @@ const SLIDE_TEMPLATES: ReadonlyArray<{
     desc: "좌측 Contents / 우측 섹션·페이지 번호 (Introduction · Application)",
     group: "공통",
     make: () => contentsNodes(),
+  },
+  {
+    key: "introWithVideo",
+    label: "히어로 카피 + 폰 영상",
+    desc: "좌측 브랜드 로고 + 큰 타이틀 + 설명 / 우측 휴대폰 mockup + 영상 자리",
+    group: "공통",
+    make: () => introWithVideoNodes(),
   },
   {
     key: "bigTitle",
@@ -4681,6 +4689,135 @@ function contentsNodes(): CanvasNode[] {
       }),
     );
   });
+
+  return out;
+}
+
+// ============================================================================
+// 히어로 카피 + 폰 영상 (intro slide) — KIMES "Step into the Show" 류
+// 좌측: 브랜드 로고 + 큰 영문 타이틀 + 한글 설명
+// 우측: iPhone mockup (둥근 사각형 + 노치) + 안쪽 영상 placeholder
+// ============================================================================
+function introWithVideoNodes(): CanvasNode[] {
+  const out: CanvasNode[] = [];
+
+  // ─── 좌측 카피 ───
+  // 브랜드 로고 (빨간 텍스트 — 이벤트명 그대로)
+  out.push(
+    tplNode<CanvasTextNode>({
+      id: "",
+      rect: { x: 100, y: 220, w: 800, h: 90 },
+      type: "text",
+      data: {
+        content: "K-PRINT",
+        fontSize: 64,
+        fontWeight: 800,
+        color: "#DB0711",
+        letterSpacing: -2,
+      },
+    }),
+  );
+  // 큰 영문 타이틀
+  out.push(
+    tplNode<CanvasTextNode>({
+      id: "",
+      rect: { x: 100, y: 360, w: 900, h: 240 },
+      type: "text",
+      data: {
+        content: "Step into the Show,\nLive and Real",
+        fontSize: 80,
+        fontWeight: 500,
+        lineHeight: 1.25,
+        color: "#0A0A0A",
+      },
+    }),
+  );
+  // 설명
+  out.push(
+    tplNode<CanvasTextNode>({
+      id: "",
+      rect: { x: 100, y: 660, w: 800, h: 160 },
+      type: "text",
+      data: {
+        content:
+          "1980년부터 축적해온 인쇄·출판 산업 데이터와 인사이트.\nK-PRINT 는 이를 바탕으로 인쇄 기업의 글로벌 확장을 돕고 있습니다.\n스폰서십을 통해 당신의 브랜드도 함께하세요.",
+        fontSize: 22,
+        fontWeight: 300,
+        lineHeight: 1.55,
+        color: "#0A0A0A",
+      },
+    }),
+  );
+
+  // ─── 우측 휴대폰 mockup ───
+  // 폰 좌상단 기준 좌표: x=1180, y=80, w=580, h=920 (16:9 슬라이드 안에서 우측 절반)
+  const phoneX = 1180;
+  const phoneY = 80;
+  const phoneW = 580;
+  const phoneH = 920;
+  const bezel = 14;
+
+  // 외부 케이스 (어두운 회색 + 그림자)
+  out.push(
+    tplNode<CanvasShapeNode>({
+      id: "",
+      rect: { x: phoneX, y: phoneY, w: phoneW, h: phoneH, z: 1 },
+      type: "shape",
+      data: {
+        shape: "rect",
+        fill: "#1A1A1A",
+        radius: 56,
+        shadow: { x: 0, y: 20, blur: 80, color: "rgba(0,0,0,0.18)" },
+      },
+    }),
+  );
+  // 내부 화면 영역 (살짝 옅은 검정)
+  out.push(
+    tplNode<CanvasShapeNode>({
+      id: "",
+      rect: {
+        x: phoneX + bezel,
+        y: phoneY + bezel,
+        w: phoneW - bezel * 2,
+        h: phoneH - bezel * 2,
+        z: 2,
+      },
+      type: "shape",
+      data: { shape: "rect", fill: "#0A0A0A", radius: 44 },
+    }),
+  );
+  // 노치 (검은 알약)
+  out.push(
+    tplNode<CanvasShapeNode>({
+      id: "",
+      rect: {
+        x: phoneX + phoneW / 2 - 60,
+        y: phoneY + 26,
+        w: 120,
+        h: 32,
+        z: 4,
+      },
+      type: "shape",
+      data: { shape: "rect", fill: "#000000", radius: 16 },
+    }),
+  );
+
+  // ─── 영상 placeholder ───
+  // 화면 안쪽 영역에 video 노드 — 사용자가 인스펙터에서 URL 입력
+  out.push(
+    tplNode({
+      id: "",
+      rect: {
+        x: phoneX + bezel + 12,
+        y: phoneY + bezel + 12,
+        w: phoneW - bezel * 2 - 24,
+        h: phoneH - bezel * 2 - 24,
+        z: 3,
+      },
+      type: "video",
+      data: { url: "" },
+    } as CanvasNode),
+  );
 
   return out;
 }
