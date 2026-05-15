@@ -4,7 +4,9 @@ import { useEffect, useMemo, useState } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import {
+  addDoc,
   collection,
+  deleteDoc,
   doc,
   onSnapshot,
   query,
@@ -12,7 +14,7 @@ import {
   where,
   writeBatch,
 } from "firebase/firestore";
-import { ArrowLeft, Search } from "lucide-react";
+import { ArrowLeft, Plus, Search, Trash2 } from "lucide-react";
 import { getDb } from "@/lib/firebase/firestore";
 import type { Category, Slot, Subcategory } from "@/lib/types";
 
@@ -125,6 +127,74 @@ export default function CategorySlotsPage() {
     }
   };
 
+  /** 새 슬롯 1개 생성 — 해당 소분류에서 다음 번호로 코드 자동 생성 */
+  const createSlot = async (subId: string) => {
+    if (!category) return;
+    const sub = subById.get(subId);
+    if (!sub) return;
+    // 코드 패턴: <카테고리 code>-<순번> (단일 sub 인 경우) 또는 <카테고리>-<sub idx>-<seq>
+    const existingCodes = new Set(slots.map((s) => s.code));
+    let seq = slots.filter((s) => s.subcategoryId === subId).length + 1;
+    let newCode = `${category.code}-${seq}`;
+    while (existingCodes.has(newCode)) {
+      seq++;
+      newCode = `${category.code}-${seq}`;
+    }
+    try {
+      await addDoc(collection(getDb(), "slots"), {
+        eventId: category.eventId,
+        categoryId: category.id,
+        subcategoryId: subId,
+        code: newCode,
+        status: "available",
+        order: slots.filter((s) => s.subcategoryId === subId).length,
+      });
+    } catch (e) {
+      alert(`슬롯 생성 실패: ${e instanceof Error ? e.message : String(e)}`);
+    }
+  };
+
+  /** 슬롯 1개 영구 삭제 (마감 처리 아님) */
+  const deleteOne = async (slotId: string) => {
+    const slot = slots.find((s) => s.id === slotId);
+    if (!slot) return;
+    if (
+      !confirm(
+        `슬롯 ${slot.code} 을(를) 영구 삭제할까요? (마감 처리가 아니라 완전 제거 — 복구 불가)`
+      )
+    )
+      return;
+    try {
+      await deleteDoc(doc(getDb(), "slots", slotId));
+    } catch (e) {
+      alert(`삭제 실패: ${e instanceof Error ? e.message : String(e)}`);
+    }
+  };
+
+  /** 선택된 슬롯 일괄 삭제 */
+  const bulkDelete = async () => {
+    const ids = Array.from(selected);
+    if (ids.length === 0) return;
+    if (
+      !confirm(
+        `선택한 ${ids.length}개 슬롯을 영구 삭제할까요? (마감 처리가 아니라 완전 제거 — 복구 불가)`
+      )
+    )
+      return;
+    try {
+      for (let i = 0; i < ids.length; i += 500) {
+        const batch = writeBatch(getDb());
+        for (const slotId of ids.slice(i, i + 500)) {
+          batch.delete(doc(getDb(), "slots", slotId));
+        }
+        await batch.commit();
+      }
+      setSelected(new Set());
+    } catch (e) {
+      alert(`일괄 삭제 실패: ${e instanceof Error ? e.message : String(e)}`);
+    }
+  };
+
   const bulkUpdate = async (status: Slot["status"]) => {
     const ids = Array.from(selected);
     if (ids.length === 0) return;
@@ -206,6 +276,38 @@ export default function CategorySlotsPage() {
         </select>
       </div>
 
+      {/* 소분류별 슬롯 추가 — 1구좌씩 늘리기 */}
+      {subcategories.length > 0 && (
+        <div className="bg-white border border-ink-100 rounded-card p-4">
+          <div className="text-[11px] uppercase tracking-wide font-bold text-ink-700 mb-2">
+            슬롯 1개씩 추가
+          </div>
+          <div className="flex items-center gap-1.5 flex-wrap">
+            {subcategories.map((sub) => {
+              const count = slots.filter((s) => s.subcategoryId === sub.id).length;
+              return (
+                <button
+                  key={sub.id}
+                  type="button"
+                  onClick={() => createSlot(sub.id)}
+                  className="px-3 py-1.5 rounded-btn border border-ink-100 hover:border-brand-500 hover:bg-brand-50 text-[12px] text-ink-700 flex items-center gap-1.5"
+                >
+                  <Plus className="w-3 h-3" />
+                  {sub.name.ko || "(기본)"}
+                  <span className="font-num text-[10.5px] text-ink-400">
+                    {count}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+          <p className="text-[10.5px] text-ink-500 mt-2 leading-snug">
+            클릭 1번에 슬롯 1개 추가. 다음 번호 자동 생성. 줄이려면 우측 행
+            휴지통 버튼으로 영구 삭제 (마감 처리 X).
+          </p>
+        </div>
+      )}
+
       <div className="bg-white border border-ink-100 rounded-card overflow-hidden">
         <table className="w-full text-sm">
           <thead>
@@ -226,12 +328,13 @@ export default function CategorySlotsPage() {
               <th className="text-left px-4 py-2.5 font-semibold">위치 메모</th>
               <th className="text-center px-4 py-2.5 font-semibold">상태</th>
               <th className="text-right px-4 py-2.5 font-semibold">단가</th>
+              <th className="text-center px-2 py-2.5 font-semibold w-10"></th>
             </tr>
           </thead>
           <tbody>
             {filtered.length === 0 && (
               <tr>
-                <td colSpan={6} className="px-4 py-12 text-center text-sm text-ink-500">
+                <td colSpan={7} className="px-4 py-12 text-center text-sm text-ink-500">
                   표시할 슬롯이 없습니다.
                 </td>
               </tr>
@@ -269,6 +372,16 @@ export default function CategorySlotsPage() {
                   <td className="px-4 py-2 text-right font-mono text-[12px] text-ink-700">
                     {sub ? `${sub.priceKRW.toLocaleString()}원` : "—"}
                   </td>
+                  <td className="px-2 py-2 text-center w-10">
+                    <button
+                      type="button"
+                      onClick={() => deleteOne(slot.id)}
+                      className="w-7 h-7 grid place-items-center rounded text-ink-400 hover:text-red-700 hover:bg-red-50"
+                      title="영구 삭제 (마감 X)"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  </td>
                 </tr>
               );
             })}
@@ -294,6 +407,15 @@ export default function CategorySlotsPage() {
             className="px-3 py-1.5 rounded-btn bg-brand-500 text-ink-900 hover:bg-brand-700 hover:text-white text-[13px] font-semibold"
           >
             일괄 가능
+          </button>
+          <span className="w-px h-5 bg-white/20" />
+          <button
+            type="button"
+            onClick={() => void bulkDelete()}
+            className="px-3 py-1.5 rounded-btn bg-red-500/20 hover:bg-red-500 hover:text-white text-red-300 text-[13px] font-semibold flex items-center gap-1"
+          >
+            <Trash2 className="w-3 h-3" />
+            영구 삭제
           </button>
           <button
             type="button"

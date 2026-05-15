@@ -879,9 +879,24 @@ function DetailSlideModal({
     };
     window.addEventListener("keydown", onKey);
     document.body.style.overflow = "hidden";
+
+    // 모달이 페이지처럼 보여서 사용자가 뒤로가기 버튼을 누르는 경우 →
+    // history 에 더미 state 를 추가하고 popstate 이벤트로 onClose 만 호출.
+    // 결과: 뒤로가기 = 모달 닫기 (페이지 이탈 X)
+    const dummyState = { detailModalOpen: true };
+    window.history.pushState(dummyState, "");
+    const onPop = () => onClose();
+    window.addEventListener("popstate", onPop);
+
     return () => {
       window.removeEventListener("keydown", onKey);
+      window.removeEventListener("popstate", onPop);
       document.body.style.overflow = "";
+      // 닫힐 때 pushState 한 더미 state 되돌리기 (popstate 로 닫힌 경우는 이미 빠진 상태라
+      // history.state 가 우리 state 가 아닐 수 있음)
+      if (window.history.state?.detailModalOpen) {
+        window.history.back();
+      }
     };
   }, [onClose, onPrev, onNext]);
 
