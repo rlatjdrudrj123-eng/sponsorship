@@ -1774,141 +1774,229 @@ function CardGrid({
                 onOpenDetail(c.slug);
               }
             }}
-            className="group bg-surface border border-ink-100 rounded-card overflow-hidden hover:border-brand-500 hover:shadow-card transition-all flex flex-col h-full relative text-left cursor-pointer focus:outline-none focus:ring-2 focus:ring-brand-500"
+            className="group bg-surface border border-ink-100 rounded-card overflow-hidden hover:border-brand-500 hover:shadow-card transition-all relative text-left cursor-pointer focus:outline-none focus:ring-2 focus:ring-brand-500"
           >
-            <div className="aspect-[4/3] bg-ink-100 relative shrink-0">
-              {hero ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
-                  src={hero}
-                  alt={localized(c.name, locale)}
-                  className="absolute inset-0 w-full h-full object-cover"
-                />
-              ) : (
-                <div className="w-full h-full grid place-items-center text-ink-300 text-xs">
-                  {locale === "en" ? "No image" : "이미지 없음"}
-                </div>
-              )}
-              <div className="absolute top-3 left-3 flex gap-1 flex-wrap max-w-[calc(100%-1.5rem)]">
-                <span className="text-[10px] uppercase tracking-wider bg-white/90 text-ink-900 px-2 py-0.5 rounded font-semibold">
-                  {channelLabel(c.channel, locale)}
-                </span>
-                {c.badges.map((b) => (
-                  <BadgePill key={b} badge={b} />
-                ))}
-              </div>
-              {/* 비교 체크박스 — 우상단 */}
-              <button
-                type="button"
-                aria-pressed={inCompare}
-                onClick={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  onToggleCompare(compareKey);
-                }}
-                className={
-                  "absolute top-3 right-3 w-8 h-8 rounded-full grid place-items-center transition-all shadow-card " +
-                  (inCompare
-                    ? "bg-brand-500 text-white"
-                    : "bg-white/90 text-ink-500 hover:bg-white hover:text-brand-500")
-                }
-                title={inCompare ? "비교에서 빼기" : "비교에 추가"}
-              >
-                {inCompare ? (
-                  <svg viewBox="0 0 24 24" className="w-4 h-4 stroke-current fill-none stroke-[3]" strokeLinecap="round" strokeLinejoin="round">
-                    <polyline points="20 6 9 17 4 12" />
-                  </svg>
+            {/* ─── 모바일 컴팩트 카드 (가로형, 한 줄 ~120px) ─── */}
+            <div className="md:hidden flex gap-3 p-3">
+              <div className="w-24 h-24 shrink-0 relative bg-ink-100 rounded-btn overflow-hidden">
+                {hero ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={hero}
+                    alt={localized(c.name, locale)}
+                    className="absolute inset-0 w-full h-full object-cover"
+                  />
                 ) : (
-                  <span className="text-[16px] leading-none font-bold">+</span>
+                  <div className="w-full h-full grid place-items-center text-ink-300 text-[10px]">
+                    {locale === "en" ? "No image" : "no image"}
+                  </div>
                 )}
-              </button>
-              {/* 잔여 N자리 강조 — 한정 재고 정직 표시 */}
-              {c.slotTotal > 0 && c.slotAvailable > 0 && c.slotAvailable <= 3 && (
-                <div className="absolute bottom-3 left-3 right-3 flex items-center justify-between">
-                  <span className="px-2 py-1 rounded-pill bg-ink-900 text-white text-[10.5px] font-num font-bold shadow-card">
-                    잔여 {c.slotAvailable}자리
-                  </span>
-                </div>
-              )}
-            </div>
-            <div className="p-5 flex-1 flex flex-col">
-              <div className="font-bold text-[16px] text-ink-900 group-hover:text-brand-500 leading-tight tracking-tight transition-colors">
-                {localized(c.name, locale)}
-              </div>
-              {c.shortDesc && (
-                <p className="text-[12.5px] text-ink-500 mt-2 line-clamp-2 leading-snug">
-                  {c.shortDesc}
-                </p>
-              )}
-
-              {/* 목적 칩 — 참가업체 시점 */}
-              {(() => {
-                const purps = derivePurposes(c).slice(0, 2);
-                if (purps.length === 0) return null;
-                return (
-                  <div className="mt-3 flex flex-wrap gap-1">
-                    {purps.map((p) => (
-                      <span
-                        key={p}
-                        className="text-[10px] font-num font-semibold text-brand-500 bg-brand-50 px-2 py-0.5 rounded-pill"
-                      >
-                        {PURPOSE_META[p][locale === "en" ? "en" : "ko"]}
-                      </span>
-                    ))}
-                  </div>
-                );
-              })()}
-
-              {/* 이 카테고리를 포함하는 패키지 크로스 표시 — 패키지 매력 살리기 */}
-              {(() => {
-                const pkgs = (c.inPackages ?? [])
-                  .map((id) => packagesById.get(id))
-                  .filter((p): p is Package => !!p);
-                if (pkgs.length === 0) return null;
-                return (
-                  <div className="mt-2 text-[10.5px] text-ink-500 leading-snug">
-                    <span className="font-num font-semibold text-ink-700">
-                      📦 포함 패키지:{" "}
+                {/* 잔여 — 한정일 때만, 우상단 작게 */}
+                {c.slotTotal > 0 &&
+                  c.slotAvailable > 0 &&
+                  c.slotAvailable <= 3 && (
+                    <span className="absolute top-1 right-1 px-1.5 py-0.5 rounded bg-ink-900 text-white text-[9px] font-num font-bold">
+                      잔여 {c.slotAvailable}
                     </span>
-                    {pkgs
-                      .slice(0, 2)
-                      .map((p) => (p.tier === "signature" ? "★ " : "") + p.name.ko)
-                      .join(", ")}
-                    {pkgs.length > 2 && ` 외 ${pkgs.length - 2}`}
-                  </div>
-                );
-              })()}
-
-              {/* 작년 이 자리 산 회사 — 사회적 증거 */}
-              {c.lastYear?.buyers && c.lastYear.buyers.length > 0 && (
-                <div className="mt-3 text-[10.5px] text-ink-500 leading-snug">
-                  <span className="font-num font-bold text-ink-700">작년: </span>
-                  {c.lastYear.buyers.slice(0, 3).join(", ")}
-                  {c.lastYear.buyers.length > 3 && ` 외 ${c.lastYear.buyers.length - 3}곳`}
+                  )}
+              </div>
+              <div className="flex-1 min-w-0 flex flex-col">
+                <div className="flex items-start gap-1.5">
+                  <span className="text-[9.5px] uppercase tracking-wider text-ink-500 font-bold shrink-0">
+                    {channelLabel(c.channel, locale)}
+                  </span>
+                  {/* 최대 1개 뱃지만 (신규 우선) */}
+                  {(() => {
+                    const b = c.badges[0];
+                    return b ? <BadgePill badge={b} /> : null;
+                  })()}
                 </div>
-              )}
-              {c.lastYear?.soldOutDate && (
-                <div className="text-[10.5px] text-amber-700 font-num font-semibold mt-1">
-                  작년 매진: {c.lastYear.soldOutDate}
-                </div>
-              )}
-
-              <div className="mt-auto pt-4 flex items-center justify-between text-[11.5px] font-num">
-                <span>
-                  {c.minPrice > 0 ? (
-                    <>
-                      <span className="text-ink-500">{t("spons.minPrice", locale)} </span>
+                <h3 className="font-bold text-[14.5px] text-ink-900 leading-tight mt-1 line-clamp-2">
+                  {localized(c.name, locale)}
+                </h3>
+                <div className="mt-auto pt-2 flex items-end justify-between gap-2">
+                  <span className="font-num text-[13px] leading-none truncate">
+                    {c.minPrice > 0 ? (
                       <span className="text-ink-900 font-bold">
                         {c.minPrice.toLocaleString()}원
                       </span>
-                    </>
+                    ) : (
+                      <span className="text-ink-500">
+                        {t("common.priceNegotiable", locale)}
+                      </span>
+                    )}
+                  </span>
+                  <button
+                    type="button"
+                    aria-pressed={inCompare}
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      onToggleCompare(compareKey);
+                    }}
+                    className={
+                      "w-7 h-7 rounded-full grid place-items-center shrink-0 transition-colors " +
+                      (inCompare
+                        ? "bg-brand-500 text-white"
+                        : "bg-ink-50 text-ink-500 hover:bg-ink-100")
+                    }
+                    title={inCompare ? "비교에서 빼기" : "비교에 추가"}
+                  >
+                    {inCompare ? (
+                      <svg
+                        viewBox="0 0 24 24"
+                        className="w-3.5 h-3.5 stroke-current fill-none stroke-[3]"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      >
+                        <polyline points="20 6 9 17 4 12" />
+                      </svg>
+                    ) : (
+                      <span className="text-[14px] leading-none font-bold">
+                        +
+                      </span>
+                    )}
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            {/* ─── 데스크톱 풀 카드 (md+) ─── */}
+            <div className="hidden md:flex flex-col h-full">
+              <div className="aspect-[4/3] bg-ink-100 relative shrink-0">
+                {hero ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={hero}
+                    alt={localized(c.name, locale)}
+                    className="absolute inset-0 w-full h-full object-cover"
+                  />
+                ) : (
+                  <div className="w-full h-full grid place-items-center text-ink-300 text-xs">
+                    {locale === "en" ? "No image" : "이미지 없음"}
+                  </div>
+                )}
+                <div className="absolute top-3 left-3 flex gap-1 flex-wrap max-w-[calc(100%-1.5rem)]">
+                  <span className="text-[10px] uppercase tracking-wider bg-white/90 text-ink-900 px-2 py-0.5 rounded font-semibold">
+                    {channelLabel(c.channel, locale)}
+                  </span>
+                  {c.badges.map((b) => (
+                    <BadgePill key={b} badge={b} />
+                  ))}
+                </div>
+                {/* 비교 체크박스 — 우상단 */}
+                <button
+                  type="button"
+                  aria-pressed={inCompare}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    onToggleCompare(compareKey);
+                  }}
+                  className={
+                    "absolute top-3 right-3 w-8 h-8 rounded-full grid place-items-center transition-all shadow-card " +
+                    (inCompare
+                      ? "bg-brand-500 text-white"
+                      : "bg-white/90 text-ink-500 hover:bg-white hover:text-brand-500")
+                  }
+                  title={inCompare ? "비교에서 빼기" : "비교에 추가"}
+                >
+                  {inCompare ? (
+                    <svg viewBox="0 0 24 24" className="w-4 h-4 stroke-current fill-none stroke-[3]" strokeLinecap="round" strokeLinejoin="round">
+                      <polyline points="20 6 9 17 4 12" />
+                    </svg>
                   ) : (
-                    <span className="text-ink-500">{t("common.priceNegotiable", locale)}</span>
+                    <span className="text-[16px] leading-none font-bold">+</span>
                   )}
-                </span>
-                <span className="text-ink-300 group-hover:text-brand-500 group-hover:translate-x-0.5 transition-all">
-                  →
-                </span>
+                </button>
+                {/* 잔여 N자리 강조 — 한정 재고 정직 표시 */}
+                {c.slotTotal > 0 && c.slotAvailable > 0 && c.slotAvailable <= 3 && (
+                  <div className="absolute bottom-3 left-3 right-3 flex items-center justify-between">
+                    <span className="px-2 py-1 rounded-pill bg-ink-900 text-white text-[10.5px] font-num font-bold shadow-card">
+                      잔여 {c.slotAvailable}자리
+                    </span>
+                  </div>
+                )}
+              </div>
+              <div className="p-5 flex-1 flex flex-col">
+                <div className="font-bold text-[16px] text-ink-900 group-hover:text-brand-500 leading-tight tracking-tight transition-colors">
+                  {localized(c.name, locale)}
+                </div>
+                {c.shortDesc && (
+                  <p className="text-[12.5px] text-ink-500 mt-2 line-clamp-2 leading-snug">
+                    {c.shortDesc}
+                  </p>
+                )}
+
+                {/* 목적 칩 — 참가업체 시점 */}
+                {(() => {
+                  const purps = derivePurposes(c).slice(0, 2);
+                  if (purps.length === 0) return null;
+                  return (
+                    <div className="mt-3 flex flex-wrap gap-1">
+                      {purps.map((p) => (
+                        <span
+                          key={p}
+                          className="text-[10px] font-num font-semibold text-brand-500 bg-brand-50 px-2 py-0.5 rounded-pill"
+                        >
+                          {PURPOSE_META[p][locale === "en" ? "en" : "ko"]}
+                        </span>
+                      ))}
+                    </div>
+                  );
+                })()}
+
+                {/* 이 카테고리를 포함하는 패키지 크로스 표시 — 패키지 매력 살리기 */}
+                {(() => {
+                  const pkgs = (c.inPackages ?? [])
+                    .map((id) => packagesById.get(id))
+                    .filter((p): p is Package => !!p);
+                  if (pkgs.length === 0) return null;
+                  return (
+                    <div className="mt-2 text-[10.5px] text-ink-500 leading-snug">
+                      <span className="font-num font-semibold text-ink-700">
+                        📦 포함 패키지:{" "}
+                      </span>
+                      {pkgs
+                        .slice(0, 2)
+                        .map((p) => (p.tier === "signature" ? "★ " : "") + p.name.ko)
+                        .join(", ")}
+                      {pkgs.length > 2 && ` 외 ${pkgs.length - 2}`}
+                    </div>
+                  );
+                })()}
+
+                {/* 작년 이 자리 산 회사 — 사회적 증거 */}
+                {c.lastYear?.buyers && c.lastYear.buyers.length > 0 && (
+                  <div className="mt-3 text-[10.5px] text-ink-500 leading-snug">
+                    <span className="font-num font-bold text-ink-700">작년: </span>
+                    {c.lastYear.buyers.slice(0, 3).join(", ")}
+                    {c.lastYear.buyers.length > 3 && ` 외 ${c.lastYear.buyers.length - 3}곳`}
+                  </div>
+                )}
+                {c.lastYear?.soldOutDate && (
+                  <div className="text-[10.5px] text-amber-700 font-num font-semibold mt-1">
+                    작년 매진: {c.lastYear.soldOutDate}
+                  </div>
+                )}
+
+                <div className="mt-auto pt-4 flex items-center justify-between text-[11.5px] font-num">
+                  <span>
+                    {c.minPrice > 0 ? (
+                      <>
+                        <span className="text-ink-500">{t("spons.minPrice", locale)} </span>
+                        <span className="text-ink-900 font-bold">
+                          {c.minPrice.toLocaleString()}원
+                        </span>
+                      </>
+                    ) : (
+                      <span className="text-ink-500">{t("common.priceNegotiable", locale)}</span>
+                    )}
+                  </span>
+                  <span className="text-ink-300 group-hover:text-brand-500 group-hover:translate-x-0.5 transition-all">
+                    →
+                  </span>
+                </div>
               </div>
             </div>
           </div>
@@ -2158,36 +2246,108 @@ function SlideSection({
         </div>
 
         {/* 정보 — 하단 나머지, 컴팩트 */}
-        <div className="flex-1 min-h-0 flex flex-col px-5 py-5 overflow-hidden">
+        <div className="flex-1 min-h-0 flex flex-col px-5 py-4 overflow-hidden">
           {/* 제목 */}
-          <h2 className="text-[24px] font-bold text-ink-900 leading-[1.15] tracking-tight">
+          <h2 className="text-[22px] font-bold text-ink-900 leading-[1.15] tracking-tight">
             {localized(item.name, locale)}
           </h2>
           {item.shortDesc && (
-            <p className="text-[12.5px] text-ink-500 mt-2 leading-snug line-clamp-2">
+            <p className="text-[12px] text-ink-500 mt-1.5 leading-snug line-clamp-1">
               {item.shortDesc}
             </p>
           )}
 
-          {/* 핵심 스펙 — 최대 2개 (위치/마감/사이즈 중) */}
-          <div className="mt-4 space-y-1.5 text-[12px]">
-            {item.size && (
-              <div className="flex gap-2">
-                <span className="text-ink-500 w-16 shrink-0">사이즈</span>
-                <span className="text-ink-900 font-semibold truncate">
-                  {item.size}
-                </span>
-              </div>
-            )}
-            {deadlineStr && (
-              <div className="flex gap-2">
-                <span className="text-ink-500 w-16 shrink-0">마감</span>
-                <span className="text-ink-900 font-semibold">
-                  {deadlineStr}
-                </span>
-              </div>
-            )}
-          </div>
+          {/* 스펙 — 어드민 type-layout 의 specFields 따라 최대 4개, 각 행 한 줄 truncate */}
+          {(() => {
+            const rows: Array<{ label: string; value: string }> = [];
+            for (const field of layout.specFields) {
+              if (rows.length >= 4) break;
+              switch (field) {
+                case "location":
+                  if (locationLabel)
+                    rows.push({ label: "위치", value: locationLabel });
+                  break;
+                case "size":
+                  if (item.size)
+                    rows.push({ label: "사이즈", value: item.size });
+                  break;
+                case "fileFormat":
+                  if (item.fileFormat)
+                    rows.push({ label: "파일", value: item.fileFormat });
+                  break;
+                case "deadline":
+                  if (deadlineStr)
+                    rows.push({ label: "마감", value: deadlineStr });
+                  break;
+                case "detail":
+                  if (detailLabel)
+                    rows.push({ label: "세부", value: detailLabel });
+                  break;
+                case "slots":
+                  if (item.slotTotal > 0)
+                    rows.push({
+                      label: "구좌",
+                      value: `${item.slotAvailable}/${item.slotTotal} 가능`,
+                    });
+                  break;
+                case "video":
+                  if (item.videoSpec) {
+                    const v = item.videoSpec;
+                    const parts: string[] = [];
+                    if (v.duration) parts.push(`${v.duration}초`);
+                    if (v.resolution) parts.push(v.resolution);
+                    if (v.plays)
+                      parts.push(`${v.plays.toLocaleString()}회`);
+                    if (parts.length)
+                      rows.push({ label: "영상", value: parts.join(" · ") });
+                  }
+                  break;
+                case "mailing":
+                  if (item.mailingSpec) {
+                    const m = item.mailingSpec;
+                    const parts: string[] = [];
+                    if (m.audience)
+                      parts.push(`${m.audience.toLocaleString()}명`);
+                    if (m.sendDates?.length)
+                      parts.push(m.sendDates.join(", "));
+                    if (parts.length)
+                      rows.push({ label: "발송", value: parts.join(" · ") });
+                  }
+                  break;
+                case "content":
+                  if (item.contentSpec) {
+                    const c = item.contentSpec;
+                    const val = [c.channel, c.format]
+                      .filter(Boolean)
+                      .join(" · ");
+                    if (val) rows.push({ label: "콘텐츠", value: val });
+                  }
+                  break;
+              }
+            }
+            // 어드민 커스텀 행도 끝에 (총 4개 한도 내)
+            (layout.customRows ?? []).forEach((c) => {
+              if (rows.length >= 4) return;
+              if (c.label.trim() || c.value.trim()) {
+                rows.push({ label: c.label, value: c.value });
+              }
+            });
+            if (rows.length === 0) return null;
+            return (
+              <dl className="mt-3 space-y-1 text-[11.5px]">
+                {rows.map((r, i) => (
+                  <div key={i} className="flex gap-2 min-w-0">
+                    <dt className="text-ink-500 w-12 shrink-0 font-semibold">
+                      {r.label}
+                    </dt>
+                    <dd className="text-ink-900 font-semibold truncate min-w-0 flex-1">
+                      {r.value}
+                    </dd>
+                  </div>
+                ))}
+              </dl>
+            );
+          })()}
 
           {/* 가격 — 강조 */}
           <div className="mt-auto pt-3 border-t border-ink-100">
