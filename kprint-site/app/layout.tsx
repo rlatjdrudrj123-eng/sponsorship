@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Script from "next/script";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -30,12 +31,14 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="ko">
-      <head>
-        <script
+      <body className="antialiased">
+        <Script
+          id="theme-preload"
+          strategy="beforeInteractive"
           dangerouslySetInnerHTML={{ __html: themePreloadScript }}
         />
-      </head>
-      <body className="antialiased">{children}</body>
+        {children}
+      </body>
     </html>
   );
 }

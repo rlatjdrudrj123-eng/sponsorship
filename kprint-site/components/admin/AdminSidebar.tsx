@@ -26,9 +26,17 @@ import {
   Tags,
   Upload,
 } from "lucide-react";
-import { collection, getCountFromServer, query, where } from "firebase/firestore";
+import {
+  collection,
+  doc,
+  getCountFromServer,
+  onSnapshot,
+  query,
+  where,
+} from "firebase/firestore";
 import { getDb } from "@/lib/firebase/firestore";
 import { useAdminEvent } from "@/lib/admin/adminEventStore";
+import type { Event as EventDoc } from "@/lib/types";
 
 type IconType = ComponentType<SVGProps<SVGSVGElement>>;
 
@@ -46,6 +54,26 @@ export function AdminSidebar() {
   const pathname = usePathname();
   const [newInquiries, setNewInquiries] = useState<number>(0);
   const selectedEventId = useAdminEvent((s) => s.selectedEventId);
+  const [selectedEvent, setSelectedEvent] = useState<EventDoc | null>(null);
+
+  // 선택된 행사 정보 구독 — 좌상단 배지·푸터에 실제 행사명·짧은이름 노출
+  useEffect(() => {
+    if (!selectedEventId) {
+      setSelectedEvent(null);
+      return;
+    }
+    const u = onSnapshot(
+      doc(getDb(), "events", selectedEventId),
+      (s) => {
+        if (s.exists()) {
+          setSelectedEvent({ ...(s.data() as EventDoc), id: s.id });
+        } else {
+          setSelectedEvent(null);
+        }
+      }
+    );
+    return () => u();
+  }, [selectedEventId]);
 
   // 신규 문의 배지
   useEffect(() => {
@@ -124,7 +152,9 @@ export function AdminSidebar() {
     <aside className="w-[220px] shrink-0 bg-ink-900 text-ink-100 flex flex-col px-3 py-4 sticky top-0 h-screen overflow-y-auto">
       <div className="flex items-center gap-2 px-2.5 pb-4 mb-2 border-b border-white/10">
         <span className="w-2 h-2 rounded-full bg-brand-500" />
-        <span className="font-bold text-white tracking-tight text-[15px]">k·print</span>
+        <span className="font-bold text-white tracking-tight text-[15px] truncate">
+          {selectedEvent?.shortName ?? selectedEvent?.name ?? "행사 미선택"}
+        </span>
         <span className="ml-auto text-[11px] text-ink-500 font-mono">admin</span>
       </div>
 
@@ -191,8 +221,10 @@ export function AdminSidebar() {
       </nav>
 
       <div className="pt-4 border-t border-white/10 px-2.5 text-[11px] text-ink-500 flex items-center gap-1.5">
-        <HelpCircle className="w-3.5 h-3.5" aria-hidden />
-        <span>K-PRINT 2026 운영 콘솔</span>
+        <HelpCircle className="w-3.5 h-3.5 shrink-0" aria-hidden />
+        <span className="truncate">
+          {selectedEvent?.name ?? "행사 미선택"} 운영 콘솔
+        </span>
       </div>
     </aside>
   );
