@@ -40,19 +40,38 @@ type Answers = {
   q2?: DiagQ2Value;
   q3?: DiagQ3Value;
   q4?: DiagQ4Value;
+  /** Q5 — Q4='decision' 일 때만 묻는 추가 질문. 선택된 추천 상품의 selectorId 또는 'none' */
+  q5?: string;
 };
 
-type Step = "intro" | "q1" | "q2" | "q3" | "q4" | "result";
+type Step = "intro" | "q1" | "q2" | "q3" | "q4" | "q5" | "result";
 
-const STEP_ORDER: Step[] = ["intro", "q1", "q2", "q3", "q4", "result"];
-
-function nextStep(s: Step): Step {
-  const i = STEP_ORDER.indexOf(s);
-  return STEP_ORDER[Math.min(i + 1, STEP_ORDER.length - 1)] ?? s;
+/**
+ * 흐름:
+ *   intro → q1 → q2 → q3 → q4
+ *   - q4='decision' 이면 → q5 → result
+ *   - 그 외 (early / compare) → 바로 result
+ *
+ * 시퀀스를 동적으로 만들어서 nextStep / prevStep 계산.
+ */
+function visitSequence(answers: Answers): Step[] {
+  const seq: Step[] = ["intro", "q1", "q2", "q3", "q4"];
+  if (answers.q4 === "decision") seq.push("q5");
+  seq.push("result");
+  return seq;
 }
-function prevStep(s: Step): Step {
-  const i = STEP_ORDER.indexOf(s);
-  return STEP_ORDER[Math.max(i - 1, 0)] ?? s;
+
+function nextStep(s: Step, answers: Answers): Step {
+  const seq = visitSequence(answers);
+  const i = seq.indexOf(s);
+  if (i < 0) return s;
+  return seq[Math.min(i + 1, seq.length - 1)] ?? s;
+}
+function prevStep(s: Step, answers: Answers): Step {
+  const seq = visitSequence(answers);
+  const i = seq.indexOf(s);
+  if (i < 0) return s;
+  return seq[Math.max(i - 1, 0)] ?? s;
 }
 
 function randomId(): string {
@@ -140,9 +159,9 @@ export function SponsorshipDiagnosisChat({
     [categories, packages, minPriceByCategoryId]
   );
 
-  // 추천 결과 (결과 단계에서만 계산)
+  // 추천 결과 — Q5 (decision 추가 질문) 부터 필요. Q5 옵션에 추천 목록을 노출해야 하므로.
   const recommendations: RecommendedEntry[] = useMemo(() => {
-    if (step !== "result") return [];
+    if (step !== "q5" && step !== "result") return [];
     if (!answers.q1 || !answers.q2 || !answers.q3) return [];
     return getRecommendations({
       q1: answers.q1,
@@ -185,7 +204,9 @@ export function SponsorshipDiagnosisChat({
   // 닫기 시 미완료면 이탈 로그
   const onCloseWithLog = () => {
     if (step !== "result" && step !== "intro" && !loggedFinalRef.current) {
-      const exitedAt: "q1" | "q2" | "q3" | "q4" = step;
+      // q5 도 미완료 이탈 지점으로 q4 로 묶어서 기록 (스키마 단순화)
+      const exitedAt: "q1" | "q2" | "q3" | "q4" =
+        step === "q5" ? "q4" : step;
       writeLog({
         eventId,
         sessionId: sessionIdRef.current,
@@ -232,16 +253,33 @@ export function SponsorshipDiagnosisChat({
             <IntroScreen onStart={() => setStep("q1")} />
           )}
 
-          {step !== "intro" && step !== "result" && (
+          {(step === "q1" ||
+            step === "q2" ||
+            step === "q3" ||
+            step === "q4") && (
             <QuestionScreen
               step={step}
               answers={answers}
               config={diagnosisV2Config}
               onAnswer={(value) => {
-                setAnswers((prev) => ({ ...prev, [step]: value }));
-                setStep(nextStep(step));
+                const nextAnswers = { ...answers, [step]: value };
+                setAnswers(nextAnswers);
+                setStep(nextStep(step, nextAnswers));
               }}
-              onBack={() => setStep(prevStep(step))}
+              onBack={() => setStep(prevStep(step, answers))}
+            />
+          )}
+
+          {step === "q5" && (
+            <Q5Screen
+              recommendations={recommendations}
+              currentValue={answers.q5}
+              onAnswer={(value) => {
+                const nextAnswers = { ...answers, q5: value };
+                setAnswers(nextAnswers);
+                setStep(nextStep(step, nextAnswers));
+              }}
+              onBack={() => setStep(prevStep(step, answers))}
             />
           )}
 
@@ -308,20 +346,21 @@ function QuestionScreen({
   onAnswer,
   onBack,
 }: {
-  step: Exclude<Step, "intro" | "result">;
+  step: DiagV2QuestionId;
   answers: Answers;
   config?: DiagnosisV2Config;
   onAnswer: (value: string) => void;
   onBack: () => void;
 }) {
-  const qid = step as DiagV2QuestionId;
+  const qid = step;
   const q = useMemo(
     () => mergeQuestion(qid, config?.questions?.[qid]),
     [qid, config]
   );
 
   const currentValue = answers[qid];
-  const qIndex = STEP_ORDER.indexOf(step) - 1; // q1=1, q2=2, q3=3, q4=4 - intro offset
+  // q1=1 ... q4=4. q5 는 별도 컴포넌트라 여기 안 옴.
+  const qIndex = Number(qid.slice(1));
   const stepLabel = `${qIndex} / 4`;
 
   return (
@@ -374,6 +413,100 @@ function QuestionScreen({
   );
 }
 
+// ─── Q5 (Decision 전용 — 고려 중인 상품 확인) ──────────────
+
+function Q5Screen({
+  recommendations,
+  currentValue,
+  onAnswer,
+  onBack,
+}: {
+  recommendations: RecommendedEntry[];
+  currentValue?: string;
+  onAnswer: (value: string) => void;
+  onBack: () => void;
+}) {
+  return (
+    <div>
+      <div className="flex items-center justify-between mb-5">
+        <button
+          type="button"
+          onClick={onBack}
+          className="text-[12.5px] text-ink-500 hover:text-ink-900 flex items-center gap-1"
+        >
+          <ChevronLeft className="w-3.5 h-3.5" />
+          이전
+        </button>
+        <div className="font-num text-[11px] text-ink-500 font-bold tracking-wider">
+          마지막 확인
+        </div>
+      </div>
+
+      <h3 className="text-[18px] md:text-[20px] font-bold text-ink-900 leading-snug">
+        현재 가장 고려하고 계신 상품이 있나요?
+      </h3>
+      <p className="text-[12.5px] text-ink-500 mt-2 leading-relaxed">
+        선택하시면 해당 상품을 우선 안내하고, 보완 매체를 함께 추천드립니다.
+      </p>
+
+      <div className="mt-6 space-y-2">
+        {recommendations.length === 0 ? (
+          <div className="px-4 py-6 bg-ink-50 rounded-btn text-center text-[12.5px] text-ink-500">
+            추천 가능한 상품이 없습니다. 사무국에 직접 문의해 주세요.
+          </div>
+        ) : (
+          recommendations.map((r) => {
+            const selected = currentValue === r.selectorId;
+            return (
+              <button
+                key={r.selectorId}
+                type="button"
+                onClick={() => onAnswer(r.selectorId)}
+                className={
+                  "w-full px-4 py-3 rounded-btn border text-left transition-all " +
+                  (selected
+                    ? "bg-brand-50 border-brand-500"
+                    : "bg-white border-ink-100 hover:border-ink-700 hover:bg-ink-50")
+                }
+              >
+                <div className="flex items-center justify-between gap-3">
+                  <div className="min-w-0">
+                    <div className="text-[14px] font-bold text-ink-900 leading-tight">
+                      {r.nameKo}
+                    </div>
+                    <div className="text-[11px] text-ink-500 mt-0.5">
+                      {r.kind === "package" ? "패키지" : "단품"}
+                    </div>
+                  </div>
+                  <div className="font-num text-[13px] font-bold text-ink-900 shrink-0">
+                    {r.priceLabel}
+                  </div>
+                </div>
+              </button>
+            );
+          })
+        )}
+
+        {/* "특정 없음" 옵션 */}
+        <button
+          type="button"
+          onClick={() => onAnswer("none")}
+          className={
+            "w-full px-4 py-3 rounded-btn border text-left transition-all " +
+            (currentValue === "none"
+              ? "bg-brand-50 border-brand-500"
+              : "bg-white border-ink-100 hover:border-ink-700 hover:bg-ink-50")
+          }
+        >
+          <div className="text-[13.5px] font-bold text-ink-900">
+            특정 상품 없음 — 추천된 전체 목록 보기
+          </div>
+        </button>
+      </div>
+    </div>
+  );
+}
+
 // ─── Result ───────────────────────────────────────────────
 
 function ResultScreen({
@@ -390,13 +523,31 @@ function ResultScreen({
   onRestart: () => void;
 }) {
   const isDecision = answers.q4 === "decision";
+  const focusedId = answers.q5 && answers.q5 !== "none" ? answers.q5 : null;
 
   const intro =
     answers.q4 === "early"
       ? "처음 알아보시는 단계네요. 부담 없이 시작해볼 수 있는 상품 위주로 정리했습니다."
       : answers.q4 === "compare"
         ? "후보를 좁히고 계시네요. 비교해서 결정하세요."
-        : "결정 단계시군요. 바로 진행하실 수 있도록 안내드립니다.";
+        : focusedId
+          ? "고려하시는 상품을 중심으로 안내드립니다. 보완 매체도 함께 확인해 보세요."
+          : "결정 단계시군요. 바로 진행하실 수 있도록 안내드립니다.";
+
+  // Decision + focused 모드 — 메인 1개 + 보완재 2개로 분리
+  const decisionFocused: {
+    main: RecommendedEntry | null;
+    supplements: RecommendedEntry[];
+  } | null = (() => {
+    if (!isDecision || !focusedId) return null;
+    const main =
+      recommendations.find((r) => r.selectorId === focusedId) ?? null;
+    if (!main) return null;
+    const supplements = recommendations
+      .filter((r) => r.selectorId !== focusedId)
+      .slice(0, 2);
+    return { main, supplements };
+  })();
 
   return (
     <div>
@@ -410,6 +561,12 @@ function ResultScreen({
           입력하신 예산 범위에 맞는 추천이 없습니다. 예산을 한 단계 올려보거나
           사무국에 직접 문의해 주세요.
         </div>
+      ) : decisionFocused ? (
+        <DecisionFocused
+          eventId={eventId}
+          main={decisionFocused.main!}
+          supplements={decisionFocused.supplements}
+        />
       ) : layout === "comparison" ? (
         <ComparisonTable
           eventId={eventId}
@@ -447,6 +604,102 @@ function ResultScreen({
           </Link>
         </div>
       </div>
+    </div>
+  );
+}
+
+// ─── DecisionFocused — 메인 상품 큰 카드 + 보완재 2개 ──────
+
+function DecisionFocused({
+  eventId,
+  main,
+  supplements,
+}: {
+  eventId: string;
+  main: RecommendedEntry;
+  supplements: RecommendedEntry[];
+}) {
+  const detailHref =
+    main.kind === "category" && main.category
+      ? `/${eventId}/sponsorships/${main.category.slug}`
+      : main.kind === "package" && main.package
+        ? `/${eventId}/packages/${main.package.id}`
+        : `/${eventId}/sponsorships`;
+
+  return (
+    <div className="mt-5 space-y-5">
+      {/* 메인 — 큰 강조 카드 */}
+      <article className="border-2 border-brand-500 rounded-card p-5 md:p-6 bg-brand-50/40">
+        <div className="font-num text-[10.5px] uppercase tracking-[0.25em] text-brand-500 font-bold mb-2">
+          고려 중인 상품
+        </div>
+        <h4 className="text-[20px] md:text-[24px] font-bold text-ink-900 leading-tight">
+          {main.nameKo}
+        </h4>
+        <p className="text-[12.5px] text-ink-700 leading-relaxed mt-3 pl-3 border-l-2 border-brand-500">
+          {main.reason}
+        </p>
+        <div className="mt-4 flex items-end justify-between gap-3 flex-wrap">
+          <div>
+            <div className="font-num text-[24px] md:text-[28px] font-bold text-ink-900 leading-none">
+              {main.priceLabel}
+            </div>
+            <div className="text-[11px] text-ink-500 mt-1">
+              {main.kind === "package" ? "패키지" : "단품"} · 부가세 별도
+            </div>
+          </div>
+          <div className="flex gap-2">
+            <Link
+              href={detailHref}
+              className="px-4 py-2.5 rounded-btn border border-ink-900 text-ink-900 text-[12.5px] font-bold hover:bg-ink-50"
+            >
+              상세 보기
+            </Link>
+            <Link
+              href={`/${eventId}/contact`}
+              className="px-4 py-2.5 rounded-btn bg-brand-500 hover:bg-brand-700 text-white text-[12.5px] font-bold"
+            >
+              지금 문의
+            </Link>
+          </div>
+        </div>
+      </article>
+
+      {/* 보완재 */}
+      {supplements.length > 0 && (
+        <div>
+          <div className="text-[12px] font-bold text-ink-700 mb-2.5">
+            함께 고려하면 좋은 매체
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+            {supplements.map((s) => {
+              const href =
+                s.kind === "category" && s.category
+                  ? `/${eventId}/sponsorships/${s.category.slug}`
+                  : s.kind === "package" && s.package
+                    ? `/${eventId}/packages/${s.package.id}`
+                    : `/${eventId}/sponsorships`;
+              return (
+                <Link
+                  key={s.selectorId}
+                  href={href}
+                  className="block border border-ink-100 rounded-btn p-3 hover:border-ink-700 transition-colors"
+                >
+                  <div className="text-[13px] font-bold text-ink-900 leading-tight">
+                    {s.nameKo}
+                  </div>
+                  <div className="font-num text-[13px] font-bold text-ink-900 mt-2">
+                    {s.priceLabel}
+                  </div>
+                  <div className="text-[10.5px] text-ink-500 mt-1.5 leading-snug">
+                    {s.reason}
+                  </div>
+                </Link>
+              );
+            })}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
