@@ -2018,8 +2018,9 @@ function SlideStream({
           </div>
         </main>
       ) : (
-        // 데스크톱: h-screen + snap. 모바일: 자연 스크롤 (snap 금지 — h-screen 안에 콘텐츠 안 들어와 잘리던 문제)
-        <main className="bg-canvas md:h-screen md:overflow-y-scroll md:snap-y md:snap-mandatory md:scroll-smooth">
+        // 데스크톱·모바일 모두 한 화면당 1 슬라이드 snap.
+        // 모바일은 SlideSection 안의 모바일 전용 컴팩트 레이아웃이 콘텐츠를 한 화면 안에 압축.
+        <main className="bg-canvas h-screen overflow-y-scroll snap-y snap-mandatory scroll-smooth">
           {items.map((c, i) => {
             const subs = subcategories
               .filter((s) => s.categoryId === c.id)
@@ -2127,14 +2128,125 @@ function SlideSection({
 
   return (
     <>
-      {/*
-        데스크톱: h-screen + snap (한 화면당 1 슬라이드 고정).
-        모바일: min-h-screen + 자연 스크롤 — 콘텐츠 길이만큼 늘어남.
-      */}
-      <section className="min-h-screen md:h-screen md:snap-start bg-canvas pt-14 relative md:overflow-hidden">
-        <div className="max-w-7xl mx-auto md:h-full px-4 md:px-12 py-6 md:py-8 grid lg:grid-cols-[1.1fr_1fr] gap-6 lg:gap-12 items-stretch">
+      {/* ─── 모바일 전용 컴팩트 슬라이드 (한 화면당 1구좌 snap) ─── */}
+      <section className="md:hidden h-screen snap-start bg-canvas pt-14 relative overflow-hidden flex flex-col">
+        {/* 이미지 — 상단 35vh */}
+        <div className="h-[35vh] bg-ink-100 relative overflow-hidden shrink-0">
+          <HeroMedia
+            videoUrl={item.heroVideoUrl}
+            imageUrl={hero}
+            alt={localized(item.name, locale)}
+            locale={locale}
+          />
+          {/* 채널 + 코드 — 이미지 위 우측 상단 */}
+          <div className="absolute top-3 right-3 flex items-center gap-1.5">
+            <span className="text-[10px] uppercase tracking-wider bg-white/95 text-ink-900 px-2 py-0.5 rounded font-bold">
+              {channelLabel(item.channel, locale)}
+            </span>
+            <span className="text-[10px] font-num tracking-wider bg-ink-900/85 text-white px-2 py-0.5 rounded font-bold">
+              #{item.code}
+            </span>
+          </div>
+          {/* 잔여 자리 — 한정일 때만, 좌하단 */}
+          {item.slotTotal > 0 && item.slotAvailable > 0 && (
+            <div className="absolute bottom-3 left-3">
+              <span className="px-2 py-1 rounded-pill bg-ink-900 text-white text-[10.5px] font-num font-bold shadow-card">
+                잔여 {item.slotAvailable}/{item.slotTotal}
+              </span>
+            </div>
+          )}
+        </div>
+
+        {/* 정보 — 하단 나머지, 컴팩트 */}
+        <div className="flex-1 min-h-0 flex flex-col px-5 py-5 overflow-hidden">
+          {/* 제목 */}
+          <h2 className="text-[24px] font-bold text-ink-900 leading-[1.15] tracking-tight">
+            {localized(item.name, locale)}
+          </h2>
+          {item.shortDesc && (
+            <p className="text-[12.5px] text-ink-500 mt-2 leading-snug line-clamp-2">
+              {item.shortDesc}
+            </p>
+          )}
+
+          {/* 핵심 스펙 — 최대 2개 (위치/마감/사이즈 중) */}
+          <div className="mt-4 space-y-1.5 text-[12px]">
+            {item.size && (
+              <div className="flex gap-2">
+                <span className="text-ink-500 w-16 shrink-0">사이즈</span>
+                <span className="text-ink-900 font-semibold truncate">
+                  {item.size}
+                </span>
+              </div>
+            )}
+            {deadlineStr && (
+              <div className="flex gap-2">
+                <span className="text-ink-500 w-16 shrink-0">마감</span>
+                <span className="text-ink-900 font-semibold">
+                  {deadlineStr}
+                </span>
+              </div>
+            )}
+          </div>
+
+          {/* 가격 — 강조 */}
+          <div className="mt-auto pt-3 border-t border-ink-100">
+            <div className="flex items-end justify-between gap-3">
+              {item.minPrice > 0 ? (
+                <div>
+                  <div className="text-[10.5px] text-ink-500 font-semibold">
+                    1구좌당
+                  </div>
+                  <div className="font-num text-[26px] font-bold text-ink-900 leading-none">
+                    {item.minPrice.toLocaleString()}
+                    <span className="text-[14px] ml-1 font-bold">
+                      {t("common.won", locale)}
+                    </span>
+                  </div>
+                </div>
+              ) : (
+                <span className="text-[15px] text-ink-500 font-semibold">
+                  {t("common.priceNegotiable", locale)}
+                </span>
+              )}
+              {/* 페이지 인디케이터 */}
+              <div className="font-mono tracking-widest text-ink-300 text-[11px]">
+                <span className="text-ink-700 font-bold">
+                  {String(index + 1).padStart(2, "0")}
+                </span>
+                <span className="mx-0.5">/</span>
+                {String(total).padStart(2, "0")}
+              </div>
+            </div>
+          </div>
+
+          {/* CTA — 1개 큰 버튼 (선택과 자세히가 합쳐진 모달 진입) */}
+          <div className="mt-3 grid grid-cols-2 gap-2">
+            <button
+              type="button"
+              onClick={() => setPickerOpen(true)}
+              className="h-11 rounded-btn bg-ink-900 text-white font-bold text-[13px]"
+            >
+              구좌 선택
+            </button>
+            {!inModal && (
+              <button
+                type="button"
+                onClick={() => onOpenDetail(item.slug)}
+                className="h-11 rounded-btn border-2 border-ink-900 text-ink-900 font-bold text-[13px]"
+              >
+                자세히 보기
+              </button>
+            )}
+          </div>
+        </div>
+      </section>
+
+      {/* ─── 데스크톱 전용 (md+) 풀 슬라이드 ──────────────── */}
+      <section className="hidden md:block h-screen snap-start bg-canvas pt-14 relative overflow-hidden">
+        <div className="max-w-7xl mx-auto h-full px-6 md:px-12 py-6 md:py-8 grid lg:grid-cols-[1.1fr_1fr] gap-6 lg:gap-12 items-stretch">
           {/* LEFT: 정보 — 세로 중앙 정렬하여 빈공간 분산 */}
-          <div className="flex flex-col justify-center min-w-0 md:min-h-0">
+          <div className="flex flex-col justify-center min-w-0 min-h-0">
             {/* 해시태그 — layout.showHashtags 가 false 면 숨김 */}
             {showHashtags && (
               <div className="flex flex-wrap gap-x-4 gap-y-1 text-[13px] md:text-[14px] tracking-wide text-brand-500 font-bold mb-4 font-num">
