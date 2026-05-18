@@ -59,3 +59,23 @@ export function calcPerksTotalValue(
     return sum + p.valueKRW;
   }, 0);
 }
+
+/**
+ * 컨텍스트(현재 표시 중인 매체/패키지의 code) 에 적용 가능한 혜택만 필터.
+ * - appliesToCodes 가 비어있는 혜택 = 모든 곳에 노출
+ * - appliesToCodes 가 채워진 혜택 = code 가 포함된 컨텍스트에만 노출
+ *
+ * @param perks - 전체 혜택 목록
+ * @param contextCode - 현재 표시 중인 카테고리/패키지의 code (예: "CB", "PKG-AZ")
+ *                     undefined 면 "모든 곳" 혜택만 반환 (예: 전체 혜택 페이지)
+ */
+export function filterPerksForContext(
+  perks: BundledPerk[],
+  contextCode: string | undefined
+): BundledPerk[] {
+  return perks.filter((p) => {
+    if (!p.appliesToCodes || p.appliesToCodes.length === 0) return true;
+    if (!contextCode) return false;
+    return p.appliesToCodes.includes(contextCode);
+  });
+}

@@ -45,7 +45,11 @@ import { t } from "@/lib/i18n/strings";
 import { derivePurposes } from "@/lib/purposes";
 import { PURPOSE_META, PURPOSE_ORDER, type Purpose } from "@/lib/types";
 import { getTypeLayout } from "@/lib/typeLayouts";
-import { DEFAULT_BUNDLED_PERKS, calcPerksTotalValue } from "@/lib/perks";
+import {
+  DEFAULT_BUNDLED_PERKS,
+  calcPerksTotalValue,
+  filterPerksForContext,
+} from "@/lib/perks";
 
 function channelLabel(c: Channel | "all", locale: Locale): string {
   const key = (
@@ -2292,9 +2296,10 @@ function SlideSection({
               </div>
             )}
 
-            {/* 동봉 혜택 미니 배너 — 단품 슬라이드에도 "신청 시 추가로 드리는 것" 시각화 */}
+            {/* 동봉 혜택 미니 배너 — 카테고리 코드 기준으로 필터링된 혜택만 노출 */}
             {(() => {
-              const perks = bundledPerks ?? DEFAULT_BUNDLED_PERKS;
+              const allPerks = bundledPerks ?? DEFAULT_BUNDLED_PERKS;
+              const perks = filterPerksForContext(allPerks, item.code);
               if (perks.length === 0) return null;
               const totalValue = calcPerksTotalValue(perks);
               return (

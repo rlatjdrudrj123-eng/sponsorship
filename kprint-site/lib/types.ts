@@ -347,7 +347,7 @@ export type DiagnosisConfig = {
   scoringWeights?: Record<string, number>;
 };
 
-/** 스폰서십 동봉 혜택 — 단품 구매 vs 패키지에서 모두 포함되는 추가 노출 권리 */
+/** 스폰서십 동봉 혜택 — 카테고리·패키지별로 노출 범위 지정 가능 */
 export type BundledPerk = {
   /** 표시 라벨 (예: "등록대 스폰서 로고") */
   label: string;
@@ -355,8 +355,14 @@ export type BundledPerk = {
   description?: string;
   /** 상당 가치 (KRW) — 영업 시 "총 X만원 상당" 계산용. 0/없음이면 비표시 */
   valueKRW?: number;
-  /** 조건부 혜택 (예: 패키지 구매 시만, 큰 회사만 등) */
+  /** 조건부 혜택 (예: 큰 회사만 등) — 표시는 하되 가치 합산에서 제외 */
   condition?: string;
+  /**
+   * 적용 범위 — 비어있으면 "모든 곳" (전 패키지 + 전 단품 카테고리에 노출).
+   * 채워지면 해당 카테고리 코드 (예: "CB") 또는 패키지 코드 (예: "PKG-AZ") 에만 노출.
+   * 단품 카테고리 슬라이드와 패키지 상세 페이지에서 각각 필터링.
+   */
+  appliesToCodes?: string[];
 };
 
 /** 슬라이드 스펙 영역에 노출 가능한 행 종류 */

@@ -10,10 +10,18 @@ import {
   Save,
   X,
 } from "lucide-react";
-import { doc, onSnapshot, setDoc, Timestamp } from "firebase/firestore";
+import {
+  collection,
+  doc,
+  onSnapshot,
+  query,
+  setDoc,
+  Timestamp,
+  where,
+} from "firebase/firestore";
 import { getDb } from "@/lib/firebase/firestore";
 import { useAdminEvent } from "@/lib/admin/adminEventStore";
-import type { BundledPerk, SiteSettings } from "@/lib/types";
+import type { BundledPerk, Category, Package, SiteSettings } from "@/lib/types";
 import { DEFAULT_BUNDLED_PERKS, calcPerksTotalValue } from "@/lib/perks";
 
 /**
@@ -21,13 +29,71 @@ import { DEFAULT_BUNDLED_PERKS, calcPerksTotalValue } from "@/lib/perks";
  * 저장 위치: siteSettings/{eventId}.bundledPerks
  * 비어있으면 lib/perks.ts 의 DEFAULT_BUNDLED_PERKS 가 폴백.
  */
+type ScopeOption = { code: string; label: string; kind: "category" | "package" };
+
 export default function PerksAdminPage() {
   const selectedEventId = useAdminEvent((s) => s.selectedEventId);
   const [settings, setSettings] = useState<SiteSettings | null>(null);
   const [perks, setPerks] = useState<BundledPerk[]>([]);
+  const [scopeOptions, setScopeOptions] = useState<ScopeOption[]>([]);
   const [dirty, setDirty] = useState(false);
   const [saving, setSaving] = useState(false);
   const [savedAt, setSavedAt] = useState<Date | null>(null);
+
+  // 적용 대상 후보 — 카테고리·패키지 코드 목록
+  useEffect(() => {
+    if (!selectedEventId) return;
+    const u1 = onSnapshot(
+      query(
+        collection(getDb(), "categories"),
+        where("eventId", "==", selectedEventId)
+      ),
+      (s) => {
+        const cats = s.docs.map((d) => d.data() as Category);
+        setScopeOptions((prev) => {
+          const others = prev.filter((o) => o.kind !== "category");
+          const next: ScopeOption[] = [
+            ...others,
+            ...cats.map((c) => ({
+              code: c.code,
+              label: `${c.code} · ${c.name?.ko ?? "(이름 없음)"}`,
+              kind: "category" as const,
+            })),
+          ];
+          return next.sort((a, b) =>
+            a.kind === b.kind ? a.code.localeCompare(b.code) : a.kind === "package" ? -1 : 1
+          );
+        });
+      }
+    );
+    const u2 = onSnapshot(
+      query(
+        collection(getDb(), "packages"),
+        where("eventId", "==", selectedEventId)
+      ),
+      (s) => {
+        const pkgs = s.docs.map((d) => d.data() as Package);
+        setScopeOptions((prev) => {
+          const others = prev.filter((o) => o.kind !== "package");
+          const next: ScopeOption[] = [
+            ...pkgs.map((p) => ({
+              code: p.code,
+              label: `${p.code} · ${p.name?.ko ?? "(이름 없음)"}`,
+              kind: "package" as const,
+            })),
+            ...others,
+          ];
+          return next.sort((a, b) =>
+            a.kind === b.kind ? a.code.localeCompare(b.code) : a.kind === "package" ? -1 : 1
+          );
+        });
+      }
+    );
+    return () => {
+      u1();
+      u2();
+    };
+  }, [selectedEventId]);
 
   useEffect(() => {
     if (!selectedEventId) return;
@@ -107,6 +173,9 @@ export default function PerksAdminPage() {
           ...(p.description ? { description: p.description.trim() } : {}),
           ...(p.valueKRW ? { valueKRW: Number(p.valueKRW) } : {}),
           ...(p.condition ? { condition: p.condition.trim() } : {}),
+          ...(p.appliesToCodes && p.appliesToCodes.length > 0
+            ? { appliesToCodes: p.appliesToCodes }
+            : {}),
         }));
       await setDoc(
         doc(getDb(), "siteSettings", selectedEventId),
@@ -221,6 +290,13 @@ export default function PerksAdminPage() {
                 rows={2}
                 className="w-full px-3 py-2 text-[12.5px] border border-ink-100 rounded-btn focus:outline-none focus:border-brand-500 resize-none"
               />
+
+              {/* 적용 대상 — 비어있으면 "모든 곳", 채워지면 해당 코드만 노출 */}
+              <ScopeSelector
+                value={perk.appliesToCodes ?? []}
+                options={scopeOptions}
+                onChange={(next) => update(i, { appliesToCodes: next })}
+              />
             </div>
 
             <button
@@ -282,3 +358,114 @@ export default function PerksAdminPage() {
     </div>
   );
 }
+
+// 적용 대상 셀렉터 — 칩 토글 방식. 비어있으면 "모든 곳", 채워지면 해당 코드만 노출.
+function ScopeSelector({
+  value,
+  options,
+  onChange,
+}: {
+  value: string[];
+  options: ScopeOption[];
+  onChange: (next: string[]) => void;
+}) {
+  const isAll = value.length === 0;
+  const toggle = (code: string) => {
+    if (value.includes(code)) onChange(value.filter((c) => c !== code));
+    else onChange([...value, code]);
+  };
+  const clear = () => onChange([]);
+
+  const packageOpts = options.filter((o) => o.kind === "package");
+  const categoryOpts = options.filter((o) => o.kind === "category");
+
+  return (
+    <div className="border border-ink-100 rounded-btn px-3 py-2.5 bg-ink-50/40">
+      <div className="flex items-center gap-2 mb-2">
+        <span className="text-[11px] font-semibold text-ink-700">
+          적용 대상
+        </span>
+        <button
+          type="button"
+          onClick={clear}
+          className={
+            "text-[10.5px] font-mono px-2 py-0.5 rounded transition-colors " +
+            (isAll
+              ? "bg-brand-500 text-white"
+              : "bg-ink-100 text-ink-700 hover:bg-ink-50 border border-ink-100")
+          }
+        >
+          모든 곳 ({isAll ? "ON" : "OFF"})
+        </button>
+        {!isAll && (
+          <span className="text-[11px] text-ink-500">
+            선택한 {value.length}개에만 노출
+          </span>
+        )}
+      </div>
+      {options.length === 0 ? (
+        <p className="text-[11px] text-ink-500">
+          카테고리·패키지를 먼저 추가하면 여기서 선택 가능합니다.
+        </p>
+      ) : (
+        <div className="space-y-1.5">
+          {packageOpts.length > 0 && (
+            <div>
+              <div className="text-[10px] uppercase tracking-wider text-ink-500 font-semibold mb-1">
+                패키지
+              </div>
+              <div className="flex flex-wrap gap-1">
+                {packageOpts.map((o) => {
+                  const on = value.includes(o.code);
+                  return (
+                    <button
+                      key={o.code}
+                      type="button"
+                      onClick={() => toggle(o.code)}
+                      className={
+                        "px-2 py-0.5 rounded-full text-[10.5px] font-mono border transition-colors " +
+                        (on
+                          ? "bg-brand-50 border-brand-500 text-brand-700 font-bold"
+                          : "bg-white border-ink-100 text-ink-700 hover:border-ink-300")
+                      }
+                    >
+                      {o.label}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+          {categoryOpts.length > 0 && (
+            <div>
+              <div className="text-[10px] uppercase tracking-wider text-ink-500 font-semibold mb-1">
+                단품 카테고리
+              </div>
+              <div className="flex flex-wrap gap-1">
+                {categoryOpts.map((o) => {
+                  const on = value.includes(o.code);
+                  return (
+                    <button
+                      key={o.code}
+                      type="button"
+                      onClick={() => toggle(o.code)}
+                      className={
+                        "px-2 py-0.5 rounded-full text-[10.5px] font-mono border transition-colors " +
+                        (on
+                          ? "bg-brand-50 border-brand-500 text-brand-700 font-bold"
+                          : "bg-white border-ink-100 text-ink-700 hover:border-ink-300")
+                      }
+                    >
+                      {o.label}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+

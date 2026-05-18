@@ -8,7 +8,11 @@ import type { Package, SiteSettings, Slot } from "@/lib/types";
 import { ImageCarousel } from "./_shared/ImageCarousel";
 import { useCartStore } from "@/lib/cart/cartStore";
 import { Footer } from "@/components/public/Footer";
-import { DEFAULT_BUNDLED_PERKS, calcPerksTotalValue } from "@/lib/perks";
+import {
+  DEFAULT_BUNDLED_PERKS,
+  calcPerksTotalValue,
+  filterPerksForContext,
+} from "@/lib/perks";
 
 type Props = {
   pkg: Package;
@@ -96,7 +100,7 @@ export function PackageType({ pkg, resolvedSlots, settings }: Props) {
             </div>
 
             {/* 동봉 혜택 — 스폰서십 신청 시 추가로 제공되는 노출 권리 */}
-            <BundledPerksCard settings={settings} />
+            <BundledPerksCard settings={settings} packageCode={pkg.code} />
 
             <div className="bg-brand-grad rounded-card p-6 text-white shadow-glow-sm">
               <div className="flex items-baseline gap-3 mb-1 flex-wrap">
@@ -178,8 +182,16 @@ export function PackageType({ pkg, resolvedSlots, settings }: Props) {
 // BundledPerksCard — 스폰서십 신청 시 모든 사람에게 동봉되는 혜택 카드
 // ============================================================================
 
-function BundledPerksCard({ settings }: { settings: SiteSettings | null }) {
-  const perks = settings?.bundledPerks ?? DEFAULT_BUNDLED_PERKS;
+function BundledPerksCard({
+  settings,
+  packageCode,
+}: {
+  settings: SiteSettings | null;
+  /** 현재 패키지 코드 — 적용 범위 필터링용 */
+  packageCode: string;
+}) {
+  const allPerks = settings?.bundledPerks ?? DEFAULT_BUNDLED_PERKS;
+  const perks = filterPerksForContext(allPerks, packageCode);
   if (perks.length === 0) return null;
 
   const totalValue = calcPerksTotalValue(perks);
