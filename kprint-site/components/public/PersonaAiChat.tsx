@@ -208,6 +208,15 @@ export function PersonaAiChat({
         ...QUESTIONS[stage],
         ...(ov.intro ? { intro: ov.intro } : {}),
         ...(ov.why !== undefined ? { why: ov.why } : {}),
+        ...(ov.chips && ov.chips.length > 0
+          ? {
+              chips: ov.chips.map((c) => ({
+                label: c.label,
+                value: c.value,
+                hint: c.hint,
+              })),
+            }
+          : {}),
       };
     }
     return merged;

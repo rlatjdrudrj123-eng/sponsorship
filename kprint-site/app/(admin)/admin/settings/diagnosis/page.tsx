@@ -19,10 +19,12 @@ import {
   SCORING_WEIGHTS,
 } from "@/components/public/PersonaAiChat";
 import type {
+  DiagnosisChipOverride,
   DiagnosisConfig,
   DiagnosisStage,
   SiteSettings,
 } from "@/lib/types";
+import { ArrowDown as ArrowDownIcon, ArrowUp as ArrowUpIcon, Plus, X as XIcon } from "lucide-react";
 
 /**
  * 스폰서십 진단 로직 — 어드민 편집.
@@ -44,7 +46,11 @@ const EDITABLE_STAGES: DiagnosisStage[] = [
 ];
 
 type QuestionEdits = {
-  [K in DiagnosisStage]?: { intro?: string; why?: string };
+  [K in DiagnosisStage]?: {
+    intro?: string;
+    why?: string;
+    chips?: DiagnosisChipOverride[];
+  };
 };
 
 type WeightEdits = Record<string, number>;
@@ -134,9 +140,24 @@ export default function DiagnosisLogicPage() {
       for (const stage of EDITABLE_STAGES) {
         const q = questionEdits[stage];
         if (!q) continue;
-        const obj: { intro?: string; why?: string } = {};
+        const obj: {
+          intro?: string;
+          why?: string;
+          chips?: DiagnosisChipOverride[];
+        } = {};
         if (q.intro?.trim()) obj.intro = q.intro.trim();
         if (q.why?.trim()) obj.why = q.why.trim();
+        if (q.chips && q.chips.length > 0) {
+          // 빈 label 칩 거름
+          const cleanChips = q.chips
+            .filter((c) => c.label.trim() && c.value.trim())
+            .map((c) => ({
+              label: c.label.trim(),
+              value: c.value.trim(),
+              ...(c.hint?.trim() ? { hint: c.hint.trim() } : {}),
+            }));
+          if (cleanChips.length > 0) obj.chips = cleanChips;
+        }
         if (Object.keys(obj).length > 0) cleanQuestions[stage] = obj;
       }
       if (Object.keys(cleanQuestions).length > 0) cfg.questions = cleanQuestions;
@@ -284,23 +305,42 @@ export default function DiagnosisLogicPage() {
                         className="w-full px-3 py-2 text-[12.5px] text-ink-700 border border-ink-100 rounded-btn focus:outline-none focus:border-brand-500 resize-none"
                       />
                     </div>
-                    {defaults.chips && defaults.chips.length > 0 && (
-                      <details className="text-[11.5px] text-ink-500">
-                        <summary className="cursor-pointer hover:text-ink-900">
-                          선택지 (칩) {defaults.chips.length}개 — 코드 고정, 편집 불가
-                        </summary>
-                        <div className="mt-2 flex flex-wrap gap-1.5">
-                          {defaults.chips.map((c) => (
-                            <span
-                              key={c.value}
-                              className="px-2 py-0.5 rounded-full bg-ink-50 border border-ink-100 text-[11px] text-ink-700"
-                              title={c.hint}
-                            >
-                              {c.label}
-                            </span>
-                          ))}
-                        </div>
-                      </details>
+                    {/* 선택지(칩) 편집 — override 가 있으면 우선, 없으면 코드 기본값 노출·편집 시 override 생성 */}
+                    <ChipsEditor
+                      defaults={defaults.chips ?? []}
+                      value={edits.chips}
+                      onChange={(next) =>
+                        setQuestionEdits((prev) => ({
+                          ...prev,
+                          [stage]: {
+                            ...prev[stage],
+                            chips: next,
+                          },
+                        }))
+                      }
+                    />
+                    {edits.chips && (
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setQuestionEdits((prev) => {
+                            const { [stage]: _omitted, ...rest } = prev;
+                            void _omitted;
+                            const cur = prev[stage] ?? {};
+                            const { chips: _c, ...resetChips } = cur;
+                            void _c;
+                            const next: typeof prev = { ...rest };
+                            if (Object.keys(resetChips).length > 0) {
+                              next[stage] = resetChips;
+                            }
+                            setDirty(true);
+                            return next;
+                          })
+                        }
+                        className="text-[10.5px] text-ink-500 hover:text-red-700 font-semibold"
+                      >
+                        선택지 코드 기본값으로 되돌리기
+                      </button>
                     )}
                   </div>
                 </div>
@@ -368,8 +408,132 @@ export default function DiagnosisLogicPage() {
       <div className="text-[11px] text-ink-500 leading-relaxed">
         💡 칩 선택지(답안)·점수 로직 자체는 코드 (
         <code className="font-mono">components/public/PersonaAiChat.tsx</code>
-        ) 에 박혀있습니다. 텍스트와 가중치 조절만 어드민에서 가능합니다.
+        ) 에 박혀있습니다. 텍스트·가중치·선택지 (칩) 모두 어드민에서 편집 가능.
       </div>
+    </div>
+  );
+}
+
+// 칩 편집기 — 라벨/값/힌트 인라인 편집, 순서 변경, 추가/제거
+function ChipsEditor({
+  defaults,
+  value,
+  onChange,
+}: {
+  defaults: { label: string; value: string; hint?: string }[];
+  value?: DiagnosisChipOverride[];
+  onChange: (next: DiagnosisChipOverride[]) => void;
+}) {
+  // override 가 있으면 그걸 편집, 없으면 defaults 를 기본 시드로
+  const isOverride = !!value;
+  const chips = value ?? defaults;
+
+  const update = (idx: number, patch: Partial<DiagnosisChipOverride>) => {
+    const next = chips.map((c, i) => (i === idx ? { ...c, ...patch } : c));
+    onChange(next);
+  };
+  const remove = (idx: number) => {
+    onChange(chips.filter((_, i) => i !== idx));
+  };
+  const move = (idx: number, dir: -1 | 1) => {
+    const j = idx + dir;
+    if (j < 0 || j >= chips.length) return;
+    const next = [...chips];
+    [next[idx], next[j]] = [next[j], next[idx]];
+    onChange(next);
+  };
+  const add = () => {
+    onChange([
+      ...chips,
+      { label: "새 선택지", value: `value-${chips.length + 1}`, hint: "" },
+    ]);
+  };
+
+  return (
+    <div className="bg-ink-50/60 border border-ink-100 rounded-btn p-3">
+      <div className="flex items-center gap-2 mb-2">
+        <span className="text-[11px] font-semibold text-ink-700 uppercase tracking-wider">
+          선택지 ({chips.length})
+        </span>
+        {isOverride ? (
+          <span className="text-[9.5px] font-mono px-1.5 py-0.5 rounded bg-brand-50 text-brand-700">
+            커스텀
+          </span>
+        ) : (
+          <span className="text-[9.5px] font-mono px-1.5 py-0.5 rounded bg-ink-100 text-ink-500">
+            기본값
+          </span>
+        )}
+        <span className="text-[10.5px] text-ink-500 ml-auto">
+          value 는 점수 계산에 쓰이는 키 — 신중히 변경
+        </span>
+      </div>
+      <ul className="space-y-1">
+        {chips.map((c, i) => (
+          <li
+            key={i}
+            className="grid grid-cols-[auto_1fr_120px_1fr_auto] gap-1.5 items-center bg-white border border-ink-100 rounded-btn px-2 py-1"
+          >
+            <span className="text-[10.5px] font-mono text-ink-500 w-5 text-center">
+              {i + 1}
+            </span>
+            <input
+              value={c.label}
+              onChange={(e) => update(i, { label: e.target.value })}
+              placeholder="라벨"
+              className="px-2 py-1 text-[12.5px] border border-transparent hover:border-ink-100 focus:border-brand-500 rounded outline-none"
+            />
+            <input
+              value={c.value}
+              onChange={(e) => update(i, { value: e.target.value })}
+              placeholder="value"
+              className="px-2 py-1 text-[11.5px] font-mono border border-transparent hover:border-ink-100 focus:border-brand-500 rounded outline-none"
+            />
+            <input
+              value={c.hint ?? ""}
+              onChange={(e) => update(i, { hint: e.target.value })}
+              placeholder="설명 (선택)"
+              className="px-2 py-1 text-[11px] text-ink-500 border border-transparent hover:border-ink-100 focus:border-brand-500 rounded outline-none"
+            />
+            <div className="flex items-center">
+              <button
+                type="button"
+                onClick={() => move(i, -1)}
+                disabled={i === 0}
+                className="w-6 h-6 grid place-items-center rounded hover:bg-ink-50 text-ink-500 disabled:opacity-30"
+                title="위로"
+              >
+                <ArrowUpIcon className="w-3 h-3" />
+              </button>
+              <button
+                type="button"
+                onClick={() => move(i, 1)}
+                disabled={i === chips.length - 1}
+                className="w-6 h-6 grid place-items-center rounded hover:bg-ink-50 text-ink-500 disabled:opacity-30"
+                title="아래로"
+              >
+                <ArrowDownIcon className="w-3 h-3" />
+              </button>
+              <button
+                type="button"
+                onClick={() => remove(i)}
+                className="w-6 h-6 grid place-items-center rounded hover:bg-red-50 text-ink-500 hover:text-red-700"
+                title="제거"
+              >
+                <XIcon className="w-3 h-3" />
+              </button>
+            </div>
+          </li>
+        ))}
+      </ul>
+      <button
+        type="button"
+        onClick={add}
+        className="mt-1.5 w-full py-1.5 rounded-btn border-dashed border border-ink-300 hover:border-brand-500 hover:bg-brand-50 text-[11px] text-ink-500 hover:text-brand-700 flex items-center justify-center gap-1"
+      >
+        <Plus className="w-3 h-3" />
+        선택지 추가
+      </button>
     </div>
   );
 }

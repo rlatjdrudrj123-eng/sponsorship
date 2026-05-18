@@ -333,10 +333,19 @@ export type DiagnosisStage =
   | "companySize"
   | "experience";
 
-/** 진단 질문 한 단계의 노출 텍스트 (chips 는 코드에 박혀있어 어드민에서 수정 불가, intro/why 만 override) */
+/** 진단 칩 (선택지) — 어드민 편집 가능 */
+export type DiagnosisChipOverride = {
+  label: string;
+  value: string;
+  hint?: string;
+};
+
+/** 진단 질문 한 단계의 어드민 override */
 export type DiagnosisQuestionOverride = {
   intro?: string;
   why?: string;
+  /** 칩 (선택지) override — 채워지면 코드 기본값 대신 사용. 비어있으면 코드 기본값 유지. */
+  chips?: DiagnosisChipOverride[];
 };
 
 /** 진단 시스템 어드민 설정 — 행사별 override. 없으면 코드 기본값 사용. */
