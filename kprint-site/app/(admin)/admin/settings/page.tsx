@@ -242,13 +242,25 @@ export default function SettingsPage() {
     return <div className="text-sm text-ink-500 text-center py-16">불러오는 중…</div>;
   }
 
+  const sectionDefs = [
+    { id: "theme", num: "01", title: "테마 색상", desc: "브랜드 컬러" },
+    { id: "event", num: "02", title: "이벤트 정보", desc: "행사명·일정·장소" },
+    { id: "kv", num: "03", title: "메인 KV", desc: "홈 비주얼·오버레이" },
+    { id: "why", num: "04", title: "Why 통계", desc: "방문객·연도별 데이터" },
+    { id: "steps", num: "05", title: "신청 절차", desc: "단계별 가이드" },
+    { id: "contact", num: "06", title: "연락처", desc: "사무국 정보" },
+  ];
+
   return (
-    <div className="space-y-5">
-      <header className="flex items-center justify-between gap-4">
+    <div className="bg-ink-50 -mx-7 -my-6 min-h-[calc(100vh-56px)]">
+      {/* 스티키 툴바 — 항상 노출 */}
+      <div className="sticky top-0 z-20 bg-white/95 backdrop-blur border-b border-ink-100 px-7 py-3 flex items-center justify-between gap-4">
         <div>
-          <h1 className="text-[22px] font-bold text-ink-900 leading-tight">사이트 설정</h1>
-          <p className="text-[13px] text-ink-700 mt-1">
-            이벤트 정보·KV·통계·연락처. 변경 후 저장 버튼을 눌러주세요.
+          <h1 className="text-[18px] font-bold text-ink-900 leading-tight">
+            사이트 설정
+          </h1>
+          <p className="text-[11.5px] text-ink-500">
+            변경 후 우측 [저장] 클릭. 좌측 메뉴로 빠르게 이동 가능.
           </p>
         </div>
         <div className="flex items-center gap-3">
@@ -257,15 +269,41 @@ export default function SettingsPage() {
             type="button"
             onClick={handleSave}
             disabled={saveStatus === "saving"}
-            className="px-4 py-2 rounded-btn bg-brand-500 text-ink-900 font-semibold text-[13px] hover:bg-brand-700 hover:text-white flex items-center gap-1.5 disabled:opacity-50"
+            className="px-4 py-2 rounded-btn bg-brand-500 text-white font-bold text-[12.5px] hover:bg-brand-700 flex items-center gap-1.5 disabled:opacity-50 shadow-sm"
           >
-            <Save className="w-4 h-4" />
+            <Save className="w-3.5 h-3.5" />
             저장
           </button>
         </div>
-      </header>
+      </div>
 
-      <Section title="테마 색상">
+      <div className="px-7 py-6 grid grid-cols-[200px_1fr] gap-6 items-start max-w-[1280px] mx-auto">
+        {/* 좌측 앵커 네비 */}
+        <nav className="sticky top-[88px] space-y-1">
+          {sectionDefs.map((s) => (
+            <a
+              key={s.id}
+              href={`#sec-${s.id}`}
+              className="block px-3 py-2 rounded-btn hover:bg-white text-[12.5px] text-ink-700 hover:text-ink-900 transition-colors"
+            >
+              <div className="flex items-baseline gap-2">
+                <span className="font-mono text-[10px] text-ink-400">
+                  {s.num}
+                </span>
+                <span className="font-bold">{s.title}</span>
+              </div>
+              <div className="text-[10.5px] text-ink-500 mt-0.5 ml-5">
+                {s.desc}
+              </div>
+            </a>
+          ))}
+        </nav>
+
+        {/* 우측 섹션들 */}
+        <div className="space-y-5 min-w-0">
+      <Section title="테마 색상" id="sec-theme" num="01">
+        {/* 컬러 미리보기 — 선택한 brand 색이 어떻게 적용되는지 즉각 시각화 */}
+        <ColorRampPreview hex={form.watch("theme.primary") || "#DB0711"} />
         <ThemePrimaryPicker
           value={form.watch("theme.primary")}
           onChange={(hex) =>
@@ -274,7 +312,12 @@ export default function SettingsPage() {
         />
       </Section>
 
-      <Section title="이벤트 정보">
+      <Section title="이벤트 정보" id="sec-event" num="02">
+        <EventCardPreview
+          nameKo={form.watch("event.nameKo")}
+          dateRange={form.watch("event.dateRange")}
+          venue={form.watch("event.venue")}
+        />
         <div className="grid grid-cols-2 gap-3">
           <Field label="행사명 (한글)">
             <input {...form.register("event.nameKo")} className={inputCls()} />
@@ -306,7 +349,7 @@ export default function SettingsPage() {
         </div>
       </Section>
 
-      <Section title="홈 KV (메인 비주얼)">
+      <Section title="홈 KV (메인 비주얼)" id="sec-kv" num="03">
         <div className="grid grid-cols-2 gap-3">
           <Field label="데스크톱 KV (이미지)" full>
             <KVUpload
@@ -330,7 +373,7 @@ export default function SettingsPage() {
         </div>
       </Section>
 
-      <Section title="Why K-PRINT 통계">
+      <Section title="Why K-PRINT 통계" id="sec-why" num="04">
         <Field label="섹션 헤드라인">
           <input {...form.register("why.headline")} className={inputCls()} />
         </Field>
@@ -434,7 +477,7 @@ export default function SettingsPage() {
         </div>
       </Section>
 
-      <Section title="신청 절차">
+      <Section title="신청 절차" id="sec-steps" num="05">
         <div className="space-y-2">
           {steps.fields.map((f, i) => (
             <div
@@ -471,7 +514,7 @@ export default function SettingsPage() {
         </div>
       </Section>
 
-      <Section title="연락처">
+      <Section title="연락처" id="sec-contact" num="06">
         <div className="grid grid-cols-2 gap-3">
           <Field label="전화">
             <input {...form.register("contact.phone")} className={inputCls()} />
@@ -488,6 +531,8 @@ export default function SettingsPage() {
           </Field>
         </div>
       </Section>
+        </div>
+      </div>
     </div>
   );
 }
@@ -496,12 +541,109 @@ function inputCls(): string {
   return "w-full px-3 py-2 text-sm border border-ink-100 rounded-btn focus:outline-none focus:border-brand-500 bg-white";
 }
 
-function Section({ title, children }: { title: string; children: React.ReactNode }) {
+function Section({
+  title,
+  children,
+  id,
+  num,
+}: {
+  title: string;
+  children: React.ReactNode;
+  id?: string;
+  num?: string;
+}) {
   return (
-    <section className="bg-white border border-ink-100 rounded-card p-5">
-      <h2 className="text-[15px] font-bold text-ink-900 mb-3">{title}</h2>
+    <section
+      id={id}
+      className="bg-white border border-ink-100 rounded-card p-5 scroll-mt-[100px]"
+    >
+      <h2 className="text-[15px] font-bold text-ink-900 mb-4 flex items-baseline gap-2">
+        {num && (
+          <span className="font-mono text-[10.5px] text-ink-400 tracking-wider">
+            {num}
+          </span>
+        )}
+        <span>{title}</span>
+      </h2>
       {children}
     </section>
+  );
+}
+
+// 컬러 램프 미리보기 — 선택한 brand 색이 50~900 어떻게 파생되는지 시각화
+function ColorRampPreview({ hex }: { hex: string }) {
+  // brand-50, 100, 500, 700, 900 핵심 stop 미리보기 (실제 ramp 와 비슷한 mix)
+  const stops = [
+    { name: "50", mix: 92, base: "white" },
+    { name: "100", mix: 80, base: "white" },
+    { name: "200", mix: 60, base: "white" },
+    { name: "400", mix: 20, base: "white" },
+    { name: "500", mix: 0, base: "white" },
+    { name: "700", mix: 25, base: "black" },
+    { name: "900", mix: 55, base: "black" },
+  ] as const;
+  return (
+    <div className="mb-4 bg-ink-50/60 rounded-btn p-3">
+      <div className="text-[10.5px] uppercase tracking-wider text-ink-500 font-semibold mb-2">
+        브랜드 컬러 램프 미리보기
+      </div>
+      <div className="flex rounded overflow-hidden h-12 shadow-sm">
+        {stops.map((s) => (
+          <div
+            key={s.name}
+            className="flex-1 grid place-items-end pb-1 text-[9px] font-mono"
+            style={{
+              background: `color-mix(in srgb, ${hex}, ${s.base} ${s.mix}%)`,
+              color: ["50", "100", "200"].includes(s.name)
+                ? "#0A0A0A"
+                : "#FFFFFF",
+            }}
+          >
+            {s.name}
+          </div>
+        ))}
+      </div>
+      <p className="text-[10.5px] text-ink-500 mt-1.5">
+        실제 사이트의 버튼·강조·뱃지 색이 위 분포로 자동 파생됩니다.
+      </p>
+    </div>
+  );
+}
+
+// 이벤트 카드 미리보기 — 행사 정보 채울 때마다 어떻게 보일지 즉각 시각화
+function EventCardPreview({
+  nameKo,
+  dateRange,
+  venue,
+}: {
+  nameKo: string;
+  dateRange: string;
+  venue: string;
+}) {
+  return (
+    <div className="mb-4 bg-ink-50/60 rounded-btn p-3">
+      <div className="text-[10.5px] uppercase tracking-wider text-ink-500 font-semibold mb-2">
+        공개 사이트 노출 미리보기
+      </div>
+      <div className="bg-canvas rounded p-5 shadow-sm">
+        <div className="font-num text-[10px] uppercase tracking-[0.35em] text-brand-500 font-bold flex items-center gap-2">
+          <span className="w-6 h-px bg-brand-500" />
+          Sponsorship Package
+        </div>
+        <h3 className="mt-3 text-[28px] font-bold leading-[0.98] tracking-tight text-ink-900">
+          {nameKo || "행사명을 입력하세요"}
+          <br />
+          <span className="text-brand-500">스폰서십 안내</span>
+        </h3>
+        {(dateRange || venue) && (
+          <p className="mt-3 text-[12px] text-ink-700 font-num">
+            {dateRange}
+            {dateRange && venue && " · "}
+            {venue}
+          </p>
+        )}
+      </div>
+    </div>
   );
 }
 
