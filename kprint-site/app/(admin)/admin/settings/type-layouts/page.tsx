@@ -29,6 +29,7 @@ import {
   SPEC_FIELD_HINT,
   SPEC_FIELD_LABEL,
 } from "@/lib/typeLayouts";
+import { buildDefaultMasterPage } from "@/lib/typeMasterDefaults";
 
 /**
  * 유형별 슬라이드 레이아웃 설정.
@@ -228,6 +229,20 @@ export default function TypeLayoutsAdminPage() {
     }
   };
 
+  // 캔버스 마스터 편집 모달용 — 현재 편집 중인 type 의 page.
+  // 저장된 canvasPage 가 있으면 그걸로, 없으면 유형별 기본 마스터로 (PPT 마스터시트 패턴).
+  // buildDefaultMasterPage 는 매 호출마다 랜덤 ID 를 새로 만들어내므로 useMemo 로 고정.
+  // 훅은 early return 보다 위에 있어야 한다.
+  const editingLayout =
+    editingType !== null
+      ? layouts[editingType] ?? DEFAULT_TYPE_LAYOUTS[editingType]
+      : null;
+  const editingPage: CanvasPage = useMemo(() => {
+    if (editingLayout?.canvasPage) return editingLayout.canvasPage;
+    if (editingType !== null) return buildDefaultMasterPage(editingType);
+    return newEmptyCanvasPage();
+  }, [editingType, editingLayout?.canvasPage]);
+
   if (!selectedEventId) {
     return (
       <div className="p-8 text-sm text-ink-500">
@@ -237,14 +252,6 @@ export default function TypeLayoutsAdminPage() {
   }
 
   const visibleMeta = TYPE_META.filter((m) => typesInUse.includes(m.value));
-
-  // 캔버스 마스터 편집 모달용 — 현재 편집 중인 type 의 page
-  const editingLayout =
-    editingType !== null
-      ? layouts[editingType] ?? DEFAULT_TYPE_LAYOUTS[editingType]
-      : null;
-  const editingPage: CanvasPage =
-    editingLayout?.canvasPage ?? newEmptyCanvasPage();
 
   return (
     <div className="p-6 md:p-8 max-w-5xl mx-auto">

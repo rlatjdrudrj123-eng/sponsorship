@@ -521,7 +521,7 @@ const KPRINT_CATEGORIES: CategorySeedV2[] = [
     selectorId: "custom_seminar_package",
     slug: "custom-seminar-package",
     channel: "offline",
-    type: "package",
+    type: "content",
     name: { ko: "자체 세미나 패키지", en: "Custom Seminar Package" },
     shortDesc: "참가업체가 자체 세미나·발표를 운영하는 통합 패키지 — 가격은 별도 문의.",
     tags: ["세미나", "패키지", "신규", "별도문의"],

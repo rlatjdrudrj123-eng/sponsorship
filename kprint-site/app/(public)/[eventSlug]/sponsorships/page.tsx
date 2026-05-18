@@ -1135,6 +1135,35 @@ function FilterPanel({
 
       {/* (1) 예산 — 가장 먼저 묻는 질문 */}
       <FilterSection title={t("spons.budget", locale)}>
+        {/* 빠른 가격대 칩 — 진단 챗봇 Q3 와 동일한 구간 */}
+        <div className="grid grid-cols-2 gap-1.5 mb-3">
+          {[
+            { label: "100만 이하", value: 1_000_000 },
+            { label: "500만 이하", value: 5_000_000 },
+            { label: "1,500만 이하", value: 15_000_000 },
+            { label: "전체", value: 0 },
+          ].map((tier) => {
+            const active =
+              tier.value === 0
+                ? budget === 0
+                : budget === tier.value;
+            return (
+              <button
+                key={tier.label}
+                type="button"
+                onClick={() => setBudget(tier.value)}
+                className={
+                  "px-3 py-1.5 rounded-pill text-[11.5px] font-semibold border transition-colors " +
+                  (active
+                    ? "bg-brand-50 border-brand-500 text-brand-700"
+                    : "bg-white border-ink-100 text-ink-700 hover:border-ink-700")
+                }
+              >
+                {tier.label}
+              </button>
+            );
+          })}
+        </div>
         <BudgetSlider
           budget={budget}
           setBudget={setBudget}
