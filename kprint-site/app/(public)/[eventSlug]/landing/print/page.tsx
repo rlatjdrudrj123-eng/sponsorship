@@ -7,7 +7,6 @@ import { Printer } from "lucide-react";
 import { getDb } from "@/lib/firebase/firestore";
 import type { LandingBlock, SiteSettings } from "@/lib/types";
 import { BlockSection } from "@/components/public/landing/blocks";
-import { buildDefaultBlocks } from "@/components/public/landing/defaults";
 
 /**
  * 랜딩 PDF 출력 페이지.
@@ -39,12 +38,11 @@ export default function LandingPrintPage() {
     })();
   }, [eventId]);
 
-  const blocks = useMemo<LandingBlock[]>(() => {
-    if (settings?.landing && settings.landing.length > 0) {
-      return settings.landing;
-    }
-    return buildDefaultBlocks(settings);
-  }, [settings]);
+  // 어드민이 만든 블록만 사용 — 자동 기본 블록은 더 이상 그리지 않음
+  const blocks = useMemo<LandingBlock[]>(
+    () => settings?.landing ?? [],
+    [settings?.landing]
+  );
 
   // 데이터 준비되면 자동 인쇄
   useEffect(() => {
