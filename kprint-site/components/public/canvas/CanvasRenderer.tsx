@@ -477,11 +477,25 @@ function ImageNodeView({
 }
 
 export function ShapeNodeView({ node }: { node: CanvasShapeNode }) {
-  return <ShapeSVG data={node.data} />;
+  return (
+    <ShapeSVG
+      data={node.data}
+      nodeW={node.rect.w}
+      nodeH={node.rect.h}
+    />
+  );
 }
 
 /** 도형 SVG 렌더러 — fill/stroke/shadow/모든 도형 종류 처리 */
-export function ShapeSVG({ data }: { data: CanvasShapeNode["data"] }) {
+export function ShapeSVG({
+  data,
+  nodeW,
+  nodeH,
+}: {
+  data: CanvasShapeNode["data"];
+  nodeW?: number;
+  nodeH?: number;
+}) {
   const { shape, stroke, strokeWidth = 0, sides = 6, points = 5 } = data;
   // unique id per render (avoids gradient/clip-path collision)
   const uid = useRandomId();
@@ -565,15 +579,22 @@ export function ShapeSVG({ data }: { data: CanvasShapeNode["data"] }) {
         const dashAttr = data.strokeDasharray;
         switch (shape) {
           case "rect": {
-            const r = (data.radius ?? 0) * (100 / 100);
+            // viewBox 0..100 이 nodeW × nodeH 로 stretch 되므로,
+            // 가로/세로 corner radius 를 분리해서 픽셀 단위로 같은 값이 나오게 보정.
+            // r 은 픽셀 단위로 해석한 모서리 반지름(짧은 변의 절반 한도).
+            const rPx = data.radius ?? 0;
+            const shortest = Math.max(1, Math.min(nodeW ?? 1, nodeH ?? 1));
+            const rPxClamped = Math.min(rPx, shortest / 2);
+            const rx = nodeW ? rPxClamped * (100 / nodeW) : rPxClamped;
+            const ry = nodeH ? rPxClamped * (100 / nodeH) : rPxClamped;
             return (
               <rect
                 x="0"
                 y="0"
                 width="100"
                 height="100"
-                rx={r}
-                ry={r}
+                rx={rx}
+                ry={ry}
                 fill={fillAttr}
                 stroke={strokeAttr}
                 strokeWidth={strokeW}

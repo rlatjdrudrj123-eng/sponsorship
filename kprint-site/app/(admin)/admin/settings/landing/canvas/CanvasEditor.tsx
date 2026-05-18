@@ -1560,7 +1560,7 @@ export function NodePreview({ node }: { node: CanvasNode }) {
     case "shape":
       return (
         <div className="w-full h-full pointer-events-none">
-          <ShapeSVG data={node.data} />
+          <ShapeSVG data={node.data} nodeW={node.rect.w} nodeH={node.rect.h} />
         </div>
       );
     case "button": {
