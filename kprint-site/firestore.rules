@@ -143,6 +143,16 @@ service cloud.firestore {
       allow write: if isKprintAdmin();
     }
 
+    // 진단 챗봇 로그 — 공개 생성 (익명 세션), 읽기 어드민 전용
+    match /diagnostic_logs/{id} {
+      allow create: if request.resource.data.eventId is string
+                    && request.resource.data.sessionId is string
+                    && request.resource.data.completed is bool
+                    && request.resource.data.recommendedSelectorIds is list;
+      allow read: if isKprintAdmin();
+      allow update, delete: if false;
+    }
+
     // ============================================================
     //  그 외 모든 경로 차단
     // ============================================================

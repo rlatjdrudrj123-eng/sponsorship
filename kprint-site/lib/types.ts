@@ -92,6 +92,11 @@ export type Category = {
   id: string;
   eventId: string;  // 행사 분리 (전시회별 콘텐츠)
   code: string; // 영문 3자리
+  /**
+   * 진단 챗봇 (룩업 매트릭스) 가 참조하는 안정적 ID. 예: 'registration_logo', 'visitor_lanyard'.
+   * 코드(RGA, BGE 등) 는 시드 / 어드민용 식별자, selectorId 는 신규 챗봇·외부 스펙용.
+   */
+  selectorId?: string;
   channel: Channel;
   type: CategoryType;
   slug: string;
@@ -210,6 +215,8 @@ export type Package = {
   id: string;
   eventId: string;  // 행사 분리
   code: string;
+  /** 진단 챗봇 룩업 매트릭스용 안정 ID. 예: 'visitor_atoz_package'. */
+  selectorId?: string;
   name: { ko: string; en: string };
   tier: "signature" | "standard";
   tagline?: string;
@@ -321,8 +328,10 @@ export type SiteSettings = {
    *  공개 슬라이드 / PDF 에서 "추가 혜택" 섹션으로 노출. */
   bundledPerks?: BundledPerk[];
 
-  /** 진단 챗봇 (PersonaAiChat) 의 질문 텍스트·가중치 override. 없으면 코드 기본값. */
+  /** 진단 챗봇 (PersonaAiChat) 의 질문 텍스트·가중치 override. 없으면 코드 기본값. (v1 — 폐기 예정) */
   diagnosisConfig?: DiagnosisConfig;
+  /** 진단 챗봇 v2 (4문항 룩업) 설정 — 신규 챗봇은 이걸 사용 */
+  diagnosisV2Config?: DiagnosisV2Config;
 };
 
 /** 진단 챗봇 단계 (PersonaAiChat Stage 와 일치) */
@@ -354,6 +363,88 @@ export type DiagnosisConfig = {
   questions?: Partial<Record<DiagnosisStage, DiagnosisQuestionOverride>>;
   /** 스코어링 가중치 override (이름 → 점수) — 없으면 코드 기본값 */
   scoringWeights?: Record<string, number>;
+};
+
+// ─── 진단 v2 — 4문항 룩업 매트릭스 기반 ──────────────────────────
+// kprint_chatbot_revision_spec.md 의 4문항 챗봇용. v1 (5문항+가중치) 은 폐기 예정이지만
+// 마이그레이션 기간 동안 호환 위해 위에 유지.
+
+export type DiagQ1Value = "launch" | "acquisition" | "retention" | "awareness";
+export type DiagQ2Value = "small" | "medium" | "large";
+export type DiagQ3Value = "under_100" | "under_500" | "under_1500" | "over_1500";
+export type DiagQ4Value = "early" | "compare" | "decision";
+
+/** Q3 값별 가격 상한 (원) — 룩업 매트릭스 결과를 가격 필터링할 때 사용. */
+export const DIAG_Q3_PRICE_CEILING: Record<DiagQ3Value, number> = {
+  under_100: 1_000_000,
+  under_500: 5_000_000,
+  under_1500: 15_000_000,
+  over_1500: 1_000_000_000, // 사실상 무제한
+};
+
+/** 추천 카드 "왜 추천했는지" 의 카테고리 키 — 카테고리/패키지를 묶는 분류. */
+export type ReasonCategoryKey =
+  | "seminar"
+  | "content"
+  | "signature"
+  | "search"
+  | "floor_map"
+  | "package"
+  | "invitation"
+  | "newsletter"
+  | "ceiling"
+  | "lanyard"
+  | "other";
+
+/** Q1 × ReasonCategoryKey → 추천 문구 (한 줄). 어드민 편집 가능. */
+export type ReasonTemplates = Partial<
+  Record<DiagQ1Value, Partial<Record<ReasonCategoryKey, string>>>
+>;
+
+/** 4문항 룩업 매트릭스 — Q1Value × Q2Value → 추천 상품(selectorId) 배열. */
+export type RecommendationMatrix = Partial<
+  Record<DiagQ1Value, Partial<Record<DiagQ2Value, string[]>>>
+>;
+
+/** v2 질문 텍스트 override — 어드민 편집 가능. 없으면 코드 기본값. */
+export type DiagV2QuestionOverride = {
+  /** 본문 (예: "이번 K-PRINT 참가, 가장 우선하는 목적 하나를 선택해주세요.") */
+  intro?: string;
+  /** 보조 설명 (질문 하단 작은 글) */
+  hint?: string;
+  /** 칩 (선택지) 라벨 override — value 는 코드 상수, label 만 어드민이 손봄 */
+  chipLabels?: Record<string, string>;
+};
+
+export type DiagV2QuestionId = "q1" | "q2" | "q3" | "q4";
+
+/** 진단 챗봇 v2 (4문항 룩업) 어드민 설정 */
+export type DiagnosisV2Config = {
+  /** Q1×Q2 추천 매트릭스 — 비어있으면 코드 기본값 (lib/diagnosis2.ts) 사용 */
+  matrix?: RecommendationMatrix;
+  /** 추천 이유 문구 — 16개 매핑 (Q1 4 × 카테고리 4) */
+  reasons?: ReasonTemplates;
+  /** 질문 텍스트 override */
+  questions?: Partial<Record<DiagV2QuestionId, DiagV2QuestionOverride>>;
+  /** 활성 여부 — false 면 기존 v1 챗봇 fallback (마이그레이션 안전장치) */
+  enabled?: boolean;
+};
+
+/** 진단 로그 한 건 — diagnostic_logs 컬렉션에 저장 */
+export type DiagnosticLog = {
+  id: string;
+  eventId: string;
+  sessionId: string;            // 한 사용자 세션 (랜덤 UUID)
+  q1?: DiagQ1Value;
+  q2?: DiagQ2Value;
+  q3?: DiagQ3Value;
+  q4?: DiagQ4Value;
+  recommendedSelectorIds: string[];
+  clickedSelectorIds?: string[];  // 결과 화면에서 클릭한 카드
+  clickedCta?: Array<"inquiry" | "quote" | "phone" | "browse_all">;
+  completed: boolean;             // 4문항 다 답했는지
+  exitedAt?: "q1" | "q2" | "q3" | "q4" | "result";
+  createdAt: Timestamp;
 };
 
 /** 스폰서십 동봉 혜택 — 카테고리·패키지별로 노출 범위 지정 가능 */

@@ -18,7 +18,7 @@ export const STRINGS = {
   "common.cart": { ko: "관심 항목", en: "Cart" },
   "common.cartCount": { ko: "개", en: "" },
   "common.priceVatExcluded": { ko: "(부가세 별도)", en: "(VAT excluded)" },
-  "common.priceNegotiable": { ko: "가격 협의", en: "Price on request" },
+  "common.priceNegotiable": { ko: "별도 문의", en: "Contact for pricing" },
   "common.won": { ko: "원", en: "KRW" },
   "common.search": { ko: "검색", en: "Search" },
   "common.reset": { ko: "초기화", en: "Reset" },

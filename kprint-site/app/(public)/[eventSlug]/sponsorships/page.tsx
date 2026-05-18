@@ -26,7 +26,7 @@ import {
 import { getDb } from "@/lib/firebase/firestore";
 import { matchesPersona } from "@/components/public/PersonaCourses";
 import type { Taxonomy } from "@/lib/types";
-import { PersonaAiChat } from "@/components/public/PersonaAiChat";
+import { SponsorshipDiagnosisChat } from "@/components/public/SponsorshipDiagnosisChat";
 import type {
   Category,
   Channel,
@@ -167,10 +167,18 @@ type EnrichedCategory = Category & {
   badges: Badge[];
 };
 
-type Badge = "popular" | "closing" | "solo" | "limited" | "sold_out";
+type Badge = "popular" | "closing" | "solo" | "limited" | "sold_out" | "new";
+
+/** 2026 신규 상품 selectorId 목록 — "신규" 뱃지용 */
+const NEW_SELECTOR_IDS = new Set([
+  "distribution_stand",
+  "category_wall",
+  "custom_seminar_package",
+]);
 
 function computeBadges(c: Category, slotAvailable: number, slotTotal: number): Badge[] {
   const badges: Badge[] = [];
+  if (c.selectorId && NEW_SELECTOR_IDS.has(c.selectorId)) badges.push("new");
   if (c.isFeatured) badges.push("popular");
   if (slotTotal === 0) {
     // no slots — skip
@@ -200,7 +208,8 @@ export default function SponsorshipsPage() {
 
   const [filterChannel, setFilterChannel] = useState<Channel | "all">("all");
   const [budget, setBudget] = useState<number>(0); // 0 = 필터 X
-  const [personas, setPersonas] = useState<Persona[]>([]);
+  // selectedPersona — 옛 PersonaRecommendation 배너용. 현재는 항상 null
+  //   (새 진단 챗봇은 별도 모달이라 페르소나를 외부로 끌어올리지 않음).
   const [selectedPersona, setSelectedPersona] = useState<Persona | null>(null);
   const [activePurposes, setActivePurposes] = useState<Set<Purpose>>(new Set());
   const [activeMediaTypes, setActiveMediaTypes] = useState<Set<MediaType>>(new Set());
@@ -215,9 +224,9 @@ export default function SponsorshipsPage() {
   );
   const [advancedOpen, setAdvancedOpen] = useState(false);
   const [aiChatOpen, setAiChatOpen] = useState(false);
-  // 첫 질문 GOAL 의 4가지 (purpose 값)
+  // 첫 질문 Q1 (목적) 의 4가지 (룩업 매트릭스 Q1 값)
   const [aiChatInitial, setAiChatInitial] = useState<
-    "traffic_driver" | "brand_awareness" | "buyer_reach" | "post_asset" | null
+    "launch" | "acquisition" | "retention" | "awareness" | null
   >(null);
   // 비교 모드 — 카드에서 직접 체크해 모은다 (카트 거치지 않고 바로 compare로)
   const [compareIds, setCompareIds] = useState<Set<string>>(new Set());
@@ -242,7 +251,7 @@ export default function SponsorshipsPage() {
     (async () => {
       try {
         const db = getDb();
-        const [catSnap, subSnap, slotSnap, pkgSnap, settingsSnap, personaSnap, taxonomySnap] = await Promise.all([
+        const [catSnap, subSnap, slotSnap, pkgSnap, settingsSnap, taxonomySnap] = await Promise.all([
           getDocs(
             query(
               collection(db, "categories"),
@@ -264,14 +273,8 @@ export default function SponsorshipsPage() {
             )
           ),
           getDoc(doc(db, "siteSettings", eventId)),
-          getDocs(
-            query(collection(db, "personas"), where("eventId", "==", eventId))
-          ),
           getDoc(doc(db, "taxonomy", eventId)),
         ]);
-        setPersonas(
-          personaSnap.docs.map((d) => ({ ...(d.data() as Persona), id: d.id }))
-        );
         setCategories(
           // type='package'인 카테고리는 통합 후 별도 섹션에 표시되므로 그리드에서 제외
           catSnap.docs
@@ -461,15 +464,15 @@ export default function SponsorshipsPage() {
                       <span className="text-brand-500">맞춤 스폰서십 진단</span>
                     </h2>
                     <p className="text-[14px] md:text-[16px] text-ink-700 mt-6 leading-[1.7] max-w-md">
-                      참가 이력·예산·타깃 산업·전년 성과를 종합 분석해 가장 효율
-                      높은 노출 조합을 즉시 제안합니다. 클릭 응답 기반,
-                      소요 시간 1분.
+                      목적·부스 규모·예산·검토 단계 4문항으로 가장 효율 높은
+                      노출 조합을 즉시 제안합니다. 클릭 응답 기반,
+                      소요 시간 약 1분.
                     </p>
                     <ul className="mt-7 space-y-2.5 text-[13px] text-ink-700 leading-relaxed">
                       {[
-                        "예산 대비 도달 효율 (CPM 추정) 기반 점수화",
-                        "전년 동일 유형 참가사 콤보 데이터 반영",
-                        "온·오프라인 채널 균형 자동 조정",
+                        "목적별 채널 매칭 (런칭·발굴·관계강화·인지도)",
+                        "예산 상한에 맞춰 가격 초과 매체 자동 필터",
+                        "검토 단계에 따라 카드형·비교표 결과",
                       ].map((t) => (
                         <li key={t} className="flex items-start gap-2">
                           <span className="w-1.5 h-1.5 rounded-full bg-brand-500 mt-2 shrink-0" />
@@ -502,9 +505,9 @@ export default function SponsorshipsPage() {
                           SA
                         </div>
                         <div className="bg-ink-50 rounded-2xl rounded-tl-sm px-4 py-2.5 text-[13.5px] text-ink-900 max-w-[88%] leading-relaxed">
-                          K-PRINT 2026 사무국입니다. 귀사의 참가 목표·예산·분야를
+                          K-PRINT 2026 사무국입니다. 귀사의 참가 목표·부스 규모·예산을
                           바탕으로 가장 효율이 높은 스폰서십 구성을 검토해
-                          드립니다. 5개 항목, 약 1분이 소요됩니다.
+                          드립니다. 4개 항목, 약 1분이 소요됩니다.
                         </div>
                       </div>
                       <div className="flex items-start gap-2.5">
@@ -512,31 +515,31 @@ export default function SponsorshipsPage() {
                           SA
                         </div>
                         <div className="bg-ink-50 rounded-2xl rounded-tl-sm px-4 py-2.5 text-[13.5px] text-ink-900 max-w-[88%] leading-relaxed">
-                          이번 K-PRINT 참가의 우선 목표를 선택해 주세요.
+                          이번 K-PRINT 참가, 가장 우선하는 목적 하나를 선택해주세요.
                         </div>
                       </div>
 
                       <div className="pl-10 grid grid-cols-2 gap-2">
                         {[
                           {
-                            label: "부스 방문 유도",
-                            value: "traffic_driver",
-                            hint: "도면·목걸이·등록데스크",
+                            label: "신제품·신기술 런칭",
+                            value: "launch",
+                            hint: "세미나·콘텐츠·시그니처",
                           },
                           {
-                            label: "브랜드 인지 확보",
-                            value: "brand_awareness",
-                            hint: "천장배너·가이드북·옥외",
+                            label: "신규 거래선·대리점 발굴",
+                            value: "acquisition",
+                            hint: "검색·도면 노출",
                           },
                           {
-                            label: "해외·전문 바이어 도달",
-                            value: "buyer_reach",
-                            hint: "해외 뉴스레터·영문 가이드",
+                            label: "기존 고객·파트너 강화",
+                            value: "retention",
+                            hint: "초대장·뉴스레터",
                           },
                           {
-                            label: "행사 후 자산 확보",
-                            value: "post_asset",
-                            hint: "콘텐츠·인터뷰·SNS",
+                            label: "브랜드 인지도·점유율",
+                            value: "awareness",
+                            hint: "천장·목걸이·통합",
                           },
                         ].map((c) => (
                           <button
@@ -545,10 +548,10 @@ export default function SponsorshipsPage() {
                             onClick={() => {
                               setAiChatInitial(
                                 c.value as
-                                  | "traffic_driver"
-                                  | "brand_awareness"
-                                  | "buyer_reach"
-                                  | "post_asset"
+                                  | "launch"
+                                  | "acquisition"
+                                  | "retention"
+                                  | "awareness"
                               );
                               setAiChatOpen(true);
                             }}
@@ -565,7 +568,7 @@ export default function SponsorshipsPage() {
                       </div>
 
                       <div className="text-center text-[11px] text-ink-400 pt-2 font-num tracking-wider">
-                        STEP 1 / 5 · GOAL
+                        STEP 1 / 4 · 목적
                       </div>
                     </div>
                   </div>
@@ -810,8 +813,8 @@ export default function SponsorshipsPage() {
         </div>
       )}
 
-      {/* AI 대화형 페르소나 추천 모달 */}
-      <PersonaAiChat
+      {/* 진단 챗봇 v2 — 4문항 룩업 매트릭스 기반 */}
+      <SponsorshipDiagnosisChat
         open={aiChatOpen}
         onClose={() => {
           setAiChatOpen(false);
@@ -819,13 +822,11 @@ export default function SponsorshipsPage() {
         }}
         eventName={settings?.event.nameKo ?? eventId}
         eventId={eventId}
-        personas={personas}
         categories={categories}
         subcategories={subcategories}
-        slots={slots}
         packages={packages}
-        initialGoal={aiChatInitial ?? undefined}
-        diagnosisConfig={settings?.diagnosisConfig}
+        diagnosisV2Config={settings?.diagnosisV2Config}
+        initialQ1={aiChatInitial ?? undefined}
       />
 
       {/* 도면·사례 상세 모달 — 슬라이드형(SlideSection) 그대로 띄움.
@@ -1490,6 +1491,7 @@ function BadgePill({ badge }: { badge: Badge }) {
     solo: { label: "단독", bg: "bg-ink-900", text: "text-brand-500" },
     limited: { label: "1석 남음", bg: "bg-red-600", text: "text-white" },
     sold_out: { label: "매진", bg: "bg-ink-300", text: "text-white" },
+    new: { label: "신규", bg: "bg-emerald-600", text: "text-white" },
   };
   const c = config[badge];
   return (

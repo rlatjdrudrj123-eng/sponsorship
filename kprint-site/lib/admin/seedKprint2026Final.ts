@@ -29,6 +29,11 @@ const EVENT_ID = "kprint-2026";
 
 type CategorySeed = {
   code: string;
+  /**
+   * 신규 진단 챗봇 (4문항 룩업) 이 추천 매트릭스에서 참조하는 안정적 ID.
+   * 코드와 별개. 예: 'visitor_lanyard', 'ceiling_banner'.
+   */
+  selectorId: string;
   slug: string;
   channel: "offline" | "online";
   type: Category["type"];
@@ -63,6 +68,7 @@ const KPRINT_CATEGORIES: CategorySeedV2[] = [
   // ─── OFFLINE ────────────────────────────────────────────────
   {
     code: "RGA",
+    selectorId: "registration_logo",
     slug: "registration-desk",
     channel: "offline",
     type: "floor_plan",
@@ -82,6 +88,7 @@ const KPRINT_CATEGORIES: CategorySeedV2[] = [
   },
   {
     code: "BGE",
+    selectorId: "visitor_lanyard",
     slug: "visitor-lanyard",
     channel: "offline",
     type: "quantity",
@@ -100,6 +107,7 @@ const KPRINT_CATEGORIES: CategorySeedV2[] = [
   },
   {
     code: "CBA",
+    selectorId: "ceiling_banner",
     slug: "ceiling-banner",
     channel: "offline",
     type: "floor_plan",
@@ -119,6 +127,7 @@ const KPRINT_CATEGORIES: CategorySeedV2[] = [
   },
   {
     code: "IVL",
+    selectorId: "invitation_insert",
     slug: "invitation-insert",
     channel: "offline",
     type: "quantity",
@@ -138,6 +147,7 @@ const KPRINT_CATEGORIES: CategorySeedV2[] = [
   },
   {
     code: "GDB",
+    selectorId: "guidebook_back",
     slug: "guidebook-back-cover",
     channel: "offline",
     type: "print_page",
@@ -171,6 +181,7 @@ const KPRINT_CATEGORIES: CategorySeedV2[] = [
   },
   {
     code: "LWA",
+    selectorId: "lighting_wall",
     slug: "lighting-wall",
     channel: "offline",
     type: "floor_plan",
@@ -189,6 +200,7 @@ const KPRINT_CATEGORIES: CategorySeedV2[] = [
   },
   {
     code: "FSA",
+    selectorId: "floor_sticker",
     slug: "floor-sticker",
     channel: "offline",
     type: "floor_plan",
@@ -209,6 +221,7 @@ const KPRINT_CATEGORIES: CategorySeedV2[] = [
   // ─── ONLINE ─────────────────────────────────────────────────
   {
     code: "RGS",
+    selectorId: "pre_registration_banner",
     slug: "preregister-banner",
     channel: "online",
     type: "digital_banner",
@@ -228,6 +241,7 @@ const KPRINT_CATEGORIES: CategorySeedV2[] = [
   },
   {
     code: "CFM",
+    selectorId: "pre_registration_email",
     slug: "confirm-mail",
     channel: "online",
     type: "mailing",
@@ -246,6 +260,7 @@ const KPRINT_CATEGORIES: CategorySeedV2[] = [
   },
   {
     code: "FPS",
+    selectorId: "floor_map_banner",
     slug: "floor-search-banner",
     channel: "online",
     type: "digital_banner",
@@ -265,6 +280,7 @@ const KPRINT_CATEGORIES: CategorySeedV2[] = [
   },
   {
     code: "EXS",
+    selectorId: "company_search_banner",
     slug: "company-search-banner",
     channel: "online",
     type: "digital_banner",
@@ -284,6 +300,7 @@ const KPRINT_CATEGORIES: CategorySeedV2[] = [
   },
   {
     code: "PRS",
+    selectorId: "product_search_banner",
     slug: "product-search-banner",
     channel: "online",
     type: "digital_banner",
@@ -303,6 +320,7 @@ const KPRINT_CATEGORIES: CategorySeedV2[] = [
   },
   {
     code: "ISA",
+    selectorId: "integrated_search_banner",
     slug: "integrated-search-banner",
     channel: "online",
     type: "digital_banner",
@@ -322,6 +340,7 @@ const KPRINT_CATEGORIES: CategorySeedV2[] = [
   },
   {
     code: "FLG",
+    selectorId: "floor_map_logo",
     slug: "floor-logo",
     channel: "online",
     type: "digital_banner",
@@ -340,6 +359,7 @@ const KPRINT_CATEGORIES: CategorySeedV2[] = [
   },
   {
     code: "DNL",
+    selectorId: "newsletter_domestic",
     slug: "domestic-newsletter",
     channel: "online",
     type: "mailing",
@@ -366,6 +386,7 @@ const KPRINT_CATEGORIES: CategorySeedV2[] = [
   },
   {
     code: "INL",
+    selectorId: "newsletter_overseas",
     slug: "international-newsletter",
     channel: "online",
     type: "mailing",
@@ -392,6 +413,7 @@ const KPRINT_CATEGORIES: CategorySeedV2[] = [
   },
   {
     code: "SMR",
+    selectorId: "seminar_banner",
     slug: "seminar-banner",
     channel: "online",
     type: "digital_banner",
@@ -411,6 +433,7 @@ const KPRINT_CATEGORIES: CategorySeedV2[] = [
   },
   {
     code: "ITV",
+    selectorId: "interview_sns",
     slug: "interview-sns",
     channel: "online",
     type: "content",
@@ -428,6 +451,7 @@ const KPRINT_CATEGORIES: CategorySeedV2[] = [
   },
   {
     code: "ICN",
+    selectorId: "instagram_card",
     slug: "insta-cardnews",
     channel: "online",
     type: "content",
@@ -443,6 +467,74 @@ const KPRINT_CATEGORIES: CategorySeedV2[] = [
       },
     ],
   },
+
+  // ─── 2026 신규 상품 (스펙 4.2 기준) ───────────────────────────
+  {
+    code: "DST",
+    selectorId: "distribution_stand",
+    slug: "distribution-stand",
+    channel: "offline",
+    type: "quantity",
+    name: { ko: "배포대 스폰서 (자료 거치형)", en: "Distribution Stand" },
+    shortDesc: "전시장 동선 위에 자료·카탈로그 거치대를 배치 — 정보 수령형 매체.",
+    fileFormat: "ai, pdf, 인쇄물",
+    tags: ["배포대", "신규"],
+    subcategories: [
+      {
+        name: { ko: "배포대 구좌", en: "Stand Slot" },
+        unit: { ko: "구좌", en: "slot" },
+        priceKRW: 1_500_000,
+        slotCodes: ["DST-1", "DST-2"],
+      },
+    ],
+  },
+  {
+    code: "CTW",
+    selectorId: "category_wall",
+    slug: "category-wall",
+    channel: "offline",
+    type: "floor_plan",
+    name: { ko: "분야별 홍보월 안내", en: "Category Wall" },
+    shortDesc: "전시 분야별 안내 월 면 광고 — 7면 × 5구좌.",
+    fileFormat: "ai, pdf",
+    tags: ["홍보월", "분야별", "신규"],
+    subcategories: [
+      {
+        name: { ko: "분야별 홍보월", en: "Category Wall" },
+        unit: { ko: "구좌", en: "slot" },
+        priceKRW: 1_000_000,
+        slotCodes: [
+          // 7면 × 5구좌 = 35
+          "CTW-1-1", "CTW-1-2", "CTW-1-3", "CTW-1-4", "CTW-1-5",
+          "CTW-2-1", "CTW-2-2", "CTW-2-3", "CTW-2-4", "CTW-2-5",
+          "CTW-3-1", "CTW-3-2", "CTW-3-3", "CTW-3-4", "CTW-3-5",
+          "CTW-4-1", "CTW-4-2", "CTW-4-3", "CTW-4-4", "CTW-4-5",
+          "CTW-5-1", "CTW-5-2", "CTW-5-3", "CTW-5-4", "CTW-5-5",
+          "CTW-6-1", "CTW-6-2", "CTW-6-3", "CTW-6-4", "CTW-6-5",
+          "CTW-7-1", "CTW-7-2", "CTW-7-3", "CTW-7-4", "CTW-7-5",
+        ],
+      },
+    ],
+  },
+  {
+    code: "CSP",
+    selectorId: "custom_seminar_package",
+    slug: "custom-seminar-package",
+    channel: "offline",
+    type: "package",
+    name: { ko: "자체 세미나 패키지", en: "Custom Seminar Package" },
+    shortDesc: "참가업체가 자체 세미나·발표를 운영하는 통합 패키지 — 가격은 별도 문의.",
+    tags: ["세미나", "패키지", "신규", "별도문의"],
+    subcategories: [
+      {
+        name: { ko: "자체 세미나 운영", en: "Custom Seminar" },
+        unit: { ko: "건", en: "deal" },
+        // 별도 문의 — 0 으로 두고 UI 에서 "별도 문의" 로 표기 (priceKRW===0 + 태그 별도문의)
+        priceKRW: 0,
+        slotCodes: ["CSP-1"],
+      },
+    ],
+  },
 ];
 
 // =============================================================
@@ -451,6 +543,7 @@ const KPRINT_CATEGORIES: CategorySeedV2[] = [
 
 type PackageSeed = {
   code: string;
+  selectorId: string;
   name: { ko: string; en: string };
   tier: "signature" | "standard";
   tagline: string;
@@ -463,6 +556,7 @@ type PackageSeed = {
 const KPRINT_PACKAGES: PackageSeed[] = [
   {
     code: "PKG-AZ",
+    selectorId: "visitor_atoz_package",
     name: { ko: "참관객 A to Z 패키지", en: "Visitor A to Z Package" },
     tier: "signature",
     tagline: "다수 참관객에게 기업 영향력을 알리는 통합 패키지.",
@@ -479,6 +573,7 @@ const KPRINT_PACKAGES: PackageSeed[] = [
   },
   {
     code: "PKG-PS",
+    selectorId: "prime_spot_package",
     name: { ko: "프라임 스팟 패키지", en: "Prime Spot Package" },
     tier: "signature",
     tagline: "온라인 + 오프라인 최고 노출 빈도 채널을 결합한 패키지.",
@@ -493,6 +588,7 @@ const KPRINT_PACKAGES: PackageSeed[] = [
   },
   {
     code: "PKG-OS",
+    selectorId: "onsite_package",
     name: { ko: "온사이트 패키지", en: "Onsite Package" },
     tier: "standard",
     tagline: "현장 노출 위주 — 진입형 시그니처.",
@@ -507,6 +603,7 @@ const KPRINT_PACKAGES: PackageSeed[] = [
   },
   {
     code: "PKG-SC",
+    selectorId: "seminar_package",
     name: { ko: "세미나/컨퍼런스 패키지", en: "Seminar/Conference Package" },
     tier: "standard",
     tagline: "핵심 산업 관계자에게 배너와 뉴스레터로 노출.",
@@ -599,6 +696,7 @@ export async function resetAndSeedKprint2026(): Promise<Kprint2026FinalSeedResul
       id: catId,
       eventId: EVENT_ID,
       code: cat.code,
+      selectorId: cat.selectorId,
       channel: cat.channel,
       type: cat.type,
       slug: cat.slug,
@@ -670,6 +768,7 @@ export async function resetAndSeedKprint2026(): Promise<Kprint2026FinalSeedResul
       id: pkgRef.id,
       eventId: EVENT_ID,
       code: pkg.code,
+      selectorId: pkg.selectorId,
       name: pkg.name,
       tier: pkg.tier,
       tagline: pkg.tagline,
