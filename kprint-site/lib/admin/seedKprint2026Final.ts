@@ -418,14 +418,16 @@ export async function resetAndSeedKprint2026(): Promise<Kprint2026FinalSeedResul
     siteSettings: true,
   });
 
-  // 2) KPRINT 2026 행사 생성
+  // 2) KPRINT 2026 행사 생성 (Event 타입은 name: string 단일 필드)
   await setDoc(doc(db, "events", EVENT_ID), {
     id: EVENT_ID,
-    slug: EVENT_ID,
-    name: { ko: "K-PRINT 2026", en: "K-PRINT 2026" },
+    name: "K-PRINT 2026",
+    shortName: "K-PRINT",
+    year: 2026,
     isActive: true,
     order: 0,
     createdAt: Timestamp.now(),
+    updatedAt: Timestamp.now(),
   });
 
   // 3) 최소한의 siteSettings — 테마·이벤트 정보·필수 필드만

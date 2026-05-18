@@ -7,6 +7,18 @@ import { getDb } from "@/lib/firebase/firestore";
 import { useAdminEvent } from "@/lib/admin/adminEventStore";
 import type { Event as EventDoc } from "@/lib/types";
 
+// 과거 시드 버그로 name 이 { ko, en } 객체로 저장된 데이터 호환.
+// 새 데이터는 string. 둘 다 안전하게 string 으로 변환.
+function nameOf(n: unknown): string {
+  if (typeof n === "string") return n;
+  if (n && typeof n === "object") {
+    const obj = n as { ko?: unknown; en?: unknown };
+    if (typeof obj.ko === "string") return obj.ko;
+    if (typeof obj.en === "string") return obj.en;
+  }
+  return "";
+}
+
 /**
  * 어드민 상단의 행사 셀렉터.
  * - events 콜렉션 onSnapshot으로 실시간 반영
@@ -59,7 +71,7 @@ export function EventSelector() {
     return (
       <div className="flex items-center gap-2 px-3 py-1.5 rounded-btn border border-ink-100 bg-white text-[13px] font-semibold text-ink-900 min-w-[160px]">
         <CalendarDays className="w-3.5 h-3.5 text-brand-700 shrink-0" />
-        <span className="flex-1 text-left truncate">{only.name}</span>
+        <span className="flex-1 text-left truncate">{nameOf(only.name)}</span>
       </div>
     );
   }
@@ -73,7 +85,7 @@ export function EventSelector() {
       >
         <CalendarDays className="w-3.5 h-3.5 text-brand-700 shrink-0" />
         <span className="flex-1 text-left truncate">
-          {current?.name ?? "행사 선택"}
+          {current ? nameOf(current.name) : "행사 선택"}
         </span>
         <ChevronDown
           className={
@@ -104,7 +116,7 @@ export function EventSelector() {
                       return;
                     }
                     const ok = confirm(
-                      `현재 작업 행사를 "${e.name}" 으로 전환하시겠습니까?\n\n주의: 행사마다 데이터가 독립적입니다. 진행 중이던 작업이 있다면 먼저 저장하세요.`
+                      `현재 작업 행사를 "${nameOf(e.name)}" 으로 전환하시겠습니까?\n\n주의: 행사마다 데이터가 독립적입니다. 진행 중이던 작업이 있다면 먼저 저장하세요.`
                     );
                     if (!ok) return;
                     setSelectedEventId(e.id);
@@ -115,7 +127,7 @@ export function EventSelector() {
                     (active ? "bg-brand-50 text-brand-700 font-bold" : "text-ink-900")
                   }
                 >
-                  <span className="flex-1 truncate">{e.name}</span>
+                  <span className="flex-1 truncate">{nameOf(e.name)}</span>
                   {!e.isActive && (
                     <span className="text-[10px] px-1.5 py-0.5 rounded bg-ink-100 text-ink-500 font-semibold">
                       숨김

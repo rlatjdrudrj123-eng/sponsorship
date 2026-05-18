@@ -38,6 +38,17 @@ import { getDb } from "@/lib/firebase/firestore";
 import { useAdminEvent } from "@/lib/admin/adminEventStore";
 import type { Event as EventDoc } from "@/lib/types";
 
+// 과거 시드 버그로 event.name 이 { ko, en } 객체로 저장된 데이터 호환.
+function nameOf(n: unknown): string {
+  if (typeof n === "string") return n;
+  if (n && typeof n === "object") {
+    const obj = n as { ko?: unknown; en?: unknown };
+    if (typeof obj.ko === "string") return obj.ko;
+    if (typeof obj.en === "string") return obj.en;
+  }
+  return "";
+}
+
 type IconType = ComponentType<SVGProps<SVGSVGElement>>;
 
 type MenuItem = {
@@ -153,7 +164,9 @@ export function AdminSidebar() {
       <div className="flex items-center gap-2 px-2.5 pb-4 mb-2 border-b border-white/10">
         <span className="w-2 h-2 rounded-full bg-brand-500" />
         <span className="font-bold text-white tracking-tight text-[15px] truncate">
-          {selectedEvent?.shortName ?? selectedEvent?.name ?? "행사 미선택"}
+          {selectedEvent
+            ? nameOf(selectedEvent.shortName) || nameOf(selectedEvent.name) || "(이름 없음)"
+            : "행사 미선택"}
         </span>
         <span className="ml-auto text-[11px] text-ink-500 font-mono">admin</span>
       </div>
@@ -223,7 +236,7 @@ export function AdminSidebar() {
       <div className="pt-4 border-t border-white/10 px-2.5 text-[11px] text-ink-500 flex items-center gap-1.5">
         <HelpCircle className="w-3.5 h-3.5 shrink-0" aria-hidden />
         <span className="truncate">
-          {selectedEvent?.name ?? "행사 미선택"} 운영 콘솔
+          {selectedEvent ? nameOf(selectedEvent.name) : "행사 미선택"} 운영 콘솔
         </span>
       </div>
     </aside>
