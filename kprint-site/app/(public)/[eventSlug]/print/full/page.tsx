@@ -469,7 +469,7 @@ function CategorySlide({
   subs,
   index,
   total,
-  eventName,
+  eventName: _eventName,
 }: {
   category: Category;
   subs: Subcategory[];
@@ -477,6 +477,7 @@ function CategorySlide({
   total: number;
   eventName: string;
 }) {
+  void _eventName;
   const hero = category.heroImages?.images?.[0]?.url;
   const deadlineStr = category.deadline
     ? category.deadline.toDate().toLocaleDateString("ko-KR", {
@@ -601,13 +602,14 @@ function PackageSlide({
   pkg,
   index,
   total,
-  eventName,
+  eventName: _eventName,
 }: {
   pkg: Package;
   index: number;
   total: number;
   eventName: string;
 }) {
+  void _eventName;
   const hero = pkg.heroImages?.images?.[0]?.url;
   const hasDiscount =
     pkg.originalPrice > pkg.discountPrice && pkg.originalPrice > 0;

@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { doc, onSnapshot, setDoc, Timestamp } from "firebase/firestore";
-import { ArrowDown, ArrowUp, Check, Plus, Save, X } from "lucide-react";
+import { ArrowDown, ArrowUp, Plus, X } from "lucide-react";
 import { getDb } from "@/lib/firebase/firestore";
 import { useAdminEvent } from "@/lib/admin/adminEventStore";
 import type {

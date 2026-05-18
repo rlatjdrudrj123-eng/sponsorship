@@ -134,7 +134,7 @@ export default function PerksAdminPage() {
           </h1>
           <p className="text-[13px] text-ink-500 mt-1 leading-relaxed">
             스폰서십 신청 시 모두에게 자동으로 제공되는 추가 매체 권리.
-            공개 스폰서십 페이지 / 패키지 상세 / PDF 에 "추가 혜택" 카드로 노출됩니다.
+            공개 스폰서십 페이지 / 패키지 상세 / PDF 에 &ldquo;추가 혜택&rdquo; 카드로 노출됩니다.
           </p>
         </div>
         <div className="text-right">
@@ -149,8 +149,8 @@ export default function PerksAdminPage() {
       </header>
 
       <div className="bg-amber-50 border border-amber-200 rounded-card p-3 text-[12px] text-amber-800 leading-relaxed mb-4">
-        ⚠️ <strong>혜택 조건</strong> (예: "큰 회사 우선") 이 있는 항목은 총 가치 계산에서 제외됩니다.
-        조건 없는 항목들의 합산만 영업 시 "총 X만원 상당" 으로 보입니다.
+        ⚠️ <strong>혜택 조건</strong> (예: &ldquo;큰 회사 우선&rdquo;) 이 있는 항목은 총 가치 계산에서 제외됩니다.
+        조건 없는 항목들의 합산만 영업 시 &ldquo;총 X만원 상당&rdquo; 으로 보입니다.
       </div>
 
       <div className="space-y-2.5">

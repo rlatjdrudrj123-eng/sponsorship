@@ -273,7 +273,7 @@ export default function DiagnosisLogicPage() {
                     </div>
                     <div>
                       <label className="text-[11px] font-semibold text-ink-700 mb-1 block">
-                        설명 (why) — 사용자에게 "왜 묻는지" 보조 설명
+                        설명 (why) — 사용자에게 &ldquo;왜 묻는지&rdquo; 보조 설명
                       </label>
                       <textarea
                         rows={2}
