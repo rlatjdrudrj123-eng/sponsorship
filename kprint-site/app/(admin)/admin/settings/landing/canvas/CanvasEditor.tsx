@@ -226,6 +226,8 @@ export function CanvasEditor({
   onChange: (next: CanvasPage) => void;
 }) {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  // 마퀴(드래그 박스) 선택 — 캔버스 좌표계 기준
+  const [marquee, setMarquee] = useState<{ x1: number; y1: number; x2: number; y2: number } | null>(null);
   // 단일 선택 — 인스펙터에 1개 노드 편집 띄울 때만 의미
   const selectedId =
     selectedIds.size === 1 ? Array.from(selectedIds)[0] : null;
@@ -1054,9 +1056,61 @@ export function CanvasEditor({
 
         <div className="p-5 grid place-items-start">
           <div
-            className="relative shadow-card"
+            className="relative shadow-card select-none"
             onClick={(e) => {
               if (e.target === e.currentTarget) setSelectedId(null);
+            }}
+            onMouseDown={(e) => {
+              // 좌클릭만, 캔버스 빈 영역에서만 시작
+              if (e.button !== 0) return;
+              if (e.target !== e.currentTarget) return;
+              e.preventDefault();
+              const rect = e.currentTarget.getBoundingClientRect();
+              const x0 = (e.clientX - rect.left) / scale;
+              const y0 = (e.clientY - rect.top) / scale;
+              const shiftKey = e.shiftKey;
+              const baseSelection = shiftKey
+                ? new Set(selectedIds)
+                : new Set<string>();
+              setMarquee({ x1: x0, y1: y0, x2: x0, y2: y0 });
+
+              const handleMove = (ev: MouseEvent) => {
+                const x = (ev.clientX - rect.left) / scale;
+                const y = (ev.clientY - rect.top) / scale;
+                setMarquee({ x1: x0, y1: y0, x2: x, y2: y });
+              };
+              const handleUp = (ev: MouseEvent) => {
+                const x = (ev.clientX - rect.left) / scale;
+                const y = (ev.clientY - rect.top) / scale;
+                const minX = Math.min(x0, x);
+                const maxX = Math.max(x0, x);
+                const minY = Math.min(y0, y);
+                const maxY = Math.max(y0, y);
+                // 드래그 충분히 했을 때만 마퀴 선택 적용 — 미만이면 그냥 클릭
+                if (maxX - minX > 4 || maxY - minY > 4) {
+                  const hits = page.nodes.filter((n) => {
+                    if (n.hidden) return false;
+                    const nx = n.rect.x;
+                    const ny = n.rect.y;
+                    const nw = n.rect.w;
+                    const nh = n.rect.h;
+                    return (
+                      nx < maxX && nx + nw > minX && ny < maxY && ny + nh > minY
+                    );
+                  });
+                  const next = new Set(baseSelection);
+                  hits.forEach((n) => next.add(n.id));
+                  setSelectedIds(next);
+                } else if (!shiftKey) {
+                  // 단순 클릭 = 선택 해제
+                  setSelectedIds(new Set());
+                }
+                setMarquee(null);
+                window.removeEventListener("mousemove", handleMove);
+                window.removeEventListener("mouseup", handleUp);
+              };
+              window.addEventListener("mousemove", handleMove);
+              window.addEventListener("mouseup", handleUp);
             }}
             style={{
               width: CANVAS_W * scale,
@@ -1130,6 +1184,21 @@ export function CanvasEditor({
                   }}
                 />
               ))}
+
+              {/* 마퀴 박스 — 드래그 선택 영역 시각화 */}
+              {marquee && (
+                <div
+                  className="absolute pointer-events-none"
+                  style={{
+                    left: Math.min(marquee.x1, marquee.x2),
+                    top: Math.min(marquee.y1, marquee.y2),
+                    width: Math.abs(marquee.x2 - marquee.x1),
+                    height: Math.abs(marquee.y2 - marquee.y1),
+                    border: "1.5px solid var(--brand-500)",
+                    background: "rgba(219, 7, 17, 0.08)",
+                  }}
+                />
+              )}
             </div>
           </div>
         </div>

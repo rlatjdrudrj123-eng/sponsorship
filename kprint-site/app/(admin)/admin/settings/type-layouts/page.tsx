@@ -215,6 +215,9 @@ function TypeLayoutCard({
         )}
       </header>
 
+      {/* 좌: 컨트롤 / 우: 슬라이드 미리보기 */}
+      <div className="grid lg:grid-cols-[1fr_360px] gap-5">
+        <div>
       {/* 현재 노출 순서 */}
       <div className="mb-3">
         <div className="text-[11px] uppercase tracking-wider text-ink-500 font-semibold mb-2">
@@ -296,6 +299,214 @@ function TypeLayoutCard({
           </div>
         </div>
       )}
+        </div>
+        {/* 우 — 실시간 슬라이드 미리보기 */}
+        <SlidePreview type={meta.value} layout={layout} />
+      </div>
     </section>
   );
+}
+
+// ============================================================================
+// SlidePreview — 유형별 샘플 데이터로 실제 공개 슬라이드 모양을 축소 렌더
+// ============================================================================
+
+const MOCK_BY_TYPE: Record<
+  CategoryType,
+  {
+    title: string;
+    tags: string[];
+    location?: string;
+    size?: string;
+    fileFormat?: string;
+    deadline?: string;
+    detail?: string;
+    slotsLabel?: string;
+    video?: string;
+    mailing?: string;
+    content?: string;
+    minPrice: number;
+  }
+> = {
+  floor_plan: {
+    title: "등록데스크 (출입증 발급대)",
+    tags: ["오프라인", "등록", "입구"],
+    location: "A1 출입구, A2 출입구, B홀, C홀",
+    size: "2,000mm × 1,000mm",
+    fileFormat: "eps, ai, pdf 등의 인쇄용 파일형태",
+    deadline: "2026년 2월 28일",
+    detail: "A1 출입구 5구좌, A2 출입구 4구좌, B홀 2구좌",
+    slotsLabel: "11 / 11 가능",
+    minPrice: 2_000_000,
+  },
+  quantity: {
+    title: "참관객 목걸이",
+    tags: ["오프라인", "목걸이", "수량"],
+    size: "5,000개 / 구좌",
+    fileFormat: "eps, ai, pdf",
+    deadline: "2026년 2월 28일",
+    detail: "참관객 목걸이 3구좌",
+    slotsLabel: "3 / 3 가능",
+    minPrice: 8_000_000,
+  },
+  media: {
+    title: "경품 LED",
+    tags: ["오프라인", "미디어", "영상"],
+    video: "15초 · 1920×1080 · 2,000회 송출",
+    size: "1,920px × 1,080px",
+    fileFormat: "mp4, mov",
+    deadline: "2026년 2월 28일",
+    detail: "경품 LED 1구좌",
+    slotsLabel: "1 / 1 가능",
+    minPrice: 5_000_000,
+  },
+  digital_banner: {
+    title: "참가업체 검색 배너",
+    tags: ["온라인", "검색", "배너"],
+    size: "PC : 1,200px × 200px",
+    fileFormat: "jpg, png, jpeg",
+    deadline: "2026년 2월 28일",
+    detail: "참가업체 검색 배너 3구좌",
+    slotsLabel: "3 / 3 가능",
+    minPrice: 1_000_000,
+  },
+  mailing: {
+    title: "국내 뉴스레터",
+    tags: ["온라인", "뉴스레터", "국내"],
+    mailing: "35,000명 (사전등록자) · 7월·8월",
+    size: "630px × 160px",
+    fileFormat: "jpg, png, jpeg",
+    deadline: "2026년 2월 28일",
+    detail: "7월 발송, 8월 발송",
+    slotsLabel: "2 / 2 가능",
+    minPrice: 1_500_000,
+  },
+  print_page: {
+    title: "가이드북 후표지",
+    tags: ["오프라인", "가이드북", "지면"],
+    size: "210mm × 297mm",
+    fileFormat: "ai, pdf",
+    deadline: "2026년 2월 15일",
+    detail: "표4 국/영문 1구좌",
+    slotsLabel: "1 / 1 가능",
+    minPrice: 4_000_000,
+  },
+  content: {
+    title: "참가업체 인터뷰 + SNS",
+    tags: ["온라인", "인터뷰", "콘텐츠"],
+    content: "Instagram · 인터뷰 영상 + 카드뉴스",
+    deadline: "2026년 3월 15일",
+    detail: "인터뷰 + SNS 5건",
+    slotsLabel: "5 / 5 가능",
+    minPrice: 1_000_000,
+  },
+  xpace: {
+    title: "옥외 LED 브릿지",
+    tags: ["오프라인", "XPACE", "옥외"],
+    location: "킨텍스 브릿지 외벽",
+    video: "30초 · 4K · 5,000회 송출",
+    size: "옥외 LED 전체",
+    fileFormat: "mp4, mov",
+    deadline: "2026년 2월 15일",
+    detail: "옥외 LED 브릿지 1구좌",
+    slotsLabel: "1 / 1 가능",
+    minPrice: 10_000_000,
+  },
+  package: {
+    title: "참관객 A to Z 패키지",
+    tags: ["패키지", "시그니처"],
+    detail: "등록대 1구좌, 사전등록 배너, 완료 이메일, 목걸이 1구좌, 라이팅월 1구좌",
+    minPrice: 12_000_000,
+  },
+};
+
+function SlidePreview({
+  type,
+  layout,
+}: {
+  type: CategoryType;
+  layout: TypeLayout;
+}) {
+  const m = MOCK_BY_TYPE[type];
+  return (
+    <div className="bg-canvas border border-ink-100 rounded-btn p-4 sticky top-4">
+      <div className="text-[10px] uppercase tracking-[0.2em] text-ink-500 font-bold mb-2">
+        슬라이드 미리보기
+      </div>
+      <div className="bg-white rounded-btn p-3 shadow-card aspect-[4/3] flex flex-col overflow-hidden">
+        {/* 해시태그 */}
+        <div className="flex flex-wrap gap-x-2 gap-y-0.5 text-[9px] font-bold text-brand-500 mb-1">
+          {m.tags.map((t, i) => (
+            <span key={i}>#{t}</span>
+          ))}
+        </div>
+        {/* 제목 */}
+        <div className="text-[14px] font-bold text-ink-900 leading-tight tracking-tight">
+          {m.title}
+        </div>
+        <div className="border-t border-ink-100 my-2" />
+        {/* 스펙 행 — 현재 layout 기준으로 동적 */}
+        <dl className="space-y-1 flex-1 overflow-hidden">
+          {layout.specFields.map((field) => {
+            const row = renderRow(field, m);
+            if (!row) return null;
+            return (
+              <div
+                key={field}
+                className="flex items-baseline gap-2 border-b border-ink-50 pb-1"
+              >
+                <dt className="text-[8.5px] text-ink-500 font-semibold w-14 shrink-0">
+                  {SPEC_FIELD_LABEL[field]}
+                </dt>
+                <dd className="text-[9px] text-ink-900 font-bold flex-1 truncate">
+                  {row}
+                </dd>
+              </div>
+            );
+          })}
+          {layout.specFields.length === 0 && (
+            <div className="text-[10px] text-ink-400 italic">
+              노출할 스펙이 없습니다.
+            </div>
+          )}
+        </dl>
+        {/* 가격 */}
+        <div className="border-t border-ink-100 mt-2 pt-1.5 text-right">
+          <span className="font-num text-[14px] font-bold text-ink-900">
+            {m.minPrice.toLocaleString()}
+            <span className="text-[9px] ml-0.5">원</span>
+          </span>
+        </div>
+      </div>
+      <p className="text-[10px] text-ink-500 mt-2 leading-snug">
+        실제 슬라이드는 카테고리의 실데이터로 채워지지만, 표시 순서·종류는 위 설정대로 노출됩니다.
+      </p>
+    </div>
+  );
+}
+
+function renderRow(
+  field: SpecField,
+  m: (typeof MOCK_BY_TYPE)[CategoryType]
+): string | null {
+  switch (field) {
+    case "location":
+      return m.location ?? null;
+    case "size":
+      return m.size ?? null;
+    case "fileFormat":
+      return m.fileFormat ?? null;
+    case "deadline":
+      return m.deadline ?? null;
+    case "detail":
+      return m.detail ?? null;
+    case "slots":
+      return m.slotsLabel ?? null;
+    case "video":
+      return m.video ?? null;
+    case "mailing":
+      return m.mailing ?? null;
+    case "content":
+      return m.content ?? null;
+  }
 }
