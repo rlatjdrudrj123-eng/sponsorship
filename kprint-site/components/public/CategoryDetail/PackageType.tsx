@@ -3,11 +3,12 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { ArrowLeft, Bookmark, BookmarkCheck, Check, X } from "lucide-react";
+import { ArrowLeft, Bookmark, BookmarkCheck, Check, Gift, X } from "lucide-react";
 import type { Package, SiteSettings, Slot } from "@/lib/types";
 import { ImageCarousel } from "./_shared/ImageCarousel";
 import { useCartStore } from "@/lib/cart/cartStore";
 import { Footer } from "@/components/public/Footer";
+import { DEFAULT_BUNDLED_PERKS, calcPerksTotalValue } from "@/lib/perks";
 
 type Props = {
   pkg: Package;
@@ -94,6 +95,9 @@ export function PackageType({ pkg, resolvedSlots, settings }: Props) {
               </ul>
             </div>
 
+            {/* 동봉 혜택 — 스폰서십 신청 시 추가로 제공되는 노출 권리 */}
+            <BundledPerksCard settings={settings} />
+
             <div className="bg-brand-grad rounded-card p-6 text-white shadow-glow-sm">
               <div className="flex items-baseline gap-3 mb-1 flex-wrap">
                 <span className="text-[40px] md:text-[44px] font-bold font-num leading-none">
@@ -136,7 +140,7 @@ export function PackageType({ pkg, resolvedSlots, settings }: Props) {
                 ) : (
                   <Bookmark className="w-4 h-4" />
                 )}
-                {inCart ? "관심 표시됨 · 해제하기" : "관심 표시"}
+                {inCart ? "담김 · 빼기" : "담기"}
               </button>
             </div>
           </div>
@@ -167,6 +171,72 @@ export function PackageType({ pkg, resolvedSlots, settings }: Props) {
         />
       )}
     </>
+  );
+}
+
+// ============================================================================
+// BundledPerksCard — 스폰서십 신청 시 모든 사람에게 동봉되는 혜택 카드
+// ============================================================================
+
+function BundledPerksCard({ settings }: { settings: SiteSettings | null }) {
+  const perks = settings?.bundledPerks ?? DEFAULT_BUNDLED_PERKS;
+  if (perks.length === 0) return null;
+
+  const totalValue = calcPerksTotalValue(perks);
+
+  return (
+    <div className="bg-gradient-to-br from-brand-50 to-canvas border border-brand-100 rounded-card p-6 shadow-card">
+      <div className="flex items-start justify-between gap-3 mb-4">
+        <div>
+          <div className="font-num text-[11px] uppercase tracking-[0.3em] text-brand-500 font-bold flex items-center gap-2">
+            <Gift className="w-3.5 h-3.5" />
+            추가 혜택 — 신청 시 자동 동봉
+          </div>
+          <p className="text-[12px] text-ink-700 mt-1 leading-relaxed">
+            아래 매체들이 추가 비용 없이 함께 제공됩니다.
+          </p>
+        </div>
+        {totalValue > 0 && (
+          <div className="text-right shrink-0">
+            <div className="text-[10px] text-ink-500 font-semibold">총 상당 가치</div>
+            <div className="text-[20px] font-bold text-brand-700 font-num leading-tight">
+              {totalValue.toLocaleString()}
+              <span className="text-[12px] ml-0.5">원</span>
+            </div>
+          </div>
+        )}
+      </div>
+      <ul className="space-y-2">
+        {perks.map((perk, i) => (
+          <li
+            key={i}
+            className="flex items-start gap-2.5 text-[13px] text-ink-900"
+          >
+            <Check className="w-4 h-4 text-brand-500 shrink-0 mt-0.5" />
+            <div className="flex-1 min-w-0">
+              <div className="flex items-baseline gap-2 flex-wrap">
+                <span className="font-bold">{perk.label}</span>
+                {perk.condition && (
+                  <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-ink-100 text-ink-500">
+                    {perk.condition}
+                  </span>
+                )}
+                {perk.valueKRW && (
+                  <span className="text-[11px] text-ink-500 font-num ml-auto">
+                    {perk.valueKRW.toLocaleString()}원 상당
+                  </span>
+                )}
+              </div>
+              {perk.description && (
+                <p className="text-[11.5px] text-ink-500 mt-0.5 leading-snug">
+                  {perk.description}
+                </p>
+              )}
+            </div>
+          </li>
+        ))}
+      </ul>
+    </div>
   );
 }
 
@@ -289,7 +359,7 @@ function PackageConfirmModal({
               className="px-4 py-2.5 rounded-btn bg-ink-900 text-brand-500 text-[13px] font-bold hover:bg-ink-700 flex items-center justify-center gap-1.5"
             >
               <BookmarkCheck className="w-4 h-4" />
-              관심 해제
+              빼기
             </button>
           ) : (
             <button
@@ -298,7 +368,7 @@ function PackageConfirmModal({
               className="px-4 py-2.5 rounded-btn bg-brand-500 text-ink-900 text-[13px] font-bold hover:bg-brand-700 hover:text-white flex items-center justify-center gap-1.5"
             >
               <Bookmark className="w-4 h-4" />
-              관심 표시
+              담기
             </button>
           )}
         </footer>

@@ -30,17 +30,17 @@ const DEFAULT_SETTINGS: QuoteSettings = {
     accountNumber: "424-04-132799",
     accountHolder: "(주)한국이앤엑스",
   },
-  eventSubtitle: "제41회 국제의료기기+병원설비전시회",
+  eventSubtitle: "K-PRINT 2026 — 국제 인쇄·디지털 프린팅 전시회",
   eventIntro:
-    "오는 2026년 3월 19일부터 22일까지 서울 COEX 전시장에서 개최되는 KIMES 2026 전시회의 참가에 관하여, 다음과 같이 제안하오니 검토해주시기 바랍니다.",
-  serialPrefix: "KMS26-",
+    "오는 2026년 8월 26일부터 28일까지 KINTEX 제1전시장에서 개최되는 K-PRINT 2026 전시회의 스폰서십 참가에 관하여, 다음과 같이 제안하오니 검토해주시기 바랍니다.",
+  serialPrefix: "KPR26-",
   serialNextNumber: 1,
   defaultPaymentTerms: "전액 현금 완납",
   defaultBenefitItems: [
     { label: "상위 고정", note: "참가업체 검색 페이지 내 상위 고정" },
     { label: "뱃지 표기", note: "주요 참가기업 뱃지 표기" },
     { label: "도면 내 로고 표기" },
-    { label: "홍보자료 노출", note: "KIMES 뉴스레터 및 SNS 추가 노출" },
+    { label: "홍보자료 노출", note: "K-PRINT 뉴스레터 및 SNS 추가 노출" },
   ],
   footerSlogan: "한국의 전시문화를 선도하는 ㈜한국이앤엑스가 되겠습니다.",
 };

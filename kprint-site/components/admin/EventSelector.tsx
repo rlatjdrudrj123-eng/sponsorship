@@ -52,6 +52,18 @@ export function EventSelector() {
     );
   }
 
+  // 행사 1개일 때는 드롭다운 자체를 숨기고 정적 라벨만 노출 (전환 헷갈림 방지).
+  // 2개 이상일 때만 드롭다운 활성화.
+  if (events.length === 1) {
+    const only = events[0];
+    return (
+      <div className="flex items-center gap-2 px-3 py-1.5 rounded-btn border border-ink-100 bg-white text-[13px] font-semibold text-ink-900 min-w-[160px]">
+        <CalendarDays className="w-3.5 h-3.5 text-brand-700 shrink-0" />
+        <span className="flex-1 text-left truncate">{only.name}</span>
+      </div>
+    );
+  }
+
   return (
     <div className="relative">
       <button
@@ -87,6 +99,14 @@ export function EventSelector() {
                   key={e.id}
                   type="button"
                   onClick={() => {
+                    if (active) {
+                      setOpen(false);
+                      return;
+                    }
+                    const ok = confirm(
+                      `현재 작업 행사를 "${e.name}" 으로 전환하시겠습니까?\n\n주의: 행사마다 데이터가 독립적입니다. 진행 중이던 작업이 있다면 먼저 저장하세요.`
+                    );
+                    if (!ok) return;
                     setSelectedEventId(e.id);
                     setOpen(false);
                   }}

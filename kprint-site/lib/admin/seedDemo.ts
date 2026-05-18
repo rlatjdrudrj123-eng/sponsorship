@@ -245,7 +245,7 @@ const INQUIRY_SEEDS: InquirySeed[] = [
     contactName: "이수진",
     email: "sjlee@medicalkorea.kr",
     phone: "010-2345-1111",
-    message: "XPACE 브릿지 영상 광고에 관심 있습니다. 작년 KIMES 영상 사례 확인 가능할까요?",
+    message: "XPACE 브릿지 영상 광고에 관심 있습니다. 작년 영상 사례 확인 가능할까요?",
     cartItemHints: [
       { type: "slot", categoryCode: "XPA" },
       { type: "slot", categoryCode: "XPA", slotIndex: 1 },
@@ -1150,6 +1150,7 @@ export type ClearAllOptions = {
   sponsors?: boolean;       // 스폰서
   events?: boolean;         // 행사
   importHistory?: boolean;  // 임포트 이력
+  siteSettings?: boolean;   // 사이트 설정 (테마·랜딩·이벤트 정보)
 };
 
 export type ClearAllResult = {
@@ -1191,6 +1192,9 @@ export async function clearAllContent(opts: ClearAllOptions): Promise<ClearAllRe
     { flag: opts.sponsors, name: "sponsors", label: "스폰서" },
     { flag: opts.events, name: "events", label: "행사" },
     { flag: opts.importHistory, name: "importHistory", label: "임포트 이력" },
+    { flag: opts.siteSettings, name: "siteSettings", label: "사이트 설정" },
+    // 페르소나는 행사 데이터에 묶여있어 categories 와 함께 초기화
+    { flag: opts.categories, name: "personas", label: "페르소나" },
   ];
 
   for (const t of targets) {

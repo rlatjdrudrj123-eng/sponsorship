@@ -5,6 +5,7 @@ import { useParams } from "next/navigation";
 import Link from "next/link";
 import {
   collection,
+  deleteField,
   doc,
   onSnapshot,
   query,
@@ -38,6 +39,11 @@ import { ImageSlot } from "@/components/admin/CategoryEditor/ImageSlot";
 import { FloorImages } from "@/components/admin/CategoryEditor/FloorImages";
 import { PdfUpload } from "@/components/admin/CategoryEditor/PdfUpload";
 import { PinEditor } from "@/components/admin/CategoryEditor/PinEditor";
+import {
+  ContentSpecForm,
+  MailingSpecForm,
+  VideoSpecForm,
+} from "@/components/admin/CategoryEditor/TypeSpecs";
 import type { FloorImage, ImageSlot as ImageSlotType } from "@/lib/types";
 
 type LockableField =
@@ -64,16 +70,68 @@ type FormValues = {
   deadline: string;
 };
 
-const CATEGORY_TYPE_OPTIONS: Array<{ value: Category["type"]; label: string }> = [
-  { value: "floor_plan", label: "도면형" },
-  { value: "quantity", label: "수량형" },
-  { value: "media", label: "미디어" },
-  { value: "digital_banner", label: "디지털 배너" },
-  { value: "mailing", label: "발송형" },
-  { value: "print_page", label: "지면" },
-  { value: "content", label: "콘텐츠" },
-  { value: "xpace", label: "XPACE" },
-  { value: "package", label: "패키지" },
+// 카테고리 유형 — 라벨에 어떤 항목들이 이 유형에 해당하는지 예시 포함.
+// 어드민이 새 카테고리 만들 때 헷갈리지 않게 "이 카테고리는 어떤 유형이지?" 를 바로 판단.
+const CATEGORY_TYPE_OPTIONS: Array<{
+  value: Category["type"];
+  label: string;
+  examples: string;
+  hint: string;
+}> = [
+  {
+    value: "floor_plan",
+    label: "도면형",
+    examples: "천장 배너, 등록데스크, 라이팅 월, 기둥 광고",
+    hint: "전시장 도면 위에 위치를 표시해서 보여주는 매체. 구좌마다 위치가 다름.",
+  },
+  {
+    value: "quantity",
+    label: "수량형",
+    examples: "목걸이, 초대장 삽지, 굿즈",
+    hint: "위치는 없고 '몇 개'로 측정되는 매체. 보통 1구좌 = 정해진 수량.",
+  },
+  {
+    value: "media",
+    label: "미디어형",
+    examples: "경품 LED, 시상식 영상, 무대 영상",
+    hint: "현장에서 영상으로 노출되는 매체. 송출 횟수·길이가 핵심 스펙.",
+  },
+  {
+    value: "digital_banner",
+    label: "디지털 배너",
+    examples: "통합검색 배너, 카테고리 검색 페이지 배너",
+    hint: "공식 홈페이지·앱의 디지털 영역. 노출 페이지·기간으로 구분.",
+  },
+  {
+    value: "mailing",
+    label: "발송형",
+    examples: "뉴스레터, APP 푸시, 사전등록 완료 메일",
+    hint: "이메일·푸시로 발송하는 매체. 발송 대상 수·발송일이 핵심.",
+  },
+  {
+    value: "print_page",
+    label: "지면형",
+    examples: "쇼가이드 표지, 쇼가이드 내지 광고",
+    hint: "인쇄물 지면에 들어가는 광고. 사이즈·페이지 위치가 중요.",
+  },
+  {
+    value: "content",
+    label: "콘텐츠형",
+    examples: "SNS 인터뷰, 카드뉴스, 유튜브 쇼츠",
+    hint: "콘텐츠 제작·발행 형태로 노출. 채널·포맷·발행 시점이 중요.",
+  },
+  {
+    value: "xpace",
+    label: "XPACE",
+    examples: "옥외 LED, 외벽 브릿지 영상 광고",
+    hint: "킨텍스 옥외 LED 등 도면 + 영상이 결합된 하이브리드 매체.",
+  },
+  {
+    value: "package",
+    label: "패키지",
+    examples: "A to Z 패키지, 시그니처 패키지",
+    hint: "여러 단품 매체를 묶어 할인된 가격으로 판매하는 상품.",
+  },
 ];
 
 export default function CategoryEditPage() {
@@ -330,34 +388,61 @@ export default function CategoryEditPage() {
           {/* 기본 정보 */}
           <Section title="기본 정보">
             <div className="grid grid-cols-2 gap-3">
-              <Field label="이름 (한글)" lockable lockOn={isLocked("name.ko")} onLockToggle={() => toggleLock("name.ko")}>
+              <Field
+                label="이름 (한글)"
+                lockable
+                lockOn={isLocked("name.ko")}
+                onLockToggle={() => toggleLock("name.ko")}
+                where={["slide-title", "card", "modal", "pdf"]}
+              >
                 <input
                   {...form.register("nameKo")}
                   readOnly={isLocked("name.ko")}
                   className={inputCls(isLocked("name.ko"))}
                 />
               </Field>
-              <Field label="이름 (영문)" lockable lockOn={isLocked("name.en")} onLockToggle={() => toggleLock("name.en")}>
+              <Field
+                label="이름 (영문)"
+                lockable
+                lockOn={isLocked("name.en")}
+                onLockToggle={() => toggleLock("name.en")}
+                where={["slide-title", "card", "modal", "pdf"]}
+                hint="언어 스위치 EN 일 때 이름 대신 표시"
+              >
                 <input
                   {...form.register("nameEn")}
                   readOnly={isLocked("name.en")}
                   className={inputCls(isLocked("name.en"))}
                 />
               </Field>
-              <Field label="코드" lockable lockOn={isLocked("code")} onLockToggle={() => toggleLock("code")}>
+              <Field
+                label="코드"
+                lockable
+                lockOn={isLocked("code")}
+                onLockToggle={() => toggleLock("code")}
+                where={["slide-title", "modal", "pdf"]}
+                hint="제목 옆 #ABC 형태"
+              >
                 <input
                   {...form.register("code")}
                   readOnly={isLocked("code")}
                   className={inputCls(isLocked("code")) + " font-mono"}
                 />
               </Field>
-              <Field label="슬러그">
+              <Field label="슬러그" hint="URL 경로 (예: /sponsorships/{슬러그})">
                 <input
                   {...form.register("slug")}
                   className={inputCls(false) + " font-mono"}
                 />
               </Field>
-              <Field label="채널" lockable lockOn={isLocked("channel")} onLockToggle={() => toggleLock("channel")}>
+              <Field
+                label="채널"
+                lockable
+                lockOn={isLocked("channel")}
+                onLockToggle={() => toggleLock("channel")}
+                where={["slide-tag", "card"]}
+                hint="첫 해시태그로 사용 (#오프라인 / #온라인 / #패키지)"
+              >
                 <select
                   {...form.register("channel")}
                   disabled={isLocked("channel")}
@@ -376,19 +461,44 @@ export default function CategoryEditPage() {
                 >
                   {CATEGORY_TYPE_OPTIONS.map((o) => (
                     <option key={o.value} value={o.value}>
-                      {o.value} ({o.label})
+                      {o.label} — {o.examples}
                     </option>
                   ))}
                 </select>
+                {(() => {
+                  const selected = CATEGORY_TYPE_OPTIONS.find(
+                    (o) => o.value === form.watch("type")
+                  );
+                  if (!selected) return null;
+                  return (
+                    <div className="mt-1.5 px-2.5 py-1.5 bg-ink-50 rounded text-[11.5px] text-ink-700 leading-relaxed">
+                      <span className="font-semibold text-ink-900">
+                        예: {selected.examples}
+                      </span>
+                      <span className="block text-ink-500 mt-0.5">
+                        {selected.hint}
+                      </span>
+                    </div>
+                  );
+                })()}
               </Field>
-              <Field label="한 줄 설명 (페이지 상단)" full>
+              <Field
+                label="한 줄 설명"
+                full
+                where={["slide-desc", "card", "modal", "pdf"]}
+                hint="제목 바로 아래 한 줄. 카드·모달·PDF 에도 동일하게 노출."
+              >
                 <input
                   {...form.register("shortDesc")}
                   className={inputCls(false)}
-                  placeholder="페이지 상단 strip에 노출"
+                  placeholder="예: Hall A 등록데스크 — 모든 참관객이 거치는 첫 접점."
                 />
               </Field>
-              <Field label="본문 (선택)" full>
+              <Field
+                label="본문 (선택)"
+                full
+                hint="현재 슬라이드/카드에는 사용 안 함 — 추후 자세히 페이지용 예비 필드."
+              >
                 <textarea
                   {...form.register("longDesc")}
                   className={inputCls(false) + " min-h-[80px] resize-y"}
@@ -401,21 +511,41 @@ export default function CategoryEditPage() {
           {/* 스펙·가이드 */}
           <Section title="스펙·가이드">
             <div className="grid grid-cols-2 gap-3">
-              <Field label="사이즈" lockable lockOn={isLocked("size")} onLockToggle={() => toggleLock("size")}>
+              <Field
+                label="사이즈"
+                lockable
+                lockOn={isLocked("size")}
+                onLockToggle={() => toggleLock("size")}
+                where={["slide-spec", "pdf"]}
+                hint="예: W 2,000mm × H 1,000mm"
+              >
                 <input
                   {...form.register("size")}
                   readOnly={isLocked("size")}
                   className={inputCls(isLocked("size"))}
                 />
               </Field>
-              <Field label="파일 형식" lockable lockOn={isLocked("fileFormat")} onLockToggle={() => toggleLock("fileFormat")}>
+              <Field
+                label="파일 형식"
+                lockable
+                lockOn={isLocked("fileFormat")}
+                onLockToggle={() => toggleLock("fileFormat")}
+                where={["slide-spec", "pdf"]}
+                hint="예: eps, ai, pdf 등의 인쇄용 파일형태(고해상도)"
+              >
                 <input
                   {...form.register("fileFormat")}
                   readOnly={isLocked("fileFormat")}
                   className={inputCls(isLocked("fileFormat"))}
                 />
               </Field>
-              <Field label="마감일" lockable lockOn={isLocked("deadline")} onLockToggle={() => toggleLock("deadline")}>
+              <Field
+                label="마감일"
+                lockable
+                lockOn={isLocked("deadline")}
+                onLockToggle={() => toggleLock("deadline")}
+                where={["slide-spec", "pdf"]}
+              >
                 <input
                   type="date"
                   {...form.register("deadline")}
@@ -423,7 +553,12 @@ export default function CategoryEditPage() {
                   className={inputCls(isLocked("deadline"))}
                 />
               </Field>
-              <Field label="가이드 PDF" full>
+              <Field
+                label="가이드 PDF"
+                full
+                where={["slide-spec", "modal"]}
+                hint="슬라이드 좌측 [가이드 다운로드] 버튼이 이 PDF 로 연결됨. 용량이 크면 Drive 링크 사용 가능."
+              >
                 <PdfUpload
                   categoryId={id}
                   fileUrl={category.designGuideFileUrl}
@@ -440,7 +575,15 @@ export default function CategoryEditPage() {
             </div>
 
             <div className="mt-4">
-              <div className="text-[12px] font-semibold text-ink-700 mb-2 uppercase tracking-wide">태그</div>
+              <div className="flex items-center gap-1.5 mb-2 flex-wrap">
+                <span className="text-[12px] font-semibold text-ink-700 uppercase tracking-wide">
+                  태그
+                </span>
+                <WhereBadges where={["slide-tag", "card"]} />
+                <span className="text-[11px] text-ink-500">
+                  — 채널 + 앞 2개 태그가 슬라이드/카드 해시태그로 노출
+                </span>
+              </div>
               {taxonomyTags.length === 0 ? (
                 <div className="text-[12px] text-ink-500 bg-ink-50 rounded-btn px-3 py-2">
                   이 행사의 태그가 아직 없습니다.{" "}
@@ -473,8 +616,41 @@ export default function CategoryEditPage() {
             </div>
           </Section>
 
+          {/* 타입별 스펙 — 카테고리 타입에 따라 다른 폼이 노출됨 */}
+          {(category.type === "media" || category.type === "xpace") && (
+            <Section title="영상 스펙">
+              <VideoSpecForm
+                key={`v-${id}`}
+                categoryId={id}
+                value={category.videoSpec}
+              />
+            </Section>
+          )}
+          {category.type === "mailing" && (
+            <Section title="발송 스펙">
+              <MailingSpecForm
+                key={`m-${id}`}
+                categoryId={id}
+                value={category.mailingSpec}
+              />
+            </Section>
+          )}
+          {category.type === "content" && (
+            <Section title="콘텐츠 스펙">
+              <ContentSpecForm
+                key={`c-${id}`}
+                categoryId={id}
+                value={category.contentSpec}
+              />
+            </Section>
+          )}
+
           {/* 이미지 슬롯 */}
-          <Section title="이미지">
+          <Section title="이미지·영상">
+            <div className="mb-3 flex items-center gap-1.5 flex-wrap text-[11.5px] text-ink-500">
+              <WhereBadges where={["slide-hero", "card", "modal", "pdf"]} />
+              <span>슬라이드 우측 메인 영역 · 카탈로그 카드 썸네일 · PDF 우측에 노출됩니다.</span>
+            </div>
             <div className="space-y-3">
               <ImageSlot
                 label="히어로 이미지"
@@ -488,6 +664,36 @@ export default function CategoryEditPage() {
                   });
                 }}
               />
+
+              {/* 히어로 영상 URL — 있으면 슬라이드 우측 메인이 영상으로 대체됨 */}
+              <div className="bg-ink-50/60 border border-ink-100 rounded-card p-4">
+                <label className="text-[13px] font-bold flex items-center gap-2">
+                  히어로 영상 URL
+                  <span className="text-[10px] bg-ink-100 text-ink-700 px-1.5 py-0.5 rounded font-mono">
+                    선택
+                  </span>
+                </label>
+                <p className="text-[11.5px] text-ink-500 mt-1 leading-relaxed">
+                  값이 있으면 슬라이드 우측 메인 영역에 <strong>이미지 대신 영상</strong>이 재생됩니다.
+                  비워두면 히어로 이미지의 첫 장이 노출.
+                  <br />
+                  YouTube · Vimeo · Google Drive · Firebase Storage · 직접 mp4 등 모두 지원.
+                </p>
+                <input
+                  type="url"
+                  defaultValue={category.heroVideoUrl ?? ""}
+                  onBlur={async (e) => {
+                    const v = e.target.value.trim();
+                    await updateDoc(doc(getDb(), "categories", id), {
+                      heroVideoUrl: v ? v : deleteField(),
+                      updatedAt: Timestamp.fromDate(new Date()),
+                    });
+                  }}
+                  placeholder="https://youtube.com/watch?v=... 또는 https://...mp4"
+                  className="mt-2 w-full px-3 py-2 text-sm border border-ink-100 bg-white rounded-btn focus:outline-none focus:border-brand-500 font-mono"
+                />
+              </div>
+
               <ImageSlot
                 label="디테일 이미지 (선택)"
                 storagePathPrefix={`categories/${id}/detail`}
@@ -714,6 +920,48 @@ function Section({
   );
 }
 
+// 필드별 "공개 사이트의 어디에 보이는지" 힌트. 어드민이 어떤 값을 어디서 보게 되는지 헷갈리지 않게
+// 작은 배지로 표시한다. 같은 필드가 여러 곳에 노출되면 여러 개 표시.
+type FieldWhere =
+  | "slide-title" // 슬라이드 큰 제목
+  | "slide-desc" // 슬라이드 한 줄 설명
+  | "slide-tag" // 슬라이드 해시태그
+  | "slide-spec" // 슬라이드 스펙 행
+  | "slide-hero" // 슬라이드 우측 메인 이미지/영상
+  | "slide-price" // 슬라이드 하단 가격
+  | "card" // 카탈로그 카드
+  | "modal" // 자세히 보기 모달
+  | "pdf"; // 전체 PDF
+
+const WHERE_LABEL: Record<FieldWhere, string> = {
+  "slide-title": "슬라이드 제목",
+  "slide-desc": "슬라이드 설명",
+  "slide-tag": "슬라이드 해시태그",
+  "slide-spec": "슬라이드 스펙",
+  "slide-hero": "슬라이드 메인 이미지",
+  "slide-price": "슬라이드 가격",
+  card: "카탈로그 카드",
+  modal: "자세히 모달",
+  pdf: "PDF 다운로드",
+};
+
+function WhereBadges({ where }: { where?: FieldWhere[] }) {
+  if (!where || where.length === 0) return null;
+  return (
+    <span className="inline-flex flex-wrap items-center gap-1">
+      {where.map((w) => (
+        <span
+          key={w}
+          className="text-[9.5px] font-semibold px-1.5 py-0.5 rounded bg-brand-50 text-brand-700 leading-none"
+          title={`공개 사이트 노출: ${WHERE_LABEL[w]}`}
+        >
+          → {WHERE_LABEL[w]}
+        </span>
+      ))}
+    </span>
+  );
+}
+
 function Field({
   label,
   children,
@@ -721,6 +969,8 @@ function Field({
   lockOn,
   onLockToggle,
   full,
+  where,
+  hint,
 }: {
   label: string;
   children: React.ReactNode;
@@ -728,10 +978,14 @@ function Field({
   lockOn?: boolean;
   onLockToggle?: () => void;
   full?: boolean;
+  /** 공개 사이트에서 이 필드가 어디에 보이는지 */
+  where?: FieldWhere[];
+  /** 보조 설명 */
+  hint?: string;
 }) {
   return (
     <div className={full ? "col-span-2" : ""}>
-      <div className="flex items-center gap-1.5 mb-1">
+      <div className="flex items-center gap-1.5 mb-1 flex-wrap">
         <label className="text-[12px] font-semibold text-ink-700">{label}</label>
         {lockable && (
           <button
@@ -756,7 +1010,11 @@ function Field({
             )}
           </button>
         )}
+        <WhereBadges where={where} />
       </div>
+      {hint && (
+        <p className="text-[11px] text-ink-500 mb-1 leading-relaxed">{hint}</p>
+      )}
       {children}
     </div>
   );

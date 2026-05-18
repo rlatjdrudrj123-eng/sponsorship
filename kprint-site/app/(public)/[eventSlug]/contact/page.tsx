@@ -172,7 +172,7 @@ export default function ContactPage() {
               문의하기
             </h1>
             <p className="text-[14px] md:text-[16px] text-ink-500 mt-3 leading-relaxed max-w-xl">
-              관심 표시한 항목과 함께 보내주시면 사무국에서 1영업일 내 정식 견적을 회신드립니다.
+              카트에 담은 항목과 함께 보내주시면 사무국에서 1영업일 내 정식 견적을 회신드립니다.
             </p>
           </div>
         </header>
@@ -279,7 +279,7 @@ export default function ContactPage() {
                           type="button"
                           onClick={() => removeSlot(item.slotId)}
                           className="w-5 h-5 text-ink-300 hover:text-red-700 shrink-0"
-                          aria-label="관심 해제"
+                          aria-label="빼기"
                         >
                           <X className="w-3.5 h-3.5" />
                         </button>
@@ -304,7 +304,7 @@ export default function ContactPage() {
                         type="button"
                         onClick={() => removePackage(item.packageId)}
                         className="w-5 h-5 text-ink-300 hover:text-red-700 shrink-0"
-                        aria-label="관심 해제"
+                        aria-label="빼기"
                       >
                         <X className="w-3.5 h-3.5" />
                       </button>

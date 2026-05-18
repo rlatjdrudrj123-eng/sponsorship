@@ -177,7 +177,7 @@ export default function LandingBuilderPage() {
           </h1>
           <p className="text-[13px] text-ink-700 mt-1 max-w-2xl">
             행사 메인 페이지(/{eventId})를 블록 단위로 자유 구성합니다. 각 블록은
-            한 화면 슬라이드. KIMES 톤이 자동 적용됩니다.
+            한 화면 슬라이드. 행사 브랜드 컬러가 자동 적용됩니다.
           </p>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
@@ -475,6 +475,8 @@ function blockPreview(b: LandingBlock): string {
         b.data.page.name ||
         `캔버스 (노드 ${b.data.page.nodes.length}개)`
       );
+    case "pdfDownload":
+      return b.data.headline || b.data.buttonLabel || "전체 PDF 다운로드";
   }
 }
 

@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState, type CSSProperties } from "react";
+import { useEffect, useRef, useState, type CSSProperties } from "react";
 import type {
   CanvasButtonNode,
   CanvasChartNode,
@@ -23,13 +23,20 @@ import * as LucideIcons from "lucide-react";
  * 캔버스 페이지 렌더러.
  *
  * - 데스크톱: 1920×1080 절대 좌표 그대로, 화면 폭에 맞춰 transform: scale.
- * - 모바일: 노드를 수직 stack 으로 재배치 (mobile.order 순). mobile.hidden 인 노드는 제거.
- * - PDF 출력: 데스크톱과 동일 (16:9 비율 유지) — 인쇄 시 page-break.
+ *   좁은 화면에선 min-scale 까지만 축소되고 그 아래선 가로 스크롤.
+ * - 모바일 (≤ MOBILE_BP px): 노드를 수직 stack 으로 재배치. mobile.order 가 있으면 그 순서,
+ *   없으면 (y, x) 추정. mobile.hidden 인 노드는 숨김.
+ * - PDF 출력: forceDesktop=true 로 항상 데스크톱 레이아웃.
  */
 
 const CANVAS_W = 1920;
 const CANVAS_H = 1080;
-const MOBILE_BP = 768; // px
+const MOBILE_BP = 640; // px — 이 값 이하면 mobile stack mode 활성화
+
+// 데스크톱 모드에서 좁은 화면 가독성 유지를 위한 최소 스케일.
+// 화면 폭이 너무 좁아 일반 contain 스케일이 이 값보다 작아지면, 캔버스가
+// viewport 보다 넓어지며 컨테이너에서 가로 스크롤이 허용된다.
+const MIN_SCALE = 0.45;
 
 export function CanvasRenderer({
   page,
@@ -43,12 +50,19 @@ export function CanvasRenderer({
   /** PDF 모드 등 강제로 데스크톱 레이아웃을 쓰고 싶을 때 */
   forceDesktop?: boolean;
 }) {
-  // PC·모바일 동일 레이아웃 — CSS transform scale 로 화면 폭에 맞춤.
-  // (옛 CanvasMobileStack 은 도형·배경이 다 누락되어 디자인과 다른 화면이 나옴 — 폐기)
-  void useIsMobile;
-  void forceDesktop;
-
+  const isMobile = useIsMobile(MOBILE_BP);
   const bg = resolveBg(page.bg) ?? "var(--color-canvas, #F6F6F6)";
+
+  if (isMobile && !forceDesktop) {
+    return (
+      <CanvasMobileStack
+        page={page}
+        bg={bg}
+        eventId={eventId}
+        settings={settings ?? null}
+      />
+    );
+  }
 
   return (
     <CanvasDesktop
@@ -71,68 +85,240 @@ function CanvasDesktop({
   eventId?: string;
   settings: SiteSettings | null;
 }) {
-  // 캔버스를 화면 폭에 맞춰 transform: scale 으로 축소
-  // 뷰포트가 1920보다 작아도 1920 그대로 그리고 줄임. 비율 유지.
+  // 캔버스 컨테이너:
+  // - 일반 화면: 부모 폭에 맞춰 transform: scale 으로 contain
+  // - 좁은 화면(모바일): 최소 스케일까지만 축소하고, 그 이하면 가로 스크롤
   return (
     <div
-      className="canvas-page relative w-full overflow-hidden"
-      style={{
-        aspectRatio: `${CANVAS_W} / ${CANVAS_H}`,
-        background: bg,
-      }}
+      className="canvas-page-wrap relative w-full h-full overflow-x-auto overflow-y-hidden flex items-center justify-center"
+      style={{ background: bg }}
     >
       <div
-        className="absolute top-0 left-0"
+        className="canvas-page relative shrink-0 overflow-hidden"
         style={{
-          width: CANVAS_W,
-          height: CANVAS_H,
-          transformOrigin: "top left",
-          transform: `scale(var(--canvas-scale, 1))`,
+          width: "var(--canvas-disp-w, 100%)",
+          height: "var(--canvas-disp-h, 100%)",
         }}
       >
-        {page.bgImageUrl && (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            src={page.bgImageUrl}
-            alt=""
-            className="absolute inset-0 w-full h-full object-cover pointer-events-none"
-          />
-        )}
-        {page.nodes
-          .filter((n) => !n.hidden)
-          .map((n) => (
-            <NodeRenderer
-              key={n.id}
-              node={n}
-              eventId={eventId}
-              settings={settings}
+        <div
+          className="absolute top-0 left-0"
+          style={{
+            width: CANVAS_W,
+            height: CANVAS_H,
+            transformOrigin: "top left",
+            transform: `scale(var(--canvas-scale, 1))`,
+          }}
+        >
+          {page.bgImageUrl && (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={page.bgImageUrl}
+              alt=""
+              className="absolute inset-0 w-full h-full object-cover pointer-events-none"
             />
-          ))}
+          )}
+          {page.nodes
+            .filter((n) => !n.hidden)
+            .map((n) => (
+              <NodeRenderer
+                key={n.id}
+                node={n}
+                eventId={eventId}
+                settings={settings}
+              />
+            ))}
+        </div>
       </div>
-      {/* 화면 폭에 맞춘 scale 자동 보정 */}
+      {/* 화면 크기에 맞춘 scale 자동 보정 */}
       <CanvasScale />
     </div>
   );
 }
 
-/** ResizeObserver 로 부모 폭 측정 → --canvas-scale 변수 갱신 */
+/**
+ * 부모 폭/높이를 측정해 contain 스케일을 계산.
+ * - naturalScale = min(부모폭/캔버스폭, 부모높이/캔버스높이) — 비율 유지하며 부모 안에 들어가는 최대 크기
+ * - scale = max(naturalScale, MIN_SCALE) — 단, MIN_SCALE 이하로는 떨어지지 않게 클램프
+ *   클램프가 걸리면 캔버스가 부모보다 넓어지고, 부모의 overflow-x-auto 가 가로 스크롤 제공
+ */
 function CanvasScale() {
   useEffect(() => {
     const update = () => {
-      document.querySelectorAll<HTMLElement>(".canvas-page").forEach((el) => {
-        const w = el.clientWidth;
-        const scale = w / CANVAS_W;
-        el.style.setProperty("--canvas-scale", String(scale));
-      });
+      document
+        .querySelectorAll<HTMLElement>(".canvas-page-wrap")
+        .forEach((wrap) => {
+          const pw = wrap.clientWidth;
+          const ph = wrap.clientHeight;
+          if (pw === 0 || ph === 0) return;
+          const naturalScale = Math.min(pw / CANVAS_W, ph / CANVAS_H);
+          const scale = Math.max(naturalScale, MIN_SCALE);
+          const dispW = CANVAS_W * scale;
+          const dispH = CANVAS_H * scale;
+          wrap.style.setProperty("--canvas-scale", String(scale));
+          wrap.style.setProperty("--canvas-disp-w", `${dispW}px`);
+          wrap.style.setProperty("--canvas-disp-h", `${dispH}px`);
+        });
     };
     update();
     window.addEventListener("resize", update);
-    return () => window.removeEventListener("resize", update);
+    // 폰트 로드·이미지 로드 등으로 레이아웃이 늦게 잡힐 때 한 번 더
+    const t = setTimeout(update, 200);
+    return () => {
+      window.removeEventListener("resize", update);
+      clearTimeout(t);
+    };
   }, []);
   return null;
 }
 
-// (CanvasMobileStack 제거 — 데스크탑 스케일 방식으로 통일)
+// ============================================================================
+// CanvasMobileStack — 모바일 자동 세로 흐름
+// ============================================================================
+//
+// 핵심 아이디어:
+//   - 가로 절대 좌표는 모바일에서 의미가 약함. 노드를 정렬해 vertical flow.
+//   - 정렬: mobile.order 있으면 그 순서, 없으면 (y-band, x) 추정.
+//   - 각 노드는 자기 비율(rect.w / rect.h)을 유지하면서 컨테이너 폭에 맞춰 스케일.
+//     → 안에 들어있는 NodeInner 는 그대로 (1920 좌표계 기준) 렌더되고
+//       바깥 박스가 scale 로 줄여 컨테이너 폭에 맞춤.
+//   - mobile.fullWidth=true 면 폭의 95%, 아니면 노드 비율에 따라 가로 정렬.
+//   - 순수 장식 shape 들이 너무 많으면 노이즈가 되므로, 빈 텍스트/너무 작은 노드는 스킵.
+
+function CanvasMobileStack({
+  page,
+  bg,
+  eventId,
+  settings,
+}: {
+  page: CanvasPage;
+  bg: string;
+  eventId?: string;
+  settings: SiteSettings | null;
+}) {
+  // 노이즈 컷오프 — 너무 작은 장식 노드는 모바일에서 생략
+  const isSignificant = (n: CanvasNode): boolean => {
+    if (n.type === "shape") {
+      // 작은 장식 도형은 생략 (특정 너비/높이 미만)
+      const area = n.rect.w * n.rect.h;
+      if (area < 60 * 60) return false;
+    }
+    if (n.type === "text") {
+      const content = (n.data.content ?? "").trim();
+      if (!content) return false;
+    }
+    return true;
+  };
+
+  const visible = page.nodes
+    .filter((n) => !n.hidden && !n.mobile?.hidden && isSignificant(n));
+
+  const sorted = [...visible].sort((a, b) => {
+    const oa = a.mobile?.order;
+    const ob = b.mobile?.order;
+    if (oa !== undefined && ob !== undefined) return oa - ob;
+    if (oa !== undefined) return -1;
+    if (ob !== undefined) return 1;
+    // y-band (50px 단위), 그 안에선 x 순
+    const yBandA = Math.floor(a.rect.y / 50);
+    const yBandB = Math.floor(b.rect.y / 50);
+    if (yBandA !== yBandB) return yBandA - yBandB;
+    return a.rect.x - b.rect.x;
+  });
+
+  return (
+    <div
+      className="canvas-page-mobile relative w-full h-full overflow-y-auto overflow-x-hidden"
+      style={{ background: bg }}
+    >
+      {page.bgImageUrl && (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          src={page.bgImageUrl}
+          alt=""
+          className="absolute inset-0 w-full h-full object-cover pointer-events-none opacity-60"
+        />
+      )}
+      <div className="relative z-10 flex flex-col items-center gap-4 py-8 px-4 min-h-full justify-center">
+        {sorted.map((node) => (
+          <MobileNodeBox
+            key={node.id}
+            node={node}
+            eventId={eventId}
+            settings={settings}
+          />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function MobileNodeBox({
+  node,
+  eventId,
+  settings,
+}: {
+  node: CanvasNode;
+  eventId?: string;
+  settings: SiteSettings | null;
+}) {
+  const wrapRef = useRef<HTMLDivElement>(null);
+  const [scale, setScale] = useState(1);
+
+  useEffect(() => {
+    if (!wrapRef.current) return;
+    const el = wrapRef.current;
+    const update = () => {
+      const w = el.clientWidth;
+      if (w > 0) {
+        setScale(w / node.rect.w);
+      }
+    };
+    update();
+    const ro = new ResizeObserver(update);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [node.rect.w]);
+
+  // 노드 폭 — fullWidth 면 부모 95%, 아니면 원본 비율로 결정
+  const widthFrac = node.mobile?.fullWidth
+    ? 0.95
+    : // 원본 캔버스 폭 대비 비율 (최소 50%, 최대 95%)
+      Math.min(Math.max(node.rect.w / CANVAS_W, 0.5), 0.95);
+
+  return (
+    <div
+      style={{
+        width: `${widthFrac * 100}%`,
+        maxWidth: node.rect.w,
+      }}
+    >
+      <div
+        ref={wrapRef}
+        style={{
+          width: "100%",
+          aspectRatio: `${node.rect.w} / ${node.rect.h}`,
+          position: "relative",
+          overflow: "hidden",
+        }}
+      >
+        <div
+          style={{
+            position: "absolute",
+            top: 0,
+            left: 0,
+            width: node.rect.w,
+            height: node.rect.h,
+            transformOrigin: "top left",
+            transform: `scale(${scale})`,
+            opacity: node.opacity ?? 1,
+          }}
+        >
+          <NodeInner node={node} eventId={eventId} settings={settings} />
+        </div>
+      </div>
+    </div>
+  );
+}
 
 // ============================================================================
 // 데스크톱 노드 렌더
@@ -1022,25 +1208,75 @@ function toEmbedUrl(
 ): { kind: "iframe" | "video"; url: string } | null {
   if (!url) return null;
   const u = url.trim();
+
+  // YouTube — watch?v= / youtu.be / embed / shorts / live
   const yt = u.match(
-    /(?:youtu\.be\/|youtube\.com\/(?:watch\?v=|embed\/))([\w-]{11})/
+    /(?:youtu\.be\/|youtube\.com\/(?:watch\?v=|embed\/|shorts\/|live\/))([\w-]{11})/
   );
-  if (yt) return { kind: "iframe", url: `https://www.youtube.com/embed/${yt[1]}` };
+  if (yt) {
+    return {
+      kind: "iframe",
+      url: `https://www.youtube.com/embed/${yt[1]}?rel=0&modestbranding=1`,
+    };
+  }
+
+  // Vimeo
   const v = u.match(/vimeo\.com\/(?:video\/)?(\d+)/);
-  if (v) return { kind: "iframe", url: `https://player.vimeo.com/video/${v[1]}` };
-  if (u.endsWith(".mp4") || u.endsWith(".webm"))
+  if (v) {
+    return { kind: "iframe", url: `https://player.vimeo.com/video/${v[1]}` };
+  }
+
+  // Google Drive — view / preview / open?id=
+  const driveView = u.match(/drive\.google\.com\/file\/d\/([\w-]+)/);
+  if (driveView) {
+    return {
+      kind: "iframe",
+      url: `https://drive.google.com/file/d/${driveView[1]}/preview`,
+    };
+  }
+  const driveOpen = u.match(/drive\.google\.com\/.*[?&]id=([\w-]+)/);
+  if (driveOpen) {
+    return {
+      kind: "iframe",
+      url: `https://drive.google.com/file/d/${driveOpen[1]}/preview`,
+    };
+  }
+
+  // 직접 영상 파일 — 쿼리스트링 무시하고 확장자 검사
+  const pathPart = u.split("?")[0];
+  if (/\.(mp4|webm|mov|m4v|ogg|ogv)$/i.test(pathPart)) {
     return { kind: "video", url: u };
+  }
+
+  // Firebase Storage — 인코딩된 경로 안에 비디오 확장자가 있으면 video 태그로
+  if (
+    u.includes("firebasestorage.googleapis.com") ||
+    u.includes("storage.googleapis.com")
+  ) {
+    try {
+      const decoded = decodeURIComponent(u);
+      if (/\.(mp4|webm|mov|m4v|ogg|ogv)/i.test(decoded)) {
+        return { kind: "video", url: u };
+      }
+    } catch {
+      // 디코드 실패 시 fall through
+    }
+    // Firebase Storage 도메인이면 기본적으로 직접 영상 파일로 가정
+    return { kind: "video", url: u };
+  }
+
+  // 알 수 없는 도메인 — iframe fallback (대부분 X-Frame-Options 로 차단됨)
   return { kind: "iframe", url: u };
 }
 
-function useIsMobile() {
+function useIsMobile(breakpoint: number = MOBILE_BP) {
   const [mobile, setMobile] = useState(false);
   useEffect(() => {
-    const mq = window.matchMedia(`(max-width: ${MOBILE_BP}px)`);
+    const mq = window.matchMedia(`(max-width: ${breakpoint}px)`);
     const handle = () => setMobile(mq.matches);
     handle();
     mq.addEventListener("change", handle);
     return () => mq.removeEventListener("change", handle);
-  }, []);
+  }, [breakpoint]);
   return mobile;
 }

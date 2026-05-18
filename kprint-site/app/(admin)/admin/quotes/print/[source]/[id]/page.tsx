@@ -44,7 +44,7 @@ export default function QuotePrintPage() {
     totalOverride?: number;   // sponsor의 amount처럼 명시적 합계가 있을 때
     paid?: number;
     eventName?: string;
-    eventBrand?: string;      // 좌상단 큰 텍스트 (예: "KIMES 2026")
+    eventBrand?: string;      // 좌상단 큰 텍스트 (예: "K-PRINT 2026")
   } | null>(null);
   const [serial, setSerial] = useState<string>("");
   const [loading, setLoading] = useState(true);

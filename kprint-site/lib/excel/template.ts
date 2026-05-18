@@ -46,7 +46,7 @@ type CatDef = {
   subs: SubDef[];
 };
 
-const KIMES_DEADLINE = "2026-02-15"; // 통합 마감 (도면형/등록대 기준)
+const DEFAULT_DEADLINE = "2026-02-15"; // 통합 마감 (도면형/등록대 기준)
 
 const CAT_DEFS: CatDef[] = [
   // ============ XPACE 시리즈 ============
@@ -132,7 +132,7 @@ const CAT_DEFS: CatDef[] = [
     type: "floor_plan",
     size: "1800mm × 3500mm",
     fileFormat: "AI, EPS, PDF",
-    deadline: KIMES_DEADLINE,
+    deadline: DEFAULT_DEADLINE,
     tags: "온사이트, 브랜드_확산형",
     subs: [
       {
@@ -160,7 +160,7 @@ const CAT_DEFS: CatDef[] = [
     type: "floor_plan",
     size: "1800mm × 3500mm",
     fileFormat: "AI, EPS, PDF",
-    deadline: KIMES_DEADLINE,
+    deadline: DEFAULT_DEADLINE,
     tags: "온사이트, 브랜드_확산형",
     subs: [
       {
@@ -187,7 +187,7 @@ const CAT_DEFS: CatDef[] = [
     type: "floor_plan",
     size: "1800mm × 3500mm",
     fileFormat: "AI, EPS, PDF",
-    deadline: KIMES_DEADLINE,
+    deadline: DEFAULT_DEADLINE,
     tags: "온사이트, 브랜드_확산형",
     subs: [
       {
@@ -217,7 +217,7 @@ const CAT_DEFS: CatDef[] = [
     type: "floor_plan",
     size: "W900 × D600 × H1100mm",
     fileFormat: "AI, EPS, PDF",
-    deadline: KIMES_DEADLINE,
+    deadline: DEFAULT_DEADLINE,
     tags: "온사이트, 등록경로, 브랜드_확산형",
     subs: [
       {
@@ -255,7 +255,7 @@ const CAT_DEFS: CatDef[] = [
     type: "floor_plan",
     size: "W900 × D600 × H1100mm",
     fileFormat: "AI, EPS, PDF",
-    deadline: KIMES_DEADLINE,
+    deadline: DEFAULT_DEADLINE,
     tags: "온사이트, 등록경로",
     subs: [
       {
@@ -275,7 +275,7 @@ const CAT_DEFS: CatDef[] = [
     type: "floor_plan",
     size: "W900 × D600 × H1100mm",
     fileFormat: "AI, EPS, PDF",
-    deadline: KIMES_DEADLINE,
+    deadline: DEFAULT_DEADLINE,
     tags: "온사이트, 등록경로",
     subs: [
       {
@@ -295,7 +295,7 @@ const CAT_DEFS: CatDef[] = [
     type: "floor_plan",
     size: "W900 × D600 × H1100mm",
     fileFormat: "AI, EPS, PDF",
-    deadline: KIMES_DEADLINE,
+    deadline: DEFAULT_DEADLINE,
     tags: "온사이트, 등록경로, 단독",
     subs: [
       {
@@ -317,7 +317,7 @@ const CAT_DEFS: CatDef[] = [
     type: "floor_plan",
     size: "2400mm × 3000mm",
     fileFormat: "AI, EPS, PDF",
-    deadline: KIMES_DEADLINE,
+    deadline: DEFAULT_DEADLINE,
     tags: "온사이트, 브랜드_확산형",
     subs: [
       {
@@ -342,7 +342,7 @@ const CAT_DEFS: CatDef[] = [
     type: "floor_plan",
     size: "1500mm × 1500mm",
     fileFormat: "AI, EPS, PDF",
-    deadline: KIMES_DEADLINE,
+    deadline: DEFAULT_DEADLINE,
     tags: "온사이트, 동선",
     subs: [
       {
@@ -362,7 +362,7 @@ const CAT_DEFS: CatDef[] = [
     type: "floor_plan",
     size: "기둥 4면",
     fileFormat: "AI, EPS, PDF",
-    deadline: KIMES_DEADLINE,
+    deadline: DEFAULT_DEADLINE,
     tags: "온사이트, 브랜드_확산형",
     subs: [
       {

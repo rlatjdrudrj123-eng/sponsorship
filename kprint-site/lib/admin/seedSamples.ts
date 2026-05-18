@@ -1,5 +1,5 @@
 /**
- * 일회성 샘플 이미지 시드 — KIMES 40개 카테고리 매핑.
+ * 일회성 샘플 이미지 시드 — 샘플 카테고리 매핑 (legacy).
  *
  * category.code 기준으로 매핑된 Unsplash 이미지·텍스트를 일괄 주입.
  * 기존 이미지/텍스트는 덮어씀. isPublished를 true로 변경.
@@ -297,7 +297,7 @@ const SAMPLE_DATA: Record<string, SampleEntry> = {
   APP: {
     shortDesc: "APP 푸시 알림 — 회당 50만원의 직접 도달 매체.",
     longDesc:
-      "K-PRINT 공식 어플리케이션 푸시 알림. KIMES 2026에서 진행되는 세미나·이벤트 등 프로그램 홍보 한정. 발송일정 협의.",
+      "K-PRINT 공식 어플리케이션 푸시 알림. K-PRINT 2026에서 진행되는 세미나·이벤트 등 프로그램 홍보 한정. 발송일정 협의.",
     hero: [
       "https://images.unsplash.com/photo-1605457212266-f76f9e07c0fe?w=1600&q=80",
       "https://images.unsplash.com/photo-1611162616475-46b635cb6868?w=1600&q=80",

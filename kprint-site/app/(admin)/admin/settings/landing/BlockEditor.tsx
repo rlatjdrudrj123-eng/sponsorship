@@ -1205,6 +1205,66 @@ export function BlockEditor({
           </div>
         )}
 
+        {block.type === "pdfDownload" && (
+          <Fields>
+            <Field label="상단 라벨" hint="작은 위쪽 텍스트 (예: Download)">
+              <input
+                className={inputCls()}
+                value={block.data.eyebrow ?? ""}
+                onChange={(e) =>
+                  onChange({
+                    ...block,
+                    data: { ...block.data, eyebrow: e.target.value },
+                  })
+                }
+              />
+            </Field>
+            <Field label="제목">
+              <input
+                className={inputCls()}
+                value={block.data.headline ?? ""}
+                onChange={(e) =>
+                  onChange({
+                    ...block,
+                    data: { ...block.data, headline: e.target.value },
+                  })
+                }
+              />
+            </Field>
+            <Field label="설명">
+              <textarea
+                rows={3}
+                className={inputCls()}
+                value={block.data.description ?? ""}
+                onChange={(e) =>
+                  onChange({
+                    ...block,
+                    data: { ...block.data, description: e.target.value },
+                  })
+                }
+              />
+            </Field>
+            <Field label="버튼 라벨">
+              <input
+                className={inputCls()}
+                value={block.data.buttonLabel ?? ""}
+                placeholder="전체 패키지 PDF 다운로드"
+                onChange={(e) =>
+                  onChange({
+                    ...block,
+                    data: { ...block.data, buttonLabel: e.target.value },
+                  })
+                }
+              />
+            </Field>
+            <p className="text-[11.5px] text-ink-500 leading-relaxed">
+              버튼은 현재 행사의 <code className="font-mono">/print/full</code>{" "}
+              미리보기로 새 탭에서 열립니다. 인쇄 다이얼로그가 자동 실행되며
+              사용자는 [PDF로 저장]으로 다운로드합니다.
+            </p>
+          </Fields>
+        )}
+
         {block.type === "slotsTeaser" && (
           <Fields>
             <Field label="상단 라벨">

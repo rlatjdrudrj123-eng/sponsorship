@@ -30,7 +30,7 @@ export const STRINGS = {
   // sponsorships
   "spons.title": { ko: "스폰서십 전체 보기", en: "All Sponsorships" },
   "spons.subtitle": {
-    ko: "구좌 단위로 둘러보고 관심 표시한 뒤, 사무국에 한 번에 문의하세요.",
+    ko: "구좌 단위로 둘러보고 카트에 담은 뒤, 사무국에 한 번에 문의하세요.",
     en: "Browse slot by slot, save what you like, and send a single inquiry.",
   },
   "spons.filter": { ko: "필터", en: "Filter" },

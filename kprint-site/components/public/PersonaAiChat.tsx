@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 import type {
   Category,
+  DiagnosisConfig,
   Package,
   Persona,
   Purpose,
@@ -179,6 +180,7 @@ export function PersonaAiChat({
   slots,
   packages,
   initialGoal,
+  diagnosisConfig,
 }: {
   open: boolean;
   onClose: () => void;
@@ -191,7 +193,33 @@ export function PersonaAiChat({
   packages: Package[];
   /** 페이지에서 첫 질문(GOAL) 칩을 미리 누르고 열었을 때 — 모달은 바로 2번째 질문부터 */
   initialGoal?: Purpose;
+  /** 어드민에서 override 한 진단 설정 (siteSettings.diagnosisConfig). 없으면 코드 기본값. */
+  diagnosisConfig?: DiagnosisConfig;
 }) {
+  // override 적용된 effective 값들 — 어드민에서 수정한 텍스트/가중치가 있으면 반영
+  const effectiveQuestions = useMemo(() => {
+    const overrides = diagnosisConfig?.questions ?? {};
+    const merged = { ...QUESTIONS };
+    for (const stage of STAGES) {
+      if (stage === "result") continue;
+      const ov = overrides[stage];
+      if (!ov) continue;
+      merged[stage] = {
+        ...QUESTIONS[stage],
+        ...(ov.intro ? { intro: ov.intro } : {}),
+        ...(ov.why !== undefined ? { why: ov.why } : {}),
+      };
+    }
+    return merged;
+  }, [diagnosisConfig]);
+
+  const effectiveWeights = useMemo(
+    () => ({
+      ...SCORING_WEIGHTS,
+      ...(diagnosisConfig?.scoringWeights ?? {}),
+    }),
+    [diagnosisConfig]
+  );
   const [messages, setMessages] = useState<Msg[]>([]);
   const [stage, setStage] = useState<Stage>("experience");
   const [collected, setCollected] = useState<Collected>({});
@@ -313,7 +341,7 @@ export function PersonaAiChat({
     const nextStage = STAGES[idx + 1];
     setTimeout(() => {
       setStage(nextStage);
-      say(QUESTIONS[nextStage].intro);
+      say(effectiveQuestions[nextStage].intro);
     }, 1100);
   };
 
@@ -345,9 +373,19 @@ export function PersonaAiChat({
       subcategories,
       slots,
       packages,
-      collected
+      collected,
+      effectiveWeights
     );
-  }, [stage, persona, categories, subcategories, slots, packages, collected]);
+  }, [
+    stage,
+    persona,
+    categories,
+    subcategories,
+    slots,
+    packages,
+    collected,
+    effectiveWeights,
+  ]);
 
   // 3-옵션 결과
   const options = useMemo(() => {
@@ -358,13 +396,24 @@ export function PersonaAiChat({
       subcategories,
       slots,
       packages,
-      collected
+      collected,
+      effectiveWeights
     );
-  }, [stage, scoredPersonas, categories, subcategories, slots, packages, collected]);
+  }, [
+    stage,
+    scoredPersonas,
+    categories,
+    subcategories,
+    slots,
+    packages,
+    collected,
+    effectiveWeights,
+  ]);
 
   if (!open) return null;
 
-  const currentChips = stage !== "result" ? QUESTIONS[stage].chips : undefined;
+  const currentChips =
+    stage !== "result" ? effectiveQuestions[stage].chips : undefined;
   const stageIdx = STAGES.indexOf(stage);
   const progress = stage === "result" ? 100 : ((stageIdx + 1) / STAGES.length) * 100;
 
@@ -389,7 +438,7 @@ export function PersonaAiChat({
                 <div className="font-num text-[10px] uppercase tracking-[0.3em] text-ink-500 font-bold">
                   {stage === "result"
                     ? "RESULT"
-                    : `STEP ${stageIdx + 1} / ${STAGES.length}${QUESTIONS[stage].stepLabel ? " · " + QUESTIONS[stage].stepLabel : ""}`}
+                    : `STEP ${stageIdx + 1} / ${STAGES.length}${effectiveQuestions[stage].stepLabel ? " · " + effectiveQuestions[stage].stepLabel : ""}`}
                 </div>
                 <h3 className="text-[15px] font-bold text-ink-900 leading-tight">
                   Sponsorship Advisor
@@ -607,7 +656,8 @@ function buildThreeOptions(
   subcategories: Subcategory[],
   slots: Slot[],
   packages: Package[],
-  c: Collected
+  c: Collected,
+  effectiveWeights: typeof SCORING_WEIGHTS
 ): { recommended: RecommendationOption; alternative?: RecommendationOption; thrifty?: RecommendationOption } | null {
   if (scored.length === 0) return null;
 
@@ -621,7 +671,8 @@ function buildThreeOptions(
     subcategories,
     slots,
     packages,
-    c
+    c,
+    effectiveWeights
   );
   const topTotal = topPicks.reduce((s, p) => s + p.price, 0);
   const recommended: RecommendationOption = {
@@ -654,7 +705,8 @@ function buildThreeOptions(
       subcategories,
       slots,
       packages,
-      c
+      c,
+      effectiveWeights
     );
     if (altPicks.length > 0) {
       const altTotal = altPicks.reduce((s, p) => s + p.price, 0);
@@ -1183,7 +1235,8 @@ function computeCombo(
   subcategories: Subcategory[],
   slots: Slot[],
   packages: Package[],
-  c: Collected
+  c: Collected,
+  effectiveWeights: typeof SCORING_WEIGHTS
 ): Pick[] {
   const picks: Pick[] = [];
   const budget = c.budget ?? Number.POSITIVE_INFINITY;
@@ -1246,7 +1299,7 @@ function computeCombo(
       };
       const types = purposeChannelTypes[targetPurpose] ?? [];
       if (types.includes(cat.type)) {
-        score += SCORING_WEIGHTS.channelMatch;
+        score += effectiveWeights.channelMatch;
         reasons.push("목표 채널 적합");
       }
     }
@@ -1255,16 +1308,16 @@ function computeCombo(
       (s) => s.subcategoryId === sub.id && s.status === "available"
     ).length;
     if (sameSubAvailableSlots === 1) {
-      score += SCORING_WEIGHTS.lastSlotBonus;
-      reasons.push(`잔여 1자리 (+${SCORING_WEIGHTS.lastSlotBonus})`);
+      score += effectiveWeights.lastSlotBonus;
+      reasons.push(`잔여 1자리 (+${effectiveWeights.lastSlotBonus})`);
     }
     // 단독 채널 보너스 — 카테고리에 슬롯이 1개뿐 (희소·시그니처)
     const totalSlotsForCat = slots.filter(
       (s) => s.categoryId === cat.id
     ).length;
     if (totalSlotsForCat === 1) {
-      score += SCORING_WEIGHTS.soloChannelBonus;
-      reasons.push(`단독 채널 (+${SCORING_WEIGHTS.soloChannelBonus})`);
+      score += effectiveWeights.soloChannelBonus;
+      reasons.push(`단독 채널 (+${effectiveWeights.soloChannelBonus})`);
     }
     // 분야(segment) 별 채널 보너스
     if (c.segment === "digital" && (cat.type === "digital_banner" || cat.type === "mailing")) {

@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowRight, LayoutGrid, Sparkles } from "lucide-react";
+import { ArrowRight, Download, LayoutGrid, Sparkles } from "lucide-react";
 import Link from "next/link";
 import type { LandingBlock, SiteSettings } from "@/lib/types";
 import { BlockSection } from "./blocks";
@@ -25,8 +25,18 @@ export function LandingRenderer({
 }) {
   return (
     <>
-      {/* 우상단 영속 버튼 — 카탈로그로 바로 점프 */}
+      {/* 우상단 영속 버튼 — 카탈로그·전체 PDF */}
       <div className="fixed top-6 right-6 md:top-8 md:right-8 z-50 flex items-center gap-2">
+        <Link
+          href={`/${eventId}/print/full`}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="px-4 py-2.5 rounded-pill bg-white/90 backdrop-blur border border-ink-100 hover:border-ink-900 text-ink-900 text-[12px] md:text-[13px] font-bold transition-colors flex items-center gap-1.5"
+          title="전체 패키지 PDF (인쇄·PDF 저장)"
+        >
+          <Download className="w-3.5 h-3.5" />
+          전체 PDF
+        </Link>
         <Link
           href={`/${eventId}/sponsorships`}
           className="px-5 py-2.5 rounded-pill bg-brand-500 text-white hover:bg-brand-700 text-[12px] md:text-[13px] font-bold transition-colors flex items-center gap-1.5 shadow-glow-sm hover:shadow-glow"

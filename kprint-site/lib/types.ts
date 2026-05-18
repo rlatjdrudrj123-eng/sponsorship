@@ -113,7 +113,12 @@ export type Category = {
   detailImages?: ImageSlot;
   floorImages?: FloorImage[]; // 도면형/XPACE만
 
-  // 영상 (미디어형/XPACE형)
+  // 히어로 영역 영상 — 슬라이드 우측 메인 영역에 이미지 대신 영상을 보여주고 싶을 때.
+  // (YouTube / Vimeo / Drive / Firebase Storage / 직접 mp4 등 모두 지원 — toEmbedUrl 로 파싱)
+  // 값이 있으면 슬라이드 / 모달의 메인 영역에 영상이 재생되고, 없으면 heroImages 첫 장이 노출.
+  heroVideoUrl?: string;
+
+  // 영상 (미디어형/XPACE형) — 카테고리 콘텐츠 영상 (예: LED 송출 샘플)
   videoUrl?: string;
   videoSpec?: {
     duration?: number; // 초
@@ -307,11 +312,74 @@ export type SiteSettings = {
 
   /** 메인 랜딩(/[eventSlug]) 페이지의 블록 시퀀스. 비어있으면 자동 생성된 기본 랜딩 사용 */
   landing?: LandingBlock[];
+
+  /** 카테고리 유형별 슬라이드 레이아웃 — 어떤 스펙 행을 어떤 순서로 보일지.
+   *  값이 없으면 기본 레이아웃(getDefaultTypeLayout) 사용. */
+  typeLayouts?: Partial<Record<CategoryType, TypeLayout>>;
+
+  /** 스폰서십 신청 시 모두에게 동봉되는 혜택 (등록대 로고·도면 로고·검색 배너 등).
+   *  공개 슬라이드 / PDF 에서 "추가 혜택" 섹션으로 노출. */
+  bundledPerks?: BundledPerk[];
+
+  /** 진단 챗봇 (PersonaAiChat) 의 질문 텍스트·가중치 override. 없으면 코드 기본값. */
+  diagnosisConfig?: DiagnosisConfig;
+};
+
+/** 진단 챗봇 단계 (PersonaAiChat Stage 와 일치) */
+export type DiagnosisStage =
+  | "goal"
+  | "budget"
+  | "segment"
+  | "companySize"
+  | "experience";
+
+/** 진단 질문 한 단계의 노출 텍스트 (chips 는 코드에 박혀있어 어드민에서 수정 불가, intro/why 만 override) */
+export type DiagnosisQuestionOverride = {
+  intro?: string;
+  why?: string;
+};
+
+/** 진단 시스템 어드민 설정 — 행사별 override. 없으면 코드 기본값 사용. */
+export type DiagnosisConfig = {
+  /** 단계별 텍스트 override */
+  questions?: Partial<Record<DiagnosisStage, DiagnosisQuestionOverride>>;
+  /** 스코어링 가중치 override (이름 → 점수) — 없으면 코드 기본값 */
+  scoringWeights?: Record<string, number>;
+};
+
+/** 스폰서십 동봉 혜택 — 단품 구매 vs 패키지에서 모두 포함되는 추가 노출 권리 */
+export type BundledPerk = {
+  /** 표시 라벨 (예: "등록대 스폰서 로고") */
+  label: string;
+  /** 한 줄 설명 (예: "전시장 입구 등록대 전체에 로고 노출") */
+  description?: string;
+  /** 상당 가치 (KRW) — 영업 시 "총 X만원 상당" 계산용. 0/없음이면 비표시 */
+  valueKRW?: number;
+  /** 조건부 혜택 (예: 패키지 구매 시만, 큰 회사만 등) */
+  condition?: string;
+};
+
+/** 슬라이드 스펙 영역에 노출 가능한 행 종류 */
+export type SpecField =
+  | "location"   // 게재 위치 (subcategory 이름 모음)
+  | "size"       // 사이즈
+  | "fileFormat" // 파일 형식
+  | "deadline"   // 제출 마감
+  | "detail"     // 세부사항 (subcategory + slot count)
+  | "slots"      // 단순 잔여/총 구좌
+  | "video"      // 영상 스펙 (videoSpec)
+  | "mailing"    // 발송 스펙 (mailingSpec)
+  | "content";   // 콘텐츠 스펙 (contentSpec)
+
+/** 카테고리 유형별 슬라이드 레이아웃 */
+export type TypeLayout = {
+  /** 노출할 스펙 필드들 (순서 = 표시 순서) */
+  specFields: SpecField[];
 };
 
 // ============= LANDING BLOCKS =============
 // /[eventSlug] 페이지의 콘텐츠를 어드민에서 자유롭게 구성할 수 있는 블록 단위 schema.
-// 각 블록 = 한 화면(스냅 슬라이드) 또는 한 섹션. 타입별 디자인은 KIMES Figma 톤으로 고정.
+// 각 블록 = 한 화면(스냅 슬라이드) 또는 한 섹션. 타입별 디자인은 시스템 디자인 톤으로 고정.
 
 /** 블록 공통 스타일 override — 어드민이 블록 단위로 자유 조정 가능 */
 export type BlockStyle = {
@@ -547,6 +615,17 @@ export type CanvasPageBlock = LandingBlockBase & {
   };
 };
 
+/** 전체 패키지 PDF 다운로드 슬라이드. 이벤트 컨텍스트로 URL 자동 해석. */
+export type PdfDownloadBlock = LandingBlockBase & {
+  type: "pdfDownload";
+  data: {
+    eyebrow?: string;       // 작은 라벨 (기본: "Download")
+    headline?: string;      // 제목 (기본: "전체 패키지 한 장에 담기")
+    description?: string;   // 보조 설명
+    buttonLabel?: string;   // 버튼 라벨 (기본: "전체 패키지 PDF 다운로드")
+  };
+};
+
 export type LandingBlock =
   | CoverBlock
   | Stats3YearBlock
@@ -566,7 +645,8 @@ export type LandingBlock =
   | VideoEmbedBlock
   | CustomHtmlBlock
   | SlotsTeaserBlock
-  | CanvasPageBlock;
+  | CanvasPageBlock
+  | PdfDownloadBlock;
 
 export type LandingBlockType = LandingBlock["type"];
 
@@ -812,7 +892,7 @@ export type Taxonomy = {
   mediaBuckets?: Array<{ id: string; label: string; description?: string }>;
   /** 노출 시점 버킷. */
   timingBuckets?: Array<{ id: string; label: string; description?: string }>;
-  /** 노출 위치 버킷 (K-PRINT 는 Hall 7·8, KIMES 는 Hall A/B/C/D 등). */
+  /** 노출 위치 버킷 (예: K-PRINT 는 Hall 7·8). 행사별로 다름. */
   locationBuckets?: Array<{ id: string; label: string; description?: string }>;
 };
 

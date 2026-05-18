@@ -7,13 +7,19 @@ import {
   Brain,
   CalendarDays,
   Database,
+  ExternalLink,
+  FileDown,
   FileText,
   FolderKanban,
+  Gift,
+  Globe,
   Grid2x2,
   HelpCircle,
   Handshake,
   Layers,
   LayoutDashboard,
+  Layout,
+  LayoutTemplate,
   MessageSquare,
   Package,
   Settings,
@@ -22,6 +28,7 @@ import {
 } from "lucide-react";
 import { collection, getCountFromServer, query, where } from "firebase/firestore";
 import { getDb } from "@/lib/firebase/firestore";
+import { useAdminEvent } from "@/lib/admin/adminEventStore";
 
 type IconType = ComponentType<SVGProps<SVGSVGElement>>;
 
@@ -38,6 +45,7 @@ type Section = { label: string; items: MenuItem[] };
 export function AdminSidebar() {
   const pathname = usePathname();
   const [newInquiries, setNewInquiries] = useState<number>(0);
+  const selectedEventId = useAdminEvent((s) => s.selectedEventId);
 
   // 신규 문의 배지
   useEffect(() => {
@@ -62,8 +70,7 @@ export function AdminSidebar() {
       label: "메인",
       items: [
         { href: "/admin", label: "대시보드", Icon: LayoutDashboard, exact: true },
-        { href: "/admin/import", label: "엑셀 업로드", Icon: Upload },
-        { href: "/admin/seed", label: "데모 시드 (테스트)", Icon: Database },
+        { href: "/admin/events", label: "행사 관리", Icon: CalendarDays },
       ],
     },
     {
@@ -72,7 +79,7 @@ export function AdminSidebar() {
         { href: "/admin/categories", label: "카테고리", Icon: FolderKanban },
         { href: "/admin/packages", label: "패키지", Icon: Package },
         { href: "/admin/slots", label: "슬롯 관리", Icon: Grid2x2 },
-        { href: "/admin/classification", label: "분류 관리", Icon: Layers },
+        { href: "/admin/classification", label: "타입·채널", Icon: Layers },
       ],
     },
     {
@@ -88,14 +95,22 @@ export function AdminSidebar() {
       ],
     },
     {
-      label: "설정",
+      label: "사이트",
       items: [
         { href: "/admin/settings", label: "사이트 설정", Icon: Settings, exact: true },
-        { href: "/admin/settings/landing", label: "랜딩 빌더", Icon: LayoutDashboard },
+        { href: "/admin/settings/landing", label: "랜딩 빌더", Icon: Layout },
+        { href: "/admin/settings/type-layouts", label: "유형별 레이아웃", Icon: LayoutTemplate },
+        { href: "/admin/settings/perks", label: "동봉 혜택", Icon: Gift },
         { href: "/admin/settings/diagnosis", label: "진단 로직", Icon: Brain },
         { href: "/admin/settings/taxonomy", label: "분류·태그", Icon: Tags },
         { href: "/admin/settings/quote", label: "견적서 설정", Icon: FileText },
-        { href: "/admin/events", label: "행사 관리", Icon: CalendarDays },
+      ],
+    },
+    {
+      label: "도구",
+      items: [
+        { href: "/admin/import", label: "엑셀 업로드", Icon: Upload },
+        { href: "/admin/seed", label: "데모 시드", Icon: Database },
       ],
     },
   ];
@@ -147,6 +162,32 @@ export function AdminSidebar() {
             </ul>
           </div>
         ))}
+
+        {/* 공개 사이트 미리보기 — 현재 선택된 행사 기준 */}
+        {selectedEventId && (
+          <div>
+            <div className="text-[10px] tracking-[0.12em] uppercase text-ink-500 px-2.5 pt-3 pb-1.5">
+              공개 사이트
+            </div>
+            <ul className="flex flex-col gap-0.5">
+              <ExternalNav
+                href={`/${selectedEventId}`}
+                label="행사 홈"
+                Icon={Globe}
+              />
+              <ExternalNav
+                href={`/${selectedEventId}/sponsorships`}
+                label="스폰서십 카탈로그"
+                Icon={Grid2x2}
+              />
+              <ExternalNav
+                href={`/${selectedEventId}/print/full`}
+                label="전체 PDF 미리보기"
+                Icon={FileDown}
+              />
+            </ul>
+          </div>
+        )}
       </nav>
 
       <div className="pt-4 border-t border-white/10 px-2.5 text-[11px] text-ink-500 flex items-center gap-1.5">
@@ -154,5 +195,30 @@ export function AdminSidebar() {
         <span>K-PRINT 2026 운영 콘솔</span>
       </div>
     </aside>
+  );
+}
+
+function ExternalNav({
+  href,
+  label,
+  Icon,
+}: {
+  href: string;
+  label: string;
+  Icon: IconType;
+}) {
+  return (
+    <li>
+      <a
+        href={href}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="flex items-center gap-2.5 px-2.5 py-2 rounded-btn text-[13px] text-ink-300 hover:bg-white/5 hover:text-white transition-colors"
+      >
+        <Icon className="w-4 h-4 shrink-0" aria-hidden />
+        <span className="flex-1 truncate">{label}</span>
+        <ExternalLink className="w-3 h-3 opacity-60 shrink-0" aria-hidden />
+      </a>
+    </li>
   );
 }

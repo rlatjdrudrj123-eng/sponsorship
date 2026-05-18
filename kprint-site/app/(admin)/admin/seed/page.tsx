@@ -3,47 +3,35 @@
 import { useState } from "react";
 import {
   AlertTriangle,
-  CalendarPlus,
   CheckCircle2,
   Database,
   Image as ImageIcon,
   MessageSquare,
-  Package,
   Trash2,
   Handshake,
 } from "lucide-react";
 import { seedSampleImages, type SeedResult } from "@/lib/admin/seedSamples";
 import {
   clearAllContent,
-  clearDemoInquiries,
-  clearDemoSponsors,
   seedDemoInquiries,
-  seedDemoPackages,
   seedDemoSponsors,
-  tagAllAsKPrint2026,
   type ClearAllOptions,
   type ClearAllResult,
   type InquirySeedResult,
-  type PackageSeedResult,
   type SponsorSeedResult,
-  type TagMigrationResult,
 } from "@/lib/admin/seedDemo";
 import {
-  seedKprintSponsorship,
-  type KprintSeedResult,
-} from "@/lib/admin/seedKprintSponsorship";
+  resetAndSeedKprint2026,
+  type Kprint2026FinalSeedResult,
+} from "@/lib/admin/seedKprint2026Final";
 import { useEventFilter } from "@/lib/admin/useEventFilter";
 
 type AnyResult =
   | { kind: "image"; data: SeedResult }
-  | { kind: "package"; data: PackageSeedResult }
   | { kind: "inquiry"; data: InquirySeedResult }
   | { kind: "sponsor"; data: SponsorSeedResult }
-  | { kind: "clear-inquiry"; count: number }
-  | { kind: "clear-sponsor"; count: number }
   | { kind: "clear-all"; data: ClearAllResult }
-  | { kind: "tag-migration"; data: TagMigrationResult }
-  | { kind: "kprint"; data: KprintSeedResult };
+  | { kind: "kprint-final"; data: Kprint2026FinalSeedResult };
 
 export default function SeedPage() {
   const [running, setRunning] = useState<string | null>(null);
@@ -55,6 +43,7 @@ export default function SeedPage() {
     sponsors: true,
     events: false,
     importHistory: false,
+    siteSettings: false,
   });
   const { eventId } = useEventFilter();
 
@@ -88,197 +77,102 @@ export default function SeedPage() {
       <header>
         <h1 className="text-[22px] font-bold text-ink-900 leading-tight flex items-center gap-2">
           <Database className="w-5 h-5 text-brand-700" />
-          데모 데이터 시드
+          데이터 시드·초기화
         </h1>
         <p className="text-[13px] text-ink-700 mt-1">
-          개발·QA용 샘플 데이터를 한 번에 채워 넣습니다.
+          K-PRINT 2026 라인업으로 초기화하거나, 테스트용 샘플 데이터를 채워 넣습니다.
         </p>
       </header>
 
-      <div className="bg-amber-50 border-2 border-amber-300 rounded-card p-4 flex items-start gap-3">
-        <AlertTriangle className="w-5 h-5 text-amber-700 shrink-0 mt-0.5" />
-        <div>
-          <div className="text-[13px] font-bold text-amber-800">
-            ⚠️ 테스트/데모용 데이터입니다
-          </div>
-          <p className="text-[12px] text-amber-700 mt-1 leading-relaxed">
-            라이브(실서비스) 운영 전에는 반드시 정리하세요. 라이브 데이터는 어드민에서 직접 입력하거나 별도의 라이브 엑셀로 임포트하세요. 이 페이지의 시드 함수들은 같은 이름의 도큐먼트가 있으면 건너뛰지만, 완전한 격리를 보장하지 않습니다.
-          </p>
-        </div>
-      </div>
-
-      {/* 마이그레이션 카드 — 첫 줄에 강조 */}
-      <div className="bg-blue-50 border-2 border-blue-200 rounded-card p-4 flex items-start gap-3">
-        <div className="w-8 h-8 rounded-btn bg-blue-100 text-blue-700 grid place-items-center shrink-0">
-          <CalendarPlus className="w-4 h-4" />
+      {/* KPRINT 2026 완전 초기화 + 시드 — 가장 강조 (red) */}
+      <div className="bg-red-50 border-2 border-red-300 rounded-card p-4 flex items-start gap-3">
+        <div className="w-8 h-8 rounded-btn bg-red-100 text-red-700 grid place-items-center shrink-0">
+          <Trash2 className="w-4 h-4" />
         </div>
         <div className="flex-1 min-w-0">
-          <div className="text-[14px] font-bold text-blue-900">
-            기존 데이터 → K-PRINT 2026 일괄 태깅
+          <div className="text-[14px] font-bold text-red-800">
+            🔥 KPRINT 2026 으로 완전 초기화
           </div>
-          <p className="text-[12px] text-blue-800 mt-0.5 leading-relaxed">
-            행사(eventId)가 없는 카테고리·소분류·슬롯·패키지·문의에 <code className="font-mono">eventId=&quot;kprint-2026&quot;</code>을 자동으로 적용합니다.
-            siteSettings/taxonomy/quoteSettings의 <code className="font-mono">main</code> 도큐먼트는 <code className="font-mono">kprint-2026</code>으로 복사됩니다.
-            이 작업은 멱등하며, 이미 eventId가 있는 도큐먼트는 건너뜁니다.
+          <p className="text-[12px] text-red-700 mt-0.5 leading-relaxed">
+            <strong>모든 카테고리·소분류·슬롯·패키지·문의·스폰서·사이트설정·행사·임포트이력 삭제</strong>
+            한 다음, 확정된 KPRINT 2026 라인업으로 시드합니다.
+            <br />
+            카테고리 <strong>20종</strong> (오프라인 8 + 온라인 12) · 패키지{" "}
+            <strong>4종</strong> (A to Z / 프라임 / 온사이트 / 세미나) + 행사 1개 + 기본 siteSettings.
+            <br />
+            <strong className="text-red-900">되돌릴 수 없습니다.</strong> 운영 데이터가 있으면 백업 먼저.
           </p>
         </div>
         <button
           type="button"
           onClick={() =>
             run(
-              "tag-migration",
+              "kprint-final",
               async () => ({
-                kind: "tag-migration",
-                data: await tagAllAsKPrint2026(),
+                kind: "kprint-final",
+                data: await resetAndSeedKprint2026(),
               }),
-              "기존 데이터를 K-PRINT 2026으로 일괄 태깅합니다. 진행할까요?"
+              "정말로 모든 데이터를 삭제하고 KPRINT 2026 라인업으로 초기화할까요?\n\n이 작업은 되돌릴 수 없습니다."
             )
           }
           disabled={!!running}
-          className="px-3.5 py-2 rounded-btn bg-blue-700 text-white text-[12px] font-bold hover:bg-blue-800 disabled:opacity-50 shrink-0 whitespace-nowrap"
+          className="px-3.5 py-2 rounded-btn bg-red-700 text-white text-[12px] font-bold hover:bg-red-800 disabled:opacity-50 shrink-0 whitespace-nowrap"
         >
-          {running === "tag-migration" ? "태깅 중…" : "K-PRINT 2026 태깅"}
+          {running === "kprint-final" ? "초기화 중…" : "완전 초기화 + 시드"}
         </button>
       </div>
 
-      {/* K-PRINT 실제 데이터 시드 — 가장 강조 */}
-      <div className="bg-brand-50 border-2 border-brand-200 rounded-card p-4 flex items-start gap-3">
-        <div className="w-8 h-8 rounded-btn bg-brand-100 text-brand-700 grid place-items-center shrink-0">
-          <Database className="w-4 h-4" />
-        </div>
-        <div className="flex-1 min-w-0">
-          <div className="text-[14px] font-bold text-brand-700">
-            K-PRINT 2026 실제 스폰서십 샘플 시드
-          </div>
-          <p className="text-[12px] text-ink-700 mt-0.5 leading-relaxed">
-            작년 K-PRINT 2025 운영 자료 기준 — 카테고리 12종(오프라인 5 + 온라인 7),
-            서브카테고리·슬롯 30+ 개, 패키지 3종(A to Z / 프라임 스팟 / 세미나).
-            <strong> 중복 코드는 건너뜁니다.</strong>
-          </p>
-        </div>
-        <button
-          type="button"
-          onClick={() => {
-            const ev = requireEvent("K-PRINT 시드");
-            if (!ev) return;
-            run(
-              "kprint",
-              async () => ({
-                kind: "kprint",
-                data: await seedKprintSponsorship(ev),
-              }),
-              "K-PRINT 2026 실제 데이터 기준 카테고리·슬롯·패키지를 추가합니다. 진행할까요?"
-            );
-          }}
-          disabled={!!running}
-          className="px-3.5 py-2 rounded-btn bg-brand-500 text-white text-[12px] font-bold hover:bg-brand-700 disabled:opacity-50 shrink-0 whitespace-nowrap"
-        >
-          {running === "kprint" ? "시드 중…" : "K-PRINT 시드 실행"}
-        </button>
-      </div>
-
-      <div className="space-y-3">
-        <SeedCard
-          icon={<ImageIcon className="w-4 h-4" />}
-          title="① 카테고리 샘플 이미지"
-          description="이미 임포트된 카테고리(코드 매칭)에 Unsplash 이미지·shortDesc·longDesc·heroMode 일괄 적용. isPublished=true로 만듭니다."
-          buttonLabel="이미지 시드 실행"
-          running={running === "image"}
-          disabled={!!running}
-          onClick={() =>
-            run("image", async () => ({ kind: "image", data: await seedSampleImages() }))
-          }
-        />
-
-        <SeedCard
-          icon={<Package className="w-4 h-4" />}
-          title="② 패키지 (8종)"
-          description="시그니처 2종 (A to Z, 옥외광고 통합) + 스탠다드 6종 (프라임/얼리/온사이트/세미나/APP/SNS). 정가·할인가·포함 항목 자동 채움."
-          buttonLabel="패키지 시드 실행"
-          running={running === "package"}
-          disabled={!!running}
-          onClick={() => {
-            const ev = requireEvent("패키지");
-            if (!ev) return;
-            run("package", async () => ({
-              kind: "package",
-              data: await seedDemoPackages(ev),
-            }));
-          }}
-        />
-
-        <SeedCard
-          icon={<MessageSquare className="w-4 h-4" />}
-          title="③ 샘플 문의 (5건)"
-          description="공개 사이트 문의 폼으로 들어온 것처럼 cart 항목과 함께 5건 생성 (신규 2 / 진행중 2 / 종료 1). 회사명 중복은 건너뜀."
-          buttonLabel="문의 시드 실행"
-          running={running === "inquiry"}
-          disabled={!!running}
-          onClick={() => {
-            const ev = requireEvent("문의");
-            if (!ev) return;
-            run("inquiry", async () => ({
-              kind: "inquiry",
-              data: await seedDemoInquiries(ev),
-            }));
-          }}
-        />
-
-        <SeedCard
-          icon={<Handshake className="w-4 h-4" />}
-          title="④ 샘플 스폰서 (~17개)"
-          description="실제 KIMES 운영 시트의 데이터 기반 — 진행중·검토중·협찬 상태 다양하게. 활성 행사에 자동 연결. 같은 행사 + 회사명 중복은 건너뜀."
-          buttonLabel="스폰서 시드 실행"
-          running={running === "sponsor"}
-          disabled={!!running}
-          onClick={() =>
-            run("sponsor", async () => ({
-              kind: "sponsor",
-              data: await seedDemoSponsors(),
-            }))
-          }
-        />
-      </div>
-
-      <hr className="border-ink-100" />
-
+      {/* 부수 시드 — 테스트용 샘플 데이터 (이미지·문의·스폰서). KPRINT 라인업과 별개로 데모 환경 구성용. */}
       <section>
-        <h2 className="text-[15px] font-bold text-ink-900 mb-2 flex items-center gap-2">
-          <Trash2 className="w-4 h-4 text-red-700" />
-          데모 데이터 정리
+        <h2 className="text-[14px] font-bold text-ink-900 mb-2 flex items-center gap-2">
+          <Database className="w-4 h-4 text-ink-500" />
+          테스트용 샘플 시드 (선택)
         </h2>
-        <p className="text-[12px] text-ink-500 mb-3">
-          시드로 추가된 동일한 회사명 도큐먼트만 삭제합니다. 직접 추가한 데이터는 영향 없음.
+        <p className="text-[11.5px] text-ink-500 mb-3 leading-relaxed">
+          위 라인업 시드를 돌린 후 추가로 채울 수 있는 보조 데이터. 운영 환경에선 보통 불필요.
         </p>
-        <div className="space-y-2">
-          <ClearButton
-            label="데모 문의 삭제 (5건)"
-            running={running === "clear-inquiry"}
+        <div className="space-y-3">
+          <SeedCard
+            icon={<ImageIcon className="w-4 h-4" />}
+            title="카테고리 샘플 이미지"
+            description="이미 임포트된 카테고리(코드 매칭)에 Unsplash 이미지·shortDesc·longDesc·heroMode 일괄 적용. isPublished=true 로 만듭니다."
+            buttonLabel="이미지 시드"
+            running={running === "image"}
             disabled={!!running}
             onClick={() =>
-              run(
-                "clear-inquiry",
-                async () => ({
-                  kind: "clear-inquiry",
-                  count: await clearDemoInquiries(),
-                }),
-                "데모 문의(5건)를 삭제합니다. 진행할까요?"
-              )
+              run("image", async () => ({ kind: "image", data: await seedSampleImages() }))
             }
           />
-          <ClearButton
-            label="데모 스폰서 삭제 (~17건)"
-            running={running === "clear-sponsor"}
+
+          <SeedCard
+            icon={<MessageSquare className="w-4 h-4" />}
+            title="샘플 문의 (5건)"
+            description="공개 사이트 문의 폼으로 들어온 것처럼 cart 항목과 함께 5건 생성 (신규 2 / 진행중 2 / 종료 1)."
+            buttonLabel="문의 시드"
+            running={running === "inquiry"}
+            disabled={!!running}
+            onClick={() => {
+              const ev = requireEvent("문의");
+              if (!ev) return;
+              run("inquiry", async () => ({
+                kind: "inquiry",
+                data: await seedDemoInquiries(ev),
+              }));
+            }}
+          />
+
+          <SeedCard
+            icon={<Handshake className="w-4 h-4" />}
+            title="샘플 스폰서 (~17개)"
+            description="샘플 스폰서 데이터 — 진행중·검토중·협찬 상태 다양하게. 활성 행사에 자동 연결."
+            buttonLabel="스폰서 시드"
+            running={running === "sponsor"}
             disabled={!!running}
             onClick={() =>
-              run(
-                "clear-sponsor",
-                async () => ({
-                  kind: "clear-sponsor",
-                  count: await clearDemoSponsors(),
-                }),
-                "데모 스폰서(~17개)를 삭제합니다. 진행할까요?"
-              )
+              run("sponsor", async () => ({
+                kind: "sponsor",
+                data: await seedDemoSponsors(),
+              }))
             }
           />
         </div>
@@ -325,6 +219,11 @@ export default function SeedPage() {
             label="임포트 이력"
             checked={purgeOpts.importHistory ?? false}
             onChange={(b) => setPurgeOpts((p) => ({ ...p, importHistory: b }))}
+          />
+          <PurgeCheckbox
+            label="사이트 설정 (siteSettings)"
+            checked={purgeOpts.siteSettings ?? false}
+            onChange={(b) => setPurgeOpts((p) => ({ ...p, siteSettings: b }))}
           />
         </div>
         <button
@@ -410,30 +309,6 @@ function SeedCard({
   );
 }
 
-function ClearButton({
-  label,
-  running,
-  disabled,
-  onClick,
-}: {
-  label: string;
-  running: boolean;
-  disabled: boolean;
-  onClick: () => void;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      disabled={disabled}
-      className="px-3.5 py-2 rounded-btn border border-red-200 text-red-700 text-[12px] font-semibold hover:bg-red-50 disabled:opacity-50 flex items-center gap-1.5"
-    >
-      <Trash2 className="w-3.5 h-3.5" />
-      {running ? "삭제 중…" : label}
-    </button>
-  );
-}
-
 function ResultCard({ result }: { result: AnyResult }) {
   const cardClass = "bg-brand-50 border border-brand-100 rounded-card p-3 text-[12px]";
   if (result.kind === "image") {
@@ -454,17 +329,6 @@ function ResultCard({ result }: { result: AnyResult }) {
             실패: {r.errors.map((e) => `${e.code} (${e.reason})`).join("; ")}
           </div>
         )}
-      </div>
-    );
-  }
-  if (result.kind === "package") {
-    const r = result.data;
-    return (
-      <div className={cardClass}>
-        <div className="font-bold text-brand-700 flex items-center gap-1.5">
-          <CheckCircle2 className="w-3.5 h-3.5" />
-          패키지 시드 — 생성 {r.created.length} / 실패 {r.errors.length}
-        </div>
       </div>
     );
   }
@@ -490,64 +354,36 @@ function ResultCard({ result }: { result: AnyResult }) {
       </div>
     );
   }
-  if (result.kind === "clear-inquiry") {
-    return (
-      <div className={cardClass}>
-        <div className="font-bold text-red-700 flex items-center gap-1.5">
-          <Trash2 className="w-3.5 h-3.5" />
-          데모 문의 {result.count}건 삭제됨
-        </div>
-      </div>
-    );
-  }
-  if (result.kind === "clear-sponsor") {
-    return (
-      <div className={cardClass}>
-        <div className="font-bold text-red-700 flex items-center gap-1.5">
-          <Trash2 className="w-3.5 h-3.5" />
-          데모 스폰서 {result.count}건 삭제됨
-        </div>
-      </div>
-    );
-  }
-  if (result.kind === "kprint") {
+  if (result.kind === "kprint-final") {
     const r = result.data;
-    return (
-      <div className={cardClass}>
-        <div className="font-bold text-brand-700 flex items-center gap-1.5">
-          <CheckCircle2 className="w-3.5 h-3.5" />
-          K-PRINT 시드 — 카테고리 {r.categoriesCreated}생성 / {r.categoriesSkipped}건너뜀
-          {" · "}서브 {r.subcategoriesCreated} · 슬롯 {r.slotsCreated}
-          {" · "}패키지 {r.packagesCreated}생성 / {r.packagesSkipped}건너뜀
-        </div>
-        {r.notes.length > 0 && (
-          <div className="text-ink-500 mt-1 text-[11px] leading-snug">
-            {r.notes.join(" · ")}
-          </div>
-        )}
-      </div>
-    );
-  }
-  if (result.kind === "tag-migration") {
-    const r = result.data;
-    const totalTagged = Object.values(r.collections).reduce(
-      (s, x) => s + x.tagged,
+    const totalDeleted = Object.values(r.cleared.deleted).reduce(
+      (s, n) => s + n,
       0
     );
     return (
-      <div className="bg-blue-50 border border-blue-200 rounded-card p-3 text-[12px]">
-        <div className="font-bold text-blue-700 flex items-center gap-1.5">
-          <CalendarPlus className="w-3.5 h-3.5" />
-          K-PRINT 2026 태깅 — 총 {totalTagged}건 태깅됨
+      <div className="bg-red-50 border-2 border-red-300 rounded-card p-3 text-[12px]">
+        <div className="font-bold text-red-700 flex items-center gap-1.5 mb-2">
+          <CheckCircle2 className="w-3.5 h-3.5" />
+          KPRINT 2026 완전 초기화 + 시드 완료
         </div>
-        <ul className="mt-1 text-blue-800">
-          {Object.entries(r.collections).map(([k, v]) => (
-            <li key={k}>· {k}: 태깅 {v.tagged} / 건너뜀 {v.skipped}</li>
-          ))}
-        </ul>
-        {r.errors.length > 0 && (
+        <div className="text-ink-700">
+          <strong>삭제</strong> ({totalDeleted}건):{" "}
+          {Object.entries(r.cleared.deleted)
+            .map(([k, v]) => `${k} ${v}`)
+            .join(" · ")}
+        </div>
+        <div className="text-ink-700 mt-1">
+          <strong>생성</strong>: 행사 ✓ · siteSettings ✓ · 카테고리{" "}
+          {r.created.categories} · 소분류 {r.created.subcategories} · 슬롯{" "}
+          {r.created.slots} · 패키지 {r.created.packages} · 페르소나{" "}
+          {r.created.personas}
+        </div>
+        {r.cleared.errors.length > 0 && (
           <div className="mt-1 text-red-800">
-            실패: {r.errors.map((e) => `${e.collection} (${e.reason})`).join("; ")}
+            삭제 실패:{" "}
+            {r.cleared.errors
+              .map((e) => `${e.collection} (${e.reason})`)
+              .join("; ")}
           </div>
         )}
       </div>

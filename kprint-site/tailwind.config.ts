@@ -1,10 +1,10 @@
 import type { Config } from "tailwindcss";
 
 /**
- * KIMES Figma 기반 디자인 토큰.
+ * K-PRINT 디자인 토큰.
  *
  * 색상은 CSS 변수로 추상화돼있어 행사별로 다른 primary color를 주입할 수 있다.
- * 기본값은 KIMES 빨강. 어드민 [사이트 설정] → 테마 색상에서 행사별로 변경.
+ * 기본값은 K-PRINT 빨강. 어드민 [사이트 설정] → 테마 색상에서 행사별로 변경.
  *
  * 변수는 globals.css :root 에 정의되고, 공개 페이지에서 ThemeProvider 가
  * 행사의 settings.theme.primary 값을 받아 inline style 로 덮어쓴다.
@@ -42,7 +42,7 @@ const config: Config = {
           700: "#A85F00",
           900: "#443105",
         },
-        // ── 그레이스케일 (KIMES 표준) ──
+        // ── 그레이스케일 ──
         ink: {
           50: "#F6F6F6",
           100: "#EBEBEB",

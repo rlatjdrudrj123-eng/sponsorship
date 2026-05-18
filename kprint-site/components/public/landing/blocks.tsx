@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useRef, useState, type CSSProperties } from "react";
-import { ArrowDown, ArrowRight } from "lucide-react";
+import { ArrowDown, ArrowRight, Download } from "lucide-react";
 import type {
   AdGoals4Block,
   Benefits4Block,
@@ -17,6 +17,7 @@ import type {
   ImageBlock,
   ImageGridBlock,
   LandingBlock,
+  PdfDownloadBlock,
   RichTextBlock,
   SiteSettings,
   SlotsTeaserBlock,
@@ -30,7 +31,7 @@ import type {
 import { CanvasRenderer } from "@/components/public/canvas/CanvasRenderer";
 
 /**
- * KIMES Figma 톤 기반 블록 컴포넌트들 — 어드민이 자유 구성한 시퀀스를 렌더링.
+ * 블록 컴포넌트들 — 어드민이 자유 구성한 시퀀스를 렌더링.
  *
  * 각 블록은 BlockStyle override (bg/text/accent/minHeight/align/pad/fullBleed) 를
  * 받아 어드민이 원하는 만큼 자유롭게 커스터마이즈 가능.
@@ -997,20 +998,63 @@ function toEmbedUrl(
 ): { kind: "iframe" | "video"; url: string } | null {
   if (!url) return null;
   const u = url.trim();
-  // YouTube
-  const yt = u.match(/(?:youtu\.be\/|youtube\.com\/(?:watch\?v=|embed\/))([\w-]{11})/);
+
+  // YouTube — watch / youtu.be / embed / shorts / live
+  const yt = u.match(
+    /(?:youtu\.be\/|youtube\.com\/(?:watch\?v=|embed\/|shorts\/|live\/))([\w-]{11})/
+  );
   if (yt) {
-    return { kind: "iframe", url: `https://www.youtube.com/embed/${yt[1]}` };
+    return {
+      kind: "iframe",
+      url: `https://www.youtube.com/embed/${yt[1]}?rel=0&modestbranding=1`,
+    };
   }
+
   // Vimeo
   const v = u.match(/vimeo\.com\/(?:video\/)?(\d+)/);
   if (v) {
     return { kind: "iframe", url: `https://player.vimeo.com/video/${v[1]}` };
   }
-  if (u.endsWith(".mp4") || u.endsWith(".webm")) {
+
+  // Google Drive — view / preview / open?id=
+  const driveView = u.match(/drive\.google\.com\/file\/d\/([\w-]+)/);
+  if (driveView) {
+    return {
+      kind: "iframe",
+      url: `https://drive.google.com/file/d/${driveView[1]}/preview`,
+    };
+  }
+  const driveOpen = u.match(/drive\.google\.com\/.*[?&]id=([\w-]+)/);
+  if (driveOpen) {
+    return {
+      kind: "iframe",
+      url: `https://drive.google.com/file/d/${driveOpen[1]}/preview`,
+    };
+  }
+
+  // 직접 영상 파일 — 쿼리스트링 무시하고 확장자 검사
+  const pathPart = u.split("?")[0];
+  if (/\.(mp4|webm|mov|m4v|ogg|ogv)$/i.test(pathPart)) {
     return { kind: "video", url: u };
   }
-  // 일반 URL — iframe 시도
+
+  // Firebase / GCS Storage — 인코딩된 경로 안에 비디오 확장자가 있는지 검사
+  if (
+    u.includes("firebasestorage.googleapis.com") ||
+    u.includes("storage.googleapis.com")
+  ) {
+    try {
+      const decoded = decodeURIComponent(u);
+      if (/\.(mp4|webm|mov|m4v|ogg|ogv)/i.test(decoded)) {
+        return { kind: "video", url: u };
+      }
+    } catch {
+      // 디코드 실패 시 fall through
+    }
+    return { kind: "video", url: u };
+  }
+
+  // 알 수 없는 URL — iframe fallback (대부분 X-Frame-Options 로 차단됨)
   return { kind: "iframe", url: u };
 }
 
@@ -1153,6 +1197,8 @@ export function BlockSection({
           settings={settings}
         />
       );
+    case "pdfDownload":
+      return <PdfDownloadSection block={block} eventId={eventId} />;
     default: {
       const _: never = block;
       void _;
@@ -1181,6 +1227,71 @@ function CanvasPageSection({
         eventId={eventId}
         settings={settings}
       />
+    </section>
+  );
+}
+
+// ============================================================================
+// PdfDownload — 전체 패키지 PDF 다운로드 슬라이드
+// ============================================================================
+
+function PdfDownloadSection({
+  block,
+  eventId,
+}: {
+  block: PdfDownloadBlock;
+  eventId: string;
+}) {
+  const eyebrow = block.data.eyebrow || "Download";
+  const headline = block.data.headline || "전체 패키지를 한 장에";
+  const description =
+    block.data.description ||
+    "행사 소개와 모든 카테고리·패키지 상세를 한 PDF로 받아보세요. 인쇄 다이얼로그가 자동으로 열리며, [PDF로 저장]을 선택하면 됩니다.";
+  const buttonLabel = block.data.buttonLabel || "전체 패키지 PDF 다운로드";
+  const style = block.style;
+
+  return (
+    <section
+      className="snap-start snap-always relative overflow-hidden h-screen flex items-center"
+      style={{
+        background: style?.bg ?? "var(--color-canvas, #F6F6F6)",
+        color: style?.text ?? undefined,
+      }}
+    >
+      <div className="max-w-5xl mx-auto px-6 md:px-12 w-full text-center">
+        <div
+          className="text-[11px] md:text-[13px] uppercase tracking-[0.35em] font-bold mb-6 flex items-center justify-center gap-3"
+          style={{ color: style?.accent ?? "var(--color-brand, #DB0711)" }}
+        >
+          <span className="w-10 h-px" style={{ background: "currentColor" }} />
+          {eyebrow}
+          <span className="w-10 h-px" style={{ background: "currentColor" }} />
+        </div>
+        <h2 className="text-[40px] md:text-[72px] font-bold tracking-tight leading-[1.04]">
+          {headline}
+        </h2>
+        {description && (
+          <p className="text-[14px] md:text-[16px] mt-6 max-w-2xl mx-auto leading-relaxed opacity-70">
+            {description}
+          </p>
+        )}
+        <div className="mt-10">
+          <Link
+            href={`/${eventId}/print/full`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-2.5 px-7 py-4 rounded-pill font-bold text-[14px] md:text-[15px] transition-all hover:shadow-glow"
+            style={{
+              background: style?.accent ?? "var(--color-brand, #DB0711)",
+              color: style?.bg ?? "#fff",
+            }}
+          >
+            <Download className="w-4 h-4" />
+            {buttonLabel}
+            <ArrowRight className="w-4 h-4" />
+          </Link>
+        </div>
+      </div>
     </section>
   );
 }

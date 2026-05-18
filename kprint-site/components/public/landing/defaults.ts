@@ -270,6 +270,18 @@ export function emptyBlock(type: LandingBlockType): LandingBlock {
           },
         },
       };
+    case "pdfDownload":
+      return {
+        id: id(),
+        type,
+        data: {
+          eyebrow: "Download",
+          headline: "전체 패키지를 한 장에",
+          description:
+            "행사 소개와 모든 카테고리·패키지 상세를 한 PDF로 받아보세요. 인쇄 다이얼로그가 자동으로 열리며, [PDF로 저장]을 선택하면 됩니다.",
+          buttonLabel: "전체 패키지 PDF 다운로드",
+        },
+      };
   }
 }
 
@@ -281,6 +293,11 @@ export const BLOCK_TYPE_META: Record<
   canvasPage: {
     label: "캔버스 페이지",
     desc: "1920×1080 자유 배치 — 텍스트·이미지·도형·컴포넌트 (Cover/통계/혜택/CTA 등)",
+    group: "main",
+  },
+  pdfDownload: {
+    label: "전체 PDF 다운로드",
+    desc: "현재 행사의 전체 패키지 PDF(/print/full) 로 안내하는 슬라이드",
     group: "main",
   },
   // 캔버스가 아닌 옛 블록들 — 호환을 위해 남기지만 새로 추가하지는 못하게 (hidden)

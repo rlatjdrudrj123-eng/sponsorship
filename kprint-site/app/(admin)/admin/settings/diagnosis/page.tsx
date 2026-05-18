@@ -1,25 +1,172 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import Link from "next/link";
-import { ArrowLeft, Brain, Scale, MessageCircle } from "lucide-react";
+import {
+  ArrowLeft,
+  Brain,
+  MessageCircle,
+  RotateCcw,
+  Save,
+  Scale,
+} from "lucide-react";
+import { doc, onSnapshot, setDoc, Timestamp } from "firebase/firestore";
+import { getDb } from "@/lib/firebase/firestore";
+import { useAdminEvent } from "@/lib/admin/adminEventStore";
 import {
   QUESTIONS,
   STAGES,
   SCORING_WEIGHTS,
 } from "@/components/public/PersonaAiChat";
+import type {
+  DiagnosisConfig,
+  DiagnosisStage,
+  SiteSettings,
+} from "@/lib/types";
 
 /**
- * 스폰서십 진단 로직 뷰어 — 어드민용.
+ * 스폰서십 진단 로직 — 어드민 편집.
  *
- * PersonaAiChat (룰 기반 챗봇) 의 질문·가중치를 그대로 노출합니다.
- * 현재 K-PRINT 기준 6단계 진단. 분야(segment) 가 lead question.
+ * - 각 단계의 질문 텍스트 (intro / why) 를 행사별로 override 가능
+ * - 스코어링 가중치 조절 가능 (각 항목 점수)
+ * - 칩(선택지) 은 코드 기반 — 여기서 편집 불가 (질문 흐름과 강하게 묶여 있음)
  *
- * 코드 단일 출처: components/public/PersonaAiChat.tsx 의 QUESTIONS / SCORING_WEIGHTS
- * → 여기에 표시되는 값은 곧 사용자에게 노출되는 값과 동일.
+ * 저장 위치: siteSettings/{eventId}.diagnosisConfig
+ * 비어있으면 코드 기본값(PersonaAiChat.tsx의 QUESTIONS / SCORING_WEIGHTS) 사용.
  */
+
+const EDITABLE_STAGES: DiagnosisStage[] = [
+  "goal",
+  "budget",
+  "segment",
+  "companySize",
+  "experience",
+];
+
+type QuestionEdits = {
+  [K in DiagnosisStage]?: { intro?: string; why?: string };
+};
+
+type WeightEdits = Record<string, number>;
+
 export default function DiagnosisLogicPage() {
+  const selectedEventId = useAdminEvent((s) => s.selectedEventId);
+  const [questionEdits, setQuestionEdits] = useState<QuestionEdits>({});
+  const [weightEdits, setWeightEdits] = useState<WeightEdits>({});
+  const [dirty, setDirty] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [savedAt, setSavedAt] = useState<Date | null>(null);
+
+  useEffect(() => {
+    if (!selectedEventId) return;
+    const u = onSnapshot(
+      doc(getDb(), "siteSettings", selectedEventId),
+      (s) => {
+        if (!s.exists()) return;
+        const data = s.data() as SiteSettings;
+        const cfg = data.diagnosisConfig;
+        if (!dirty) {
+          setQuestionEdits((cfg?.questions ?? {}) as QuestionEdits);
+          setWeightEdits(cfg?.scoringWeights ?? {});
+        }
+      }
+    );
+    return () => u();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedEventId]);
+
+  if (!selectedEventId) {
+    return (
+      <div className="p-8 text-sm text-ink-500">
+        먼저 상단의 행사를 선택하세요.
+      </div>
+    );
+  }
+
+  const updateQuestion = (
+    stage: DiagnosisStage,
+    field: "intro" | "why",
+    value: string
+  ) => {
+    setQuestionEdits((prev) => ({
+      ...prev,
+      [stage]: { ...prev[stage], [field]: value },
+    }));
+    setDirty(true);
+  };
+
+  const resetQuestion = (stage: DiagnosisStage) => {
+    setQuestionEdits((prev) => {
+      const { [stage]: _omitted, ...rest } = prev;
+      void _omitted;
+      return rest;
+    });
+    setDirty(true);
+  };
+
+  const updateWeight = (key: string, value: number) => {
+    setWeightEdits((prev) => ({ ...prev, [key]: value }));
+    setDirty(true);
+  };
+
+  const resetWeight = (key: string) => {
+    setWeightEdits((prev) => {
+      const { [key]: _omitted, ...rest } = prev;
+      void _omitted;
+      return rest;
+    });
+    setDirty(true);
+  };
+
+  const resetAll = () => {
+    if (!confirm("모든 override 를 지우고 코드 기본값으로 되돌릴까요?")) return;
+    setQuestionEdits({});
+    setWeightEdits({});
+    setDirty(true);
+  };
+
+  const save = async () => {
+    setSaving(true);
+    try {
+      const cfg: DiagnosisConfig = {};
+      // 비어있는 override 는 저장 안 함
+      const cleanQuestions: NonNullable<DiagnosisConfig["questions"]> = {};
+      for (const stage of EDITABLE_STAGES) {
+        const q = questionEdits[stage];
+        if (!q) continue;
+        const obj: { intro?: string; why?: string } = {};
+        if (q.intro?.trim()) obj.intro = q.intro.trim();
+        if (q.why?.trim()) obj.why = q.why.trim();
+        if (Object.keys(obj).length > 0) cleanQuestions[stage] = obj;
+      }
+      if (Object.keys(cleanQuestions).length > 0) cfg.questions = cleanQuestions;
+
+      const cleanWeights: Record<string, number> = {};
+      for (const [k, v] of Object.entries(weightEdits)) {
+        if (Number.isFinite(v)) cleanWeights[k] = Number(v);
+      }
+      if (Object.keys(cleanWeights).length > 0)
+        cfg.scoringWeights = cleanWeights;
+
+      await setDoc(
+        doc(getDb(), "siteSettings", selectedEventId),
+        {
+          diagnosisConfig: cfg,
+          updatedAt: Timestamp.fromDate(new Date()),
+        },
+        { merge: true }
+      );
+      setSavedAt(new Date());
+      setDirty(false);
+    } catch (e) {
+      alert("저장 실패: " + (e instanceof Error ? e.message : String(e)));
+    } finally {
+      setSaving(false);
+    }
+  };
+
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 max-w-4xl mx-auto p-6">
       <header>
         <Link
           href="/admin/settings"
@@ -35,36 +182,59 @@ export default function DiagnosisLogicPage() {
               스폰서십 진단 로직
             </h1>
             <p className="text-[13px] text-ink-700 mt-1 max-w-2xl">
-              참가업체에게 노출되는 「대화로 추천 받기」 챗봇의 질문·가중치를
-              그대로 보여드립니다. 현재 K-PRINT 기준 <strong>6단계</strong>,
-              분야(segment) 가 lead question.
+              「대화로 추천 받기」 챗봇의 <strong>질문 텍스트와 스코어링 가중치</strong>를
+              행사별로 override 합니다. 비워두면 코드 기본값 사용.
             </p>
           </div>
-          <div className="px-3 py-1.5 rounded-btn bg-brand-50 border border-brand-100 text-[11.5px] text-brand-700 font-num font-bold">
-            코드 단일 출처: PersonaAiChat.tsx
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={resetAll}
+              className="px-3 py-2 rounded-btn border border-ink-100 hover:border-ink-900 text-[12px] font-semibold text-ink-700 flex items-center gap-1.5"
+            >
+              <RotateCcw className="w-3.5 h-3.5" />
+              전체 기본값
+            </button>
+            <button
+              type="button"
+              onClick={save}
+              disabled={!dirty || saving}
+              className="px-3.5 py-2 rounded-btn bg-brand-500 text-white text-[12px] font-bold hover:bg-brand-700 disabled:opacity-50 flex items-center gap-1.5"
+            >
+              <Save className="w-3.5 h-3.5" />
+              {saving
+                ? "저장 중…"
+                : dirty
+                  ? "저장"
+                  : savedAt
+                    ? `${savedAt.toLocaleTimeString()} 저장됨`
+                    : "변경 없음"}
+            </button>
           </div>
         </div>
       </header>
 
-      {/* 질문 6단계 */}
+      {/* 질문 단계 편집 */}
       <section className="bg-white border border-ink-100 rounded-card overflow-hidden">
-        <header className="px-5 py-4 border-b border-ink-100 flex items-center gap-2">
+        <header className="px-5 py-3 border-b border-ink-100 flex items-center gap-2">
           <MessageCircle className="w-4 h-4 text-ink-700" />
           <h2 className="text-[14px] font-bold text-ink-900">
-            질문 흐름 ({STAGES.length}단계)
+            질문 흐름 — 단계별 텍스트 ({STAGES.length - 1}단계, 칩은 코드 고정)
           </h2>
         </header>
         <ol className="divide-y divide-ink-100">
-          {STAGES.map((stage, i) => {
-            const q = QUESTIONS[stage];
+          {EDITABLE_STAGES.map((stage, i) => {
+            const defaults = QUESTIONS[stage];
+            const edits = questionEdits[stage] ?? {};
+            const isOverride = !!(edits.intro || edits.why);
             return (
-              <li key={stage} className="px-5 py-4">
+              <li key={stage} className="p-5">
                 <div className="flex items-start gap-4">
                   <div className="w-9 h-9 rounded-full bg-ink-900 text-white grid place-items-center text-[12px] font-bold shrink-0 font-num">
                     {i + 1}
                   </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 mb-1">
+                  <div className="flex-1 min-w-0 space-y-3">
+                    <div className="flex items-center gap-2 flex-wrap">
                       <span className="font-num text-[10.5px] uppercase tracking-wider font-bold text-ink-500">
                         {stage}
                       </span>
@@ -73,37 +243,64 @@ export default function DiagnosisLogicPage() {
                           LEAD
                         </span>
                       )}
+                      {isOverride && (
+                        <span className="px-1.5 py-0.5 rounded text-[9.5px] font-mono bg-brand-50 text-brand-700">
+                          커스텀
+                        </span>
+                      )}
+                      {isOverride && (
+                        <button
+                          type="button"
+                          onClick={() => resetQuestion(stage)}
+                          className="text-[11px] text-ink-500 hover:text-red-700 font-semibold ml-auto"
+                        >
+                          이 단계 기본값으로
+                        </button>
+                      )}
                     </div>
-                    <p className="text-[14px] font-semibold text-ink-900 leading-snug">
-                      “{q.intro}”
-                    </p>
-                    {q.why && (
-                      <p className="text-[12px] text-ink-500 leading-relaxed mt-1.5 italic">
-                        ↳ {q.why}
-                      </p>
-                    )}
-                    {q.chips && (
-                      <div className="mt-3 flex flex-wrap gap-1.5">
-                        {q.chips.map((chip) => (
-                          <div
-                            key={chip.value}
-                            className="px-2.5 py-1 rounded-pill border border-ink-100 bg-ink-50 text-[11.5px] text-ink-700"
-                            title={chip.hint}
-                          >
-                            <span className="font-semibold text-ink-900">
-                              {chip.label}
+                    <div>
+                      <label className="text-[11px] font-semibold text-ink-700 mb-1 block">
+                        질문 (intro)
+                      </label>
+                      <textarea
+                        rows={2}
+                        value={edits.intro ?? defaults.intro}
+                        onChange={(e) =>
+                          updateQuestion(stage, "intro", e.target.value)
+                        }
+                        className="w-full px-3 py-2 text-[13.5px] border border-ink-100 rounded-btn focus:outline-none focus:border-brand-500 resize-none"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-[11px] font-semibold text-ink-700 mb-1 block">
+                        설명 (why) — 사용자에게 "왜 묻는지" 보조 설명
+                      </label>
+                      <textarea
+                        rows={2}
+                        value={edits.why ?? defaults.why ?? ""}
+                        onChange={(e) =>
+                          updateQuestion(stage, "why", e.target.value)
+                        }
+                        className="w-full px-3 py-2 text-[12.5px] text-ink-700 border border-ink-100 rounded-btn focus:outline-none focus:border-brand-500 resize-none"
+                      />
+                    </div>
+                    {defaults.chips && defaults.chips.length > 0 && (
+                      <details className="text-[11.5px] text-ink-500">
+                        <summary className="cursor-pointer hover:text-ink-900">
+                          선택지 (칩) {defaults.chips.length}개 — 코드 고정, 편집 불가
+                        </summary>
+                        <div className="mt-2 flex flex-wrap gap-1.5">
+                          {defaults.chips.map((c) => (
+                            <span
+                              key={c.value}
+                              className="px-2 py-0.5 rounded-full bg-ink-50 border border-ink-100 text-[11px] text-ink-700"
+                              title={c.hint}
+                            >
+                              {c.label}
                             </span>
-                            <span className="ml-1.5 font-mono text-[10px] text-ink-400">
-                              {chip.value}
-                            </span>
-                            {chip.hint && (
-                              <div className="text-[10.5px] text-ink-500 mt-0.5 leading-tight">
-                                {chip.hint}
-                              </div>
-                            )}
-                          </div>
-                        ))}
-                      </div>
+                          ))}
+                        </div>
+                      </details>
                     )}
                   </div>
                 </div>
@@ -113,232 +310,66 @@ export default function DiagnosisLogicPage() {
         </ol>
       </section>
 
-      {/* 스코어링 가중치 */}
+      {/* 가중치 편집 */}
       <section className="bg-white border border-ink-100 rounded-card overflow-hidden">
-        <header className="px-5 py-4 border-b border-ink-100 flex items-center gap-2">
+        <header className="px-5 py-3 border-b border-ink-100 flex items-center gap-2">
           <Scale className="w-4 h-4 text-ink-700" />
           <h2 className="text-[14px] font-bold text-ink-900">
-            페르소나 매칭 가중치
+            스코어링 가중치 ({Object.keys(SCORING_WEIGHTS).length}개)
           </h2>
         </header>
-        <div className="p-5 space-y-3">
-          <p className="text-[12.5px] text-ink-700 leading-relaxed">
-            응답을 모두 받은 후, 활성 페르소나 각각에 대해 아래 항목으로 점수를
-            합산하고 가장 높은 페르소나를 추천합니다. 점수가 같으면 첫 번째
-            활성 페르소나가 선택됩니다.
-          </p>
-          <table className="w-full text-[12.5px] border-collapse">
-            <thead>
-              <tr className="border-b-2 border-ink-200">
-                <th className="text-left py-2 px-2 font-semibold text-ink-700">
-                  요인
-                </th>
-                <th className="text-right py-2 px-2 font-num font-bold text-ink-700">
-                  가중치
-                </th>
-                <th className="text-left py-2 px-2 font-semibold text-ink-700">
-                  적용 조건
-                </th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-ink-100">
-              <Row
-                weight={SCORING_WEIGHTS.segmentMatch}
-                label="분야(segment) 일치"
-                cond="페르소나 targetTags / id / title 에 분야 키워드 포함 시"
-                emphasis
-              />
-              <Row
-                weight={SCORING_WEIGHTS.budgetInRange}
-                label="예산 범위 일치"
-                cond="페르소나 budgetMin ≤ 답변 예산 ≤ budgetMax"
-              />
-              <Row
-                weight={SCORING_WEIGHTS.experienceFirst}
-                label="신규 참가 보너스"
-                cond='experience === "first" + 페르소나 id 가 "first-time" 으로 끝나거나 title 에 "처음/신규"'
-              />
-              <Row
-                weight={SCORING_WEIGHTS.experienceRegular}
-                label="정기 참가 보너스"
-                cond='experience === "regular" + 페르소나 packageTier === "signature" 등'
-              />
-              <Row
-                weight={SCORING_WEIGHTS.companySizeLarge}
-                label="대기업 + 시그니처"
-                cond='companySize === "large" + packageTier === "signature"'
-              />
-              <Row
-                weight={SCORING_WEIGHTS.companySizeSolo}
-                label="1인 + 단품 가중"
-                cond='companySize === "solo" + title 에 "진입/단품" 또는 budgetMax < 1천만원'
-              />
-              <Row
-                weight={SCORING_WEIGHTS.goalMatch}
-                label="목표(purpose) 일치"
-                cond="페르소나 purposes 배열에 답변 목표 포함"
-              />
-              <Row
-                weight={SCORING_WEIGHTS.channelMatch}
-                label="목표 채널 적합 (콤보 단계)"
-                cond="목표(purpose) 에서 자동 추출된 카테고리 type 과 일치 시"
-              />
-              <Row
-                weight={SCORING_WEIGHTS.soloChannelBonus}
-                label="단독 채널 보너스"
-                cond="카테고리에 슬롯이 1개뿐 (희소·시그니처)"
-              />
-              <Row
-                weight={SCORING_WEIGHTS.lastSlotBonus}
-                label="잔여 1자리 보너스"
-                cond="해당 서브카테고리의 available 슬롯 수 === 1"
-              />
-              <Row
-                weight={SCORING_WEIGHTS.onOffBalanceBonus}
-                label="온·오프 균형 콤보"
-                cond="최종 콤보에 online·offline 카테고리가 모두 포함된 경우 (콤보 단계 보너스)"
-              />
-              <Row
-                weight={-SCORING_WEIGHTS.budgetOverPenalty}
-                label="예산 초과 패널티"
-                cond="답변 예산 > 페르소나 budgetMax (강한 감점)"
-              />
-              <Row
-                weight={-SCORING_WEIGHTS.budgetUnderPenalty}
-                label="예산 미달 패널티"
-                cond="답변 예산 < 페르소나 budgetMin (약한 감점)"
-              />
-            </tbody>
-          </table>
+        <div className="divide-y divide-ink-100">
+          {Object.entries(SCORING_WEIGHTS).map(([key, defaultVal]) => {
+            const isOverride = key in weightEdits;
+            const effectiveVal = isOverride ? weightEdits[key] : defaultVal;
+            return (
+              <div
+                key={key}
+                className="px-5 py-3 grid grid-cols-[1fr_120px_auto] gap-3 items-center"
+              >
+                <div>
+                  <div className="text-[13px] font-mono font-semibold text-ink-900 flex items-center gap-2">
+                    {key}
+                    {isOverride && (
+                      <span className="px-1.5 py-0.5 rounded text-[9.5px] font-mono bg-brand-50 text-brand-700">
+                        커스텀
+                      </span>
+                    )}
+                  </div>
+                  <div className="text-[11px] text-ink-500 mt-0.5">
+                    기본값: {defaultVal} · 현재 적용: {effectiveVal}
+                  </div>
+                </div>
+                <input
+                  type="number"
+                  value={effectiveVal}
+                  onChange={(e) =>
+                    updateWeight(key, Number(e.target.value))
+                  }
+                  className="px-2 py-1.5 text-[13px] font-mono border border-ink-100 rounded-btn focus:outline-none focus:border-brand-500 text-right"
+                />
+                {isOverride ? (
+                  <button
+                    type="button"
+                    onClick={() => resetWeight(key)}
+                    className="text-[11px] text-ink-500 hover:text-red-700 font-semibold"
+                  >
+                    기본값
+                  </button>
+                ) : (
+                  <span className="w-10" />
+                )}
+              </div>
+            );
+          })}
         </div>
       </section>
 
-      {/* 분야 → 채널 매칭 보너스 (computeCombo) */}
-      <section className="bg-white border border-ink-100 rounded-card overflow-hidden">
-        <header className="px-5 py-4 border-b border-ink-100">
-          <h2 className="text-[14px] font-bold text-ink-900">
-            분야 × 채널 매칭 보너스 (콤보 추천 단계)
-          </h2>
-          <p className="text-[12px] text-ink-500 mt-1">
-            페르소나가 정해진 후, 그 안에서 어떤 카테고리/구좌를 콤보로 묶을지
-            결정할 때 사용되는 보너스.
-          </p>
-        </header>
-        <div className="p-5 grid md:grid-cols-2 gap-3 text-[12.5px]">
-          <ComboRow
-            seg="🖨 일반 인쇄 (offset)"
-            channel="—"
-            note="기본 채널 — 별도 보너스 없음"
-          />
-          <ComboRow
-            seg="💻 디지털 인쇄·POD"
-            channel="digital_banner · mailing"
-            note="+30점 (온라인 적합)"
-          />
-          <ComboRow
-            seg="📦 패키징·박스"
-            channel="print_page · floor_plan"
-            note="+25점 (도면·샘플북)"
-          />
-          <ComboRow
-            seg="🏷 라벨·스티커"
-            channel="—"
-            note="별도 보너스 없음 — 시그니처 패키지 추천"
-          />
-          <ComboRow
-            seg="🪧 사인·디스플레이"
-            channel="xpace (전광판)"
-            note="+30점"
-          />
-          <ComboRow
-            seg="⚙ 잉크·소재·기자재"
-            channel="quantity (목걸이) · media"
-            note="+20점"
-          />
-        </div>
-      </section>
-
-      <section className="bg-ink-50 border border-ink-100 rounded-card p-5">
-        <h3 className="text-[13px] font-bold text-ink-900 mb-2">코드 위치</h3>
-        <ul className="text-[12.5px] text-ink-700 space-y-1 font-mono leading-relaxed">
-          <li>
-            ·{" "}
-            <code className="bg-white px-1.5 py-0.5 rounded border border-ink-100">
-              components/public/PersonaAiChat.tsx
-            </code>
-            <span className="text-ink-500 font-sans ml-2">
-              — QUESTIONS, STAGES, SCORING_WEIGHTS, findBestPersona, computeCombo
-            </span>
-          </li>
-          <li>
-            ·{" "}
-            <code className="bg-white px-1.5 py-0.5 rounded border border-ink-100">
-              app/(public)/[eventSlug]/sponsorships/page.tsx
-            </code>
-            <span className="text-ink-500 font-sans ml-2">
-              — 인라인 채팅 진입부 (첫 분야 칩 노출)
-            </span>
-          </li>
-          <li>
-            ·{" "}
-            <code className="bg-white px-1.5 py-0.5 rounded border border-ink-100">
-              admin/classification (페르소나 관리)
-            </code>
-            <span className="text-ink-500 font-sans ml-2">
-              — 페르소나 추가·수정 (purposes, targetTags, budgetMin/Max,
-              packageTier 등)
-            </span>
-          </li>
-        </ul>
-      </section>
-    </div>
-  );
-}
-
-function Row({
-  weight,
-  label,
-  cond,
-  emphasis,
-}: {
-  weight: number;
-  label: string;
-  cond: string;
-  emphasis?: boolean;
-}) {
-  return (
-    <tr className={emphasis ? "bg-brand-50/40" : ""}>
-      <td className="py-2 px-2 font-semibold text-ink-900">{label}</td>
-      <td
-        className={
-          "text-right py-2 px-2 font-num font-bold " +
-          (weight < 0 ? "text-red-600" : emphasis ? "text-brand-500" : "text-ink-900")
-        }
-      >
-        {weight < 0 ? "−" : "+"}
-        {Math.abs(weight)}
-      </td>
-      <td className="py-2 px-2 text-ink-500 font-mono text-[11px] leading-snug">
-        {cond}
-      </td>
-    </tr>
-  );
-}
-
-function ComboRow({
-  seg,
-  channel,
-  note,
-}: {
-  seg: string;
-  channel: string;
-  note: string;
-}) {
-  return (
-    <div className="border border-ink-100 rounded p-3 bg-white">
-      <div className="font-semibold text-ink-900 mb-1">{seg}</div>
-      <div className="text-ink-700">{channel}</div>
-      <div className="text-[11.5px] text-brand-500 font-num mt-1">{note}</div>
+      <div className="text-[11px] text-ink-500 leading-relaxed">
+        💡 칩 선택지(답안)·점수 로직 자체는 코드 (
+        <code className="font-mono">components/public/PersonaAiChat.tsx</code>
+        ) 에 박혀있습니다. 텍스트와 가중치 조절만 어드민에서 가능합니다.
+      </div>
     </div>
   );
 }

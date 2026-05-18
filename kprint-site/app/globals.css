@@ -7,7 +7,7 @@
 @tailwind utilities;
 
 /*
-  KIMES 디자인 토큰. 색상은 CSS 변수 — 행사별 테마 색상 주입 가능.
+  디자인 토큰. 색상은 CSS 변수 — 행사별 테마 색상 주입 가능.
 
   ThemeProvider 가 <html>에 inline style 로 --brand-500 등을 덮어쓰면
   tailwind 의 bg-brand-500 같은 클래스가 행사별 색상으로 자동 반영된다.
@@ -28,7 +28,7 @@
   --color-ink: #0a0a0a;
   --color-ink-muted: #808080;
 
-  /* brand ramp — 기본값 KIMES 빨강. ThemeProvider 가 overide */
+  /* brand ramp — 기본값 K-PRINT 빨강. ThemeProvider 가 행사별로 override */
   --brand-500: #db0711;
   --brand-50: color-mix(in srgb, var(--brand-500), white 92%);
   --brand-100: color-mix(in srgb, var(--brand-500), white 80%);

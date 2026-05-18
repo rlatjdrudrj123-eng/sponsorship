@@ -101,7 +101,7 @@ export function SlotPicker({ categoryId, eventId, subcategories, slots }: Props)
                         <div className="text-[10px] mt-0.5 text-ink-300">마감</div>
                       ) : inCart ? (
                         <div className="text-[10px] mt-0.5 font-bold opacity-90">
-                          관심 표시됨
+                          담김
                         </div>
                       ) : slot.note ? (
                         <div className="text-[10px] mt-0.5 truncate opacity-70">
@@ -246,7 +246,7 @@ function SlotConfirmModal({
               className="px-4 py-2.5 rounded-pill bg-ink-900 text-white text-[13px] font-bold hover:bg-ink-700 flex items-center justify-center gap-1.5 transition-colors"
             >
               <BookmarkCheck className="w-4 h-4" />
-              관심 해제
+              빼기
             </button>
           ) : (
             <button
@@ -255,7 +255,7 @@ function SlotConfirmModal({
               className="px-4 py-2.5 rounded-pill bg-brand-500 text-white text-[13px] font-bold hover:bg-brand-700 hover:shadow-glow-sm flex items-center justify-center gap-1.5 transition-all"
             >
               <Bookmark className="w-4 h-4" />
-              관심 표시
+              담기
             </button>
           )}
         </footer>

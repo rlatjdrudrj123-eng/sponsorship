@@ -165,7 +165,7 @@ export default function CartPage() {
               관심 항목
             </h1>
             <p className="text-[14px] md:text-[16px] text-ink-500 mt-3 leading-relaxed">
-              관심 표시한 항목들입니다. 사무국에 문의하시면 1영업일 내 정식 견적을 회신드려요.
+              카트에 담은 항목들입니다. 사무국에 문의하시면 1영업일 내 정식 견적을 회신드려요.
             </p>
           </div>
         </header>
@@ -192,7 +192,7 @@ export default function CartPage() {
             <div className="bg-surface border border-ink-100 rounded-card py-20 text-center">
               <Bookmark className="w-10 h-10 text-ink-300 mx-auto mb-4" />
               <p className="text-[15px] text-ink-700 font-semibold">
-                아직 관심 표시한 항목이 없습니다.
+                아직 카트에 담은 항목이 없습니다.
               </p>
               <p className="text-[13px] text-ink-500 mt-1.5">
                 마음에 드는 스폰서십을 찾아보세요.
@@ -293,7 +293,7 @@ export default function CartPage() {
                             type="button"
                             onClick={() => removeSlot(item.slotId)}
                             className="w-8 h-8 grid place-items-center text-ink-400 hover:text-red-700 hover:bg-red-50 rounded shrink-0"
-                            title="관심 해제"
+                            title="빼기"
                           >
                             <X className="w-4 h-4" />
                           </button>
@@ -332,7 +332,7 @@ export default function CartPage() {
                           type="button"
                           onClick={() => removePackage(item.packageId)}
                           className="w-8 h-8 grid place-items-center text-ink-400 hover:text-red-700 hover:bg-red-50 rounded shrink-0"
-                          title="관심 해제"
+                          title="빼기"
                         >
                           <X className="w-4 h-4" />
                         </button>

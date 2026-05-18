@@ -873,9 +873,9 @@ export function CanvasEditor({
           />
         </div>
 
-        {/* 슬라이드 템플릿 — 그룹별 (K-PRINT 우선) */}
+        {/* 슬라이드 템플릿 — 그룹별 (K-PRINT 만 표시, KIMES 그룹은 폐기) */}
         <div className="border-t border-ink-100 px-2 py-2 space-y-3">
-          {(["K-PRINT", "공통", "KIMES"] as const).map((groupKey) => {
+          {(["K-PRINT", "공통"] as const).map((groupKey) => {
             const groupItems = SLIDE_TEMPLATES.filter(
               (t) => t.group === groupKey
             );
@@ -887,9 +887,7 @@ export function CanvasEditor({
                     className={
                       groupKey === "K-PRINT"
                         ? "text-brand-500"
-                        : groupKey === "KIMES"
-                          ? "text-ink-500"
-                          : "text-ink-700"
+                        : "text-ink-700"
                     }
                   >
                     {groupKey === "공통"
@@ -4363,7 +4361,7 @@ function benefitCards(): CanvasNode[] {
 
 function processCards(): CanvasNode[] {
   const items = [
-    { num: "01", title: "신청상담", body: "사무국과 상담을 통해 스폰서십 진행에 대한\n혜택 및 견적 관련 상세 안내", footer: "문의\n02-551-0102\nkimes@kimes.kr" },
+    { num: "01", title: "신청상담", body: "사무국과 상담을 통해 스폰서십 진행에 대한\n혜택 및 견적 관련 상세 안내", footer: "문의\n02-551-0102\nkprint@kprintshow.com" },
     { num: "02", title: "체크리스트 신청", body: "참가업체 체크리스트 로그인\n↓\n선택제출 - 온/오프라인 광고 신청\n↓\n희망 스폰서십 항목 신청", footer: "*일부 항목은 조기 마감될 수 있습니다" },
     { num: "03", title: "입금", body: "견적서 발송\n체크리스트 내 신청 후 사무국 문의\n\n입금 마감\n2026년 2월 28일(토)\n\n계산서 발행\n전시회 개막 1개월 전", footer: "" },
     { num: "04", title: "디자인 파일 제출", body: "제출기한: 스폰서십별 상이", footer: "* 전달 주시는 이미지와 영상 등이 산업 분야와\n상이하다고 판단할 경우 파일을\n재요청 드릴 수 있습니다." },

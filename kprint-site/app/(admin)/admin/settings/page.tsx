@@ -52,7 +52,7 @@ type FormValues = {
 };
 
 const PRESET_COLORS: Array<{ label: string; hex: string }> = [
-  { label: "KIMES 빨강", hex: "#DB0711" },
+  { label: "K-PRINT 빨강", hex: "#DB0711" },
   { label: "K-PRINT 민트", hex: "#00BFA6" },
   { label: "딥 블루", hex: "#1E40AF" },
   { label: "포레스트", hex: "#15803D" },

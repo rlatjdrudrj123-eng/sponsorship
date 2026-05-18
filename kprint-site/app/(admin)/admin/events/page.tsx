@@ -27,16 +27,6 @@ const DEFAULT_EVENTS: Array<Omit<Event, "createdAt" | "updatedAt">> = [
     year: 2026,
     isActive: true,
     order: 0,
-    lastYearTotal: 109_800_000,
-    note: "",
-  },
-  {
-    id: "kimes-busan-2026",
-    name: "KIMES BUSAN 2026",
-    shortName: "KIMES BUSAN",
-    year: 2026,
-    isActive: true,
-    order: 1,
     note: "",
   },
 ];
@@ -122,7 +112,7 @@ export default function EventsPage() {
             행사 관리
           </h1>
           <p className="text-[13px] text-ink-700 mt-1">
-            연도·행사별로 스폰서를 분리해 관리합니다. (예: K-PRINT 2026, KIMES BUSAN 2026)
+            연도·행사별로 스폰서를 분리해 관리합니다 (예: K-PRINT 2026, K-PRINT 2027).
           </p>
         </div>
         <button

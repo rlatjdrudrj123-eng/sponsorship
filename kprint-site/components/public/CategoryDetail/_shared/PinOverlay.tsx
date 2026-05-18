@@ -82,7 +82,7 @@ export function PinOverlay({ floorImage, categoryId, eventId, subcategory, slots
               {inCart ? <Check className="w-4 h-4" strokeWidth={3} /> : num}
               <span className="absolute left-1/2 -translate-x-1/2 -top-7 px-1.5 py-0.5 bg-ink-900 text-white text-[10px] rounded font-mono whitespace-nowrap opacity-0 group-hover:opacity-100 pointer-events-none">
                 {slot.code}
-                {inCart ? " · 관심 표시됨" : pin.note ? ` · ${pin.note}` : ""}
+                {inCart ? " · 담김" : pin.note ? ` · ${pin.note}` : ""}
               </span>
             </button>
           );

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useParams, useSearchParams } from "next/navigation";
 import {
@@ -15,6 +15,7 @@ import {
 import {
   ArrowLeft,
   ArrowRight,
+  Download,
   Filter,
   LayoutGrid,
   Maximize2,
@@ -43,6 +44,8 @@ import { localized, useLocale, type Locale } from "@/lib/i18n/locale";
 import { t } from "@/lib/i18n/strings";
 import { derivePurposes } from "@/lib/purposes";
 import { PURPOSE_META, PURPOSE_ORDER, type Purpose } from "@/lib/types";
+import { getTypeLayout } from "@/lib/typeLayouts";
+import { DEFAULT_BUNDLED_PERKS, calcPerksTotalValue } from "@/lib/perks";
 
 function channelLabel(c: Channel | "all", locale: Locale): string {
   const key = (
@@ -426,6 +429,8 @@ export default function SponsorshipsPage() {
           hasActiveFilter={hasActiveFilter}
           eventId={eventId}
           onOpenDetail={setDetailModalSlug}
+          typeLayouts={settings?.typeLayouts}
+          bundledPerks={settings?.bundledPerks}
         />
       ) : (
         <>
@@ -816,6 +821,7 @@ export default function SponsorshipsPage() {
         slots={slots}
         packages={packages}
         initialGoal={aiChatInitial ?? undefined}
+        diagnosisConfig={settings?.diagnosisConfig}
       />
 
       {/* 도면·사례 상세 모달 — 슬라이드형(SlideSection) 그대로 띄움.
@@ -849,6 +855,8 @@ export default function SponsorshipsPage() {
             onNext={goNext}
             onClose={() => setDetailModalSlug(null)}
             onOpenDetail={setDetailModalSlug}
+            typeLayouts={settings?.typeLayouts}
+            bundledPerks={settings?.bundledPerks}
           />
         );
       })()}
@@ -866,6 +874,8 @@ function DetailSlideModal({
   onNext,
   onClose,
   onOpenDetail,
+  typeLayouts,
+  bundledPerks,
 }: {
   item: EnrichedCategory;
   subcategories: Subcategory[];
@@ -876,46 +886,63 @@ function DetailSlideModal({
   onNext?: () => void;
   onClose: () => void;
   onOpenDetail: (slug: string) => void;
+  typeLayouts?: SiteSettings["typeLayouts"];
+  bundledPerks?: SiteSettings["bundledPerks"];
 }) {
+  // 콜백 최신값을 ref 로 유지 — 매 키 이벤트마다 최신 prev/next 가 호출되되,
+  // useEffect 본체는 onPrev/onNext 변경에 재실행되지 않음.
+  // (이전 구현: deps 에 onPrev/onNext/onClose 가 들어가 prev/next 누를 때마다
+  //  history 가 push/back 을 반복 → 결국 뒤로가기 시 페이지 밖으로 튕겨나가는 버그)
+  const handlersRef = useRef({ onClose, onPrev, onNext });
+  useEffect(() => {
+    handlersRef.current = { onClose, onPrev, onNext };
+  }, [onClose, onPrev, onNext]);
+
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
-      if (e.key === "ArrowLeft" && onPrev) onPrev();
-      if (e.key === "ArrowRight" && onNext) onNext();
+      const h = handlersRef.current;
+      if (e.key === "Escape") h.onClose();
+      if (e.key === "ArrowLeft" && h.onPrev) h.onPrev();
+      if (e.key === "ArrowRight" && h.onNext) h.onNext();
     };
     window.addEventListener("keydown", onKey);
     document.body.style.overflow = "hidden";
 
     // 모달이 페이지처럼 보여서 사용자가 뒤로가기 버튼을 누르는 경우 →
-    // history 에 더미 state 를 추가하고 popstate 이벤트로 onClose 만 호출.
+    // history 에 더미 state 를 한 번만 추가하고 popstate 이벤트로 onClose 호출.
     // 결과: 뒤로가기 = 모달 닫기 (페이지 이탈 X)
-    const dummyState = { detailModalOpen: true };
-    window.history.pushState(dummyState, "");
-    const onPop = () => onClose();
+    let didPush = false;
+    if (!window.history.state?.detailModalOpen) {
+      window.history.pushState({ detailModalOpen: true }, "");
+      didPush = true;
+    }
+    const onPop = () => handlersRef.current.onClose();
     window.addEventListener("popstate", onPop);
 
     return () => {
       window.removeEventListener("keydown", onKey);
       window.removeEventListener("popstate", onPop);
       document.body.style.overflow = "";
-      // 닫힐 때 pushState 한 더미 state 되돌리기 (popstate 로 닫힌 경우는 이미 빠진 상태라
-      // history.state 가 우리 state 가 아닐 수 있음)
-      if (window.history.state?.detailModalOpen) {
+      // 닫힐 때 — 우리가 push 한 적 있고 현재 state 가 그대로면 직접 pop.
+      // popstate 로 닫혔으면 history 가 이미 빠진 상태라 if 가 false.
+      if (didPush && window.history.state?.detailModalOpen) {
         window.history.back();
       }
     };
-  }, [onClose, onPrev, onNext]);
+    // 마운트/언마운트 한 번씩만 실행 — 콜백은 ref 로 전달
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   return (
     <div
-      className="fixed inset-0 z-[60] bg-ink-900/70 backdrop-blur-sm flex items-stretch justify-center"
+      className="fixed inset-0 z-[60] bg-ink-900/70 backdrop-blur-sm flex items-stretch md:items-center justify-center md:p-6"
       onClick={onClose}
     >
       <div
         role="dialog"
         aria-modal="true"
         onClick={(e) => e.stopPropagation()}
-        className="bg-canvas w-full h-full flex flex-col"
+        className="bg-canvas w-full h-full md:rounded-card md:shadow-2xl md:max-w-[1280px] md:max-h-[92vh] flex flex-col overflow-hidden"
       >
         <header className="px-5 py-3 border-b border-ink-100 bg-white flex items-center justify-between shrink-0">
           <div className="flex items-center gap-3">
@@ -967,6 +994,9 @@ function DetailSlideModal({
             index={index}
             total={total}
             onOpenDetail={onOpenDetail}
+            inModal
+            typeLayouts={typeLayouts}
+            bundledPerks={bundledPerks}
           />
         </div>
       </div>
@@ -1867,6 +1897,8 @@ function SlideStream({
   hasActiveFilter,
   eventId,
   onOpenDetail,
+  typeLayouts,
+  bundledPerks,
 }: {
   items: EnrichedCategory[];
   subcategories: Subcategory[];
@@ -1877,6 +1909,8 @@ function SlideStream({
   hasActiveFilter: boolean;
   eventId: string;
   onOpenDetail: (slug: string) => void;
+  typeLayouts?: SiteSettings["typeLayouts"];
+  bundledPerks?: SiteSettings["bundledPerks"];
 }) {
   const locale = useLocale((s) => s.locale);
   return (
@@ -1909,6 +1943,16 @@ function SlideStream({
         </span>
         <span className="ml-auto" />
         <LocaleSwitch size="sm" />
+        <Link
+          href={`/${eventId}/print/full`}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="px-2.5 py-1.5 rounded-btn border border-ink-100 hover:border-ink-900 text-[12px] font-semibold flex items-center gap-1"
+          title="전체 PDF 다운로드"
+        >
+          <Download className="w-3.5 h-3.5" />
+          전체 PDF
+        </Link>
         <button
           type="button"
           onClick={onOpenFilter}
@@ -1956,6 +2000,8 @@ function SlideStream({
                 index={i}
                 total={items.length}
                 onOpenDetail={onOpenDetail}
+                typeLayouts={typeLayouts}
+                bundledPerks={bundledPerks}
               />
             );
           })}
@@ -1972,6 +2018,9 @@ function SlideSection({
   index,
   total,
   onOpenDetail,
+  inModal = false,
+  typeLayouts,
+  bundledPerks,
 }: {
   item: EnrichedCategory;
   subcategories: Subcategory[];
@@ -1979,6 +2028,12 @@ function SlideSection({
   index: number;
   total: number;
   onOpenDetail: (slug: string) => void;
+  /** 모달 컨텍스트에서 렌더될 때는 "자세히 보기" 버튼 숨김 — 이미 자세히 본 상태이므로 의미 없음 */
+  inModal?: boolean;
+  /** SiteSettings.typeLayouts — 유형별 스펙 행 순서/노출 override */
+  typeLayouts?: SiteSettings["typeLayouts"];
+  /** SiteSettings.bundledPerks — 스폰서십 신청 시 동봉되는 추가 혜택 */
+  bundledPerks?: SiteSettings["bundledPerks"];
 }) {
   const locale = useLocale((s) => s.locale);
   const [pickerOpen, setPickerOpen] = useState(false);
@@ -1994,6 +2049,31 @@ function SlideSection({
       )
     : null;
 
+  // 게재 위치 — subcategory 이름 목록 (도면형/XPACE 처럼 위치 의미가 있는 타입만 표시)
+  const showsLocation =
+    item.type === "floor_plan" || item.type === "xpace";
+  const locationLabel = showsLocation
+    ? subcategories
+        .map((s) => localized(s.name, locale))
+        .filter(Boolean)
+        .join(", ")
+    : "";
+
+  // 세부사항 — 각 subcategory 의 (이름 + 해당 슬롯 수 + 단위)
+  // 예: "A1 출입구 5구좌, A2 출입구 4구좌, B홀 2구좌, ..."
+  const detailLabel = (() => {
+    if (subcategories.length === 0) return "";
+    return subcategories
+      .map((s) => {
+        const count = slots.filter((sl) => sl.subcategoryId === s.id).length;
+        if (count === 0) return null;
+        const unit = localized(s.unit, locale) || "구좌";
+        return `${localized(s.name, locale)} ${count}${unit}`;
+      })
+      .filter(Boolean)
+      .join(", ");
+  })();
+
   // 해시태그 — 채널 + 카테고리.tags 중 첫 2개
   const hashTags: string[] = [
     channelLabel(item.channel, locale),
@@ -2004,8 +2084,8 @@ function SlideSection({
     <>
       <section className="h-screen snap-start bg-canvas pt-14 relative overflow-hidden">
         <div className="max-w-7xl mx-auto h-full px-6 md:px-12 py-6 md:py-8 grid lg:grid-cols-[1.1fr_1fr] gap-6 lg:gap-12 items-stretch">
-          {/* LEFT: 정보 */}
-          <div className="flex flex-col min-w-0 min-h-0">
+          {/* LEFT: 정보 — 세로 중앙 정렬하여 빈공간 분산 */}
+          <div className="flex flex-col justify-center min-w-0 min-h-0">
             {/* 해시태그 */}
             <div className="flex flex-wrap gap-x-4 gap-y-1 text-[13px] md:text-[14px] tracking-wide text-brand-500 font-bold mb-4 font-num">
               {hashTags.map((tag, i) => (
@@ -2013,56 +2093,184 @@ function SlideSection({
               ))}
             </div>
 
-            {/* 거대한 카테고리 명 + 코드 */}
-            <div className="flex items-baseline gap-3 flex-wrap">
-              <h2 className="text-[36px] md:text-[56px] font-bold leading-[0.95] tracking-tight text-ink-900">
-                {localized(item.name, locale)}
-              </h2>
-              <span className="text-[14px] md:text-[18px] text-ink-300 font-num">
+            {/* 거대한 카테고리 명 + 코드 — 제목은 너비에 맞춰 자동 축소 (한 줄 유지) */}
+            <div className="flex items-baseline gap-3 min-w-0">
+              <AutoFitHeading
+                text={localized(item.name, locale)}
+                maxPx={56}
+                minPx={24}
+                className="flex-1 font-bold leading-[0.95] tracking-tight text-ink-900"
+              />
+              <span className="text-[14px] md:text-[18px] text-ink-300 font-num shrink-0">
                 #{item.code}
               </span>
             </div>
 
             {/* 한 줄 설명 */}
             {item.shortDesc && (
-              <p className="text-[13px] md:text-[14px] text-ink-700 mt-3 leading-relaxed max-w-xl line-clamp-2">
+              <p className="text-[13px] md:text-[14px] text-ink-700 mt-3 leading-relaxed max-w-xl">
                 {item.shortDesc}
               </p>
             )}
 
-            <hr className="border-ink-100 my-5" />
+            <hr className="border-ink-100 my-6" />
 
-            {/* 스펙 표 (2열 콤팩트) */}
-            <dl className="grid grid-cols-2 gap-x-6 gap-y-2.5">
-              {item.size && (
-                <SpecRow label={t("spons.size", locale)} value={item.size} />
-              )}
-              {item.fileFormat && (
-                <SpecRow
-                  label={t("spons.fileFormat", locale)}
-                  value={item.fileFormat}
-                />
-              )}
-              {deadlineStr && (
-                <SpecRow
-                  label={t("spons.submitDeadline", locale)}
-                  value={deadlineStr}
-                />
-              )}
-              <SpecRow
-                label={t("spons.slots", locale)}
-                value={
-                  <>
-                    <span className="text-brand-500 font-bold">
-                      {item.slotAvailable}
-                    </span>
-                    <span className="text-ink-500">
-                      {" "}
-                      / {item.slotTotal} {t("spons.slotsAvailable", locale)}
-                    </span>
-                  </>
+            {/* 스펙 표 — 어드민의 typeLayouts 설정 (또는 기본 레이아웃) 기반으로 행 노출.
+                /admin/settings/type-layouts 에서 유형별로 어떤 행을 어떤 순서로 보일지 조정 가능. */}
+            <dl className="space-y-3">
+              {(() => {
+                const layout = getTypeLayout(item.type, typeLayouts);
+                const rows: React.ReactNode[] = [];
+                for (const field of layout.specFields) {
+                  switch (field) {
+                    case "location": {
+                      if (locationLabel)
+                        rows.push(
+                          <SpecRow
+                            key="location"
+                            label="게재 위치"
+                            value={locationLabel}
+                          />
+                        );
+                      break;
+                    }
+                    case "size": {
+                      if (item.size)
+                        rows.push(
+                          <SpecRow
+                            key="size"
+                            label={t("spons.size", locale)}
+                            value={item.size}
+                          />
+                        );
+                      break;
+                    }
+                    case "fileFormat": {
+                      if (item.fileFormat)
+                        rows.push(
+                          <SpecRow
+                            key="fileFormat"
+                            label={t("spons.fileFormat", locale)}
+                            value={item.fileFormat}
+                          />
+                        );
+                      break;
+                    }
+                    case "deadline": {
+                      if (deadlineStr)
+                        rows.push(
+                          <SpecRow
+                            key="deadline"
+                            label={t("spons.submitDeadline", locale)}
+                            value={deadlineStr}
+                          />
+                        );
+                      break;
+                    }
+                    case "detail": {
+                      if (detailLabel)
+                        rows.push(
+                          <SpecRow
+                            key="detail"
+                            label="세부사항"
+                            value={
+                              <span>
+                                {detailLabel}
+                                {item.slotTotal > 0 && (
+                                  <span className="ml-2 text-ink-500 font-medium">
+                                    (잔여{" "}
+                                    <span className="text-brand-500 font-bold">
+                                      {item.slotAvailable}
+                                    </span>
+                                    )
+                                  </span>
+                                )}
+                              </span>
+                            }
+                          />
+                        );
+                      break;
+                    }
+                    case "slots": {
+                      rows.push(
+                        <SpecRow
+                          key="slots"
+                          label={t("spons.slots", locale)}
+                          value={
+                            <>
+                              <span className="text-brand-500 font-bold">
+                                {item.slotAvailable}
+                              </span>
+                              <span className="text-ink-500">
+                                {" "}
+                                / {item.slotTotal}{" "}
+                                {t("spons.slotsAvailable", locale)}
+                              </span>
+                            </>
+                          }
+                        />
+                      );
+                      break;
+                    }
+                    case "video": {
+                      const v = item.videoSpec;
+                      if (v && (v.duration || v.resolution || v.plays)) {
+                        const parts: string[] = [];
+                        if (v.duration) parts.push(`${v.duration}초`);
+                        if (v.resolution) parts.push(v.resolution);
+                        if (v.plays)
+                          parts.push(`${v.plays.toLocaleString()}회 송출`);
+                        rows.push(
+                          <SpecRow
+                            key="video"
+                            label="영상 스펙"
+                            value={parts.join(" · ")}
+                          />
+                        );
+                      }
+                      break;
+                    }
+                    case "mailing": {
+                      const m = item.mailingSpec;
+                      if (m && (m.audience || m.sendDates?.length)) {
+                        const parts: string[] = [];
+                        if (m.audience)
+                          parts.push(
+                            `${m.audience.toLocaleString()}명${
+                              m.audienceLabel ? ` (${m.audienceLabel})` : ""
+                            }`
+                          );
+                        if (m.sendDates?.length)
+                          parts.push(`발송: ${m.sendDates.join(", ")}`);
+                        rows.push(
+                          <SpecRow
+                            key="mailing"
+                            label="발송 스펙"
+                            value={parts.join(" · ")}
+                          />
+                        );
+                      }
+                      break;
+                    }
+                    case "content": {
+                      const c = item.contentSpec;
+                      if (c && (c.channel || c.format)) {
+                        rows.push(
+                          <SpecRow
+                            key="content"
+                            label="콘텐츠 스펙"
+                            value={[c.channel, c.format]
+                              .filter(Boolean)
+                              .join(" · ")}
+                          />
+                        );
+                      }
+                      break;
+                    }
+                  }
                 }
-              />
+                return rows;
+              })()}
             </dl>
 
             {/* 잔여 강조 + 작년 데이터 (있을 때만) */}
@@ -2084,71 +2292,100 @@ function SlideSection({
               </div>
             )}
 
-            <div className="mt-auto pt-5 flex items-center gap-2 flex-wrap">
+            {/* 동봉 혜택 미니 배너 — 단품 슬라이드에도 "신청 시 추가로 드리는 것" 시각화 */}
+            {(() => {
+              const perks = bundledPerks ?? DEFAULT_BUNDLED_PERKS;
+              if (perks.length === 0) return null;
+              const totalValue = calcPerksTotalValue(perks);
+              return (
+                <div className="mt-5 px-3.5 py-2.5 rounded-btn bg-gradient-to-r from-brand-50 to-canvas border border-brand-100 flex items-center gap-3 text-[12px]">
+                  <span className="text-brand-700 font-bold flex items-center gap-1.5 shrink-0">
+                    <span aria-hidden>🎁</span>
+                    스폰서십 신청 시
+                  </span>
+                  <span className="text-ink-700 flex-1 truncate">
+                    <strong className="text-ink-900">
+                      추가 혜택 {perks.length}개
+                    </strong>
+                    {totalValue > 0 && (
+                      <span className="ml-1.5 text-ink-500">
+                        · 총 {totalValue.toLocaleString()}원 상당
+                      </span>
+                    )}{" "}
+                    자동 동봉
+                  </span>
+                </div>
+              );
+            })()}
+
+            {/* 버튼: 구좌 선택 / [자세히 보기 — 모달 외부에서만] / 가이드 다운로드 */}
+            <div className="mt-6 flex gap-3">
               <button
                 type="button"
                 onClick={() => setPickerOpen(true)}
-                className="px-5 py-2.5 rounded-pill bg-brand-500 text-white hover:bg-brand-700 hover:shadow-glow-sm font-bold text-[13px] transition-all flex items-center gap-1.5"
+                className="flex-1 h-12 rounded-btn bg-ink-900 text-white hover:bg-ink-700 font-bold text-[13.5px] transition-colors"
               >
-                구좌 선택하기 →
+                구좌 선택하기
               </button>
+              {!inModal && (
+                <button
+                  type="button"
+                  onClick={() => onOpenDetail(item.slug)}
+                  className="flex-1 h-12 rounded-btn border-2 border-ink-900 text-ink-900 hover:bg-ink-900 hover:text-white font-bold text-[13.5px] transition-colors"
+                >
+                  자세히 보기
+                </button>
+              )}
               {item.designGuideFileUrl && (
                 <a
                   href={item.designGuideFileUrl}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="px-5 py-2.5 rounded-pill border-2 border-ink-100 hover:border-ink-900 text-ink-900 font-bold text-[13px] transition-colors"
+                  className="flex-1 h-12 rounded-btn border-2 border-ink-900 text-ink-900 hover:bg-ink-900 hover:text-white font-bold text-[13.5px] transition-colors inline-flex items-center justify-center gap-1.5"
                 >
-                  {t("spons.designGuide", locale)}
+                  <Download className="w-3.5 h-3.5" />
+                  가이드 다운로드
                 </a>
               )}
-              <button
-                type="button"
-                onClick={() => onOpenDetail(item.slug)}
-                className="text-[12.5px] font-num font-bold text-ink-500 hover:text-brand-500 underline-offset-2 hover:underline ml-1"
-              >
-                도면·사례 보기 →
-              </button>
             </div>
 
-            {/* 가격 — 최하단 */}
-            <div className="mt-4 pt-4 border-t border-ink-100 flex items-baseline justify-between gap-3">
-              <span className="font-num text-[11px] uppercase tracking-[0.3em] text-brand-500 font-bold">
-                {t("spons.minPrice", locale)}
-              </span>
+            {/* 가격 — 큰 텍스트 (타겟 레이아웃) */}
+            <div className="mt-6 pt-6 border-t border-ink-100 flex items-end justify-end gap-3">
               {item.minPrice > 0 ? (
-                <span className="font-num text-[24px] md:text-[28px] font-bold text-ink-900 leading-none">
-                  {item.minPrice.toLocaleString()}
-                  <span className="text-[13px] ml-1 font-semibold">
-                    {t("common.won", locale)}
-                  </span>
-                </span>
+                <div className="text-right">
+                  <div className="font-num text-[28px] md:text-[36px] font-bold text-ink-900 leading-none">
+                    <span className="text-[16px] md:text-[18px] font-semibold mr-2">
+                      1구좌당
+                    </span>
+                    {item.minPrice.toLocaleString()}
+                    <span className="text-[18px] md:text-[20px] ml-1 font-bold">
+                      {t("common.won", locale)}
+                    </span>
+                  </div>
+                  <p className="text-[11.5px] text-ink-500 mt-2">
+                    (제작설치비 포함, 부가세 별도)
+                  </p>
+                </div>
               ) : (
-                <span className="text-[14px] text-ink-500">
+                <span className="text-[16px] text-ink-500 font-semibold">
                   {t("common.priceNegotiable", locale)}
                 </span>
               )}
             </div>
           </div>
 
-          {/* RIGHT: 큰 hero 이미지 — 4:3 비율 고정 (썸네일과 동일 비율 → 같은 사진이 같은 형태로 보임) */}
+          {/* RIGHT: 큰 hero 영역 — heroVideoUrl 가 있으면 영상, 없으면 첫 이미지 */}
           <div className="flex items-center min-h-0">
             <div
               className="w-full rounded-card bg-ink-100 overflow-hidden border border-ink-100 relative shadow-card"
               style={{ aspectRatio: "4 / 3" }}
             >
-              {hero ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
-                  src={hero}
-                  alt={localized(item.name, locale)}
-                  className="absolute inset-0 w-full h-full object-cover"
-                />
-              ) : (
-                <div className="w-full h-full grid place-items-center text-ink-300 text-sm">
-                  {locale === "en" ? "Image coming soon" : "이미지 준비 중"}
-                </div>
-              )}
+              <HeroMedia
+                videoUrl={item.heroVideoUrl}
+                imageUrl={hero}
+                alt={localized(item.name, locale)}
+                locale={locale}
+              />
             </div>
           </div>
         </div>
@@ -2248,20 +2485,119 @@ function SlotPickerModal({
         </div>
         <footer className="px-6 py-4 border-t border-ink-100 flex items-center justify-between gap-3 flex-wrap shrink-0">
           <p className="text-[11.5px] text-ink-500">
-            구좌를 클릭하면 관심 표시되며, 우상단 카트에서 확인할 수 있어요.
+            구좌를 클릭하면 카트에 담기고, 우상단에서 확인할 수 있어요.
           </p>
           <button
             type="button"
             onClick={() => onOpenDetail(item.slug)}
             className="text-[12.5px] font-num font-bold text-brand-500 hover:text-brand-700 flex items-center gap-1"
           >
-            도면·사례 자세히 보기
+            자세히 보기
             <ArrowRight className="w-3.5 h-3.5" />
           </button>
         </footer>
       </div>
     </div>
   );
+}
+
+// 슬라이드 히어로 영역 — 영상 URL 있으면 영상, 없으면 이미지 fallback.
+// YouTube / Vimeo / Drive / Firebase Storage / 직접 mp4 등 모두 지원.
+function HeroMedia({
+  videoUrl,
+  imageUrl,
+  alt,
+  locale,
+}: {
+  videoUrl?: string;
+  imageUrl?: string;
+  alt: string;
+  locale: "ko" | "en";
+}) {
+  const embed = videoUrl ? heroVideoEmbed(videoUrl) : null;
+  if (embed?.kind === "iframe") {
+    return (
+      <iframe
+        src={embed.url}
+        title={alt}
+        className="absolute inset-0 w-full h-full"
+        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+        allowFullScreen
+        referrerPolicy="strict-origin-when-cross-origin"
+      />
+    );
+  }
+  if (embed?.kind === "video") {
+    return (
+      <video
+        src={embed.url}
+        controls
+        playsInline
+        className="absolute inset-0 w-full h-full object-cover bg-black"
+      />
+    );
+  }
+  if (imageUrl) {
+    return (
+      // eslint-disable-next-line @next/next/no-img-element
+      <img
+        src={imageUrl}
+        alt={alt}
+        className="absolute inset-0 w-full h-full object-cover"
+      />
+    );
+  }
+  return (
+    <div className="w-full h-full grid place-items-center text-ink-300 text-sm">
+      {locale === "en" ? "Image coming soon" : "이미지 준비 중"}
+    </div>
+  );
+}
+
+// URL 을 iframe / video / null 로 분류 — 다른 곳의 toEmbedUrl 과 동일한 패턴
+function heroVideoEmbed(
+  url: string
+): { kind: "iframe" | "video"; url: string } | null {
+  if (!url) return null;
+  const u = url.trim();
+  const yt = u.match(
+    /(?:youtu\.be\/|youtube\.com\/(?:watch\?v=|embed\/|shorts\/|live\/))([\w-]{11})/
+  );
+  if (yt) {
+    return {
+      kind: "iframe",
+      url: `https://www.youtube.com/embed/${yt[1]}?rel=0&modestbranding=1`,
+    };
+  }
+  const v = u.match(/vimeo\.com\/(?:video\/)?(\d+)/);
+  if (v) {
+    return { kind: "iframe", url: `https://player.vimeo.com/video/${v[1]}` };
+  }
+  const driveView = u.match(/drive\.google\.com\/file\/d\/([\w-]+)/);
+  if (driveView) {
+    return {
+      kind: "iframe",
+      url: `https://drive.google.com/file/d/${driveView[1]}/preview`,
+    };
+  }
+  const driveOpen = u.match(/drive\.google\.com\/.*[?&]id=([\w-]+)/);
+  if (driveOpen) {
+    return {
+      kind: "iframe",
+      url: `https://drive.google.com/file/d/${driveOpen[1]}/preview`,
+    };
+  }
+  const pathPart = u.split("?")[0];
+  if (/\.(mp4|webm|mov|m4v|ogg|ogv)$/i.test(pathPart)) {
+    return { kind: "video", url: u };
+  }
+  if (
+    u.includes("firebasestorage.googleapis.com") ||
+    u.includes("storage.googleapis.com")
+  ) {
+    return { kind: "video", url: u };
+  }
+  return { kind: "iframe", url: u };
 }
 
 function SpecRow({
@@ -2272,13 +2608,109 @@ function SpecRow({
   value: React.ReactNode;
 }) {
   return (
-    <div className="flex flex-col">
-      <dt className="text-[10.5px] uppercase tracking-wider text-ink-500 font-num font-semibold">
+    <div className="flex items-baseline gap-6 border-b border-ink-100 pb-2.5">
+      <dt className="w-20 shrink-0 text-[12px] md:text-[13px] text-ink-500 font-semibold">
         {label}
       </dt>
-      <dd className="text-[13px] md:text-[14px] text-ink-900 font-bold mt-0.5 break-words">
+      <dd className="text-[13px] md:text-[14px] text-ink-900 font-bold flex-1 break-words">
         {value}
       </dd>
     </div>
+  );
+}
+
+// 컨테이너 너비에 맞춰 폰트 크기를 자동 축소하는 한 줄 헤딩.
+// 제목이 길어도 줄바꿈하지 않고 글씨가 작아져 한 줄을 유지함.
+function AutoFitHeading({
+  text,
+  maxPx,
+  minPx,
+  className = "",
+}: {
+  text: string;
+  maxPx: number;
+  minPx: number;
+  className?: string;
+}) {
+  const wrapRef = useRef<HTMLHeadingElement>(null);
+  const measureRef = useRef<HTMLSpanElement>(null);
+  const [size, setSize] = useState(maxPx);
+
+  useEffect(() => {
+    const fit = () => {
+      const wrap = wrapRef.current;
+      const measure = measureRef.current;
+      if (!wrap || !measure) return;
+      const wrapWidth = wrap.clientWidth;
+      const naturalWidth = measure.scrollWidth;
+      // 아직 레이아웃이 잡히지 않았으면 (둘 다 0) skip
+      if (wrapWidth === 0 || naturalWidth === 0) return;
+      if (naturalWidth <= wrapWidth) {
+        setSize(maxPx);
+      } else {
+        const next = Math.max(
+          minPx,
+          Math.floor((wrapWidth / naturalWidth) * maxPx)
+        );
+        setSize(next);
+      }
+    };
+
+    fit();
+    const wrap = wrapRef.current;
+    let ro: ResizeObserver | null = null;
+    if (wrap) {
+      ro = new ResizeObserver(fit);
+      ro.observe(wrap);
+    }
+
+    // 웹폰트 로드 후에도 한 번 더 측정 (한글 폰트는 늦게 적용되기 쉬움)
+    let cancelled = false;
+    if (
+      typeof document !== "undefined" &&
+      "fonts" in document &&
+      document.fonts
+    ) {
+      document.fonts.ready.then(() => {
+        if (!cancelled) fit();
+      });
+    }
+    // 안전망: 한 번 더 큰 지연 후 재측정
+    const t = setTimeout(fit, 100);
+
+    return () => {
+      cancelled = true;
+      clearTimeout(t);
+      ro?.disconnect();
+    };
+  }, [text, maxPx, minPx]);
+
+  return (
+    <h2
+      ref={wrapRef}
+      className={`min-w-0 overflow-hidden relative ${className}`}
+    >
+      <span
+        className="block whitespace-nowrap"
+        style={{ fontSize: `${size}px` }}
+      >
+        {text}
+      </span>
+      {/* 항상 maxPx 기준으로 텍스트 자연 너비를 측정하기 위한 hidden span */}
+      <span
+        ref={measureRef}
+        aria-hidden="true"
+        className="block whitespace-nowrap pointer-events-none"
+        style={{
+          position: "absolute",
+          left: "-99999px",
+          top: 0,
+          visibility: "hidden",
+          fontSize: `${maxPx}px`,
+        }}
+      >
+        {text}
+      </span>
+    </h2>
   );
 }

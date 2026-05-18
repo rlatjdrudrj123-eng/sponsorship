@@ -342,7 +342,7 @@ function CompareContent() {
                 비교할 항목이 없습니다.
               </p>
               <p className="text-[13px] text-ink-500 mt-2">
-                관심 표시한 항목을 카트에서 선택해 비교할 수 있어요.
+                카트에 담은 항목을 선택해 비교할 수 있어요.
               </p>
               <Link
                 href={`/${eventId}/sponsorships`}
