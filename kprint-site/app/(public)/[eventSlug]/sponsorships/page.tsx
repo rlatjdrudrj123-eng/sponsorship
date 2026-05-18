@@ -769,19 +769,7 @@ export default function SponsorshipsPage() {
         </div>
       )}
 
-      {/* 슬라이드 모드에서도 토글 보이도록 floating 버튼 (모바일 대응) */}
-      {viewMode === "slide" && (
-        <div className="fixed bottom-6 right-6 z-30 lg:hidden">
-          <button
-            type="button"
-            onClick={() => setViewMode("card")}
-            className="px-3 py-2 rounded-full bg-ink-900 text-white shadow-lg text-[12px] font-semibold flex items-center gap-1.5"
-          >
-            <LayoutGrid className="w-3.5 h-3.5" />
-            카드형
-          </button>
-        </div>
-      )}
+      {/* 슬라이드 모드의 floating 카드형 토글은 상단 바에 이미 있어 제거 — 모바일 콘텐츠 하단 영역 확보 */}
 
       {/* 플로팅 비교 바 — 카드 체크박스로 모은 항목이 있으면 표시 */}
       {compareIds.size > 0 && (
@@ -1950,52 +1938,64 @@ function SlideStream({
   const locale = useLocale((s) => s.locale);
   return (
     <>
-      {/* 상단 고정 바 */}
-      <div className="fixed top-0 inset-x-0 z-20 bg-white/90 backdrop-blur border-b border-ink-100 px-4 md:px-8 h-14 flex items-center gap-3">
+      {/* 상단 고정 바 — 모바일은 핵심만 (홈 아이콘 / 카운트 / 필터 / 카드형) */}
+      <div className="fixed top-0 inset-x-0 z-20 bg-white/90 backdrop-blur border-b border-ink-100 px-3 md:px-8 h-14 flex items-center gap-2 md:gap-3 overflow-hidden">
         <Link
           href={`/${eventId}`}
-          className="text-[12px] text-ink-500 hover:text-ink-900 flex items-center gap-1"
+          className="text-[12px] text-ink-500 hover:text-ink-900 flex items-center gap-1 shrink-0"
+          title={t("common.home", locale)}
         >
           <ArrowLeft className="w-3.5 h-3.5" />
-          {t("common.home", locale)}
+          <span className="hidden sm:inline">{t("common.home", locale)}</span>
         </Link>
-        <span className="text-ink-300">/</span>
-        <span className="text-[13px] font-bold text-ink-900">
+        <span className="text-ink-300 hidden sm:inline">/</span>
+        <span className="text-[13px] font-bold text-ink-900 hidden sm:inline">
           {t("spons.title", locale)}
         </span>
-        <span className="text-[12px] text-ink-500">
-          {locale === "en" ? (
-            <>
-              <strong className="text-brand-700">{items.length}</strong> of{" "}
-              <strong className="text-ink-900">{totalCount}</strong>
-            </>
-          ) : (
-            <>
-              전체 <strong className="text-ink-900">{totalCount}</strong>개 중{" "}
-              <strong className="text-brand-700">{items.length}</strong>개
-            </>
-          )}
+        {/* 카운트 — 모바일 짧게 X/Y, 데스크톱 상세 */}
+        <span className="text-[12px] text-ink-500 truncate min-w-0">
+          <span className="md:hidden font-num">
+            <strong className="text-brand-700">{items.length}</strong>
+            <span className="text-ink-300 mx-0.5">/</span>
+            <strong className="text-ink-900">{totalCount}</strong>
+          </span>
+          <span className="hidden md:inline">
+            {locale === "en" ? (
+              <>
+                <strong className="text-brand-700">{items.length}</strong> of{" "}
+                <strong className="text-ink-900">{totalCount}</strong>
+              </>
+            ) : (
+              <>
+                전체 <strong className="text-ink-900">{totalCount}</strong>개 중{" "}
+                <strong className="text-brand-700">{items.length}</strong>개
+              </>
+            )}
+          </span>
         </span>
         <span className="ml-auto" />
-        <LocaleSwitch size="sm" />
-        <Link
-          href={`/${eventId}/print/full`}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="px-2.5 py-1.5 rounded-btn border border-ink-100 hover:border-ink-900 text-[12px] font-semibold flex items-center gap-1"
-          title="전체 PDF 다운로드"
-        >
-          <Download className="w-3.5 h-3.5" />
-          전체 PDF
-        </Link>
+        {/* 데스크톱 전용 — 로케일 / PDF */}
+        <div className="hidden md:flex items-center gap-3">
+          <LocaleSwitch size="sm" />
+          <Link
+            href={`/${eventId}/print/full`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="px-2.5 py-1.5 rounded-btn border border-ink-100 hover:border-ink-900 text-[12px] font-semibold flex items-center gap-1"
+            title="전체 PDF 다운로드"
+          >
+            <Download className="w-3.5 h-3.5" />
+            전체 PDF
+          </Link>
+        </div>
         <button
           type="button"
           onClick={onOpenFilter}
-          className="px-2.5 py-1.5 rounded-btn border border-ink-100 text-[12px] font-semibold flex items-center gap-1"
+          className="px-2.5 py-1.5 rounded-btn border border-ink-100 text-[12px] font-semibold flex items-center gap-1 shrink-0"
           title={t("spons.filter", locale)}
         >
           <Filter className="w-3.5 h-3.5" />
-          {t("spons.filter", locale)}
+          <span className="hidden sm:inline">{t("spons.filter", locale)}</span>
           {hasActiveFilter && (
             <span className="w-1.5 h-1.5 rounded-full bg-brand-500 ml-0.5" />
           )}
@@ -2003,11 +2003,13 @@ function SlideStream({
         <button
           type="button"
           onClick={onCardMode}
-          className="px-2.5 py-1.5 rounded-btn bg-ink-900 text-white hover:bg-brand-500 hover:text-ink-900 text-[12px] font-semibold flex items-center gap-1"
+          className="px-2.5 py-1.5 rounded-btn bg-ink-900 text-white hover:bg-brand-500 hover:text-ink-900 text-[12px] font-semibold flex items-center gap-1 shrink-0"
           title={t("spons.viewCard", locale)}
         >
           <LayoutGrid className="w-3.5 h-3.5" />
-          {t("spons.viewCard", locale)}
+          <span className="hidden sm:inline">
+            {t("spons.viewCard", locale)}
+          </span>
         </button>
       </div>
 
