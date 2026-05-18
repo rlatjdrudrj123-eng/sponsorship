@@ -127,6 +127,19 @@ export default function CategorySlotsPage() {
     }
   };
 
+  const updateOneCode = async (slotId: string, code: string) => {
+    const trimmed = code.trim();
+    if (!trimmed) return;
+    setSlots((prev) =>
+      prev.map((s) => (s.id === slotId ? { ...s, code: trimmed } : s))
+    );
+    try {
+      await updateDoc(doc(getDb(), "slots", slotId), { code: trimmed });
+    } catch (e) {
+      alert(`코드 저장 실패: ${e instanceof Error ? e.message : String(e)}`);
+    }
+  };
+
   /** 새 슬롯 1개 생성 — 해당 소분류에서 다음 번호로 코드 자동 생성 */
   const createSlot = async (subId: string) => {
     if (!category) return;
@@ -351,8 +364,19 @@ export default function CategorySlotsPage() {
                       className="accent-brand-500"
                     />
                   </td>
-                  <td className="px-4 py-2 font-mono text-[12px] text-ink-900">
-                    {slot.code}
+                  <td className="px-4 py-2">
+                    <input
+                      type="text"
+                      defaultValue={slot.code}
+                      onBlur={(e) => {
+                        const v = e.target.value.trim();
+                        if (v && v !== slot.code) updateOneCode(slot.id, v);
+                      }}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") (e.target as HTMLInputElement).blur();
+                      }}
+                      className="w-24 px-1.5 py-1 font-mono text-[12px] text-ink-900 bg-transparent border border-transparent hover:border-ink-100 focus:border-brand-500 focus:bg-white rounded outline-none"
+                    />
                   </td>
                   <td className="px-4 py-2 text-[12px] text-ink-700">
                     {sub?.name.ko || "(기본)"}

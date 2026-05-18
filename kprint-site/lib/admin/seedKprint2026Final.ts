@@ -45,23 +45,43 @@ type CategorySeed = {
   }>;
 };
 
-const KPRINT_CATEGORIES: CategorySeed[] = [
-  // ─── OFFLINE (8) ────────────────────────────────────────────
+// CategorySeed 에 slot 코드를 명시할 수 있게 확장
+type CategorySeedV2 = Omit<CategorySeed, "subcategories"> & {
+  subcategories: Array<{
+    name: { ko: string; en: string };
+    unit: { ko: string; en: string };
+    priceKRW: number;
+    /** 명시적 슬롯 코드 목록 — 길이가 slotCount 역할 */
+    slotCodes: string[];
+    /** 소분류 사이즈 (옵션) */
+    size?: string;
+  }>;
+};
+
+// 실제 KPRINT 라인업 구조 (2025 코드 기준 + 2026 인하 단가)
+const KPRINT_CATEGORIES: CategorySeedV2[] = [
+  // ─── OFFLINE ────────────────────────────────────────────────
   {
-    code: "CB",
-    slug: "ceiling-banner",
+    code: "RGA",
+    slug: "registration-desk",
     channel: "offline",
     type: "floor_plan",
-    name: { ko: "천장배너", en: "Ceiling Banner" },
-    shortDesc: "전시장 천장에 매달리는 대형 배너 — 진입 시 가장 먼저 보이는 매체.",
+    name: { ko: "등록데스크(출입증 발급대)", en: "Registration Desk" },
+    shortDesc: "전 참관객이 거치는 첫 접점 — 출입구 메인 동선.",
     fileFormat: "eps, ai, pdf 등의 인쇄용 파일형태 (고해상도)",
-    tags: ["천장", "배너"],
+    tags: ["등록", "입구"],
     subcategories: [
-      { name: { ko: "천장배너", en: "Ceiling Banner" }, unit: { ko: "구좌", en: "slot" }, priceKRW: 2_000_000, slotCount: 4 },
+      {
+        name: { ko: "출입구", en: "Entrance" },
+        unit: { ko: "구좌", en: "slot" },
+        priceKRW: 2_000_000,
+        size: "2,000mm × 1,000mm",
+        slotCodes: ["RGA-1-1"],
+      },
     ],
   },
   {
-    code: "VL",
+    code: "BGE",
     slug: "visitor-lanyard",
     channel: "offline",
     type: "quantity",
@@ -70,63 +90,87 @@ const KPRINT_CATEGORIES: CategorySeed[] = [
     fileFormat: "eps, ai, pdf",
     tags: ["목걸이", "수량"],
     subcategories: [
-      { name: { ko: "참관객 목걸이 (5,000개)", en: "Visitor Lanyard (5,000 pcs)" }, unit: { ko: "구좌", en: "slot" }, priceKRW: 8_000_000, slotCount: 1 },
+      {
+        name: { ko: "참관객 목걸이", en: "Visitor Lanyard" },
+        unit: { ko: "구좌 (5,000개)", en: "slot (5,000 pcs)" },
+        priceKRW: 8_000_000,
+        slotCodes: ["BGE-1", "BGE-2", "BGE-3"],
+      },
     ],
   },
   {
-    code: "RD",
-    slug: "registration-desk",
+    code: "CBA",
+    slug: "ceiling-banner",
     channel: "offline",
     type: "floor_plan",
-    name: { ko: "등록대", en: "Registration Desk" },
-    shortDesc: "전 참관객이 거치는 첫 접점 — 자체 브랜딩 + 스폰서 로고.",
-    fileFormat: "eps, ai, pdf",
-    tags: ["등록", "입구"],
+    name: { ko: "천장배너", en: "Ceiling Banner" },
+    shortDesc: "전시장 천장에 매달리는 대형 배너 — 진입 시 가장 먼저 보이는 매체.",
+    fileFormat: "eps, ai, pdf 등의 인쇄용 파일형태 (고해상도)",
+    tags: ["천장", "배너"],
     subcategories: [
-      { name: { ko: "등록대 스폰서 로고", en: "Logo Slot" }, unit: { ko: "구좌", en: "slot" }, priceKRW: 1_000_000, slotCount: 6 },
+      {
+        name: { ko: "전시 홀 내부", en: "Inside Hall" },
+        unit: { ko: "구좌", en: "slot" },
+        priceKRW: 2_000_000,
+        size: "2,500mm × 4,000mm",
+        slotCodes: ["CBA-1", "CBA-2", "CBA-3", "CBA-4"],
+      },
     ],
   },
   {
-    code: "II",
+    code: "IVL",
     slug: "invitation-insert",
     channel: "offline",
     type: "quantity",
     name: { ko: "초대장 삽지", en: "Invitation Insert" },
-    shortDesc: "공식 초대장에 함께 발송되는 삽지 — 2개사 한정.",
+    shortDesc: "공식 초대장에 함께 발송되는 삽지 — 한정.",
     fileFormat: "ai, pdf",
     tags: ["초대장", "한정"],
     subcategories: [
-      { name: { ko: "초대장 삽지", en: "Invitation Insert" }, unit: { ko: "구좌", en: "slot" }, priceKRW: 8_000_000, slotCount: 2 },
+      {
+        name: { ko: "초대장 삽지 인쇄물", en: "Invitation Insert" },
+        unit: { ko: "구좌", en: "slot" },
+        priceKRW: 8_000_000,
+        size: "100mm × 180mm",
+        slotCodes: ["IVL-1"],
+      },
     ],
   },
   {
-    code: "GB",
+    code: "GDB",
     slug: "guidebook-back-cover",
     channel: "offline",
     type: "print_page",
-    name: { ko: "가이드북 후표지", en: "Guidebook Back Cover" },
-    shortDesc: "공식 가이드북 뒷면 전면 광고 (표2 대면 확인 필요).",
+    name: { ko: "현장 가이드북", en: "Onsite Guidebook" },
+    shortDesc: "공식 가이드북 표4 전면 광고.",
     fileFormat: "ai, pdf",
     tags: ["가이드북", "지면"],
     subcategories: [
-      { name: { ko: "후표지", en: "Back Cover" }, unit: { ko: "면", en: "page" }, priceKRW: 4_000_000, slotCount: 1 },
+      {
+        name: { ko: "표4 (국/영문)", en: "Back Cover (KO/EN)" },
+        unit: { ko: "면", en: "page" },
+        priceKRW: 4_000_000,
+        size: "추후 공지",
+        slotCodes: ["GDB-1"],
+      },
+      {
+        name: { ko: "표4 (국문)", en: "Back Cover (KO)" },
+        unit: { ko: "면", en: "page" },
+        priceKRW: 3_000_000,
+        size: "추후 공지",
+        slotCodes: ["GDB-2"],
+      },
+      {
+        name: { ko: "표4 (영문)", en: "Back Cover (EN)" },
+        unit: { ko: "면", en: "page" },
+        priceKRW: 2_000_000,
+        size: "추후 공지",
+        slotCodes: ["GDB-3"],
+      },
     ],
   },
   {
-    code: "FS",
-    slug: "floor-sticker",
-    channel: "offline",
-    type: "floor_plan",
-    name: { ko: "전시장 바닥 스티커", en: "Floor Sticker" },
-    shortDesc: "전시장 바닥 동선 위에 부착하는 스티커.",
-    fileFormat: "ai, pdf",
-    tags: ["바닥", "스티커"],
-    subcategories: [
-      { name: { ko: "바닥 스티커", en: "Floor Sticker" }, unit: { ko: "구좌", en: "slot" }, priceKRW: 1_000_000, slotCount: 10 },
-    ],
-  },
-  {
-    code: "LW",
+    code: "LWA",
     slug: "lighting-wall",
     channel: "offline",
     type: "floor_plan",
@@ -135,25 +179,36 @@ const KPRINT_CATEGORIES: CategorySeed[] = [
     fileFormat: "ai, pdf",
     tags: ["라이팅", "포토존"],
     subcategories: [
-      { name: { ko: "라이팅월", en: "Lighting Wall" }, unit: { ko: "구좌", en: "slot" }, priceKRW: 1_500_000, slotCount: 4 },
+      {
+        name: { ko: "라이팅월", en: "Lighting Wall" },
+        unit: { ko: "구좌", en: "slot" },
+        priceKRW: 1_500_000,
+        slotCodes: ["LWA-1", "LWA-2", "LWA-3", "LWA-4"],
+      },
     ],
   },
   {
-    code: "GP",
-    slug: "giveaway-event",
+    code: "FSA",
+    slug: "floor-sticker",
     channel: "offline",
-    type: "content",
-    name: { ko: "경품 협찬 이벤트", en: "Giveaway Sponsor" },
-    shortDesc: "현장 경품 협찬 — 가격 협의.",
-    tags: ["경품", "협의"],
+    type: "floor_plan",
+    name: { ko: "전시장 바닥 스티커", en: "Floor Sticker" },
+    shortDesc: "전시장 바닥 동선 위에 부착하는 스티커.",
+    fileFormat: "ai, pdf",
+    tags: ["바닥", "스티커"],
     subcategories: [
-      { name: { ko: "경품 협찬", en: "Giveaway" }, unit: { ko: "건", en: "deal" }, priceKRW: 0, slotCount: 1 },
+      {
+        name: { ko: "바닥 스티커", en: "Floor Sticker" },
+        unit: { ko: "구좌", en: "slot" },
+        priceKRW: 1_000_000,
+        slotCodes: ["FSA-1", "FSA-2", "FSA-3", "FSA-4", "FSA-5"],
+      },
     ],
   },
 
-  // ─── ONLINE (12) ────────────────────────────────────────────
+  // ─── ONLINE ─────────────────────────────────────────────────
   {
-    code: "PR",
+    code: "RGS",
     slug: "preregister-banner",
     channel: "online",
     type: "digital_banner",
@@ -162,11 +217,17 @@ const KPRINT_CATEGORIES: CategorySeed[] = [
     fileFormat: "jpg, png, jpeg",
     tags: ["사전등록", "배너"],
     subcategories: [
-      { name: { ko: "사전등록 페이지 배너", en: "Banner" }, unit: { ko: "구좌", en: "slot" }, priceKRW: 3_000_000, slotCount: 1 },
+      {
+        name: { ko: "사전등록 페이지 배너", en: "Banner" },
+        unit: { ko: "구좌", en: "slot" },
+        priceKRW: 3_000_000,
+        size: "PC : 2,400px × 400px",
+        slotCodes: ["RGS-1"],
+      },
     ],
   },
   {
-    code: "CM",
+    code: "CFM",
     slug: "confirm-mail",
     channel: "online",
     type: "mailing",
@@ -175,50 +236,73 @@ const KPRINT_CATEGORIES: CategorySeed[] = [
     fileFormat: "jpg, png, jpeg",
     tags: ["이메일", "사전등록"],
     subcategories: [
-      { name: { ko: "완료 이메일 배너", en: "Email Banner" }, unit: { ko: "구좌", en: "slot" }, priceKRW: 2_000_000, slotCount: 1 },
+      {
+        name: { ko: "완료 이메일 배너", en: "Email Banner" },
+        unit: { ko: "구좌", en: "slot" },
+        priceKRW: 2_000_000,
+        slotCodes: ["CFM-1"],
+      },
     ],
   },
   {
-    code: "FB",
+    code: "FPS",
     slug: "floor-search-banner",
     channel: "online",
     type: "digital_banner",
-    name: { ko: "도면 검색 페이지 배너", en: "Floor Plan Page Banner" },
+    name: { ko: "전시장 도면 검색 페이지 배너", en: "Floor Plan Page Banner" },
     shortDesc: "전시장 도면 검색 페이지 상단 배너.",
     fileFormat: "jpg, png, jpeg",
     tags: ["도면", "배너"],
     subcategories: [
-      { name: { ko: "도면 검색 배너", en: "Floor Search Banner" }, unit: { ko: "구좌", en: "slot" }, priceKRW: 4_000_000, slotCount: 1 },
+      {
+        name: { ko: "도면 검색 배너", en: "Floor Search Banner" },
+        unit: { ko: "구좌", en: "slot" },
+        priceKRW: 4_000_000,
+        size: "PC : 1,200px × 120px",
+        slotCodes: ["FPS-1"],
+      },
     ],
   },
   {
-    code: "CS",
+    code: "EXS",
     slug: "company-search-banner",
     channel: "online",
     type: "digital_banner",
-    name: { ko: "참가업체 검색 배너", en: "Exhibitor Search Banner" },
-    shortDesc: "참가업체 검색 페이지 배너.",
+    name: { ko: "참가업체 검색 상단 배너", en: "Exhibitor Search Banner" },
+    shortDesc: "참가업체 검색 페이지 상단 배너.",
     fileFormat: "jpg, png, jpeg",
     tags: ["검색", "배너"],
     subcategories: [
-      { name: { ko: "참가업체 검색 배너", en: "Exhibitor Search" }, unit: { ko: "구좌", en: "slot" }, priceKRW: 1_000_000, slotCount: 4 },
+      {
+        name: { ko: "참가업체 검색 배너", en: "Exhibitor Search" },
+        unit: { ko: "구좌", en: "slot" },
+        priceKRW: 1_000_000,
+        size: "PC : 1,200px × 200px",
+        slotCodes: ["EXS-1", "EXS-2", "EXS-3"],
+      },
     ],
   },
   {
-    code: "PS",
+    code: "PRS",
     slug: "product-search-banner",
     channel: "online",
     type: "digital_banner",
-    name: { ko: "전시품 검색 배너", en: "Product Search Banner" },
-    shortDesc: "전시품 검색 페이지 배너.",
+    name: { ko: "전시품 검색 상단 배너", en: "Product Search Banner" },
+    shortDesc: "전시품 검색 페이지 상단 배너.",
     fileFormat: "jpg, png, jpeg",
     tags: ["검색", "배너"],
     subcategories: [
-      { name: { ko: "전시품 검색 배너", en: "Product Search" }, unit: { ko: "구좌", en: "slot" }, priceKRW: 1_000_000, slotCount: 4 },
+      {
+        name: { ko: "전시품 검색 배너", en: "Product Search" },
+        unit: { ko: "구좌", en: "slot" },
+        priceKRW: 1_000_000,
+        size: "PC : 1,200px × 200px",
+        slotCodes: ["PRS-1", "PRS-2", "PRS-3"],
+      },
     ],
   },
   {
-    code: "IS",
+    code: "ISA",
     slug: "integrated-search-banner",
     channel: "online",
     type: "digital_banner",
@@ -227,11 +311,17 @@ const KPRINT_CATEGORIES: CategorySeed[] = [
     fileFormat: "jpg, png, jpeg",
     tags: ["검색", "배너"],
     subcategories: [
-      { name: { ko: "통합검색 배너", en: "Integrated Search" }, unit: { ko: "구좌", en: "slot" }, priceKRW: 1_000_000, slotCount: 4 },
+      {
+        name: { ko: "통합검색 배너", en: "Integrated Search" },
+        unit: { ko: "구좌", en: "slot" },
+        priceKRW: 1_000_000,
+        size: "PC : 1,200px × 200px",
+        slotCodes: ["ISA-1", "ISA-2", "ISA-3"],
+      },
     ],
   },
   {
-    code: "FL",
+    code: "FLG",
     slug: "floor-logo",
     channel: "online",
     type: "digital_banner",
@@ -240,52 +330,87 @@ const KPRINT_CATEGORIES: CategorySeed[] = [
     fileFormat: "ai, png (투명배경)",
     tags: ["도면", "로고"],
     subcategories: [
-      { name: { ko: "도면 내 로고", en: "Floor Logo" }, unit: { ko: "구좌", en: "slot" }, priceKRW: 2_000_000, slotCount: 8 },
+      {
+        name: { ko: "도면 내 로고", en: "Floor Logo" },
+        unit: { ko: "구좌", en: "slot" },
+        priceKRW: 2_000_000,
+        slotCodes: ["FLG-1", "FLG-2", "FLG-3", "FLG-4", "FLG-5"],
+      },
     ],
   },
   {
-    code: "DN",
+    code: "DNL",
     slug: "domestic-newsletter",
     channel: "online",
     type: "mailing",
     name: { ko: "국내 뉴스레터", en: "Domestic Newsletter" },
-    shortDesc: "국내 참관객 대상 뉴스레터 배너. 7월·8월 회차 선택.",
+    shortDesc: "국문 참관객 대상 뉴스레터 배너.",
     fileFormat: "jpg, png, jpeg",
     tags: ["뉴스레터", "국내"],
     subcategories: [
-      { name: { ko: "7월 발송", en: "July" }, unit: { ko: "회", en: "send" }, priceKRW: 1_500_000, slotCount: 1 },
-      { name: { ko: "8월 발송", en: "August" }, unit: { ko: "회", en: "send" }, priceKRW: 2_000_000, slotCount: 1 },
+      {
+        name: { ko: "7월 발송", en: "July" },
+        unit: { ko: "회", en: "send" },
+        priceKRW: 1_500_000,
+        size: "630px × 160px",
+        slotCodes: ["DNL-1"],
+      },
+      {
+        name: { ko: "8월 발송", en: "August" },
+        unit: { ko: "회", en: "send" },
+        priceKRW: 2_000_000,
+        size: "630px × 160px",
+        slotCodes: ["DNL-2"],
+      },
     ],
   },
   {
-    code: "IN",
+    code: "INL",
     slug: "international-newsletter",
     channel: "online",
     type: "mailing",
     name: { ko: "해외 뉴스레터", en: "Intl Newsletter" },
-    shortDesc: "해외 바이어 대상 뉴스레터 배너. 7월·8월 회차 선택.",
+    shortDesc: "해외 참관객 대상 뉴스레터 배너.",
     fileFormat: "jpg, png, jpeg",
     tags: ["뉴스레터", "해외"],
     subcategories: [
-      { name: { ko: "7월 발송", en: "July" }, unit: { ko: "회", en: "send" }, priceKRW: 1_000_000, slotCount: 1 },
-      { name: { ko: "8월 발송", en: "August" }, unit: { ko: "회", en: "send" }, priceKRW: 1_500_000, slotCount: 1 },
+      {
+        name: { ko: "7월 발송", en: "July" },
+        unit: { ko: "회", en: "send" },
+        priceKRW: 1_000_000,
+        size: "630px × 160px",
+        slotCodes: ["INL-1"],
+      },
+      {
+        name: { ko: "8월 발송", en: "August" },
+        unit: { ko: "회", en: "send" },
+        priceKRW: 1_500_000,
+        size: "630px × 160px",
+        slotCodes: ["INL-2"],
+      },
     ],
   },
   {
-    code: "SB",
+    code: "SMR",
     slug: "seminar-banner",
     channel: "online",
     type: "digital_banner",
-    name: { ko: "세미나 페이지 배너", en: "Seminar Page Banner" },
+    name: { ko: "세미나 페이지 상단 배너", en: "Seminar Page Banner" },
     shortDesc: "세미나/컨퍼런스 페이지 상단 배너.",
     fileFormat: "jpg, png, jpeg",
     tags: ["세미나", "배너"],
     subcategories: [
-      { name: { ko: "세미나 페이지 배너", en: "Seminar Banner" }, unit: { ko: "구좌", en: "slot" }, priceKRW: 750_000, slotCount: 3 },
+      {
+        name: { ko: "세미나 페이지 배너", en: "Seminar Banner" },
+        unit: { ko: "구좌", en: "slot" },
+        priceKRW: 750_000,
+        size: "PC : 1,200px × 200px",
+        slotCodes: ["SMR-1", "SMR-2"],
+      },
     ],
   },
   {
-    code: "IT",
+    code: "ITV",
     slug: "interview-sns",
     channel: "online",
     type: "content",
@@ -293,11 +418,16 @@ const KPRINT_CATEGORIES: CategorySeed[] = [
     shortDesc: "참가업체 인터뷰 콘텐츠 제작 + 공식 SNS 채널 발행.",
     tags: ["인터뷰", "콘텐츠"],
     subcategories: [
-      { name: { ko: "인터뷰 + SNS", en: "Interview" }, unit: { ko: "건", en: "deal" }, priceKRW: 1_000_000, slotCount: 5 },
+      {
+        name: { ko: "인터뷰 + SNS", en: "Interview" },
+        unit: { ko: "건", en: "deal" },
+        priceKRW: 1_000_000,
+        slotCodes: ["ITV-1", "ITV-2", "ITV-3"],
+      },
     ],
   },
   {
-    code: "IC",
+    code: "ICN",
     slug: "insta-cardnews",
     channel: "online",
     type: "content",
@@ -305,7 +435,12 @@ const KPRINT_CATEGORIES: CategorySeed[] = [
     shortDesc: "공식 인스타그램 카드뉴스 1회 게재.",
     tags: ["인스타", "콘텐츠"],
     subcategories: [
-      { name: { ko: "카드뉴스 1회", en: "Card News 1x" }, unit: { ko: "회", en: "post" }, priceKRW: 300_000, slotCount: 10 },
+      {
+        name: { ko: "카드뉴스 1회", en: "Card News 1x" },
+        unit: { ko: "회", en: "post" },
+        priceKRW: 300_000,
+        slotCodes: ["ICN-1", "ICN-2", "ICN-3", "ICN-4", "ICN-5"],
+      },
     ],
   },
 ];
@@ -489,19 +624,14 @@ export async function resetAndSeedKprint2026(): Promise<Kprint2026FinalSeedResul
         name: sub.name,
         priceKRW: sub.priceKRW,
         unit: sub.unit,
+        ...(sub.size ? { size: sub.size } : {}),
         order: subOrder,
       });
       subCount++;
 
-      // 각 소분류마다 슬롯 N개 생성
-      let slotOrderInSub = 0;
-      for (let i = 0; i < sub.slotCount; i++) {
+      // 각 소분류마다 명시적 슬롯 코드로 슬롯 생성
+      for (const slotCode of sub.slotCodes) {
         const slotRef = doc(collection(db, "slots"));
-        slotOrderInSub++;
-        const slotCode =
-          sub.slotCount === 1
-            ? `${cat.code}`
-            : `${cat.code}-${slotOrderInSub}`;
         await setDoc(slotRef, {
           id: slotRef.id,
           eventId: EVENT_ID,
