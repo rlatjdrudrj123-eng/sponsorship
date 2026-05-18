@@ -386,10 +386,28 @@ export type SpecField =
   | "mailing"    // 발송 스펙 (mailingSpec)
   | "content";   // 콘텐츠 스펙 (contentSpec)
 
+/** 어드민이 자유롭게 정의하는 커스텀 스펙 행 */
+export type CustomSpecRow = {
+  /** 표시 라벨 (예: "보너스 혜택") */
+  label: string;
+  /** 표시 값 — 카테고리 데이터와 무관한 정적 텍스트 */
+  value: string;
+};
+
 /** 카테고리 유형별 슬라이드 레이아웃 */
 export type TypeLayout = {
   /** 노출할 스펙 필드들 (순서 = 표시 순서) */
   specFields: SpecField[];
+  /** 해시태그 노출 (기본 true) */
+  showHashtags?: boolean;
+  /** 작년 buyers / 매진일 노출 (기본 true) */
+  showLastYear?: boolean;
+  /** 동봉 혜택 미니 배너 노출 (기본 true) */
+  showPerksBanner?: boolean;
+  /** 제목 크기 — 기본 large */
+  titleSize?: "small" | "medium" | "large";
+  /** 커스텀 정적 스펙 행들 — specFields 끝에 추가 노출 */
+  customRows?: CustomSpecRow[];
 };
 
 // ============= LANDING BLOCKS =============

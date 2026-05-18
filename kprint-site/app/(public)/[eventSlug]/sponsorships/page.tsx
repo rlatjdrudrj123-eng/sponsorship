@@ -2084,24 +2084,35 @@ function SlideSection({
     ...(item.tags ?? []).slice(0, 2),
   ];
 
+  // 유형별 레이아웃 옵션 (해시태그·작년 데이터·혜택 배너·제목 크기·커스텀 행)
+  const layout = getTypeLayout(item.type, typeLayouts);
+  const showHashtags = layout.showHashtags !== false;
+  const showLastYear = layout.showLastYear !== false;
+  const showPerksBanner = layout.showPerksBanner !== false;
+  const titleSize = layout.titleSize ?? "large";
+  const titleMaxPx =
+    titleSize === "small" ? 36 : titleSize === "medium" ? 44 : 56;
+
   return (
     <>
       <section className="h-screen snap-start bg-canvas pt-14 relative overflow-hidden">
         <div className="max-w-7xl mx-auto h-full px-6 md:px-12 py-6 md:py-8 grid lg:grid-cols-[1.1fr_1fr] gap-6 lg:gap-12 items-stretch">
           {/* LEFT: 정보 — 세로 중앙 정렬하여 빈공간 분산 */}
           <div className="flex flex-col justify-center min-w-0 min-h-0">
-            {/* 해시태그 */}
-            <div className="flex flex-wrap gap-x-4 gap-y-1 text-[13px] md:text-[14px] tracking-wide text-brand-500 font-bold mb-4 font-num">
-              {hashTags.map((tag, i) => (
-                <span key={i}>#{tag}</span>
-              ))}
-            </div>
+            {/* 해시태그 — layout.showHashtags 가 false 면 숨김 */}
+            {showHashtags && (
+              <div className="flex flex-wrap gap-x-4 gap-y-1 text-[13px] md:text-[14px] tracking-wide text-brand-500 font-bold mb-4 font-num">
+                {hashTags.map((tag, i) => (
+                  <span key={i}>#{tag}</span>
+                ))}
+              </div>
+            )}
 
             {/* 거대한 카테고리 명 + 코드 — 제목은 너비에 맞춰 자동 축소 (한 줄 유지) */}
             <div className="flex items-baseline gap-3 min-w-0">
               <AutoFitHeading
                 text={localized(item.name, locale)}
-                maxPx={56}
+                maxPx={titleMaxPx}
                 minPx={24}
                 className="flex-1 font-bold leading-[0.95] tracking-tight text-ink-900"
               />
@@ -2273,31 +2284,48 @@ function SlideSection({
                     }
                   }
                 }
+                // 커스텀 정적 행들 — 어드민이 type-layout 에서 추가한 행
+                (layout.customRows ?? []).forEach((c, ci) => {
+                  if (!c.label.trim() && !c.value.trim()) return;
+                  rows.push(
+                    <SpecRow
+                      key={`custom-${ci}`}
+                      label={c.label}
+                      value={c.value}
+                    />
+                  );
+                });
                 return rows;
               })()}
             </dl>
 
-            {/* 잔여 강조 + 작년 데이터 (있을 때만) */}
-            {(item.lastYear?.buyers?.length || item.lastYear?.soldOutDate) && (
-              <div className="mt-4 text-[11.5px] text-ink-500 leading-snug">
-                {item.lastYear?.buyers && item.lastYear.buyers.length > 0 && (
-                  <div>
-                    <span className="font-num font-bold text-ink-700">작년: </span>
-                    {item.lastYear.buyers.slice(0, 3).join(", ")}
-                    {item.lastYear.buyers.length > 3 &&
-                      ` 외 ${item.lastYear.buyers.length - 3}곳`}
-                  </div>
-                )}
-                {item.lastYear?.soldOutDate && (
-                  <div className="text-amber-700 font-num font-semibold mt-0.5">
-                    작년 매진: {item.lastYear.soldOutDate}
-                  </div>
-                )}
-              </div>
-            )}
+            {/* 잔여 강조 + 작년 데이터 — layout.showLastYear 가 false 면 숨김 */}
+            {showLastYear &&
+              (item.lastYear?.buyers?.length ||
+                item.lastYear?.soldOutDate) && (
+                <div className="mt-4 text-[11.5px] text-ink-500 leading-snug">
+                  {item.lastYear?.buyers &&
+                    item.lastYear.buyers.length > 0 && (
+                      <div>
+                        <span className="font-num font-bold text-ink-700">
+                          작년:{" "}
+                        </span>
+                        {item.lastYear.buyers.slice(0, 3).join(", ")}
+                        {item.lastYear.buyers.length > 3 &&
+                          ` 외 ${item.lastYear.buyers.length - 3}곳`}
+                      </div>
+                    )}
+                  {item.lastYear?.soldOutDate && (
+                    <div className="text-amber-700 font-num font-semibold mt-0.5">
+                      작년 매진: {item.lastYear.soldOutDate}
+                    </div>
+                  )}
+                </div>
+              )}
 
-            {/* 동봉 혜택 미니 배너 — 카테고리 코드 기준으로 필터링된 혜택만 노출 */}
-            {(() => {
+            {/* 동봉 혜택 미니 배너 — layout.showPerksBanner 가 false 면 숨김 */}
+            {showPerksBanner &&
+              (() => {
               const allPerks = bundledPerks ?? DEFAULT_BUNDLED_PERKS;
               const perks = filterPerksForContext(allPerks, item.code);
               if (perks.length === 0) return null;
