@@ -2100,15 +2100,16 @@ function SlideStream({
       </div>
 
       {items.length === 0 ? (
-        <main className="h-screen pt-14 grid place-items-center bg-canvas">
+        <main className="h-dvh pt-14 grid place-items-center bg-canvas">
           <div className="text-center text-sm text-ink-500">
             {t("spons.filterEmpty", locale)}
           </div>
         </main>
       ) : (
         // 데스크톱·모바일 모두 한 화면당 1 슬라이드 snap.
-        // 모바일은 SlideSection 안의 모바일 전용 컴팩트 레이아웃이 콘텐츠를 한 화면 안에 압축.
-        <main className="bg-canvas h-screen overflow-y-scroll snap-y snap-mandatory scroll-smooth">
+        // h-dvh 사용 — 모바일 브라우저 toolbar 등장/숨김 시 실제 보이는 영역에 정확히 맞춤.
+        // (h-screen 은 100vh 고정이라 사파리에서 toolbar 영역만큼 잘림.)
+        <main className="bg-canvas h-dvh overflow-y-scroll snap-y snap-mandatory scroll-smooth">
           {items.map((c, i) => {
             const subs = subcategories
               .filter((s) => s.categoryId === c.id)
@@ -2217,9 +2218,10 @@ function SlideSection({
   return (
     <>
       {/* ─── 모바일 전용 컴팩트 슬라이드 (한 화면당 1구좌 snap) ─── */}
-      <section className="md:hidden h-screen snap-start bg-canvas pt-14 relative overflow-hidden flex flex-col">
-        {/* 이미지 — 상단 35vh */}
-        <div className="h-[35vh] bg-ink-100 relative overflow-hidden shrink-0">
+      {/* h-dvh 로 모바일 브라우저 toolbar 영역 제외한 실제 보이는 viewport 에 정확히 맞춤. */}
+      <section className="md:hidden h-dvh snap-start bg-canvas pt-14 relative overflow-hidden flex flex-col">
+        {/* 이미지 — 상단 30vh (toolbar 등장 시에도 잘림 없게 보수적으로) */}
+        <div className="h-[30dvh] bg-ink-100 relative overflow-hidden shrink-0">
           <HeroMedia
             videoUrl={item.heroVideoUrl}
             imageUrl={hero}
@@ -2246,22 +2248,22 @@ function SlideSection({
         </div>
 
         {/* 정보 — 하단 나머지, 컴팩트 */}
-        <div className="flex-1 min-h-0 flex flex-col px-5 py-4 overflow-hidden">
+        <div className="flex-1 min-h-0 flex flex-col px-4 py-3 overflow-hidden">
           {/* 제목 */}
-          <h2 className="text-[22px] font-bold text-ink-900 leading-[1.15] tracking-tight">
+          <h2 className="text-[20px] font-bold text-ink-900 leading-[1.15] tracking-tight">
             {localized(item.name, locale)}
           </h2>
           {item.shortDesc && (
-            <p className="text-[12px] text-ink-500 mt-1.5 leading-snug line-clamp-1">
+            <p className="text-[11.5px] text-ink-500 mt-1 leading-snug line-clamp-1">
               {item.shortDesc}
             </p>
           )}
 
-          {/* 스펙 — 어드민 type-layout 의 specFields 따라 최대 4개, 각 행 한 줄 truncate */}
+          {/* 스펙 — 어드민 type-layout 의 specFields 따라 최대 3개, 각 행 한 줄 truncate */}
           {(() => {
             const rows: Array<{ label: string; value: string }> = [];
             for (const field of layout.specFields) {
-              if (rows.length >= 4) break;
+              if (rows.length >= 3) break;
               switch (field) {
                 case "location":
                   if (locationLabel)
@@ -2325,19 +2327,19 @@ function SlideSection({
                   break;
               }
             }
-            // 어드민 커스텀 행도 끝에 (총 4개 한도 내)
+            // 어드민 커스텀 행도 끝에 (총 3개 한도 내)
             (layout.customRows ?? []).forEach((c) => {
-              if (rows.length >= 4) return;
+              if (rows.length >= 3) return;
               if (c.label.trim() || c.value.trim()) {
                 rows.push({ label: c.label, value: c.value });
               }
             });
             if (rows.length === 0) return null;
             return (
-              <dl className="mt-3 space-y-1 text-[11.5px]">
+              <dl className="mt-2.5 space-y-1 text-[11px]">
                 {rows.map((r, i) => (
                   <div key={i} className="flex gap-2 min-w-0">
-                    <dt className="text-ink-500 w-12 shrink-0 font-semibold">
+                    <dt className="text-ink-500 w-10 shrink-0 font-semibold">
                       {r.label}
                     </dt>
                     <dd className="text-ink-900 font-semibold truncate min-w-0 flex-1">
@@ -2350,27 +2352,27 @@ function SlideSection({
           })()}
 
           {/* 가격 — 강조 */}
-          <div className="mt-auto pt-3 border-t border-ink-100">
+          <div className="mt-auto pt-2.5 border-t border-ink-100">
             <div className="flex items-end justify-between gap-3">
               {item.minPrice > 0 ? (
                 <div>
-                  <div className="text-[10.5px] text-ink-500 font-semibold">
+                  <div className="text-[10px] text-ink-500 font-semibold">
                     1구좌당
                   </div>
-                  <div className="font-num text-[26px] font-bold text-ink-900 leading-none">
+                  <div className="font-num text-[22px] font-bold text-ink-900 leading-none">
                     {item.minPrice.toLocaleString()}
-                    <span className="text-[14px] ml-1 font-bold">
+                    <span className="text-[12px] ml-1 font-bold">
                       {t("common.won", locale)}
                     </span>
                   </div>
                 </div>
               ) : (
-                <span className="text-[15px] text-ink-500 font-semibold">
+                <span className="text-[14px] text-ink-500 font-semibold">
                   {t("common.priceNegotiable", locale)}
                 </span>
               )}
               {/* 페이지 인디케이터 */}
-              <div className="font-mono tracking-widest text-ink-300 text-[11px]">
+              <div className="font-mono tracking-widest text-ink-300 text-[10.5px]">
                 <span className="text-ink-700 font-bold">
                   {String(index + 1).padStart(2, "0")}
                 </span>
@@ -2380,12 +2382,12 @@ function SlideSection({
             </div>
           </div>
 
-          {/* CTA — 1개 큰 버튼 (선택과 자세히가 합쳐진 모달 진입) */}
-          <div className="mt-3 grid grid-cols-2 gap-2">
+          {/* CTA */}
+          <div className="mt-2.5 grid grid-cols-2 gap-2">
             <button
               type="button"
               onClick={() => setPickerOpen(true)}
-              className="h-11 rounded-btn bg-ink-900 text-white font-bold text-[13px]"
+              className="h-10 rounded-btn bg-ink-900 text-white font-bold text-[12.5px]"
             >
               구좌 선택
             </button>
@@ -2393,7 +2395,7 @@ function SlideSection({
               <button
                 type="button"
                 onClick={() => onOpenDetail(item.slug)}
-                className="h-11 rounded-btn border-2 border-ink-900 text-ink-900 font-bold text-[13px]"
+                className="h-10 rounded-btn border-2 border-ink-900 text-ink-900 font-bold text-[12.5px]"
               >
                 자세히 보기
               </button>
