@@ -408,6 +408,13 @@ export type TypeLayout = {
   titleSize?: "small" | "medium" | "large";
   /** 커스텀 정적 스펙 행들 — specFields 끝에 추가 노출 */
   customRows?: CustomSpecRow[];
+  /**
+   * 자유 캔버스 마스터 슬라이드 (1920×1080).
+   * 있으면 공개 페이지에서 이 캔버스로 렌더하고, 텍스트 노드 안의 토큰
+   * (예: {{title}}, {{location}}, {{minPrice}}) 을 실데이터로 치환.
+   * 없으면 기존 form-based 레이아웃(specFields 등)으로 fallback.
+   */
+  canvasPage?: CanvasPage;
 };
 
 // ============= LANDING BLOCKS =============

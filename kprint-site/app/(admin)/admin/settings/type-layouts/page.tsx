@@ -1,11 +1,23 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { doc, onSnapshot, setDoc, Timestamp } from "firebase/firestore";
-import { ArrowDown, ArrowUp, Plus, X } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import {
+  collection,
+  doc,
+  onSnapshot,
+  query,
+  setDoc,
+  Timestamp,
+  where,
+} from "firebase/firestore";
+import { ArrowDown, ArrowUp, Maximize2, Plus, X } from "lucide-react";
 import { getDb } from "@/lib/firebase/firestore";
 import { useAdminEvent } from "@/lib/admin/adminEventStore";
+import { CanvasEditor } from "../landing/canvas/CanvasEditor";
+import { NodePreview, resolveBg } from "../landing/canvas/CanvasEditor";
 import type {
+  CanvasPage,
+  Category,
   CategoryType,
   SiteSettings,
   SpecField,
@@ -42,26 +54,136 @@ const TYPE_META: Array<{
   { value: "package", label: "패키지", desc: "단품 매체를 묶은 상품" },
 ];
 
+function newEmptyCanvasPage(): CanvasPage {
+  return { id: "master", nodes: [] };
+}
+
+/** 유형마다 텍스트 노드에 박을 수 있는 토큰 (공개 페이지에서 실데이터로 치환) */
+const TOKENS_BY_TYPE: Record<CategoryType, Array<{ token: string; desc: string }>> = {
+  floor_plan: [
+    { token: "{{title}}", desc: "카테고리 이름" },
+    { token: "{{location}}", desc: "위치 (예: A1 출입구)" },
+    { token: "{{size}}", desc: "크기 (예: 2000×1000mm)" },
+    { token: "{{fileFormat}}", desc: "파일 포맷" },
+    { token: "{{deadline}}", desc: "마감일" },
+    { token: "{{detail}}", desc: "상세 (구좌 분포)" },
+    { token: "{{slotsLabel}}", desc: "구좌 가용 (예: 11/11 가능)" },
+    { token: "{{minPrice}}", desc: "최저가" },
+  ],
+  quantity: [
+    { token: "{{title}}", desc: "카테고리 이름" },
+    { token: "{{size}}", desc: "수량 (예: 5,000개/구좌)" },
+    { token: "{{fileFormat}}", desc: "파일 포맷" },
+    { token: "{{deadline}}", desc: "마감일" },
+    { token: "{{detail}}", desc: "상세" },
+    { token: "{{slotsLabel}}", desc: "구좌 가용" },
+    { token: "{{minPrice}}", desc: "최저가" },
+  ],
+  media: [
+    { token: "{{title}}", desc: "카테고리 이름" },
+    { token: "{{video}}", desc: "영상 스펙" },
+    { token: "{{size}}", desc: "해상도" },
+    { token: "{{deadline}}", desc: "마감일" },
+    { token: "{{detail}}", desc: "상세" },
+    { token: "{{slotsLabel}}", desc: "구좌 가용" },
+    { token: "{{minPrice}}", desc: "최저가" },
+  ],
+  digital_banner: [
+    { token: "{{title}}", desc: "카테고리 이름" },
+    { token: "{{size}}", desc: "사이즈 (PC/모바일)" },
+    { token: "{{fileFormat}}", desc: "파일 포맷" },
+    { token: "{{deadline}}", desc: "마감일" },
+    { token: "{{detail}}", desc: "상세" },
+    { token: "{{slotsLabel}}", desc: "구좌 가용" },
+    { token: "{{minPrice}}", desc: "최저가" },
+  ],
+  mailing: [
+    { token: "{{title}}", desc: "카테고리 이름" },
+    { token: "{{mailing}}", desc: "발송 (대상·시기)" },
+    { token: "{{size}}", desc: "사이즈" },
+    { token: "{{fileFormat}}", desc: "파일 포맷" },
+    { token: "{{deadline}}", desc: "마감일" },
+    { token: "{{detail}}", desc: "상세" },
+    { token: "{{slotsLabel}}", desc: "구좌 가용" },
+    { token: "{{minPrice}}", desc: "최저가" },
+  ],
+  print_page: [
+    { token: "{{title}}", desc: "카테고리 이름" },
+    { token: "{{size}}", desc: "지면 크기" },
+    { token: "{{fileFormat}}", desc: "파일 포맷" },
+    { token: "{{deadline}}", desc: "마감일" },
+    { token: "{{detail}}", desc: "상세" },
+    { token: "{{slotsLabel}}", desc: "구좌 가용" },
+    { token: "{{minPrice}}", desc: "최저가" },
+  ],
+  content: [
+    { token: "{{title}}", desc: "카테고리 이름" },
+    { token: "{{content}}", desc: "콘텐츠 스펙" },
+    { token: "{{deadline}}", desc: "마감일" },
+    { token: "{{detail}}", desc: "상세" },
+    { token: "{{slotsLabel}}", desc: "구좌 가용" },
+    { token: "{{minPrice}}", desc: "최저가" },
+  ],
+  xpace: [
+    { token: "{{title}}", desc: "카테고리 이름" },
+    { token: "{{location}}", desc: "위치" },
+    { token: "{{video}}", desc: "영상 스펙" },
+    { token: "{{size}}", desc: "크기" },
+    { token: "{{fileFormat}}", desc: "파일 포맷" },
+    { token: "{{deadline}}", desc: "마감일" },
+    { token: "{{detail}}", desc: "상세" },
+    { token: "{{slotsLabel}}", desc: "구좌 가용" },
+    { token: "{{minPrice}}", desc: "최저가" },
+  ],
+  package: [
+    { token: "{{title}}", desc: "패키지 이름" },
+    { token: "{{detail}}", desc: "패키지 구성" },
+    { token: "{{minPrice}}", desc: "패키지 가격" },
+  ],
+};
+
 export default function TypeLayoutsAdminPage() {
   const selectedEventId = useAdminEvent((s) => s.selectedEventId);
   const [settings, setSettings] = useState<SiteSettings | null>(null);
+  const [categories, setCategories] = useState<Category[]>([]);
   const [saving, setSaving] = useState(false);
   const [savedAt, setSavedAt] = useState<Date | null>(null);
+  const [editingType, setEditingType] = useState<CategoryType | null>(null);
 
   useEffect(() => {
     if (!selectedEventId) return;
-    const u = onSnapshot(
-      doc(getDb(), "siteSettings", selectedEventId),
+    const db = getDb();
+    const u1 = onSnapshot(
+      doc(db, "siteSettings", selectedEventId),
       (s) => {
         if (s.exists()) setSettings(s.data() as SiteSettings);
       }
     );
-    return () => u();
+    const u2 = onSnapshot(
+      query(collection(db, "categories"), where("eventId", "==", selectedEventId)),
+      (s) =>
+        setCategories(
+          s.docs.map((d) => ({ ...(d.data() as Category), id: d.id }))
+        )
+    );
+    return () => {
+      u1();
+      u2();
+    };
   }, [selectedEventId]);
 
   // 현재 행사의 typeLayouts (없으면 빈 객체)
   const layouts: Partial<Record<CategoryType, TypeLayout>> =
     settings?.typeLayouts ?? {};
+
+  // 실제 카테고리에서 쓰이는 유형만 자동 감지 — 9개 박지 않음
+  const typesInUse = useMemo<CategoryType[]>(() => {
+    const set = new Set<CategoryType>();
+    categories.forEach((c) => set.add(c.type));
+    // 패키지는 별도 컬렉션이라 categories 에 없어도 항상 노출
+    set.add("package");
+    return TYPE_META.filter((m) => set.has(m.value)).map((m) => m.value);
+  }, [categories]);
 
   const setLayoutFor = async (type: CategoryType, next: TypeLayout) => {
     if (!selectedEventId) return;
@@ -114,6 +236,16 @@ export default function TypeLayoutsAdminPage() {
     );
   }
 
+  const visibleMeta = TYPE_META.filter((m) => typesInUse.includes(m.value));
+
+  // 캔버스 마스터 편집 모달용 — 현재 편집 중인 type 의 page
+  const editingLayout =
+    editingType !== null
+      ? layouts[editingType] ?? DEFAULT_TYPE_LAYOUTS[editingType]
+      : null;
+  const editingPage: CanvasPage =
+    editingLayout?.canvasPage ?? newEmptyCanvasPage();
+
   return (
     <div className="p-6 md:p-8 max-w-5xl mx-auto">
       <header className="mb-6 flex items-end justify-between">
@@ -122,8 +254,9 @@ export default function TypeLayoutsAdminPage() {
             유형별 슬라이드 레이아웃
           </h1>
           <p className="text-[13px] text-ink-500 mt-1 leading-relaxed">
-            각 카테고리 유형의 공개 슬라이드에서 <strong>어떤 스펙 행을, 어떤 순서로</strong> 보일지
-            정의합니다. 변경하지 않으면 시스템 기본값이 사용됩니다.
+            각 카테고리 유형의 공개 슬라이드를 <strong>자유 캔버스(1920×1080)</strong> 로 디자인합니다.
+            텍스트 안에 <code className="bg-ink-50 px-1 rounded font-mono">{"{{title}}"}</code> 같은
+            토큰을 박으면 공개 페이지에서 실데이터로 치환됩니다. 마스터를 만들지 않으면 시스템 기본 폼이 사용됩니다.
           </p>
         </div>
         <div className="text-[11.5px] text-ink-500">
@@ -132,21 +265,137 @@ export default function TypeLayoutsAdminPage() {
       </header>
 
       <div className="space-y-4">
-        {TYPE_META.map((meta) => {
-          const current =
-            layouts[meta.value] ?? DEFAULT_TYPE_LAYOUTS[meta.value];
-          const isOverride = !!layouts[meta.value];
-          return (
-            <TypeLayoutCard
-              key={meta.value}
-              meta={meta}
-              layout={current}
-              isOverride={isOverride}
-              onChange={(next) => setLayoutFor(meta.value, next)}
-              onReset={() => resetLayoutFor(meta.value)}
-            />
-          );
-        })}
+        {visibleMeta.length === 0 ? (
+          <div className="bg-white border border-ink-100 rounded-card p-8 text-center text-[13px] text-ink-500">
+            카테고리가 아직 없습니다. 먼저 카테고리를 추가해야 유형이 자동 노출됩니다.
+          </div>
+        ) : (
+          visibleMeta.map((meta) => {
+            const current =
+              layouts[meta.value] ?? DEFAULT_TYPE_LAYOUTS[meta.value];
+            const isOverride = !!layouts[meta.value];
+            return (
+              <TypeLayoutCard
+                key={meta.value}
+                meta={meta}
+                layout={current}
+                isOverride={isOverride}
+                onChange={(next) => setLayoutFor(meta.value, next)}
+                onReset={() => resetLayoutFor(meta.value)}
+                onEditCanvas={() => setEditingType(meta.value)}
+              />
+            );
+          })
+        )}
+      </div>
+
+      {/* ─── 캔버스 마스터 풀스크린 모달 ─── */}
+      {editingType !== null && (
+        <CanvasMasterModal
+          type={editingType}
+          page={editingPage}
+          onChange={(nextPage) => {
+            if (!editingType) return;
+            const cur =
+              layouts[editingType] ?? DEFAULT_TYPE_LAYOUTS[editingType];
+            void setLayoutFor(editingType, { ...cur, canvasPage: nextPage });
+          }}
+          onClose={() => setEditingType(null)}
+        />
+      )}
+    </div>
+  );
+}
+
+// ============================================================================
+// CanvasMasterModal — 풀스크린 모달 + CanvasEditor + 토큰 사이드바
+// ============================================================================
+
+function CanvasMasterModal({
+  type,
+  page,
+  onChange,
+  onClose,
+}: {
+  type: CategoryType;
+  page: CanvasPage;
+  onChange: (next: CanvasPage) => void;
+  onClose: () => void;
+}) {
+  const meta = TYPE_META.find((m) => m.value === type);
+  const tokens = TOKENS_BY_TYPE[type] ?? [];
+
+  // Esc 로 닫기
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        const t = e.target as HTMLElement | null;
+        const inField =
+          t?.tagName === "INPUT" ||
+          t?.tagName === "TEXTAREA" ||
+          t?.isContentEditable;
+        if (inField) return;
+        onClose();
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [onClose]);
+
+  return (
+    <div className="fixed inset-0 z-50 bg-ink-900/40 backdrop-blur-sm flex flex-col">
+      {/* 상단 바 */}
+      <header className="bg-white border-b border-ink-100 px-5 py-3 flex items-center justify-between shrink-0">
+        <div className="flex items-center gap-3">
+          <h2 className="text-[15px] font-bold text-ink-900">
+            마스터 슬라이드 — {meta?.label}
+          </h2>
+          <span className="text-[11.5px] text-ink-500">{meta?.desc}</span>
+        </div>
+        <button
+          type="button"
+          onClick={onClose}
+          className="px-3 py-1.5 rounded-btn border border-ink-100 text-[12.5px] font-semibold text-ink-700 hover:bg-ink-50 flex items-center gap-1.5"
+        >
+          <X className="w-3.5 h-3.5" />
+          닫기 (Esc)
+        </button>
+      </header>
+
+      {/* 본문 — 좌측 토큰 가이드 + 우측 캔버스 */}
+      <div className="flex-1 min-h-0 grid grid-cols-[220px_1fr] gap-0 overflow-hidden">
+        <aside className="bg-white border-r border-ink-100 overflow-y-auto p-3">
+          <div className="text-[10.5px] uppercase tracking-wider text-ink-500 font-bold mb-2">
+            사용 가능한 토큰
+          </div>
+          <p className="text-[11px] text-ink-500 leading-snug mb-3">
+            텍스트 노드 안에 그대로 박아두면 공개 페이지에서 카테고리·슬롯 실데이터로 치환됩니다.
+          </p>
+          <ul className="space-y-1">
+            {tokens.map((t) => (
+              <li
+                key={t.token}
+                className="px-2 py-1.5 rounded border border-ink-100 hover:border-brand-500 cursor-pointer group"
+                onClick={() => {
+                  void navigator.clipboard
+                    ?.writeText(t.token)
+                    .catch(() => {});
+                }}
+                title="클릭해서 복사"
+              >
+                <div className="font-mono text-[11px] text-brand-700 font-bold group-hover:underline">
+                  {t.token}
+                </div>
+                <div className="text-[10.5px] text-ink-500 leading-tight mt-0.5">
+                  {t.desc}
+                </div>
+              </li>
+            ))}
+          </ul>
+        </aside>
+        <div className="bg-canvas overflow-hidden">
+          <CanvasEditor page={page} onChange={onChange} />
+        </div>
       </div>
     </div>
   );
@@ -158,32 +407,35 @@ function TypeLayoutCard({
   isOverride,
   onChange,
   onReset,
+  onEditCanvas,
 }: {
   meta: { value: CategoryType; label: string; desc: string };
   layout: TypeLayout;
   isOverride: boolean;
   onChange: (next: TypeLayout) => void;
   onReset: () => void;
+  onEditCanvas: () => void;
 }) {
   const enabled = layout.specFields;
   const disabled = ALL_SPEC_FIELDS.filter(
     (f) => !enabled.includes(f)
   );
+  const hasCanvas = !!layout.canvasPage && layout.canvasPage.nodes.length > 0;
 
   const move = (idx: number, dir: -1 | 1) => {
     const next = [...enabled];
     const j = idx + dir;
     if (j < 0 || j >= next.length) return;
     [next[idx], next[j]] = [next[j], next[idx]];
-    onChange({ specFields: next });
+    onChange({ ...layout, specFields: next });
   };
 
   const remove = (idx: number) => {
-    onChange({ specFields: enabled.filter((_, i) => i !== idx) });
+    onChange({ ...layout, specFields: enabled.filter((_, i) => i !== idx) });
   };
 
   const add = (field: SpecField) => {
-    onChange({ specFields: [...enabled, field] });
+    onChange({ ...layout, specFields: [...enabled, field] });
   };
 
   return (
@@ -413,10 +665,139 @@ function TypeLayoutCard({
         </div>
       </div>
         </div>
-        {/* 우 — 실시간 슬라이드 미리보기 */}
-        <SlidePreview type={meta.value} layout={layout} />
+        {/* 우 — 캔버스 마스터 슬라이드 (우선 노출), 없으면 폴백 미리보기 */}
+        <CanvasMasterCard
+          page={layout.canvasPage}
+          hasCanvas={hasCanvas}
+          onEdit={onEditCanvas}
+          fallbackPreview={
+            <SlidePreview type={meta.value} layout={layout} />
+          }
+        />
       </div>
     </section>
+  );
+}
+
+// ============================================================================
+// CanvasMasterCard — 마스터 슬라이드 썸네일 + "디자인" 버튼
+// ============================================================================
+
+function CanvasMasterCard({
+  page,
+  hasCanvas,
+  onEdit,
+  fallbackPreview,
+}: {
+  page: CanvasPage | undefined;
+  hasCanvas: boolean;
+  onEdit: () => void;
+  fallbackPreview: React.ReactNode;
+}) {
+  return (
+    <div className="sticky top-4 space-y-3">
+      <div className="bg-canvas border border-ink-100 rounded-btn p-3">
+        <div className="flex items-center justify-between mb-2">
+          <div className="text-[10px] uppercase tracking-[0.2em] text-ink-500 font-bold">
+            마스터 슬라이드
+          </div>
+          {hasCanvas ? (
+            <span className="text-[9.5px] font-mono px-1.5 py-0.5 rounded bg-brand-50 text-brand-700">
+              활성
+            </span>
+          ) : (
+            <span className="text-[9.5px] font-mono px-1.5 py-0.5 rounded bg-ink-50 text-ink-500">
+              미설정 — 폼 폴백
+            </span>
+          )}
+        </div>
+
+        {/* 캔버스 마스터가 있으면 NodePreview 로 축소 렌더, 없으면 빈 슬레이트 */}
+        <div className="bg-white border border-ink-100 aspect-[16/9] overflow-hidden relative rounded">
+          {hasCanvas && page ? (
+            <CanvasThumbnail page={page} />
+          ) : (
+            <div className="absolute inset-0 grid place-items-center text-[11px] text-ink-400 leading-snug text-center p-3">
+              마스터 슬라이드 없음
+              <br />
+              아래 버튼으로 디자인 시작
+            </div>
+          )}
+        </div>
+
+        <button
+          type="button"
+          onClick={onEdit}
+          className="mt-3 w-full py-2 rounded-btn bg-ink-900 hover:bg-ink-700 text-white text-[12.5px] font-bold flex items-center justify-center gap-1.5"
+        >
+          <Maximize2 className="w-3.5 h-3.5" />
+          {hasCanvas ? "캔버스 편집" : "캔버스 디자인 시작"}
+        </button>
+
+        <p className="text-[10.5px] text-ink-500 mt-2 leading-snug">
+          1920×1080 자유 배치. 텍스트에{" "}
+          <code className="font-mono bg-ink-50 px-1 rounded">{"{{title}}"}</code>{" "}
+          같은 토큰 사용 가능.
+        </p>
+      </div>
+
+      {/* 마스터가 없을 때만 기존 폼 폴백 미리보기 노출 */}
+      {!hasCanvas && (
+        <div>
+          <div className="text-[10px] uppercase tracking-[0.2em] text-ink-500 font-bold mb-2">
+            폴백 폼 미리보기
+          </div>
+          {fallbackPreview}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function CanvasThumbnail({ page }: { page: CanvasPage }) {
+  // 1920×1080 → 컨테이너에 맞춰 축소
+  return (
+    <div className="absolute inset-0 overflow-hidden" style={{ background: resolveBg(page.bg) ?? "#FFFFFF" }}>
+      <div
+        className="absolute top-0 left-0"
+        style={{
+          width: 1920,
+          height: 1080,
+          transform: "scale(0.16)",
+          transformOrigin: "top left",
+        }}
+      >
+        {page.bgImageUrl && (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={page.bgImageUrl}
+            alt=""
+            className="absolute inset-0 w-full h-full object-cover pointer-events-none"
+          />
+        )}
+        {page.nodes
+          .filter((n) => !n.hidden)
+          .sort((a, b) => (a.rect.z ?? 0) - (b.rect.z ?? 0))
+          .map((n) => (
+            <div
+              key={n.id}
+              style={{
+                position: "absolute",
+                left: n.rect.x,
+                top: n.rect.y,
+                width: n.rect.w,
+                height: n.rect.h,
+                opacity: n.opacity ?? 1,
+                transform: n.rect.rotate
+                  ? `rotate(${n.rect.rotate}deg)`
+                  : undefined,
+              }}
+            >
+              <NodePreview node={n} />
+            </div>
+          ))}
+      </div>
+    </div>
   );
 }
 
