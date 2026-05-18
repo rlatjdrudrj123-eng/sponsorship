@@ -2018,7 +2018,8 @@ function SlideStream({
           </div>
         </main>
       ) : (
-        <main className="h-screen overflow-y-scroll snap-y snap-mandatory bg-canvas scroll-smooth">
+        // 데스크톱: h-screen + snap. 모바일: 자연 스크롤 (snap 금지 — h-screen 안에 콘텐츠 안 들어와 잘리던 문제)
+        <main className="bg-canvas md:h-screen md:overflow-y-scroll md:snap-y md:snap-mandatory md:scroll-smooth">
           {items.map((c, i) => {
             const subs = subcategories
               .filter((s) => s.categoryId === c.id)
@@ -2126,10 +2127,14 @@ function SlideSection({
 
   return (
     <>
-      <section className="h-screen snap-start bg-canvas pt-14 relative overflow-hidden">
-        <div className="max-w-7xl mx-auto h-full px-6 md:px-12 py-6 md:py-8 grid lg:grid-cols-[1.1fr_1fr] gap-6 lg:gap-12 items-stretch">
+      {/*
+        데스크톱: h-screen + snap (한 화면당 1 슬라이드 고정).
+        모바일: min-h-screen + 자연 스크롤 — 콘텐츠 길이만큼 늘어남.
+      */}
+      <section className="min-h-screen md:h-screen md:snap-start bg-canvas pt-14 relative md:overflow-hidden">
+        <div className="max-w-7xl mx-auto md:h-full px-4 md:px-12 py-6 md:py-8 grid lg:grid-cols-[1.1fr_1fr] gap-6 lg:gap-12 items-stretch">
           {/* LEFT: 정보 — 세로 중앙 정렬하여 빈공간 분산 */}
-          <div className="flex flex-col justify-center min-w-0 min-h-0">
+          <div className="flex flex-col justify-center min-w-0 md:min-h-0">
             {/* 해시태그 — layout.showHashtags 가 false 면 숨김 */}
             {showHashtags && (
               <div className="flex flex-wrap gap-x-4 gap-y-1 text-[13px] md:text-[14px] tracking-wide text-brand-500 font-bold mb-4 font-num">
@@ -2144,7 +2149,7 @@ function SlideSection({
               <AutoFitHeading
                 text={localized(item.name, locale)}
                 maxPx={titleMaxPx}
-                minPx={24}
+                minPx={18}
                 className="flex-1 font-bold leading-[0.95] tracking-tight text-ink-900"
               />
               <span className="text-[14px] md:text-[18px] text-ink-300 font-num shrink-0">
@@ -2382,8 +2387,9 @@ function SlideSection({
               );
             })()}
 
-            {/* 버튼: 구좌 선택 / [자세히 보기 — 모달 외부에서만] / 가이드 다운로드 */}
-            <div className="mt-6 flex gap-3">
+            {/* 버튼: 구좌 선택 / [자세히 보기 — 모달 외부에서만] / 가이드 다운로드.
+                모바일은 세로 스택, 데스크톱은 가로 */}
+            <div className="mt-6 flex flex-col sm:flex-row gap-2 sm:gap-3">
               <button
                 type="button"
                 onClick={() => setPickerOpen(true)}
