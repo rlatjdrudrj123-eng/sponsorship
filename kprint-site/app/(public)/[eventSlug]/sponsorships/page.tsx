@@ -2042,6 +2042,9 @@ function SlideStream({
                 onOpenDetail={onOpenDetail}
                 typeLayouts={typeLayouts}
                 bundledPerks={bundledPerks}
+                // 슬라이드 모드는 이미 풀스크린이라 '자세히 보기' 버튼이 같은 화면을 한 번 더 모달로
+                // 띄우는 중복이 됨. 데스크톱·모바일 모두 자세히 보기 숨김.
+                inModal
               />
             );
           })}
@@ -2077,7 +2080,13 @@ function SlideSection({
 }) {
   const locale = useLocale((s) => s.locale);
   const [pickerOpen, setPickerOpen] = useState(false);
+  const [floorOpen, setFloorOpen] = useState(false);
   const hero = item.heroImages?.images?.[0]?.url;
+  // 도면 보기 가능 — floor_plan / xpace 타입 + 도면 이미지가 있을 때만 노출
+  const hasFloorImages =
+    (item.type === "floor_plan" || item.type === "xpace") &&
+    !!item.floorImages &&
+    item.floorImages.length > 0;
   const deadlineStr = item.deadline
     ? item.deadline.toDate().toLocaleDateString(
         locale === "en" ? "en-US" : "ko-KR",
@@ -2296,7 +2305,7 @@ function SlideSection({
             </div>
           </div>
 
-          {/* CTA */}
+          {/* CTA — 도면 있으면 위치 보기, 없고 모달 외부면 자세히 보기 */}
           <div className="mt-2.5 grid grid-cols-2 gap-2">
             <button
               type="button"
@@ -2305,7 +2314,15 @@ function SlideSection({
             >
               구좌 선택
             </button>
-            {!inModal && (
+            {hasFloorImages ? (
+              <button
+                type="button"
+                onClick={() => setFloorOpen(true)}
+                className="h-10 rounded-btn border-2 border-ink-900 text-ink-900 font-bold text-[12.5px]"
+              >
+                위치 보기
+              </button>
+            ) : !inModal ? (
               <button
                 type="button"
                 onClick={() => onOpenDetail(item.slug)}
@@ -2313,7 +2330,7 @@ function SlideSection({
               >
                 자세히 보기
               </button>
-            )}
+            ) : null}
           </div>
         </div>
       </section>
@@ -2575,7 +2592,7 @@ function SlideSection({
               );
             })()}
 
-            {/* 버튼: 구좌 선택 / [자세히 보기 — 모달 외부에서만] / 가이드 다운로드.
+            {/* 버튼: 구좌 선택 / [위치 보기 (도면 있을 때만)] / [자세히 보기 — 모달 외부에서만] / 가이드 다운로드.
                 모바일은 세로 스택, 데스크톱은 가로 */}
             <div className="mt-6 flex flex-col sm:flex-row gap-2 sm:gap-3">
               <button
@@ -2585,6 +2602,15 @@ function SlideSection({
               >
                 구좌 선택하기
               </button>
+              {hasFloorImages && (
+                <button
+                  type="button"
+                  onClick={() => setFloorOpen(true)}
+                  className="flex-1 h-12 rounded-btn border-2 border-ink-900 text-ink-900 hover:bg-ink-900 hover:text-white font-bold text-[13.5px] transition-colors"
+                >
+                  위치 보기
+                </button>
+              )}
               {!inModal && (
                 <button
                   type="button"
@@ -2671,7 +2697,160 @@ function SlideSection({
           }}
         />
       )}
+
+      {/* 도면 위치 모달 — floor_plan / xpace 카테고리에서 floorImages 있으면 */}
+      {floorOpen && hasFloorImages && (
+        <FloorMapModal
+          item={item}
+          subcategories={subcategories}
+          slots={slots}
+          onClose={() => setFloorOpen(false)}
+        />
+      )}
     </>
+  );
+}
+
+// ============================================================================
+// FloorMapModal — floor_plan / xpace 카테고리의 도면(들) + 핀 위치 미리보기.
+// 슬라이드/카드의 '위치 보기' 버튼에서 진입. PinOverlay 는 cart 와 묶여있어
+// 무겁고, 여기서는 가벼운 이미지 + 핀 표시만으로 충분.
+// ============================================================================
+
+function FloorMapModal({
+  item,
+  subcategories,
+  slots,
+  onClose,
+}: {
+  item: EnrichedCategory;
+  subcategories: Subcategory[];
+  slots: Slot[];
+  onClose: () => void;
+}) {
+  const locale = useLocale((s) => s.locale);
+  // 첫번째 도면을 기본 노출. 도면이 여러 장이면 탭으로.
+  const floorImages = item.floorImages ?? [];
+  const [active, setActive] = useState(0);
+  const current = floorImages[active];
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
+    window.addEventListener("keydown", onKey);
+    document.body.style.overflow = "hidden";
+    return () => {
+      window.removeEventListener("keydown", onKey);
+      document.body.style.overflow = "";
+    };
+  }, [onClose]);
+
+  if (!current) return null;
+
+  // 도면별 소분류 (탭 라벨용)
+  const subById = new Map(subcategories.map((s) => [s.id, s]));
+  // 도면의 핀 — 슬롯 status 별로 색상
+  const slotById = new Map(slots.map((s) => [s.id, s]));
+
+  return (
+    <div
+      className="fixed inset-0 z-[70] bg-ink-900/80 backdrop-blur-sm flex items-stretch md:items-center justify-center md:p-6"
+      onClick={onClose}
+    >
+      <div
+        role="dialog"
+        aria-modal="true"
+        onClick={(e) => e.stopPropagation()}
+        className="bg-canvas w-full h-full md:rounded-card md:shadow-2xl md:max-w-[1024px] md:max-h-[88vh] flex flex-col overflow-hidden"
+      >
+        <header className="px-5 py-3 border-b border-ink-100 bg-white flex items-center justify-between shrink-0">
+          <div className="min-w-0">
+            <div className="font-num text-[10.5px] uppercase tracking-[0.3em] text-brand-500 font-bold">
+              위치 / 도면
+            </div>
+            <h3 className="text-[15px] font-bold text-ink-900 truncate">
+              {localized(item.name, locale)}
+            </h3>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="w-9 h-9 grid place-items-center rounded-full hover:bg-ink-50 text-ink-500"
+            aria-label="닫기"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </header>
+
+        {/* 도면이 여러 장이면 탭 */}
+        {floorImages.length > 1 && (
+          <div className="px-5 py-2 border-b border-ink-100 bg-white flex flex-wrap gap-1.5 shrink-0">
+            {floorImages.map((fi, i) => {
+              const sub = subById.get(fi.subcategoryId);
+              return (
+                <button
+                  key={i}
+                  type="button"
+                  onClick={() => setActive(i)}
+                  className={
+                    "px-3 py-1 rounded-pill text-[12px] font-semibold border transition-colors " +
+                    (i === active
+                      ? "bg-ink-900 text-white border-ink-900"
+                      : "bg-white text-ink-700 border-ink-100 hover:border-ink-700")
+                  }
+                >
+                  {sub ? localized(sub.name, locale) : `도면 ${i + 1}`}
+                </button>
+              );
+            })}
+          </div>
+        )}
+
+        {/* 도면 이미지 + 핀 */}
+        <div className="flex-1 min-h-0 overflow-auto p-4 md:p-6">
+          <div className="relative w-full mx-auto bg-ink-50 rounded-card overflow-hidden border border-ink-100 aspect-[4/3] max-w-3xl">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={current.url}
+              alt={`${localized(item.name, locale)} 도면`}
+              className="absolute inset-0 w-full h-full object-contain block select-none"
+              draggable={false}
+            />
+            {/* 핀 — 슬롯 상태별 색상 */}
+            {current.pins.map((pin, i) => {
+              const slot = slotById.get(pin.slotId);
+              const isAvailable = slot?.status === "available";
+              return (
+                <span
+                  key={i}
+                  className={
+                    "absolute -translate-x-1/2 -translate-y-1/2 w-7 h-7 rounded-full grid place-items-center text-[10px] font-num font-bold shadow-card border-2 " +
+                    (isAvailable
+                      ? "bg-brand-500 text-white border-white"
+                      : "bg-ink-300 text-white border-white")
+                  }
+                  style={{ left: `${pin.x}%`, top: `${pin.y}%` }}
+                  title={slot?.code ?? pin.slotId}
+                >
+                  {i + 1}
+                </span>
+              );
+            })}
+          </div>
+          <div className="mt-4 text-[12px] text-ink-500 leading-relaxed text-center">
+            <span className="inline-flex items-center gap-1.5 mr-3">
+              <span className="w-3 h-3 rounded-full bg-brand-500" />
+              가용
+            </span>
+            <span className="inline-flex items-center gap-1.5">
+              <span className="w-3 h-3 rounded-full bg-ink-300" />
+              매진/예약
+            </span>
+          </div>
+        </div>
+      </div>
+    </div>
   );
 }
 
