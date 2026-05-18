@@ -2,21 +2,9 @@
 
 import { useEffect, useRef, useState } from "react";
 import { doc, onSnapshot, setDoc, Timestamp } from "firebase/firestore";
-import { useFieldArray, useForm } from "react-hook-form";
-import {
-  AlertCircle,
-  Check,
-  Plus,
-  Save,
-  Upload,
-  X,
-} from "lucide-react";
+import { useForm } from "react-hook-form";
+import { AlertCircle, Check, Save } from "lucide-react";
 import { getDb } from "@/lib/firebase/firestore";
-import {
-  buildStoragePath,
-  deleteFile,
-  uploadFile,
-} from "@/lib/firebase/storage";
 import { useEventFilter } from "@/lib/admin/useEventFilter";
 import type { SiteSettings } from "@/lib/types";
 
@@ -85,9 +73,7 @@ export default function SettingsPage() {
     },
   });
 
-  const stats = useFieldArray({ control: form.control, name: "why.stats" });
-  const chartData = useFieldArray({ control: form.control, name: "why.chartData" });
-  const steps = useFieldArray({ control: form.control, name: "applicationSteps" });
+  // why.stats / why.chartData / applicationSteps 폼은 UI 에서 제거됨 — 데이터 스키마만 유지
 
   useEffect(() => {
     if (!ready || !eventId) return;
@@ -190,43 +176,7 @@ export default function SettingsPage() {
     }
   };
 
-  const uploadKV = async (kind: "desktop" | "mobile", file: File) => {
-    if (!eventId) {
-      alert("상단에서 행사를 먼저 선택하세요.");
-      return;
-    }
-    if (!file.type.startsWith("image/")) {
-      alert("이미지 파일만 가능합니다.");
-      return;
-    }
-    try {
-      const path = buildStoragePath(`settings/kv-${kind}`, file.name);
-      const result = await uploadFile(file, path);
-      const oldPath = form.getValues(kind === "desktop" ? "kv.desktopPath" : "kv.mobilePath");
-      if (oldPath) await deleteFile(oldPath).catch(() => undefined);
-      if (kind === "desktop") {
-        form.setValue("kv.desktopUrl", result.url);
-        form.setValue("kv.desktopPath", result.storagePath);
-      } else {
-        form.setValue("kv.mobileUrl", result.url);
-        form.setValue("kv.mobilePath", result.storagePath);
-      }
-      // 업로드한 즉시 doc 갱신해주는게 안전 — 명시적 저장과 별개로
-      await setDoc(
-        doc(getDb(), "siteSettings", eventId),
-        {
-          eventId,
-          kv:
-            kind === "desktop"
-              ? { desktopUrl: result.url }
-              : { mobileUrl: result.url },
-        },
-        { merge: true }
-      );
-    } catch (e) {
-      alert(`KV 업로드 실패: ${e instanceof Error ? e.message : String(e)}`);
-    }
-  };
+  // KV 업로드는 더 이상 사용 안 함 — 랜딩 빌더 캔버스로 직접 이미지 배치
 
   if (!ready) {
     return <div className="text-sm text-ink-500 text-center py-16">행사 정보 불러오는 중…</div>;
@@ -242,13 +192,12 @@ export default function SettingsPage() {
     return <div className="text-sm text-ink-500 text-center py-16">불러오는 중…</div>;
   }
 
+  // KV·Why 통계·신청 절차 는 랜딩 빌더가 직접 캔버스로 디자인하는 구조라 별도 폼 불필요 → 제거.
+  // 데이터 스키마는 유지 (구버전 호환), UI 만 가렸음.
   const sectionDefs = [
     { id: "theme", num: "01", title: "테마 색상", desc: "브랜드 컬러" },
     { id: "event", num: "02", title: "이벤트 정보", desc: "행사명·일정·장소" },
-    { id: "kv", num: "03", title: "메인 KV", desc: "홈 비주얼·오버레이" },
-    { id: "why", num: "04", title: "Why 통계", desc: "방문객·연도별 데이터" },
-    { id: "steps", num: "05", title: "신청 절차", desc: "단계별 가이드" },
-    { id: "contact", num: "06", title: "연락처", desc: "사무국 정보" },
+    { id: "contact", num: "03", title: "연락처", desc: "사무국 정보" },
   ];
 
   return (
@@ -349,172 +298,10 @@ export default function SettingsPage() {
         </div>
       </Section>
 
-      <Section title="홈 KV (메인 비주얼)" id="sec-kv" num="03">
-        <div className="grid grid-cols-2 gap-3">
-          <Field label="데스크톱 KV (이미지)" full>
-            <KVUpload
-              currentUrl={form.watch("kv.desktopUrl")}
-              onUpload={(file) => uploadKV("desktop", file)}
-            />
-          </Field>
-          <Field label="모바일 KV (선택, 이미지)" full>
-            <KVUpload
-              currentUrl={form.watch("kv.mobileUrl")}
-              onUpload={(file) => uploadKV("mobile", file)}
-            />
-          </Field>
-          <Field label="오버레이 텍스트 (선택)" full>
-            <input
-              {...form.register("kv.overlayText")}
-              placeholder="2026.08.19 — 22 · KINTEX"
-              className={inputCls()}
-            />
-          </Field>
-        </div>
-      </Section>
+      {/* KV / Why 통계 / 신청 절차 섹션은 제거 — 랜딩 빌더 캔버스로 직접 구성하므로 별도 폼 불필요.
+          데이터 스키마 (settings.kv / why / applicationSteps) 는 유지하여 구버전 호환만 보장. */}
 
-      <Section title="Why K-PRINT 통계" id="sec-why" num="04">
-        <Field label="섹션 헤드라인">
-          <input {...form.register("why.headline")} className={inputCls()} />
-        </Field>
-
-        <div className="mt-4">
-          <div className="text-[12px] font-semibold text-ink-700 mb-2 uppercase tracking-wide">
-            통계 카드
-          </div>
-          <div className="space-y-2">
-            {stats.fields.map((f, i) => (
-              <div
-                key={f.id}
-                className="grid grid-cols-[1fr_1fr_1fr_2fr_auto] gap-2 items-center bg-ink-50/60 border border-ink-100 rounded-btn p-2"
-              >
-                <input
-                  {...form.register(`why.stats.${i}.label`)}
-                  placeholder="라벨 (방문객)"
-                  className={inputCls()}
-                />
-                <input
-                  {...form.register(`why.stats.${i}.value`)}
-                  placeholder="값 (72,507)"
-                  className={inputCls() + " font-mono"}
-                />
-                <input
-                  {...form.register(`why.stats.${i}.suffix`)}
-                  placeholder="단위 (명)"
-                  className={inputCls()}
-                />
-                <input
-                  {...form.register(`why.stats.${i}.desc`)}
-                  placeholder="설명 (선택)"
-                  className={inputCls()}
-                />
-                <button
-                  type="button"
-                  onClick={() => stats.remove(i)}
-                  className="w-9 h-9 grid place-items-center text-ink-500 hover:text-red-700"
-                >
-                  <X className="w-4 h-4" />
-                </button>
-              </div>
-            ))}
-            <button
-              type="button"
-              onClick={() => stats.append({ label: "", value: "", suffix: "", desc: "" })}
-              className="w-full py-2 rounded-btn border-[1.5px] border-dashed border-ink-300 text-[13px] text-ink-500 hover:border-brand-500 hover:text-brand-700 flex items-center justify-center gap-1.5"
-            >
-              <Plus className="w-4 h-4" />
-              통계 카드 추가
-            </button>
-          </div>
-        </div>
-
-        <div className="mt-5">
-          <div className="text-[12px] font-semibold text-ink-700 mb-2 uppercase tracking-wide">
-            연도별 데이터 (선택)
-          </div>
-          <div className="space-y-2">
-            {chartData.fields.map((f, i) => (
-              <div
-                key={f.id}
-                className="grid grid-cols-[1fr_1fr_1fr_auto] gap-2 items-center bg-ink-50/60 border border-ink-100 rounded-btn p-2"
-              >
-                <input
-                  type="number"
-                  {...form.register(`why.chartData.${i}.year`, { valueAsNumber: true })}
-                  placeholder="2024"
-                  className={inputCls() + " font-mono"}
-                />
-                <input
-                  type="number"
-                  {...form.register(`why.chartData.${i}.visitors`, { valueAsNumber: true })}
-                  placeholder="방문객 수"
-                  className={inputCls() + " font-mono"}
-                />
-                <input
-                  type="number"
-                  {...form.register(`why.chartData.${i}.exhibitors`, { valueAsNumber: true })}
-                  placeholder="참가사 수"
-                  className={inputCls() + " font-mono"}
-                />
-                <button
-                  type="button"
-                  onClick={() => chartData.remove(i)}
-                  className="w-9 h-9 grid place-items-center text-ink-500 hover:text-red-700"
-                >
-                  <X className="w-4 h-4" />
-                </button>
-              </div>
-            ))}
-            <button
-              type="button"
-              onClick={() => chartData.append({ year: 2024, visitors: 0, exhibitors: 0 })}
-              className="w-full py-2 rounded-btn border-[1.5px] border-dashed border-ink-300 text-[13px] text-ink-500 hover:border-brand-500 hover:text-brand-700 flex items-center justify-center gap-1.5"
-            >
-              <Plus className="w-4 h-4" />
-              연도 추가
-            </button>
-          </div>
-        </div>
-      </Section>
-
-      <Section title="신청 절차" id="sec-steps" num="05">
-        <div className="space-y-2">
-          {steps.fields.map((f, i) => (
-            <div
-              key={f.id}
-              className="grid grid-cols-[1fr_2fr_auto] gap-2 items-center bg-ink-50/60 border border-ink-100 rounded-btn p-2"
-            >
-              <input
-                {...form.register(`applicationSteps.${i}.title`)}
-                placeholder={`${i + 1}. 단계 제목`}
-                className={inputCls()}
-              />
-              <input
-                {...form.register(`applicationSteps.${i}.desc`)}
-                placeholder="설명 (선택)"
-                className={inputCls()}
-              />
-              <button
-                type="button"
-                onClick={() => steps.remove(i)}
-                className="w-9 h-9 grid place-items-center text-ink-500 hover:text-red-700"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-          ))}
-          <button
-            type="button"
-            onClick={() => steps.append({ title: "", desc: "" })}
-            className="w-full py-2 rounded-btn border-[1.5px] border-dashed border-ink-300 text-[13px] text-ink-500 hover:border-brand-500 hover:text-brand-700 flex items-center justify-center gap-1.5"
-          >
-            <Plus className="w-4 h-4" />
-            단계 추가
-          </button>
-        </div>
-      </Section>
-
-      <Section title="연락처" id="sec-contact" num="06">
+      <Section title="연락처" id="sec-contact" num="03">
         <div className="grid grid-cols-2 gap-3">
           <Field label="전화">
             <input {...form.register("contact.phone")} className={inputCls()} />
@@ -687,51 +474,6 @@ function SaveStatus({
     );
   }
   return null;
-}
-
-function KVUpload({
-  currentUrl,
-  onUpload,
-}: {
-  currentUrl: string;
-  onUpload: (file: File) => Promise<void>;
-}) {
-  const inputRef = useRef<HTMLInputElement>(null);
-  const [busy, setBusy] = useState(false);
-
-  return (
-    <div className="space-y-2">
-      {currentUrl && (
-        <div className="rounded-btn overflow-hidden border border-ink-100 bg-ink-50">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={currentUrl} alt="KV 미리보기" className="max-h-48 mx-auto" />
-        </div>
-      )}
-      <button
-        type="button"
-        disabled={busy}
-        onClick={() => inputRef.current?.click()}
-        className="w-full py-2 rounded-btn border border-ink-100 text-[13px] text-ink-700 hover:bg-ink-50 flex items-center justify-center gap-1.5 disabled:opacity-50"
-      >
-        <Upload className="w-3.5 h-3.5" />
-        {currentUrl ? "이미지 교체" : "이미지 업로드"}
-      </button>
-      <input
-        ref={inputRef}
-        type="file"
-        accept="image/*"
-        className="hidden"
-        onChange={async (e) => {
-          const f = e.target.files?.[0];
-          if (!f) return;
-          setBusy(true);
-          await onUpload(f);
-          setBusy(false);
-          e.target.value = "";
-        }}
-      />
-    </div>
-  );
 }
 
 function ThemePrimaryPicker({
