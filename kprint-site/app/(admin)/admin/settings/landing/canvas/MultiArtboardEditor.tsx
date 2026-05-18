@@ -231,7 +231,21 @@ export function MultiArtboardEditor({
       if (e.key === "Delete" || e.key === "Backspace") {
         if (selections.length > 0) {
           e.preventDefault();
-          selections.forEach((s) => removeNode(s.pageIdx, s.nodeId));
+          // 페이지별로 묶어서 한 번에 삭제 — N번 setState 면 stale state 로 1개만 남음.
+          const byPage = new Map<number, Set<string>>();
+          selections.forEach((s) => {
+            const set = byPage.get(s.pageIdx) ?? new Set<string>();
+            set.add(s.nodeId);
+            byPage.set(s.pageIdx, set);
+          });
+          byPage.forEach((ids, pageIdx) => {
+            const target = pages[pageIdx];
+            if (!target) return;
+            onUpdatePage(pageIdx, {
+              ...target.page,
+              nodes: target.page.nodes.filter((n) => !ids.has(n.id)),
+            });
+          });
           setSelections([]);
         }
         return;
