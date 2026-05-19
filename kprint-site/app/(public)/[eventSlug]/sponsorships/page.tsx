@@ -198,8 +198,9 @@ export default function SponsorshipsPage() {
   const [search, setSearch] = useState("");
   const [sheetOpen, setSheetOpen] = useState(false);
   const searchParams = useSearchParams();
+  // 기본 진입 = 슬라이드 (피트페이퍼 톤). 카드/필터 모드는 BETA 옵션으로 ?view=card 진입.
   const [viewMode, setViewMode] = useState<"card" | "slide">(
-    searchParams?.get("view") === "slide" ? "slide" : "card"
+    searchParams?.get("view") === "card" ? "card" : "slide"
   );
   const [aiChatOpen, setAiChatOpen] = useState(false);
   // 첫 질문 Q1 (목적) 의 4가지 (룩업 매트릭스 Q1 값)
@@ -1236,20 +1237,6 @@ function ViewModeToggle({
     <div className="inline-flex items-center bg-ink-50 rounded-btn p-0.5 border border-ink-100">
       <button
         type="button"
-        onClick={() => setViewMode("card")}
-        className={
-          "px-2.5 py-1.5 rounded text-[12px] font-semibold flex items-center gap-1.5 transition-colors " +
-          (viewMode === "card"
-            ? "bg-white shadow-sm text-ink-900"
-            : "text-ink-500 hover:text-ink-900")
-        }
-        title="카드형 보기"
-      >
-        <LayoutGrid className="w-3.5 h-3.5" />
-        카드형
-      </button>
-      <button
-        type="button"
         onClick={() => setViewMode("slide")}
         className={
           "px-2.5 py-1.5 rounded text-[12px] font-semibold flex items-center gap-1.5 transition-colors " +
@@ -1257,10 +1244,27 @@ function ViewModeToggle({
             ? "bg-white shadow-sm text-ink-900"
             : "text-ink-500 hover:text-ink-900")
         }
-        title="슬라이드형 보기 (피트페이퍼 스타일)"
+        title="슬라이드형 보기 (기본·피트페이퍼 스타일)"
       >
         <Maximize2 className="w-3.5 h-3.5" />
         슬라이드
+      </button>
+      <button
+        type="button"
+        onClick={() => setViewMode("card")}
+        className={
+          "px-2.5 py-1.5 rounded text-[12px] font-semibold flex items-center gap-1.5 transition-colors " +
+          (viewMode === "card"
+            ? "bg-white shadow-sm text-ink-900"
+            : "text-ink-500 hover:text-ink-900")
+        }
+        title="필터로 보기 (BETA · 카드 그리드 + 필터·검색)"
+      >
+        <LayoutGrid className="w-3.5 h-3.5" />
+        필터로 보기
+        <span className="ml-0.5 text-[9px] font-mono font-bold px-1 py-0.5 rounded bg-brand-500 text-ink-900 leading-none">
+          BETA
+        </span>
       </button>
     </div>
   );
@@ -1847,12 +1851,19 @@ function SlideStream({
         <button
           type="button"
           onClick={onCardMode}
-          className="px-2.5 py-1.5 rounded-btn bg-ink-900 text-white hover:bg-brand-500 hover:text-ink-900 text-[12px] font-semibold flex items-center gap-1 shrink-0"
-          title={t("spons.viewCard", locale)}
+          className="px-2.5 py-1.5 rounded-btn bg-ink-900 text-white hover:bg-brand-500 hover:text-ink-900 text-[12px] font-semibold flex items-center gap-1.5 shrink-0"
+          title={
+            locale === "en"
+              ? "Filter view (BETA — card grid + filter/search)"
+              : "필터로 보기 (BETA · 카드 그리드 + 필터·검색)"
+          }
         >
           <LayoutGrid className="w-3.5 h-3.5" />
           <span className="hidden sm:inline">
-            {t("spons.viewCard", locale)}
+            {locale === "en" ? "Filter view" : "필터로 보기"}
+          </span>
+          <span className="text-[9px] font-mono font-bold px-1 py-0.5 rounded bg-brand-500 text-ink-900 leading-none">
+            BETA
           </span>
         </button>
       </div>
