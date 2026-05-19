@@ -12,7 +12,7 @@ import {
   where,
 } from "firebase/firestore";
 import { getDb } from "@/lib/firebase/firestore";
-import type { Package, SiteSettings, Slot } from "@/lib/types";
+import type { Category, Package, SiteSettings, Slot } from "@/lib/types";
 import { PackageType } from "@/components/public/CategoryDetail/PackageType";
 
 export default function PackageDetailPage() {
@@ -24,6 +24,7 @@ export default function PackageDetailPage() {
   const [resolvedSlots, setResolvedSlots] = useState<Map<string, Slot>>(
     new Map()
   );
+  const [categories, setCategories] = useState<Category[]>([]);
   const [settings, setSettings] = useState<SiteSettings | null>(null);
   const [loaded, setLoaded] = useState(false);
   const [notFound, setNotFound] = useState(false);
@@ -42,9 +43,12 @@ export default function PackageDetailPage() {
         const data = { ...(pkgSnap.data() as Package), id: pkgSnap.id };
         setPkg(data);
 
-        const [slotsSnap, settingsSnap] = await Promise.all([
+        const [slotsSnap, catSnap, settingsSnap] = await Promise.all([
           getDocs(
             query(collection(db, "slots"), where("eventId", "==", eventId))
+          ),
+          getDocs(
+            query(collection(db, "categories"), where("eventId", "==", eventId))
           ),
           getDoc(doc(db, "siteSettings", eventId)),
         ]);
@@ -53,6 +57,9 @@ export default function PackageDetailPage() {
           map.set(d.id, { ...(d.data() as Slot), id: d.id });
         });
         setResolvedSlots(map);
+        setCategories(
+          catSnap.docs.map((d) => ({ ...(d.data() as Category), id: d.id }))
+        );
         if (settingsSnap.exists())
           setSettings(settingsSnap.data() as SiteSettings);
         setLoaded(true);
@@ -86,5 +93,12 @@ export default function PackageDetailPage() {
     );
   }
 
-  return <PackageType pkg={pkg} resolvedSlots={resolvedSlots} settings={settings} />;
+  return (
+    <PackageType
+      pkg={pkg}
+      resolvedSlots={resolvedSlots}
+      categories={categories}
+      settings={settings}
+    />
+  );
 }

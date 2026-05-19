@@ -1,11 +1,10 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { ArrowLeft, Bookmark, BookmarkCheck, Check, Gift, X } from "lucide-react";
-import type { Package, SiteSettings, Slot } from "@/lib/types";
-import { ImageCarousel } from "./_shared/ImageCarousel";
+import type { Category, Package, SiteSettings, Slot } from "@/lib/types";
 import { useCartStore } from "@/lib/cart/cartStore";
 import { Footer } from "@/components/public/Footer";
 import {
@@ -17,10 +16,11 @@ import {
 type Props = {
   pkg: Package;
   resolvedSlots?: Map<string, Slot>;
+  categories?: Category[];
   settings: SiteSettings | null;
 };
 
-export function PackageType({ pkg, resolvedSlots, settings }: Props) {
+export function PackageType({ pkg, resolvedSlots, categories, settings }: Props) {
   const params = useParams<{ eventSlug?: string }>();
   const eventId = params?.eventSlug ?? "";
   const hasPackage = useCartStore((s) => s.hasPackage);
@@ -66,7 +66,10 @@ export function PackageType({ pkg, resolvedSlots, settings }: Props) {
         </div>
 
         <div className="max-w-6xl mx-auto px-6 md:px-12 py-10 grid lg:grid-cols-[1.4fr_1fr] gap-10 items-start">
-          <ImageCarousel slot={pkg.heroImages} aspectRatio="aspect-[16/10]" />
+          <PackageHeroAutoCarousel
+            pkg={pkg}
+            categories={categories ?? []}
+          />
 
           <div className="space-y-5">
             <div className="bg-surface border border-ink-100 rounded-card p-6 shadow-card">
@@ -175,6 +178,112 @@ export function PackageType({ pkg, resolvedSlots, settings }: Props) {
         />
       )}
     </>
+  );
+}
+
+// ============================================================================
+// PackageHeroAutoCarousel — 패키지에 포함된 카테고리들의 hero 이미지를 모아
+// 자동 회전하는 좌측 큰 이미지 영역. 카테고리 매핑이 없으면 pkg.heroImages 사용.
+// ============================================================================
+
+function PackageHeroAutoCarousel({
+  pkg,
+  categories,
+}: {
+  pkg: Package;
+  categories: Category[];
+}) {
+  const slides = useMemo(() => {
+    const byId = new Map(categories.map((c) => [c.id, c]));
+    const fromIncluded: Array<{
+      url: string;
+      caption?: string;
+      categoryName?: string;
+    }> = [];
+    const seen = new Set<string>();
+    for (const it of pkg.includedItems ?? []) {
+      if (!it.categoryId) continue;
+      if (seen.has(it.categoryId)) continue;
+      seen.add(it.categoryId);
+      const cat = byId.get(it.categoryId);
+      const url = cat?.heroImages?.images?.[0]?.url;
+      if (!url) continue;
+      fromIncluded.push({
+        url,
+        categoryName: cat?.name?.ko ?? cat?.code,
+        caption: it.label,
+      });
+    }
+    if (fromIncluded.length > 0) return fromIncluded;
+    // fallback: 패키지 자체 hero
+    return (pkg.heroImages?.images ?? []).map((img) => ({
+      url: img.url,
+      caption: img.caption,
+      categoryName: undefined as string | undefined,
+    }));
+  }, [pkg, categories]);
+
+  const [idx, setIdx] = useState(0);
+
+  useEffect(() => {
+    if (slides.length <= 1) return;
+    const id = setInterval(() => {
+      setIdx((i) => (i + 1) % slides.length);
+    }, 3500);
+    return () => clearInterval(id);
+  }, [slides.length]);
+
+  if (slides.length === 0) {
+    return (
+      <div className="aspect-[16/10] bg-ink-100 rounded-card grid place-items-center text-ink-300 text-sm">
+        이미지 준비 중
+      </div>
+    );
+  }
+
+  return (
+    <div className="relative">
+      <div className="aspect-[16/10] bg-ink-100 rounded-card overflow-hidden relative">
+        {slides.map((s, i) => (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            key={i}
+            src={s.url}
+            alt={s.caption ?? s.categoryName ?? ""}
+            className={
+              "absolute inset-0 w-full h-full object-cover transition-opacity duration-700 " +
+              (i === idx ? "opacity-100" : "opacity-0")
+            }
+          />
+        ))}
+        {slides.length > 1 && (
+          <>
+            <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex gap-1.5">
+              {slides.map((_, i) => (
+                <button
+                  key={i}
+                  type="button"
+                  onClick={() => setIdx(i)}
+                  className={
+                    "w-1.5 h-1.5 rounded-full transition-colors " +
+                    (idx === i ? "bg-white" : "bg-white/40 hover:bg-white/70")
+                  }
+                  aria-label={`${i + 1}번 이미지`}
+                />
+              ))}
+            </div>
+            {slides[idx]?.categoryName && (
+              <div className="absolute top-3 left-3 px-2.5 py-1 rounded-pill bg-ink-900/85 text-white text-[11px] font-semibold">
+                {slides[idx].categoryName}
+              </div>
+            )}
+          </>
+        )}
+      </div>
+      {slides[idx]?.caption && (
+        <p className="mt-2 text-[11.5px] text-ink-500">{slides[idx].caption}</p>
+      )}
+    </div>
   );
 }
 
