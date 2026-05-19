@@ -84,6 +84,54 @@ export const DEFAULT_DIAG_V2_QUESTIONS: Record<
   },
 };
 
+/** 영문 버전 — locale === 'en' 일 때 사용. 어드민 override (한글) 은 영문 모드에선 무시. */
+export const DEFAULT_DIAG_V2_QUESTIONS_EN: Record<
+  DiagV2QuestionId,
+  DiagV2Question
+> = {
+  q1: {
+    id: "q1",
+    intro: "What's the primary goal for your K-PRINT participation?",
+    hint: "Channel matching depends on your goal — pick the single most important one.",
+    chips: [
+      { value: "launch", label: "New product / technology launch" },
+      { value: "acquisition", label: "Finding new partners or distributors" },
+      { value: "retention", label: "Strengthening existing relationships" },
+      { value: "awareness", label: "Brand awareness / market share" },
+    ],
+  },
+  q2: {
+    id: "q2",
+    intro: "What's your booth size?",
+    hint: "Separate from budget — booth scale guides which channels match best.",
+    chips: [
+      { value: "small", label: "1–2 booths (small)" },
+      { value: "medium", label: "3–6 booths (medium)" },
+      { value: "large", label: "7+ booths (large)" },
+    ],
+  },
+  q3: {
+    id: "q3",
+    intro: "Maximum sponsorship budget?",
+    chips: [
+      { value: "under_300", label: "Up to ₩3M" },
+      { value: "under_700", label: "Up to ₩7M" },
+      { value: "under_1500", label: "Up to ₩15M" },
+      { value: "over_1500", label: "₩15M+" },
+    ],
+  },
+  q4: {
+    id: "q4",
+    intro: "Where are you in the decision process?",
+    hint: "We tailor the result layout to your stage.",
+    chips: [
+      { value: "early", label: "Just gathering info" },
+      { value: "compare", label: "Comparing options" },
+      { value: "decision", label: "Ready to decide" },
+    ],
+  },
+};
+
 // ─── 기본 추천 매트릭스 — Q1 × Q2 ───────────────────────────
 // 스펙 3.1 기준. selectorId 는 categories.selectorId / packages.selectorId 와 매칭.
 // 어드민 override 가능.
@@ -98,18 +146,18 @@ export const DEFAULT_RECOMMENDATION_MATRIX: RecommendationMatrix = {
     medium: ["seminar_package", "interview_sns", "distribution_stand"],
     large: ["custom_seminar_package", "seminar_package", "guidebook_back"],
   },
-  // Q1 = acquisition (신규 거래선·대리점 발굴 — 해외 바이어 포함)
+  // Q1 = acquisition (신규 거래선·대리점 발굴)
   acquisition: {
-    small: ["category_wall", "distribution_stand", "export_consultation_poster"],
+    small: ["category_wall", "distribution_stand", "instagram_card"],
     medium: [
       "prime_spot_package",
       "floor_map_banner",
-      "export_consultation_poster",
+      "pre_registration_banner",
     ],
     large: [
       "prime_spot_package",
       "floor_map_banner",
-      "export_consultation_poster",
+      "pre_registration_banner",
       "visitor_atoz_package",
     ],
   },
@@ -119,12 +167,12 @@ export const DEFAULT_RECOMMENDATION_MATRIX: RecommendationMatrix = {
     medium: [
       "pre_registration_banner",
       "invitation_insert",
-      "vip_lounge_sponsor",
+      "newsletter_domestic",
     ],
     large: [
       "invitation_insert",
       "visitor_atoz_package",
-      "vip_lounge_sponsor",
+      "newsletter_domestic",
     ],
   },
   // Q1 = awareness (브랜드 인지도·점유율 확대)
@@ -200,11 +248,9 @@ export const SELECTOR_TO_REASON_KEY: Record<string, ReasonCategoryKey> = {
   ceiling_banner: "ceiling",
   // 목걸이
   visitor_lanyard: "lanyard",
-  // 분야별 홍보월 / 배포대 / VIP 라운지 / 수출상담회 — other 폴백
+  // 분야별 홍보월 / 배포대 / 바닥 스티커 — other 폴백
   category_wall: "other",
   distribution_stand: "other",
-  vip_lounge_sponsor: "other",
-  export_consultation_poster: "other",
   floor_sticker: "other",
 };
 

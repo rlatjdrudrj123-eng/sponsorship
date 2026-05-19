@@ -15,6 +15,7 @@ import {
 } from "firebase/firestore";
 import { getDb } from "@/lib/firebase/firestore";
 import {
+  DEFAULT_DIAG_V2_QUESTIONS_EN,
   findUpsellPackage,
   getRecommendations,
   getResultLayout,
@@ -36,6 +37,8 @@ import type {
   Subcategory,
 } from "@/lib/types";
 import { X, ChevronLeft, ArrowRight, FileText } from "lucide-react";
+import { useLocale } from "@/lib/i18n/locale";
+import { t } from "@/lib/i18n/strings";
 
 type Answers = {
   q1?: DiagQ1Value;
@@ -224,6 +227,7 @@ export function SponsorshipDiagnosisChat({
     onClose();
   };
 
+  const locale = useLocale((s) => s.locale);
   if (!open) return null;
 
   return (
@@ -233,17 +237,17 @@ export function SponsorshipDiagnosisChat({
         <header className="px-5 md:px-7 py-4 border-b border-ink-100 flex items-center justify-between shrink-0">
           <div>
             <div className="font-num text-[10.5px] uppercase tracking-[0.25em] text-brand-500 font-bold">
-              Sponsorship Advisor
+              {t("diag.advisor", locale)}
             </div>
             <h2 className="text-[15px] font-bold text-ink-900 mt-0.5">
-              {eventName} — 맞춤 진단
+              {eventName} — {t("diag.subtitle", locale)}
             </h2>
           </div>
           <button
             type="button"
             onClick={onCloseWithLog}
             className="w-9 h-9 grid place-items-center rounded-full hover:bg-ink-50 text-ink-500"
-            aria-label="닫기"
+            aria-label={t("diag.close", locale)}
           >
             <X className="w-4 h-4" />
           </button>
@@ -252,7 +256,7 @@ export function SponsorshipDiagnosisChat({
         {/* 본문 */}
         <div className="flex-1 min-h-0 overflow-y-auto px-5 md:px-7 py-6">
           {step === "intro" && (
-            <IntroScreen onStart={() => setStep("q1")} />
+            <IntroScreen onStart={() => setStep("q1")} locale={locale} />
           )}
 
           {(step === "q1" ||
@@ -263,6 +267,7 @@ export function SponsorshipDiagnosisChat({
               step={step}
               answers={answers}
               config={diagnosisV2Config}
+              locale={locale}
               onAnswer={(value) => {
                 const nextAnswers = { ...answers, [step]: value };
                 setAnswers(nextAnswers);
@@ -276,6 +281,7 @@ export function SponsorshipDiagnosisChat({
             <Q5Screen
               recommendations={recommendations}
               currentValue={answers.q5}
+              locale={locale}
               onAnswer={(value) => {
                 const nextAnswers = { ...answers, q5: value };
                 setAnswers(nextAnswers);
@@ -292,6 +298,7 @@ export function SponsorshipDiagnosisChat({
               recommendations={recommendations}
               packages={packages}
               answers={answers}
+              locale={locale}
               onRestart={() => {
                 setAnswers({});
                 setStep("intro");
@@ -308,24 +315,29 @@ export function SponsorshipDiagnosisChat({
 
 // ─── Intro ────────────────────────────────────────────────
 
-function IntroScreen({ onStart }: { onStart: () => void }) {
+function IntroScreen({
+  onStart,
+  locale,
+}: {
+  onStart: () => void;
+  locale: "ko" | "en";
+}) {
   return (
     <div className="text-center py-6 md:py-10">
       <h3 className="text-[22px] md:text-[28px] font-bold text-ink-900 leading-tight">
         K-PRINT 2026
       </h3>
       <p className="text-[13px] text-ink-500 mt-2 leading-relaxed">
-        KINTEX 제2전시장 7·8홀 · 8월 19일(수) — 22일(토)
+        {locale === "en"
+          ? "KINTEX Hall 7·8 · Aug 19 (Wed) — 22 (Sat)"
+          : "KINTEX 제2전시장 7·8홀 · 8월 19일(수) — 22일(토)"}
       </p>
       <div className="mt-8 max-w-md mx-auto">
         <p className="text-[15px] md:text-[16px] text-ink-900 leading-[1.65]">
-          귀사 참가 목표에 맞는 스폰서십을
-          <br />
-          <strong className="text-brand-500">4가지 질문</strong>으로
-          정리해 드립니다.
+          {t("diag.intro.tagline", locale)}
         </p>
         <p className="text-[12px] text-ink-500 mt-3">
-          소요 시간 약 1분
+          {t("diag.intro.duration", locale)}
         </p>
       </div>
       <button
@@ -333,7 +345,7 @@ function IntroScreen({ onStart }: { onStart: () => void }) {
         onClick={onStart}
         className="mt-10 inline-flex items-center gap-2 px-7 py-3.5 rounded-pill bg-brand-500 hover:bg-brand-700 text-white text-[14px] font-bold transition-colors"
       >
-        추천 받기 시작
+        {t("diag.intro.cta", locale)}
         <ArrowRight className="w-4 h-4" />
       </button>
     </div>
@@ -346,20 +358,23 @@ function QuestionScreen({
   step,
   answers,
   config,
+  locale,
   onAnswer,
   onBack,
 }: {
   step: DiagV2QuestionId;
   answers: Answers;
   config?: DiagnosisV2Config;
+  locale: "ko" | "en";
   onAnswer: (value: string) => void;
   onBack: () => void;
 }) {
   const qid = step;
-  const q = useMemo(
-    () => mergeQuestion(qid, config?.questions?.[qid]),
-    [qid, config]
-  );
+  // 한글: 어드민 override 적용. 영문: 코드 영문 default (override 미적용).
+  const q = useMemo(() => {
+    if (locale === "en") return DEFAULT_DIAG_V2_QUESTIONS_EN[qid];
+    return mergeQuestion(qid, config?.questions?.[qid]);
+  }, [qid, config, locale]);
 
   const currentValue = answers[qid];
   // q1=1 ... q4=4. q5 는 별도 컴포넌트라 여기 안 옴.
@@ -376,7 +391,7 @@ function QuestionScreen({
           className="text-[12.5px] text-ink-500 hover:text-ink-900 flex items-center gap-1"
         >
           <ChevronLeft className="w-3.5 h-3.5" />
-          이전
+          {t("diag.back", locale)}
         </button>
         <div className="font-num text-[11px] text-ink-500 font-bold tracking-wider">
           {stepLabel}
@@ -421,11 +436,13 @@ function QuestionScreen({
 function Q5Screen({
   recommendations,
   currentValue,
+  locale,
   onAnswer,
   onBack,
 }: {
   recommendations: RecommendedEntry[];
   currentValue?: string;
+  locale: "ko" | "en";
   onAnswer: (value: string) => void;
   onBack: () => void;
 }) {
@@ -438,24 +455,24 @@ function Q5Screen({
           className="text-[12.5px] text-ink-500 hover:text-ink-900 flex items-center gap-1"
         >
           <ChevronLeft className="w-3.5 h-3.5" />
-          이전
+          {t("diag.back", locale)}
         </button>
         <div className="font-num text-[11px] text-ink-500 font-bold tracking-wider">
-          마지막 확인
+          {t("diag.q5.lastStep", locale)}
         </div>
       </div>
 
       <h3 className="text-[18px] md:text-[20px] font-bold text-ink-900 leading-snug">
-        현재 가장 고려하고 계신 상품이 있나요?
+        {t("diag.q5.title", locale)}
       </h3>
       <p className="text-[12.5px] text-ink-500 mt-2 leading-relaxed">
-        선택하시면 해당 상품을 우선 안내하고, 보완 매체를 함께 추천드립니다.
+        {t("diag.q5.hint", locale)}
       </p>
 
       <div className="mt-6 space-y-2">
         {recommendations.length === 0 ? (
           <div className="px-4 py-6 bg-ink-50 rounded-btn text-center text-[12.5px] text-ink-500">
-            추천 가능한 상품이 없습니다. 사무국에 직접 문의해 주세요.
+            {t("diag.q5.empty", locale)}
           </div>
         ) : (
           recommendations.map((r) => {
@@ -475,10 +492,12 @@ function Q5Screen({
                 <div className="flex items-center justify-between gap-3">
                   <div className="min-w-0">
                     <div className="text-[14px] font-bold text-ink-900 leading-tight">
-                      {r.nameKo}
+                      {locale === "en" ? r.nameEn : r.nameKo}
                     </div>
                     <div className="text-[11px] text-ink-500 mt-0.5">
-                      {r.kind === "package" ? "패키지" : "단품"}
+                      {r.kind === "package"
+                        ? t("diag.kind.package", locale)
+                        : t("diag.kind.single", locale)}
                     </div>
                   </div>
                   <div className="font-num text-[13px] font-bold text-ink-900 shrink-0">
@@ -502,7 +521,7 @@ function Q5Screen({
           }
         >
           <div className="text-[13.5px] font-bold text-ink-900">
-            특정 상품 없음 — 추천된 전체 목록 보기
+            {t("diag.q5.none", locale)}
           </div>
         </button>
       </div>
@@ -518,6 +537,7 @@ function ResultScreen({
   recommendations,
   packages,
   answers,
+  locale,
   onRestart,
 }: {
   eventId: string;
@@ -525,6 +545,7 @@ function ResultScreen({
   recommendations: RecommendedEntry[];
   packages: Package[];
   answers: Answers;
+  locale: "ko" | "en";
   onRestart: () => void;
 }) {
   const isDecision = answers.q4 === "decision";
@@ -532,12 +553,12 @@ function ResultScreen({
 
   const intro =
     answers.q4 === "early"
-      ? "처음 알아보시는 단계네요. 부담 없이 시작해볼 수 있는 상품 위주로 정리했습니다."
+      ? t("diag.result.intro.early", locale)
       : answers.q4 === "compare"
-        ? "후보를 좁히고 계시네요. 비교해서 결정하세요."
+        ? t("diag.result.intro.compare", locale)
         : focusedId
-          ? "고려하시는 상품을 중심으로 안내드립니다. 보완 매체도 함께 확인해 보세요."
-          : "결정 단계시군요. 바로 진행하실 수 있도록 안내드립니다.";
+          ? t("diag.result.intro.decisionFocused", locale)
+          : t("diag.result.intro.decision", locale);
 
   // Decision + focused 모드 — 메인 1개 + 보완재 2개로 분리
   const decisionFocused: {
@@ -581,14 +602,13 @@ function ResultScreen({
   return (
     <div>
       <h3 className="text-[18px] md:text-[20px] font-bold text-ink-900">
-        추천 결과
+        {t("diag.result.title", locale)}
       </h3>
       <p className="text-[13px] text-ink-500 mt-2 leading-relaxed">{intro}</p>
 
       {recommendations.length === 0 ? (
         <div className="mt-6 px-4 py-6 bg-ink-50 rounded-btn text-center text-[13px] text-ink-500">
-          입력하신 예산 범위에 맞는 추천이 없습니다. 예산을 한 단계 올려보거나
-          사무국에 직접 문의해 주세요.
+          {t("diag.result.empty", locale)}
         </div>
       ) : decisionFocused ? (
         <DecisionFocused
@@ -596,17 +616,20 @@ function ResultScreen({
           main={decisionFocused.main!}
           supplements={decisionFocused.supplements}
           upsell={upsell}
+          locale={locale}
         />
       ) : layout === "comparison" ? (
         <ComparisonTable
           eventId={eventId}
           recommendations={recommendations}
+          locale={locale}
         />
       ) : (
         <Cards
           eventId={eventId}
           recommendations={recommendations}
           ctaStrong={isDecision}
+          locale={locale}
         />
       )}
 
@@ -617,7 +640,7 @@ function ResultScreen({
           onClick={onRestart}
           className="text-[12.5px] text-ink-500 hover:text-ink-900 font-semibold"
         >
-          다시 진단하기
+          {t("diag.result.restart", locale)}
         </button>
         <div className="flex flex-wrap gap-2">
           <Link
@@ -630,7 +653,9 @@ function ResultScreen({
             }
           >
             <FileText className="w-3.5 h-3.5" />
-            {isDecision ? "지금 문의하기" : "사무국 연결"}
+            {isDecision
+              ? t("diag.result.inquireNow", locale)
+              : t("diag.result.connect", locale)}
           </Link>
         </div>
       </div>
@@ -645,12 +670,15 @@ function DecisionFocused({
   main,
   supplements,
   upsell,
+  locale,
 }: {
   eventId: string;
   main: RecommendedEntry;
   supplements: RecommendedEntry[];
   upsell: UpsellSuggestion | null;
+  locale: "ko" | "en";
 }) {
+  void locale; // accepted for future use — upsell texts mostly use t() already
   const detailHref =
     main.kind === "category" && main.category
       ? `/${eventId}/sponsorships/${main.category.slug}`
@@ -801,11 +829,14 @@ function Cards({
   eventId,
   recommendations,
   ctaStrong,
+  locale,
 }: {
   eventId: string;
   recommendations: RecommendedEntry[];
   ctaStrong: boolean;
+  locale: "ko" | "en";
 }) {
+  void locale;
   return (
     <div className="mt-5 space-y-3">
       {recommendations.map((r) => (
@@ -882,10 +913,13 @@ function RecommendationCard({
 function ComparisonTable({
   eventId,
   recommendations,
+  locale,
 }: {
   eventId: string;
   recommendations: RecommendedEntry[];
+  locale: "ko" | "en";
 }) {
+  void locale;
   return (
     <div className="mt-5">
       <div className="overflow-x-auto border border-ink-100 rounded-card">

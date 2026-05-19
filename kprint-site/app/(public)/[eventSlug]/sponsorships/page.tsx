@@ -208,8 +208,9 @@ export default function SponsorshipsPage() {
 
   const [filterChannel, setFilterChannel] = useState<Channel | "all">("all");
   const [budget, setBudget] = useState<number>(0); // 0 = 필터 X
-  // selectedPersona — 옛 PersonaRecommendation 배너용. 현재는 항상 null
-  //   (새 진단 챗봇은 별도 모달이라 페르소나를 외부로 끌어올리지 않음).
+  // 페르소나 — 필터 사이드바에서 직접 선택. 선택 시 그 페르소나 매칭 매체만 노출
+  // + PersonaRecommendation 배너 띄움.
+  const [personas, setPersonas] = useState<Persona[]>([]);
   const [selectedPersona, setSelectedPersona] = useState<Persona | null>(null);
   const [activePurposes, setActivePurposes] = useState<Set<Purpose>>(new Set());
   const [activeMediaTypes, setActiveMediaTypes] = useState<Set<MediaType>>(new Set());
@@ -251,7 +252,7 @@ export default function SponsorshipsPage() {
     (async () => {
       try {
         const db = getDb();
-        const [catSnap, subSnap, slotSnap, pkgSnap, settingsSnap, taxonomySnap] = await Promise.all([
+        const [catSnap, subSnap, slotSnap, pkgSnap, settingsSnap, taxonomySnap, personaSnap] = await Promise.all([
           getDocs(
             query(
               collection(db, "categories"),
@@ -274,6 +275,9 @@ export default function SponsorshipsPage() {
           ),
           getDoc(doc(db, "siteSettings", eventId)),
           getDoc(doc(db, "taxonomy", eventId)),
+          getDocs(
+            query(collection(db, "personas"), where("eventId", "==", eventId))
+          ),
         ]);
         setCategories(
           // type='package'인 카테고리는 통합 후 별도 섹션에 표시되므로 그리드에서 제외
@@ -290,6 +294,9 @@ export default function SponsorshipsPage() {
         );
         if (settingsSnap.exists()) setSettings(settingsSnap.data() as SiteSettings);
         if (taxonomySnap.exists()) setTaxonomy(taxonomySnap.data() as Taxonomy);
+        setPersonas(
+          personaSnap.docs.map((d) => ({ ...(d.data() as Persona), id: d.id }))
+        );
       } catch (e) {
         console.error(e);
       }
@@ -317,14 +324,7 @@ export default function SponsorshipsPage() {
 
   const totalCount = enriched.length;
 
-  // 예산 슬라이더 최대값 (전체 카테고리 minPrice 중 가장 큰 값을 100만 단위로 올림)
-  const budgetMax = useMemo(() => {
-    const max = enriched.reduce((m, c) => Math.max(m, c.minPrice), 0);
-    if (max <= 0) return 100_000_000;
-    return Math.ceil(max / 1_000_000) * 1_000_000;
-  }, [enriched]);
-
-  // 현재 예산 안에 들어오는 카테고리 수 (슬라이더 옆 라이브 카운트)
+  // 현재 예산 안에 들어오는 카테고리 수 (예산 칩 옆 라이브 카운트)
   const inBudgetCount = useMemo(() => {
     if (budget <= 0) return enriched.length;
     return enriched.filter((c) => c.minPrice > 0 && c.minPrice <= budget).length;
@@ -633,8 +633,10 @@ export default function SponsorshipsPage() {
                   setFilterChannel={setFilterChannel}
                   budget={budget}
                   setBudget={setBudget}
-                  budgetMax={budgetMax}
                   inBudgetCount={inBudgetCount}
+                  personas={personas}
+                  selectedPersona={selectedPersona}
+                  setSelectedPersona={setSelectedPersona}
                   activePurposes={activePurposes}
                   setActivePurposes={setActivePurposes}
                   activeMediaTypes={activeMediaTypes}
@@ -728,8 +730,10 @@ export default function SponsorshipsPage() {
                 setFilterChannel={setFilterChannel}
                 budget={budget}
                 setBudget={setBudget}
-                budgetMax={budgetMax}
                 inBudgetCount={inBudgetCount}
+                personas={personas}
+                selectedPersona={selectedPersona}
+                setSelectedPersona={setSelectedPersona}
                 activePurposes={activePurposes}
                 setActivePurposes={setActivePurposes}
                 activeMediaTypes={activeMediaTypes}
@@ -1008,8 +1012,10 @@ function FilterPanel({
   setFilterChannel,
   budget,
   setBudget,
-  budgetMax,
   inBudgetCount,
+  personas,
+  selectedPersona,
+  setSelectedPersona,
   activePurposes,
   setActivePurposes,
   activeMediaTypes,
@@ -1034,8 +1040,10 @@ function FilterPanel({
   setFilterChannel: (c: Channel | "all") => void;
   budget: number;
   setBudget: (n: number) => void;
-  budgetMax: number;
   inBudgetCount: number;
+  personas: Persona[];
+  selectedPersona: Persona | null;
+  setSelectedPersona: (p: Persona | null) => void;
   activePurposes: Set<Purpose>;
   setActivePurposes: (s: Set<Purpose>) => void;
   activeMediaTypes: Set<MediaType>;
@@ -1121,15 +1129,14 @@ function FilterPanel({
         </div>
       </div>
 
-      {/* (1) 예산 — 가장 먼저 묻는 질문 */}
+      {/* (1) 예산 — 칩 4개 (진단 챗봇 Q3 와 동일 구간). 슬라이더 제거 (중복). */}
       <FilterSection title={t("spons.budget", locale)}>
-        {/* 빠른 가격대 칩 — 진단 챗봇 Q3 와 동일한 구간 */}
-        <div className="grid grid-cols-2 gap-1.5 mb-3">
+        <div className="grid grid-cols-2 gap-1.5">
           {[
-            { label: "300만 이하", value: 3_000_000 },
-            { label: "700만 이하", value: 7_000_000 },
-            { label: "1,500만 이하", value: 15_000_000 },
-            { label: "전체", value: 0 },
+            { label: locale === "en" ? "Up to ₩3M" : "300만 이하", value: 3_000_000 },
+            { label: locale === "en" ? "Up to ₩7M" : "700만 이하", value: 7_000_000 },
+            { label: locale === "en" ? "Up to ₩15M" : "1,500만 이하", value: 15_000_000 },
+            { label: locale === "en" ? "All" : "전체", value: 0 },
           ].map((tier) => {
             const active =
               tier.value === 0
@@ -1141,7 +1148,7 @@ function FilterPanel({
                 type="button"
                 onClick={() => setBudget(tier.value)}
                 className={
-                  "px-3 py-1.5 rounded-pill text-[11.5px] font-semibold border transition-colors " +
+                  "px-3 py-2 rounded-btn text-[12px] font-semibold border transition-colors " +
                   (active
                     ? "bg-brand-50 border-brand-500 text-brand-700"
                     : "bg-white border-ink-100 text-ink-700 hover:border-ink-700")
@@ -1152,13 +1159,61 @@ function FilterPanel({
             );
           })}
         </div>
-        <BudgetSlider
-          budget={budget}
-          setBudget={setBudget}
-          budgetMax={budgetMax}
-          inBudgetCount={inBudgetCount}
-        />
+        {budget > 0 && (
+          <div className="mt-2 text-[10.5px] text-ink-500 font-num">
+            {inBudgetCount}{locale === "en" ? " items in budget" : "개 매체 표시"}
+          </div>
+        )}
       </FilterSection>
+
+      {/* (1.5) 페르소나 — 행사별 어드민 설정. 있으면 노출, 없으면 섹션 자체 숨김. */}
+      {personas.length > 0 && (
+        <FilterSection
+          title={locale === "en" ? "Persona" : "페르소나"}
+          hint={
+            locale === "en"
+              ? "Quick path — pre-curated exhibitor profiles"
+              : "어떤 회사세요? — 사전 큐레이션"
+          }
+        >
+          <div className="space-y-1.5">
+            {personas.map((p) => {
+              const active = selectedPersona?.id === p.id;
+              return (
+                <button
+                  key={p.id}
+                  type="button"
+                  onClick={() =>
+                    setSelectedPersona(active ? null : p)
+                  }
+                  className={
+                    "w-full text-left px-3 py-2.5 rounded-btn border transition-colors " +
+                    (active
+                      ? "bg-brand-50 border-brand-500"
+                      : "bg-white border-ink-100 hover:border-ink-700")
+                  }
+                >
+                  <div className="flex items-start gap-2">
+                    <span className="text-[16px] shrink-0 leading-none mt-0.5">
+                      {p.emoji}
+                    </span>
+                    <div className="min-w-0 flex-1">
+                      <div className="text-[12.5px] font-bold text-ink-900 leading-tight">
+                        {p.title}
+                      </div>
+                      {p.description && (
+                        <div className="text-[10.5px] text-ink-500 mt-0.5 leading-snug line-clamp-2">
+                          {p.description}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+        </FilterSection>
+      )}
 
       {/* (2) 광고 목적 — 참가업체 언어 (단일 진실원) */}
       <FilterSection
@@ -1418,79 +1473,6 @@ function CheckboxList<T extends string>({
         </li>
       ))}
     </ul>
-  );
-}
-
-// ============================================================================
-// BudgetSlider — 예산 슬라이더 + 라이브 카운트
-// ============================================================================
-
-function BudgetSlider({
-  budget,
-  setBudget,
-  budgetMax,
-  inBudgetCount,
-}: {
-  budget: number;
-  setBudget: (n: number) => void;
-  budgetMax: number;
-  inBudgetCount: number;
-}) {
-  const active = budget > 0;
-  const display =
-    budget >= 10_000_000
-      ? `${(budget / 10_000_000).toFixed(1).replace(/\.0$/, "")}억`
-      : budget >= 1_000_000
-        ? `${(budget / 10_000).toFixed(0)}만`
-        : "전체";
-
-  return (
-    <div className="space-y-2.5">
-      <div className="flex items-baseline justify-between gap-2">
-        <span className={"font-mono text-[15px] font-bold " + (active ? "text-brand-700" : "text-ink-500")}>
-          {active ? `${display}원 이하` : "예산 미정"}
-        </span>
-        {active && (
-          <button
-            type="button"
-            onClick={() => setBudget(0)}
-            className="text-[10.5px] text-ink-500 hover:text-ink-900"
-          >
-            초기화
-          </button>
-        )}
-      </div>
-      <input
-        type="range"
-        min={0}
-        max={budgetMax}
-        step={500_000}
-        value={budget}
-        onChange={(e) => setBudget(parseInt(e.target.value, 10))}
-        className="w-full accent-brand-500 cursor-pointer"
-        aria-label="예산 슬라이더"
-      />
-      <div className="flex items-center justify-between text-[10.5px] text-ink-500 font-mono">
-        <span>0</span>
-        <span>{(budgetMax / 10_000_000).toFixed(1).replace(/\.0$/, "")}억</span>
-      </div>
-      <div
-        className={
-          "mt-2 px-3 py-2 rounded-btn text-[11.5px] border " +
-          (active
-            ? "bg-brand-50 border-brand-100 text-brand-700 font-semibold"
-            : "bg-ink-50 border-ink-100 text-ink-500")
-        }
-      >
-        {active ? (
-          <>
-            이 예산으로 <strong className="text-[14px]">{inBudgetCount}</strong>개 채널 가능
-          </>
-        ) : (
-          <>슬라이더를 끌면 예산 내 채널만 보입니다</>
-        )}
-      </div>
-    </div>
   );
 }
 
