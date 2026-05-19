@@ -15,12 +15,15 @@ import { ArrowLeft } from "lucide-react";
 import { getDb } from "@/lib/firebase/firestore";
 import type { Package, SiteSettings } from "@/lib/types";
 import { Footer } from "@/components/public/Footer";
+import { useLocale, localized as localizedHelper } from "@/lib/i18n/locale";
+import { t } from "@/lib/i18n/strings";
 
 type Tab = "all" | "signature" | "standard";
 
 export default function PackagesListPage() {
   const params = useParams<{ eventSlug: string }>();
   const eventId = params.eventSlug;
+  const locale = useLocale((s) => s.locale);
   const [packages, setPackages] = useState<Package[]>([]);
   const [settings, setSettings] = useState<SiteSettings | null>(null);
   const [tab, setTab] = useState<Tab>("all");
@@ -67,17 +70,17 @@ export default function PackagesListPage() {
               className="inline-flex items-center gap-1.5 text-[12px] text-ink-500 hover:text-brand-500 mb-4 font-num font-semibold"
             >
               <ArrowLeft className="w-3.5 h-3.5" />
-              홈
+              {t("common.home", locale)}
             </Link>
             <div className="font-num text-[11px] md:text-[12px] uppercase tracking-[0.3em] text-brand-500 font-bold mb-3 flex items-center gap-2">
               <span className="w-6 h-px bg-brand-500" />
               packages
             </div>
             <h1 className="text-[36px] md:text-[64px] font-bold tracking-tight leading-[1.05] text-ink-900">
-              패키지
+              {t("pkg.title", locale)}
             </h1>
             <p className="text-[14px] md:text-[16px] text-ink-500 mt-3 leading-relaxed max-w-xl">
-              오프라인·온라인 채널을 묶은 할인 구성. 협의 후 배정합니다.
+              {t("pkg.subtitle", locale)}
             </p>
           </div>
         </header>
@@ -96,14 +99,24 @@ export default function PackagesListPage() {
                     : "text-ink-500 hover:text-ink-900")
                 }
               >
-                {t === "all" ? "전체" : t === "signature" ? "시그니처" : "스탠다드"}
+                {t === "all"
+                  ? locale === "en"
+                    ? "All"
+                    : "전체"
+                  : t === "signature"
+                    ? locale === "en"
+                      ? "Signature"
+                      : "시그니처"
+                    : locale === "en"
+                      ? "Standard"
+                      : "스탠다드"}
               </button>
             ))}
           </div>
 
           {filtered.length === 0 ? (
             <div className="bg-ink-50 rounded-card py-16 text-center text-sm text-ink-500">
-              패키지가 없습니다.
+              {t("pkg.empty", locale)}
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
@@ -124,12 +137,12 @@ export default function PackagesListPage() {
                         // eslint-disable-next-line @next/next/no-img-element
                         <img
                           src={hero}
-                          alt={pkg.name.ko}
+                          alt={localizedHelper(pkg.name, locale)}
                           className="absolute inset-0 w-full h-full object-cover"
                         />
                       ) : (
                         <div className="w-full h-full grid place-items-center text-ink-300 text-xs">
-                          이미지 없음
+                          {locale === "en" ? "No image" : "이미지 없음"}
                         </div>
                       )}
                       <div className="absolute top-3 left-3 flex gap-1">
@@ -137,7 +150,9 @@ export default function PackagesListPage() {
                           {pkg.code}
                         </span>
                         <span className="text-[9px] uppercase tracking-wider bg-brand-500 text-ink-900 px-1.5 py-0.5 rounded font-bold">
-                          {pkg.tier === "signature" ? "시그니처" : "스탠다드"}
+                          {pkg.tier === "signature"
+                            ? t("pkg.signature", locale)
+                            : t("pkg.standard", locale)}
                         </span>
                       </div>
                       {discount > 0 && (
@@ -148,7 +163,7 @@ export default function PackagesListPage() {
                     </div>
                     <div className="p-5 flex-1 flex flex-col">
                       <div className="font-bold text-[18px] text-ink-900 group-hover:text-brand-700 leading-tight">
-                        {pkg.name.ko}
+                        {localizedHelper(pkg.name, locale)}
                       </div>
                       {pkg.tagline && (
                         <p className="text-[12px] text-ink-500 mt-2 leading-relaxed line-clamp-2">
@@ -157,7 +172,9 @@ export default function PackagesListPage() {
                       )}
                       <div className="mt-auto pt-4 flex items-baseline gap-2">
                         <span className="text-[20px] font-bold text-brand-700">
-                          {pkg.discountPrice.toLocaleString()}원
+                          {locale === "en" ? "₩" : ""}
+                          {pkg.discountPrice.toLocaleString()}
+                          {locale === "en" ? "" : "원"}
                         </span>
                         {pkg.originalPrice > pkg.discountPrice && (
                           <span className="text-[12px] text-ink-300 line-through">

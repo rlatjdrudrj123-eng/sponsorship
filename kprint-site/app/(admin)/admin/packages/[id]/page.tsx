@@ -21,7 +21,13 @@ import {
   X,
 } from "lucide-react";
 import { getDb } from "@/lib/firebase/firestore";
-import type { ImageSlot as ImageSlotType, Package, Slot } from "@/lib/types";
+import type {
+  Category,
+  ImageSlot as ImageSlotType,
+  Package,
+  Slot,
+  Subcategory,
+} from "@/lib/types";
 import { ImageSlot } from "@/components/admin/CategoryEditor/ImageSlot";
 
 type FormValues = {
@@ -30,13 +36,18 @@ type FormValues = {
   code: string;
   tier: Package["tier"];
   tagline: string;
-  originalPrice: number;
+  /** 할인가 수기 입력. 원가는 includedItems 합산으로 자동. */
   discountPrice: number;
   unit: string;
   priceNote: string;
   isPublished: boolean;
   order: number;
-  includedItems: Array<{ label: string; slotCodes: string }>;
+  /** 자동 구성: 카테고리/소분류/수량 선택 → label·가격·composition 자동 */
+  includedItems: Array<{
+    categoryId: string;
+    subcategoryId: string; // 'all' = 카테고리 최저가 소분류 자동
+    count: number;
+  }>;
 };
 
 export default function PackageEditPage() {
@@ -46,6 +57,8 @@ export default function PackageEditPage() {
 
   const [pkg, setPkg] = useState<Package | null>(null);
   const [allSlots, setAllSlots] = useState<Slot[]>([]);
+  const [allCategories, setAllCategories] = useState<Category[]>([]);
+  const [allSubcategories, setAllSubcategories] = useState<Subcategory[]>([]);
   const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
   const [saveError, setSaveError] = useState<string | null>(null);
   const [lastSaved, setLastSaved] = useState<Date | null>(null);
@@ -59,7 +72,6 @@ export default function PackageEditPage() {
       code: "",
       tier: "standard",
       tagline: "",
-      originalPrice: 0,
       discountPrice: 0,
       unit: "패키지",
       priceNote: "",
@@ -81,23 +93,26 @@ export default function PackageEditPage() {
       const data = { ...(s.data() as Package), id: s.id };
       setPkg(data);
       if (!initRef.current) {
-        // slot ID → code 매핑은 allSlots 로딩 후
         form.reset({
           nameKo: data.name.ko ?? "",
           nameEn: data.name.en ?? "",
           code: data.code ?? "",
           tier: data.tier,
           tagline: data.tagline ?? "",
-          originalPrice: data.originalPrice ?? 0,
           discountPrice: data.discountPrice ?? 0,
           unit: data.unit ?? "패키지",
           priceNote: data.priceNote ?? "",
           isPublished: data.isPublished,
           order: data.order ?? 0,
-          includedItems: (data.includedItems ?? []).map((it) => ({
-            label: it.label,
-            slotCodes: "", // resolve later
-          })),
+          // categoryId 가 있는 신규 형태만 가져옴. 옛 데이터(label only)는 비어있게 두고
+          // 어드민이 다시 카테고리 골라서 채움.
+          includedItems: (data.includedItems ?? [])
+            .filter((it) => it.categoryId)
+            .map((it) => ({
+              categoryId: it.categoryId!,
+              subcategoryId: it.subcategoryId ?? "all",
+              count: it.count ?? 1,
+            })),
         });
         initRef.current = true;
       }
@@ -105,34 +120,78 @@ export default function PackageEditPage() {
     return () => u();
   }, [id, form]);
 
-  // load all slots once for code <-> id resolution
+  // load categories / subcategories / slots once
   useEffect(() => {
     (async () => {
       try {
-        const snap = await getDocs(collection(getDb(), "slots"));
-        setAllSlots(snap.docs.map((d) => ({ ...(d.data() as Slot), id: d.id })));
+        const [c, s, sl] = await Promise.all([
+          getDocs(collection(getDb(), "categories")),
+          getDocs(collection(getDb(), "subcategories")),
+          getDocs(collection(getDb(), "slots")),
+        ]);
+        setAllCategories(
+          c.docs.map((d) => ({ ...(d.data() as Category), id: d.id }))
+        );
+        setAllSubcategories(
+          s.docs.map((d) => ({ ...(d.data() as Subcategory), id: d.id }))
+        );
+        setAllSlots(sl.docs.map((d) => ({ ...(d.data() as Slot), id: d.id })));
       } catch {
         // ignore
       }
     })();
   }, []);
 
-  // After slots loaded, fill in slotCodes for includedItems
-  useEffect(() => {
-    if (!pkg || allSlots.length === 0) return;
-    const codeById = new Map(allSlots.map((s) => [s.id, s.code]));
-    const current = form.getValues("includedItems");
-    const next = (pkg.includedItems ?? []).map((it) => ({
-      label: it.label,
-      slotCodes: (it.referencedSlotIds ?? [])
-        .map((rid) => codeById.get(rid) ?? "")
-        .filter(Boolean)
-        .join(", "),
-    }));
-    if (JSON.stringify(next) !== JSON.stringify(current)) {
-      form.setValue("includedItems", next, { shouldDirty: false });
+  // 카테고리/소분류별 최저가 정리 (자동 가격 계산용)
+  const subsByCategory = new Map<string, Subcategory[]>();
+  allSubcategories.forEach((sub) => {
+    const arr = subsByCategory.get(sub.categoryId) ?? [];
+    arr.push(sub);
+    subsByCategory.set(sub.categoryId, arr);
+  });
+
+  // includedItems → 합산 원가 + label / referencedSlotIds / composition 자동 생성
+  function resolveItems(items: FormValues["includedItems"]) {
+    let originalPrice = 0;
+    const resolved: Package["includedItems"] = [];
+    const composition: string[] = [];
+    for (const it of items) {
+      if (!it.categoryId) continue;
+      const cat = allCategories.find((c) => c.id === it.categoryId);
+      if (!cat) continue;
+      const subs = subsByCategory.get(it.categoryId) ?? [];
+      const sub =
+        it.subcategoryId && it.subcategoryId !== "all"
+          ? subs.find((s) => s.id === it.subcategoryId)
+          : [...subs].sort((a, b) => a.priceKRW - b.priceKRW)[0];
+      const count = Math.max(1, Number(it.count) || 1);
+      const unitPrice = sub?.priceKRW ?? 0;
+      originalPrice += unitPrice * count;
+
+      const unitLabel = sub?.unit?.ko ?? "구좌";
+      const subLabel = sub && sub.id !== subs[0]?.id ? ` (${sub.name?.ko})` : "";
+      const label = `${cat.name.ko}${subLabel} ${count}${unitLabel}`;
+
+      // referencedSlotIds — 같은 소분류의 가용 슬롯 앞 N 개
+      const matchedSlots = allSlots
+        .filter((sl) => sl.categoryId === cat.id)
+        .filter((sl) => !sub || sl.subcategoryId === sub.id)
+        .slice(0, count)
+        .map((sl) => sl.id);
+
+      resolved.push({
+        label,
+        referencedSlotIds: matchedSlots,
+        categoryId: it.categoryId,
+        ...(it.subcategoryId && it.subcategoryId !== "all"
+          ? { subcategoryId: it.subcategoryId }
+          : {}),
+        count,
+      });
+      if (cat.selectorId) composition.push(cat.selectorId);
     }
-  }, [pkg, allSlots, form]);
+    return { originalPrice, resolved, composition };
+  }
 
   // auto-save
   useEffect(() => {
@@ -144,28 +203,22 @@ export default function PackageEditPage() {
         const v = form.getValues();
         setSaveStatus("saving");
         try {
-          const codeBySlotCode = new Map(allSlots.map((s) => [s.code, s.id]));
-          const includedItems = v.includedItems.map((it) => ({
-            label: it.label,
-            referencedSlotIds: it.slotCodes
-              .split(",")
-              .map((c) => c.trim())
-              .filter(Boolean)
-              .map((c) => codeBySlotCode.get(c))
-              .filter((x): x is string => !!x),
-          }));
+          const { originalPrice, resolved, composition } = resolveItems(
+            v.includedItems
+          );
           await updateDoc(doc(getDb(), "packages", id), {
             name: { ko: v.nameKo, en: v.nameEn },
             code: v.code,
             tier: v.tier,
             tagline: v.tagline || undefined,
-            originalPrice: Number(v.originalPrice) || 0,
+            originalPrice,
             discountPrice: Number(v.discountPrice) || 0,
             unit: v.unit || undefined,
             priceNote: v.priceNote || undefined,
             isPublished: !!v.isPublished,
             order: Number(v.order) || 0,
-            includedItems,
+            includedItems: resolved,
+            composition,
           });
           setSaveStatus("saved");
           setLastSaved(new Date());
@@ -180,7 +233,8 @@ export default function PackageEditPage() {
       sub.unsubscribe();
       if (timeout) clearTimeout(timeout);
     };
-  }, [form, id, allSlots]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [form, id, allSlots, allCategories, allSubcategories]);
 
   const handleDelete = async () => {
     if (!confirm("이 패키지를 삭제할까요? 되돌릴 수 없습니다.")) return;
@@ -207,7 +261,8 @@ export default function PackageEditPage() {
     return <div className="text-sm text-ink-500 text-center py-16">불러오는 중…</div>;
   }
 
-  const orig = form.watch("originalPrice");
+  const watchedItems = form.watch("includedItems");
+  const { originalPrice: orig } = resolveItems(watchedItems ?? []);
   const disc = form.watch("discountPrice");
   const discountPct = orig > 0 ? Math.round((1 - disc / orig) * 100) : 0;
 
@@ -266,14 +321,104 @@ export default function PackageEditPage() {
           </div>
         </Section>
 
+        <Section title="포함 항목 (단품 선택 → 자동 구성)">
+          <p className="text-[12px] text-ink-500 mb-3 leading-relaxed">
+            카테고리·수량을 고르면 원가·라벨·연결 슬롯·매트릭스 composition 이 자동 계산됩니다.
+          </p>
+          <div className="space-y-2">
+            {fields.fields.length === 0 && (
+              <div className="text-sm text-ink-500 py-4 text-center bg-ink-50 rounded-btn">
+                포함 항목이 없습니다. 추가하세요.
+              </div>
+            )}
+            {fields.fields.map((f, i) => {
+              const watchedItem = watchedItems?.[i];
+              const cat = allCategories.find(
+                (c) => c.id === watchedItem?.categoryId
+              );
+              const subs = cat ? subsByCategory.get(cat.id) ?? [] : [];
+              const sub =
+                watchedItem?.subcategoryId && watchedItem.subcategoryId !== "all"
+                  ? subs.find((s) => s.id === watchedItem.subcategoryId)
+                  : [...subs].sort((a, b) => a.priceKRW - b.priceKRW)[0];
+              const unitPrice = sub?.priceKRW ?? 0;
+              const lineTotal = unitPrice * (Number(watchedItem?.count) || 1);
+              return (
+                <div
+                  key={f.id}
+                  className="grid grid-cols-[1.4fr_1fr_80px_120px_36px] gap-2 items-center p-3 rounded-btn bg-ink-50/60 border border-ink-100"
+                >
+                  <select
+                    {...form.register(`includedItems.${i}.categoryId` as const)}
+                    className={inputCls()}
+                  >
+                    <option value="">카테고리 선택…</option>
+                    {allCategories
+                      .filter((c) => c.type !== "package")
+                      .sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
+                      .map((c) => (
+                        <option key={c.id} value={c.id}>
+                          {c.code} · {c.name.ko}
+                        </option>
+                      ))}
+                  </select>
+                  <select
+                    {...form.register(`includedItems.${i}.subcategoryId` as const)}
+                    className={inputCls()}
+                    disabled={!cat || subs.length <= 1}
+                  >
+                    <option value="all">
+                      {subs.length <= 1
+                        ? "—"
+                        : `최저가 (${[...subs].sort((a, b) => a.priceKRW - b.priceKRW)[0]?.priceKRW.toLocaleString()}원)`}
+                    </option>
+                    {subs.map((s) => (
+                      <option key={s.id} value={s.id}>
+                        {s.name?.ko} · {s.priceKRW.toLocaleString()}원
+                      </option>
+                    ))}
+                  </select>
+                  <input
+                    type="number"
+                    min={1}
+                    {...form.register(`includedItems.${i}.count` as const, {
+                      valueAsNumber: true,
+                    })}
+                    className={inputCls() + " font-mono text-right"}
+                  />
+                  <div className="px-3 py-2 text-[12.5px] bg-white rounded-btn border border-ink-100 text-ink-700 font-mono text-right">
+                    {lineTotal > 0 ? `${lineTotal.toLocaleString()}원` : "—"}
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => fields.remove(i)}
+                    className="w-9 h-9 grid place-items-center text-ink-500 hover:text-red-700 shrink-0"
+                    title="제거"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+              );
+            })}
+            <button
+              type="button"
+              onClick={() =>
+                fields.append({ categoryId: "", subcategoryId: "all", count: 1 })
+              }
+              className="w-full py-2 rounded-btn border-[1.5px] border-dashed border-ink-300 text-[13px] text-ink-500 hover:border-brand-500 hover:text-brand-700 hover:bg-brand-50 flex items-center justify-center gap-1.5"
+            >
+              <Plus className="w-4 h-4" />
+              단품 추가
+            </button>
+          </div>
+        </Section>
+
         <Section title="가격">
           <div className="grid grid-cols-3 gap-3">
-            <Field label="원가 (원)">
-              <input
-                type="number"
-                {...form.register("originalPrice", { valueAsNumber: true })}
-                className={inputCls() + " font-mono text-right"}
-              />
+            <Field label="원가 (자동 계산)">
+              <div className="px-3 py-2 text-sm bg-ink-50 rounded-btn border border-ink-100 text-ink-900 font-mono font-bold text-right">
+                {orig > 0 ? `${orig.toLocaleString()}원` : "—"}
+              </div>
             </Field>
             <Field label="할인가 (원)">
               <input
@@ -291,53 +436,12 @@ export default function PackageEditPage() {
               <input {...form.register("unit")} className={inputCls()} />
             </Field>
             <Field label="가격 메모" full>
-              <input {...form.register("priceNote")} className={inputCls()} placeholder="예) 약 18% 할인. 부가세 별도." />
+              <input
+                {...form.register("priceNote")}
+                className={inputCls()}
+                placeholder="예) 약 18% 할인. 부가세 별도."
+              />
             </Field>
-          </div>
-        </Section>
-
-        <Section title="포함 항목">
-          <div className="space-y-2">
-            {fields.fields.length === 0 && (
-              <div className="text-sm text-ink-500 py-4 text-center bg-ink-50 rounded-btn">
-                포함 항목이 없습니다. 추가하세요.
-              </div>
-            )}
-            {fields.fields.map((f, i) => (
-              <div
-                key={f.id}
-                className="flex items-start gap-2 p-3 rounded-btn bg-ink-50/60 border border-ink-100"
-              >
-                <div className="flex-1 grid grid-cols-2 gap-2 min-w-0">
-                  <input
-                    {...form.register(`includedItems.${i}.label` as const)}
-                    placeholder="포함 항목 이름 (예: 천장 배너 Hall A 5구좌)"
-                    className={inputCls()}
-                  />
-                  <input
-                    {...form.register(`includedItems.${i}.slotCodes` as const)}
-                    placeholder="연결 슬롯 코드 (콤마 구분, 선택)"
-                    className={inputCls() + " font-mono text-[12px]"}
-                  />
-                </div>
-                <button
-                  type="button"
-                  onClick={() => fields.remove(i)}
-                  className="w-9 h-9 grid place-items-center text-ink-500 hover:text-red-700 shrink-0"
-                  title="제거"
-                >
-                  <X className="w-4 h-4" />
-                </button>
-              </div>
-            ))}
-            <button
-              type="button"
-              onClick={() => fields.append({ label: "", slotCodes: "" })}
-              className="w-full py-2 rounded-btn border-[1.5px] border-dashed border-ink-300 text-[13px] text-ink-500 hover:border-brand-500 hover:text-brand-700 hover:bg-brand-50 flex items-center justify-center gap-1.5"
-            >
-              <Plus className="w-4 h-4" />
-              항목 추가
-            </button>
           </div>
         </Section>
 

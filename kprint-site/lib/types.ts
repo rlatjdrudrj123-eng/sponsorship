@@ -230,6 +230,14 @@ export type Package = {
   includedItems: Array<{
     label: string;
     referencedSlotIds?: string[];
+    /**
+     * 자동 구성용 — 카테고리/소분류 단위 선택 시 자동 채워짐.
+     * 어드민에서 카테고리·수량 고르면 label/referencedSlotIds/가격까지 자동 계산.
+     * 채워져있으면 'auto' 모드, 비어있으면 수기 label 모드 (legacy).
+     */
+    categoryId?: string;
+    subcategoryId?: string;
+    count?: number;
   }>;
 
   originalPrice: number;
