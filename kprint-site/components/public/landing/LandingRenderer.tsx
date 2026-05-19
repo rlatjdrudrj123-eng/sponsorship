@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowRight, Download, LayoutGrid, Sparkles } from "lucide-react";
+import { ArrowRight, Download, Tag } from "lucide-react";
 import Link from "next/link";
 import type { LandingBlock, SiteSettings } from "@/lib/types";
 import { BlockSection } from "./blocks";
@@ -12,8 +12,8 @@ import { useLocale } from "@/lib/i18n/locale";
  * 어드민이 [랜딩 빌더]에서 블록(=캔버스 페이지)을 추가하면 그 순서대로 슬라이드.
  * 비어있으면 buildDefaultBlocks 자동 시드.
  *
- * 우상단 영속 버튼: "카탈로그로 보기" — 참가업체가 슬라이드 건너뛰고 바로
- * 필터·페르소나 화면으로 갈 수 있게.
+ * 우상단 영속 버튼: "스폰서십 상세 보기" — 참가업체가 슬라이드 건너뛰고 바로
+ * 카드 그리드 화면으로 갈 수 있게.
  */
 export function LandingRenderer({
   blocks,
@@ -48,12 +48,12 @@ export function LandingRenderer({
           className="px-5 py-2.5 rounded-pill bg-brand-500 text-white hover:bg-brand-700 text-[12px] md:text-[13px] font-bold transition-colors flex items-center gap-1.5 shadow-glow-sm hover:shadow-glow"
           title={
             locale === "en"
-              ? "Browse the catalog"
-              : "필터·페르소나로 직접 찾기"
+              ? "See sponsorships in detail"
+              : "스폰서십 상세 보기 (필터·가격·구좌)"
           }
         >
-          <LayoutGrid className="w-3.5 h-3.5" />
-          {locale === "en" ? "Catalog" : "카탈로그로 보기"}
+          <Tag className="w-3.5 h-3.5" />
+          {locale === "en" ? "Sponsorships" : "스폰서십 상세 보기"}
           <ArrowRight className="w-3.5 h-3.5" />
         </Link>
       </div>
@@ -88,82 +88,24 @@ function ModeChoice({
 }) {
   return (
     <section className="h-screen snap-start snap-always relative overflow-hidden flex items-center justify-center bg-canvas text-ink-900 px-8 md:px-16">
-      <div className="max-w-5xl w-full">
-        <h2 className="text-[32px] md:text-[56px] font-bold text-center tracking-tight leading-[1.05] text-ink-900 mb-10 md:mb-14">
+      <div className="max-w-3xl w-full text-center">
+        <h2 className="text-[32px] md:text-[56px] font-bold tracking-tight leading-[1.05] text-ink-900 mb-6 md:mb-8">
           {locale === "en"
-            ? "Browse sponsorships"
-            : "스폰서십 살펴보기"}
+            ? "Ready to dive deeper?"
+            : "스폰서십, 자세히 알아볼까요?"}
         </h2>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-5">
-          {/* 카탈로그 */}
-          <Link
-            href={`/${eventId}/sponsorships`}
-            className="group bg-surface border-2 border-ink-100 hover:border-brand-500 hover:shadow-card rounded-card p-7 md:p-9 transition-all flex flex-col"
-          >
-            <div className="text-[26px] md:text-[32px] font-bold text-ink-900 tracking-tight leading-tight">
-              {locale === "en" ? "Catalog" : "카탈로그"}
-            </div>
-            <p className="text-[13px] md:text-[14px] text-ink-500 mt-3 leading-relaxed flex-1">
-              {locale === "en" ? (
-                <>
-                  Get suggestions by{" "}
-                  <strong className="text-ink-900">
-                    context · budget · goal
-                  </strong>{" "}
-                  and compare candidates as cards. Start here if you&apos;re new.
-                </>
-              ) : (
-                <>
-                  <strong className="text-ink-900">
-                    참가 상황·예산·목적
-                  </strong>
-                  으로 추천을 받고, 필터로 좁혀 카드 단위로 비교. 처음이라면
-                  여기서 시작하세요.
-                </>
-              )}
-            </p>
-            <div className="mt-5 flex items-center gap-1 text-[12.5px] font-num font-bold text-brand-500">
-              <LayoutGrid className="w-3.5 h-3.5" />
-              {locale === "en" ? "Card grid" : "카드 그리드"}
-              <span className="text-ink-300 mx-1.5">·</span>
-              <Sparkles className="w-3 h-3" />
-              {locale === "en" ? "Smart match" : "맞춤 추천"}
-              <span className="text-ink-300 mx-1.5">·</span>
-              {locale === "en" ? "Compare" : "비교"}
-            </div>
-            <div className="mt-5 inline-flex items-center gap-2 text-[13.5px] font-bold text-ink-900 group-hover:text-brand-500 transition-colors">
-              {locale === "en" ? "Open catalog" : "카탈로그 열기"}
-              <ArrowRight className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" />
-            </div>
-          </Link>
-
-          {/* 슬라이드 (자세히) */}
-          <Link
-            href={`/${eventId}/sponsorships?view=slide`}
-            className="group bg-surface border-2 border-ink-100 hover:border-ink-900 hover:shadow-card rounded-card p-7 md:p-9 transition-all flex flex-col"
-          >
-            <div className="text-[26px] md:text-[32px] font-bold text-ink-900 tracking-tight leading-tight">
-              {locale === "en" ? "Slides" : "슬라이드"}
-            </div>
-            <p className="text-[13px] md:text-[14px] text-ink-500 mt-3 leading-relaxed flex-1">
-              {locale === "en"
-                ? "One medium per fullscreen — image, size, price, slot selector. Print-friendly as is."
-                : "한 매체씩 풀스크린으로. 이미지 · 사이즈 · 가격 · 구좌 선택까지 한 화면에. PDF 출력에 그대로 사용 가능합니다."}
-            </p>
-            <div className="mt-5 flex items-center gap-1 text-[12.5px] font-num font-bold text-ink-700">
-              {locale === "en" ? "One at a time" : "한 장씩 보기"}
-              <span className="text-ink-300 mx-1.5">·</span>
-              16:9
-              <span className="text-ink-300 mx-1.5">·</span>
-              {locale === "en" ? "Print-friendly" : "PDF 친화"}
-            </div>
-            <div className="mt-5 inline-flex items-center gap-2 text-[13.5px] font-bold text-ink-900 group-hover:text-brand-500 transition-colors">
-              {locale === "en" ? "Open slides" : "슬라이드 보기"}
-              <ArrowRight className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" />
-            </div>
-          </Link>
-        </div>
+        <p className="text-[14px] md:text-[16px] text-ink-500 leading-relaxed mb-10 md:mb-14">
+          {locale === "en"
+            ? "Browse the full lineup with images, sizes, prices, and slot availability — pick the ones that fit your goals."
+            : "이미지·사이즈·가격·구좌 잔여까지 한눈에. 참가 목적에 맞는 항목을 골라보세요."}
+        </p>
+        <Link
+          href={`/${eventId}/sponsorships`}
+          className="inline-flex items-center gap-2.5 px-7 md:px-9 py-4 md:py-5 rounded-pill bg-ink-900 text-white hover:bg-brand-500 hover:text-ink-900 text-[15px] md:text-[16px] font-bold transition-colors shadow-glow-sm hover:shadow-glow"
+        >
+          {locale === "en" ? "Explore sponsorships" : "자세히 알아보기"}
+          <ArrowRight className="w-4 h-4" />
+        </Link>
       </div>
     </section>
   );

@@ -398,11 +398,10 @@ export default function SponsorshipsPage() {
               <LocaleSwitch />
             </div>
 
-            {/* 메인 — 스폰서십 진단 진입 (페이지의 최상단 배너).
-                 좌측: 비즈니스 카피 / 우측: 인라인 채팅 형태로 첫 질문 노출 */}
-            <section className="bg-canvas border-b border-ink-100">
-              <div className="max-w-7xl mx-auto px-6 md:px-16 py-14 md:py-24">
-                <div className="grid lg:grid-cols-[1fr_1.35fr] gap-12 lg:gap-20 items-start">
+            {/* 진단 챗봇은 우하단 floating 버튼(DiagnosisFab) 으로 이동. 메인 영역 침범 안 함. */}
+            <section className="hidden">
+              <div>
+                <div>
                   {/* 좌측 — 안내 카피 (비즈니스 포멀) */}
                   <div>
                     <div className="font-num text-[11px] uppercase tracking-[0.3em] text-brand-500 font-bold flex items-center gap-2 mb-5">
@@ -745,7 +744,27 @@ export default function SponsorshipsPage() {
         </div>
       )}
 
-      {/* 진단 챗봇 v2 — 4문항 룩업 매트릭스 기반 */}
+      {/* 우하단 floating 진단 챗봇 버튼 — 모달이 열려있을 때는 숨김 */}
+      {!aiChatOpen && (
+        <button
+          type="button"
+          onClick={() => setAiChatOpen(true)}
+          className="fixed bottom-5 right-5 md:bottom-7 md:right-7 z-40 group flex items-center gap-2.5 pl-3 pr-4 py-3 rounded-pill bg-ink-900 text-white shadow-glow hover:bg-brand-500 hover:text-ink-900 transition-colors"
+          title={locale === "en" ? "1-min sponsorship advisor" : "1분 맞춤 진단"}
+        >
+          <span
+            className="w-7 h-7 rounded-full bg-white/15 grid place-items-center text-[10.5px] font-bold tracking-wider"
+            aria-hidden
+          >
+            SA
+          </span>
+          <span className="text-[12.5px] font-bold whitespace-nowrap">
+            {locale === "en" ? "1-min advisor" : "1분 맞춤 진단"}
+          </span>
+        </button>
+      )}
+
+      {/* 진단 챗봇 v2 — 4문항 룩업 매트릭스 기반. 우하단 FAB 클릭으로 진입. */}
       <SponsorshipDiagnosisChat
         open={aiChatOpen}
         onClose={() => {

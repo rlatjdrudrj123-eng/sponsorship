@@ -1222,10 +1222,14 @@ function CanvasPageSection({
 }) {
   return (
     <section className="snap-start snap-always relative overflow-hidden h-screen">
+      {/* 모바일에서도 데스크톱 레이아웃을 fit-contain 으로 — stack 모드 대신 캔버스 통째로
+          작게 중앙 정렬. 글자가 작아도 한 화면 안에 디자인이 그대로 보이도록. */}
       <CanvasRenderer
         page={block.data.page}
         eventId={eventId}
         settings={settings}
+        forceDesktop
+        fitOnly
       />
     </section>
   );

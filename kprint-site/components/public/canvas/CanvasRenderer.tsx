@@ -43,12 +43,19 @@ export function CanvasRenderer({
   eventId,
   settings,
   forceDesktop = false,
+  fitOnly = false,
 }: {
   page: CanvasPage;
   eventId?: string;
   settings?: SiteSettings | null;
   /** PDF 모드 등 강제로 데스크톱 레이아웃을 쓰고 싶을 때 */
   forceDesktop?: boolean;
+  /**
+   * 좁은 화면에서도 MIN_SCALE 클램프를 무시하고 무조건 contain.
+   * 모바일에서 가로 스크롤 대신 캔버스를 통째로 줄여서 중앙에 보여줌
+   * (글자가 작아지더라도 한 화면에 다 들어가게).
+   */
+  fitOnly?: boolean;
 }) {
   const isMobile = useIsMobile(MOBILE_BP);
   const bg = resolveBg(page.bg) ?? "var(--color-canvas, #F6F6F6)";
@@ -70,6 +77,7 @@ export function CanvasRenderer({
       bg={bg}
       eventId={eventId}
       settings={settings ?? null}
+      fitOnly={fitOnly}
     />
   );
 }
@@ -79,18 +87,25 @@ function CanvasDesktop({
   bg,
   eventId,
   settings,
+  fitOnly = false,
 }: {
   page: CanvasPage;
   bg: string;
   eventId?: string;
   settings: SiteSettings | null;
+  fitOnly?: boolean;
 }) {
   // 캔버스 컨테이너:
   // - 일반 화면: 부모 폭에 맞춰 transform: scale 으로 contain
   // - 좁은 화면(모바일): 최소 스케일까지만 축소하고, 그 이하면 가로 스크롤
+  //   (fitOnly=true 면 MIN_SCALE 무시 + 가로 스크롤 차단)
   return (
     <div
-      className="canvas-page-wrap relative w-full h-full overflow-x-auto overflow-y-hidden flex items-center justify-center"
+      className={
+        "canvas-page-wrap relative w-full h-full overflow-y-hidden flex items-center justify-center " +
+        (fitOnly ? "overflow-x-hidden" : "overflow-x-auto")
+      }
+      data-fit-only={fitOnly ? "1" : "0"}
       style={{ background: bg }}
     >
       <div
@@ -151,7 +166,10 @@ function CanvasScale() {
           const ph = wrap.clientHeight;
           if (pw === 0 || ph === 0) return;
           const naturalScale = Math.min(pw / CANVAS_W, ph / CANVAS_H);
-          const scale = Math.max(naturalScale, MIN_SCALE);
+          // fitOnly=1 이면 MIN_SCALE 클램프 무시 — 모바일 viewport 에서도 캔버스를
+          // 통째로 contain (가로 스크롤 없이 중앙에 작게).
+          const minScale = wrap.dataset.fitOnly === "1" ? 0 : MIN_SCALE;
+          const scale = Math.max(naturalScale, minScale);
           const dispW = CANVAS_W * scale;
           const dispH = CANVAS_H * scale;
           wrap.style.setProperty("--canvas-scale", String(scale));
