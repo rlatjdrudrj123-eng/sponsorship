@@ -64,7 +64,6 @@ type FormValues = {
   type: Category["type"];
   slug: string;
   shortDesc: string;
-  longDesc: string;
   size: string;
   fileFormat: string;
   deadline: string;
@@ -162,7 +161,6 @@ export default function CategoryEditPage() {
       type: "floor_plan",
       slug: "",
       shortDesc: "",
-      longDesc: "",
       size: "",
       fileFormat: "",
       deadline: "",
@@ -187,7 +185,6 @@ export default function CategoryEditPage() {
           type: data.type,
           slug: data.slug ?? "",
           shortDesc: data.shortDesc ?? "",
-          longDesc: data.longDesc ?? "",
           size: data.size ?? "",
           fileFormat: data.fileFormat ?? "",
           deadline: data.deadline ? data.deadline.toDate().toISOString().slice(0, 10) : "",
@@ -260,7 +257,6 @@ export default function CategoryEditPage() {
             type: v.type,
             slug: v.slug,
             shortDesc: v.shortDesc || undefined,
-            longDesc: v.longDesc || undefined,
             size: v.size || undefined,
             fileFormat: v.fileFormat || undefined,
             deadline: v.deadline ? Timestamp.fromDate(new Date(v.deadline)) : undefined,
@@ -492,17 +488,6 @@ export default function CategoryEditPage() {
                   {...form.register("shortDesc")}
                   className={inputCls(false)}
                   placeholder="예: Hall A 등록데스크 — 모든 참관객이 거치는 첫 접점."
-                />
-              </Field>
-              <Field
-                label="본문 (선택)"
-                full
-                hint="현재 슬라이드/카드에는 사용 안 함 — 추후 자세히 페이지용 예비 필드."
-              >
-                <textarea
-                  {...form.register("longDesc")}
-                  className={inputCls(false) + " min-h-[80px] resize-y"}
-                  placeholder="카테고리 페이지 본문 (마크다운 미지원)"
                 />
               </Field>
             </div>
