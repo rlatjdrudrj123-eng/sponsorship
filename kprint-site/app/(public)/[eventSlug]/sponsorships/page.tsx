@@ -673,14 +673,14 @@ export default function SponsorshipsPage() {
 
                 {filtered.length === 0 ? (
                   <div className="bg-ink-50 rounded-card py-16 text-center text-sm text-ink-500">
-                    조건에 맞는 항목이 없어요.
+                    {t("spons.filterEmpty", locale)}
                     {hasActiveFilter && (
                       <button
                         type="button"
                         onClick={resetFilters}
                         className="block mx-auto mt-3 text-brand-700 font-semibold hover:underline"
                       >
-                        필터 초기화 →
+                        {t("spons.resetFilters", locale)}
                       </button>
                     )}
                   </div>
@@ -713,7 +713,9 @@ export default function SponsorshipsPage() {
           {/* 드로어 */}
           <aside className="w-full max-w-[420px] bg-white flex flex-col shadow-2xl border-l border-ink-100">
             <header className="px-5 py-4 border-b border-ink-100 flex items-center justify-between shrink-0">
-              <h2 className="font-bold text-[15px]">필터</h2>
+              <h2 className="font-bold text-[15px]">
+                {t("spons.filter", locale)}
+              </h2>
               <button
                 type="button"
                 onClick={() => setSheetOpen(false)}
@@ -779,7 +781,9 @@ export default function SponsorshipsPage() {
       {compareIds.size > 0 && (
         <div className="fixed bottom-5 left-1/2 -translate-x-1/2 z-40 bg-ink-900 text-white rounded-pill px-2 pl-5 py-2 shadow-2xl flex items-center gap-3 text-[13px] max-w-[90vw]">
           <span className="font-num font-bold">
-            {compareIds.size}개 선택됨
+            {locale === "en"
+              ? `${compareIds.size} selected`
+              : `${compareIds.size}개 선택됨`}
           </span>
           <span className="text-white/40">·</span>
           <button
@@ -787,7 +791,7 @@ export default function SponsorshipsPage() {
             onClick={clearCompare}
             className="text-[12px] text-white/70 hover:text-white"
           >
-            지우기
+            {locale === "en" ? "Clear" : "지우기"}
           </button>
           <Link
             href={`/${eventId}/compare?ids=${encodeURIComponent(
@@ -800,7 +804,7 @@ export default function SponsorshipsPage() {
             )}`}
             className="ml-1 px-4 py-2 rounded-pill bg-brand-500 text-white font-bold hover:bg-brand-700 transition-colors"
           >
-            나란히 비교 →
+            {locale === "en" ? "Compare →" : "나란히 비교 →"}
           </Link>
         </div>
       )}
@@ -1166,26 +1170,25 @@ function FilterPanel({
         )}
       </FilterSection>
 
-      {/* (1.5) 페르소나 — 행사별 어드민 설정. 있으면 노출, 없으면 섹션 자체 숨김. */}
-      {personas.length > 0 && (
-        <FilterSection
-          title={locale === "en" ? "Persona" : "페르소나"}
-          hint={
-            locale === "en"
-              ? "Quick path — pre-curated exhibitor profiles"
-              : "어떤 회사세요? — 사전 큐레이션"
-          }
-        >
-          <div className="space-y-1.5">
+      {/* (2) 참가 상황 — 페르소나(있으면) + 광고 목적 한 섹션으로 통합 */}
+      <FilterSection
+        title={locale === "en" ? "Your situation" : "참가 상황"}
+        hint={
+          locale === "en"
+            ? "Pre-curated profile or pick your goal"
+            : "회사 상황이나 광고 목적 선택"
+        }
+      >
+        {/* 페르소나 (있으면) */}
+        {personas.length > 0 && (
+          <div className="space-y-1.5 mb-3">
             {personas.map((p) => {
               const active = selectedPersona?.id === p.id;
               return (
                 <button
                   key={p.id}
                   type="button"
-                  onClick={() =>
-                    setSelectedPersona(active ? null : p)
-                  }
+                  onClick={() => setSelectedPersona(active ? null : p)}
                   className={
                     "w-full text-left px-3 py-2.5 rounded-btn border transition-colors " +
                     (active
@@ -1212,19 +1215,15 @@ function FilterPanel({
               );
             })}
           </div>
-        </FilterSection>
-      )}
+        )}
 
-      {/* (2) 광고 목적 — 참가업체 언어 (단일 진실원) */}
-      <FilterSection
-        title={locale === "en" ? "Purpose" : "광고 목적"}
-        hint={
-          locale === "en"
-            ? "Why are you buying?"
-            : "왜 사시는지 — 참가업체 시점"
-        }
-      >
+        {/* 광고 목적 */}
         <div className="space-y-1.5">
+          {personas.length > 0 && (
+            <div className="text-[10.5px] uppercase tracking-wider text-ink-500 font-bold mb-1">
+              {locale === "en" ? "Or by goal" : "또는 목적별"}
+            </div>
+          )}
           {PURPOSE_ORDER.map((p) => {
             const meta = PURPOSE_META[p];
             const active = activePurposes.has(p);
@@ -1782,7 +1781,15 @@ function CardGrid({
                     ? "bg-brand-500 text-white"
                     : "bg-white/90 text-ink-500 hover:bg-white hover:text-brand-500")
                 }
-                title={inCompare ? "비교에서 빼기" : "비교에 추가"}
+                title={
+                  inCompare
+                    ? locale === "en"
+                      ? "Remove from compare"
+                      : "비교에서 빼기"
+                    : locale === "en"
+                      ? "Add to compare"
+                      : "비교에 추가"
+                }
               >
                 {inCompare ? (
                   <svg viewBox="0 0 24 24" className="w-4 h-4 stroke-current fill-none stroke-[3]" strokeLinecap="round" strokeLinejoin="round">
@@ -1796,7 +1803,9 @@ function CardGrid({
               {c.slotTotal > 0 && c.slotAvailable > 0 && c.slotAvailable <= 3 && (
                 <div className="absolute bottom-3 left-3 right-3 flex items-center justify-between">
                   <span className="px-2 py-1 rounded-pill bg-ink-900 text-white text-[10.5px] font-num font-bold shadow-card">
-                    잔여 {c.slotAvailable}자리
+                    {locale === "en"
+                      ? `${c.slotAvailable} left`
+                      : `잔여 ${c.slotAvailable}자리`}
                   </span>
                 </div>
               )}
@@ -2200,25 +2209,43 @@ function SlideSection({
                   break;
                 case "detail":
                   if (detailLabel)
-                    rows.push({ label: "세부", value: detailLabel });
+                    rows.push({
+                      label: locale === "en" ? "Detail" : "세부",
+                      value: detailLabel,
+                    });
                   break;
                 case "slots":
                   if (item.slotTotal > 0)
                     rows.push({
-                      label: "구좌",
-                      value: `${item.slotAvailable}/${item.slotTotal} 가능`,
+                      label: locale === "en" ? "Slots" : "구좌",
+                      value:
+                        locale === "en"
+                          ? `${item.slotAvailable}/${item.slotTotal} avail.`
+                          : `${item.slotAvailable}/${item.slotTotal} 가능`,
                     });
                   break;
                 case "video":
                   if (item.videoSpec) {
                     const v = item.videoSpec;
                     const parts: string[] = [];
-                    if (v.duration) parts.push(`${v.duration}초`);
+                    if (v.duration)
+                      parts.push(
+                        locale === "en"
+                          ? `${v.duration}s`
+                          : `${v.duration}초`
+                      );
                     if (v.resolution) parts.push(v.resolution);
                     if (v.plays)
-                      parts.push(`${v.plays.toLocaleString()}회`);
+                      parts.push(
+                        locale === "en"
+                          ? `${v.plays.toLocaleString()} plays`
+                          : `${v.plays.toLocaleString()}회`
+                      );
                     if (parts.length)
-                      rows.push({ label: "영상", value: parts.join(" · ") });
+                      rows.push({
+                        label: locale === "en" ? "Video" : "영상",
+                        value: parts.join(" · "),
+                      });
                   }
                   break;
                 case "mailing":
@@ -2226,11 +2253,18 @@ function SlideSection({
                     const m = item.mailingSpec;
                     const parts: string[] = [];
                     if (m.audience)
-                      parts.push(`${m.audience.toLocaleString()}명`);
+                      parts.push(
+                        locale === "en"
+                          ? `${m.audience.toLocaleString()} recipients`
+                          : `${m.audience.toLocaleString()}명`
+                      );
                     if (m.sendDates?.length)
                       parts.push(m.sendDates.join(", "));
                     if (parts.length)
-                      rows.push({ label: "발송", value: parts.join(" · ") });
+                      rows.push({
+                        label: locale === "en" ? "Send" : "발송",
+                        value: parts.join(" · "),
+                      });
                   }
                   break;
                 case "content":
@@ -2239,7 +2273,11 @@ function SlideSection({
                     const val = [c.channel, c.format]
                       .filter(Boolean)
                       .join(" · ");
-                    if (val) rows.push({ label: "콘텐츠", value: val });
+                    if (val)
+                      rows.push({
+                        label: locale === "en" ? "Content" : "콘텐츠",
+                        value: val,
+                      });
                   }
                   break;
               }
@@ -2274,7 +2312,7 @@ function SlideSection({
               {item.minPrice > 0 ? (
                 <div>
                   <div className="text-[10px] text-ink-500 font-semibold">
-                    1구좌당
+                    {locale === "en" ? "Per slot" : "1구좌당"}
                   </div>
                   <div className="font-num text-[22px] font-bold text-ink-900 leading-none">
                     {item.minPrice.toLocaleString()}
@@ -2306,7 +2344,7 @@ function SlideSection({
               onClick={() => setPickerOpen(true)}
               className="h-10 rounded-btn bg-ink-900 text-white font-bold text-[12.5px]"
             >
-              구좌 선택
+              {locale === "en" ? "Select slot" : "구좌 선택"}
             </button>
             {hasFloorImages ? (
               <button
@@ -2314,7 +2352,7 @@ function SlideSection({
                 onClick={() => setFloorOpen(true)}
                 className="h-10 rounded-btn border-2 border-ink-900 text-ink-900 font-bold text-[12.5px]"
               >
-                위치 보기
+                {locale === "en" ? "View location" : "위치 보기"}
               </button>
             ) : !inModal ? (
               <button
@@ -2322,7 +2360,7 @@ function SlideSection({
                 onClick={() => onOpenDetail(item.slug)}
                 className="h-10 rounded-btn border-2 border-ink-900 text-ink-900 font-bold text-[12.5px]"
               >
-                자세히 보기
+                {locale === "en" ? "Details" : "자세히 보기"}
               </button>
             ) : null}
           </div>
@@ -2389,7 +2427,7 @@ function SlideSection({
                         rows.push(
                           <SpecRow
                             key="location"
-                            label="게재 위치"
+                            label={locale === "en" ? "Location" : "게재 위치"}
                             value={locationLabel}
                           />
                         );
@@ -2433,13 +2471,13 @@ function SlideSection({
                         rows.push(
                           <SpecRow
                             key="detail"
-                            label="세부사항"
+                            label={locale === "en" ? "Detail" : "세부사항"}
                             value={
                               <span>
                                 {detailLabel}
                                 {item.slotTotal > 0 && (
                                   <span className="ml-2 text-ink-500 font-medium">
-                                    (잔여{" "}
+                                    ({locale === "en" ? "remaining " : "잔여 "}
                                     <span className="text-brand-500 font-bold">
                                       {item.slotAvailable}
                                     </span>
@@ -2477,14 +2515,23 @@ function SlideSection({
                       const v = item.videoSpec;
                       if (v && (v.duration || v.resolution || v.plays)) {
                         const parts: string[] = [];
-                        if (v.duration) parts.push(`${v.duration}초`);
+                        if (v.duration)
+                          parts.push(
+                            locale === "en"
+                              ? `${v.duration}s`
+                              : `${v.duration}초`
+                          );
                         if (v.resolution) parts.push(v.resolution);
                         if (v.plays)
-                          parts.push(`${v.plays.toLocaleString()}회 송출`);
+                          parts.push(
+                            locale === "en"
+                              ? `${v.plays.toLocaleString()} plays`
+                              : `${v.plays.toLocaleString()}회 송출`
+                          );
                         rows.push(
                           <SpecRow
                             key="video"
-                            label="영상 스펙"
+                            label={locale === "en" ? "Video spec" : "영상 스펙"}
                             value={parts.join(" · ")}
                           />
                         );
@@ -2497,16 +2544,24 @@ function SlideSection({
                         const parts: string[] = [];
                         if (m.audience)
                           parts.push(
-                            `${m.audience.toLocaleString()}명${
-                              m.audienceLabel ? ` (${m.audienceLabel})` : ""
-                            }`
+                            locale === "en"
+                              ? `${m.audience.toLocaleString()} recipients${
+                                  m.audienceLabel ? ` (${m.audienceLabel})` : ""
+                                }`
+                              : `${m.audience.toLocaleString()}명${
+                                  m.audienceLabel ? ` (${m.audienceLabel})` : ""
+                                }`
                           );
                         if (m.sendDates?.length)
-                          parts.push(`발송: ${m.sendDates.join(", ")}`);
+                          parts.push(
+                            locale === "en"
+                              ? `Send: ${m.sendDates.join(", ")}`
+                              : `발송: ${m.sendDates.join(", ")}`
+                          );
                         rows.push(
                           <SpecRow
                             key="mailing"
-                            label="발송 스펙"
+                            label={locale === "en" ? "Send spec" : "발송 스펙"}
                             value={parts.join(" · ")}
                           />
                         );
@@ -2519,7 +2574,7 @@ function SlideSection({
                         rows.push(
                           <SpecRow
                             key="content"
-                            label="콘텐츠 스펙"
+                            label={locale === "en" ? "Content spec" : "콘텐츠 스펙"}
                             value={[c.channel, c.format]
                               .filter(Boolean)
                               .join(" · ")}
@@ -2554,16 +2609,19 @@ function SlideSection({
                     item.lastYear.buyers.length > 0 && (
                       <div>
                         <span className="font-num font-bold text-ink-700">
-                          작년:{" "}
+                          {locale === "en" ? "Last year: " : "작년: "}
                         </span>
                         {item.lastYear.buyers.slice(0, 3).join(", ")}
                         {item.lastYear.buyers.length > 3 &&
-                          ` 외 ${item.lastYear.buyers.length - 3}곳`}
+                          (locale === "en"
+                            ? ` +${item.lastYear.buyers.length - 3}`
+                            : ` 외 ${item.lastYear.buyers.length - 3}곳`)}
                       </div>
                     )}
                   {item.lastYear?.soldOutDate && (
                     <div className="text-amber-700 font-num font-semibold mt-0.5">
-                      작년 매진: {item.lastYear.soldOutDate}
+                      {locale === "en" ? "Sold out: " : "작년 매진: "}
+                      {item.lastYear.soldOutDate}
                     </div>
                   )}
                 </div>
@@ -2580,18 +2638,22 @@ function SlideSection({
                 <div className="mt-5 px-3.5 py-2.5 rounded-btn bg-gradient-to-r from-brand-50 to-canvas border border-brand-100 flex items-center gap-3 text-[12px]">
                   <span className="text-brand-700 font-bold flex items-center gap-1.5 shrink-0">
                     <span aria-hidden>🎁</span>
-                    스폰서십 신청 시
+                    {locale === "en" ? "On sponsorship" : "스폰서십 신청 시"}
                   </span>
                   <span className="text-ink-700 flex-1 truncate">
                     <strong className="text-ink-900">
-                      추가 혜택 {perks.length}개
+                      {locale === "en"
+                        ? `${perks.length} extra perks`
+                        : `추가 혜택 ${perks.length}개`}
                     </strong>
                     {totalValue > 0 && (
                       <span className="ml-1.5 text-ink-500">
-                        · 총 {totalValue.toLocaleString()}원 상당
+                        {locale === "en"
+                          ? ` · ~₩${totalValue.toLocaleString()} value`
+                          : ` · 총 ${totalValue.toLocaleString()}원 상당`}
                       </span>
                     )}{" "}
-                    자동 동봉
+                    {locale === "en" ? "auto-included" : "자동 동봉"}
                   </span>
                 </div>
               );
@@ -2605,7 +2667,7 @@ function SlideSection({
                 onClick={() => setPickerOpen(true)}
                 className="flex-1 h-12 rounded-btn bg-ink-900 text-white hover:bg-ink-700 font-bold text-[13.5px] transition-colors"
               >
-                구좌 선택하기
+                {locale === "en" ? "Select slot" : "구좌 선택하기"}
               </button>
               {hasFloorImages && (
                 <button
@@ -2613,7 +2675,7 @@ function SlideSection({
                   onClick={() => setFloorOpen(true)}
                   className="flex-1 h-12 rounded-btn border-2 border-ink-900 text-ink-900 hover:bg-ink-900 hover:text-white font-bold text-[13.5px] transition-colors"
                 >
-                  위치 보기
+                  {locale === "en" ? "View location" : "위치 보기"}
                 </button>
               )}
               {!inModal && (
@@ -2622,7 +2684,7 @@ function SlideSection({
                   onClick={() => onOpenDetail(item.slug)}
                   className="flex-1 h-12 rounded-btn border-2 border-ink-900 text-ink-900 hover:bg-ink-900 hover:text-white font-bold text-[13.5px] transition-colors"
                 >
-                  자세히 보기
+                  {locale === "en" ? "Details" : "자세히 보기"}
                 </button>
               )}
               {item.designGuideFileUrl && (
@@ -2633,7 +2695,7 @@ function SlideSection({
                   className="flex-1 h-12 rounded-btn border-2 border-ink-900 text-ink-900 hover:bg-ink-900 hover:text-white font-bold text-[13.5px] transition-colors inline-flex items-center justify-center gap-1.5"
                 >
                   <Download className="w-3.5 h-3.5" />
-                  가이드 다운로드
+                  {locale === "en" ? "Design guide" : "가이드 다운로드"}
                 </a>
               )}
             </div>
@@ -2848,11 +2910,11 @@ function FloorMapModal({
           <div className="mt-4 text-[12px] text-ink-500 leading-relaxed text-center">
             <span className="inline-flex items-center gap-1.5 mr-3">
               <span className="w-3 h-3 rounded-full bg-brand-500" />
-              가용
+              {locale === "en" ? "Available" : "가용"}
             </span>
             <span className="inline-flex items-center gap-1.5">
               <span className="w-3 h-3 rounded-full bg-ink-300" />
-              매진/예약
+              {locale === "en" ? "Sold / reserved" : "매진/예약"}
             </span>
           </div>
         </div>
@@ -2874,6 +2936,7 @@ function SlotPickerModal({
   onClose: () => void;
   onOpenDetail: (slug: string) => void;
 }) {
+  const locale = useLocale((s) => s.locale);
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") onClose();
@@ -2901,10 +2964,10 @@ function SlotPickerModal({
           <div className="min-w-0">
             <div className="font-num text-[11px] uppercase tracking-[0.3em] text-brand-500 font-bold flex items-center gap-2">
               <span className="w-4 h-px bg-brand-500" />
-              구좌 선택
+              {locale === "en" ? "Select slot" : "구좌 선택"}
             </div>
             <h3 className="text-[20px] md:text-[24px] font-bold text-ink-900 mt-1 tracking-tight">
-              {item.name.ko}
+              {localized(item.name, locale)}
               <span className="ml-2 text-[14px] text-ink-300 font-num">
                 #{item.code}
               </span>
@@ -2914,7 +2977,7 @@ function SlotPickerModal({
             type="button"
             onClick={onClose}
             className="w-9 h-9 grid place-items-center rounded-btn hover:bg-ink-50 text-ink-500 shrink-0"
-            aria-label="닫기"
+            aria-label={t("common.close", locale)}
           >
             <X className="w-5 h-5" />
           </button>
@@ -2929,14 +2992,16 @@ function SlotPickerModal({
         </div>
         <footer className="px-6 py-4 border-t border-ink-100 flex items-center justify-between gap-3 flex-wrap shrink-0">
           <p className="text-[11.5px] text-ink-500">
-            구좌를 클릭하면 카트에 담기고, 우상단에서 확인할 수 있어요.
+            {locale === "en"
+              ? "Click a slot to add to cart — check the top-right."
+              : "구좌를 클릭하면 카트에 담기고, 우상단에서 확인할 수 있어요."}
           </p>
           <button
             type="button"
             onClick={() => onOpenDetail(item.slug)}
             className="text-[12.5px] font-num font-bold text-brand-500 hover:text-brand-700 flex items-center gap-1"
           >
-            자세히 보기
+            {locale === "en" ? "Details" : "자세히 보기"}
             <ArrowRight className="w-3.5 h-3.5" />
           </button>
         </footer>

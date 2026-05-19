@@ -42,11 +42,11 @@ export function PackageType({ pkg, resolvedSlots, settings }: Props) {
         <div className="border-b border-ink-100 bg-surface">
           <div className="max-w-6xl mx-auto px-6 md:px-12 pt-12 md:pt-16 pb-10">
             <Link
-              href={eventId ? `/${eventId}/packages` : "/"}
+              href={eventId ? `/${eventId}` : "/"}
               className="inline-flex items-center gap-1.5 text-[12px] text-ink-500 hover:text-brand-500 mb-6 font-num font-semibold"
             >
               <ArrowLeft className="w-3.5 h-3.5" />
-              전체 패키지
+              홈으로
             </Link>
             <div className="font-num text-[11px] uppercase tracking-[0.3em] font-bold mb-3 flex items-center gap-3 text-brand-500">
               <span className="w-6 h-px bg-brand-500" />
@@ -102,25 +102,25 @@ export function PackageType({ pkg, resolvedSlots, settings }: Props) {
             {/* 동봉 혜택 — 스폰서십 신청 시 추가로 제공되는 노출 권리 */}
             <BundledPerksCard settings={settings} packageCode={pkg.code} />
 
-            <div className="bg-brand-grad rounded-card p-6 text-white shadow-glow-sm">
+            <div className="bg-surface border border-ink-100 rounded-card p-6 shadow-card">
               <div className="flex items-baseline gap-3 mb-1 flex-wrap">
-                <span className="text-[40px] md:text-[44px] font-bold font-num leading-none">
+                <span className="text-[40px] md:text-[44px] font-bold font-num leading-none text-ink-900">
                   {pkg.discountPrice.toLocaleString()}
                 </span>
-                <span className="text-[18px] font-bold">원</span>
+                <span className="text-[18px] font-bold text-ink-900">원</span>
                 {discount > 0 && (
-                  <span className="ml-auto text-[12px] font-bold text-brand-500 bg-white px-2.5 py-1 rounded-pill font-num">
+                  <span className="ml-auto text-[12px] font-bold text-brand-700 bg-brand-50 border border-brand-100 px-2.5 py-1 rounded-pill font-num">
                     {discount}% OFF
                   </span>
                 )}
               </div>
               {pkg.originalPrice > pkg.discountPrice && (
-                <div className="text-[13px] text-white/70 line-through font-num">
+                <div className="text-[13px] text-ink-500 line-through font-num">
                   {pkg.originalPrice.toLocaleString()}원
                 </div>
               )}
               {pkg.priceNote && (
-                <p className="text-[12px] text-white/90 mt-3 leading-relaxed">
+                <p className="text-[12px] text-ink-500 mt-3 leading-relaxed">
                   {pkg.priceNote}
                 </p>
               )}
@@ -136,7 +136,7 @@ export function PackageType({ pkg, resolvedSlots, settings }: Props) {
                   "mt-5 w-full py-3.5 rounded-pill font-bold flex items-center justify-center gap-2 transition-colors " +
                   (inCart
                     ? "bg-ink-900 text-white hover:bg-ink-700"
-                    : "bg-white text-brand-500 hover:bg-canvas")
+                    : "bg-ink-900 text-white hover:bg-brand-500 hover:text-ink-900")
                 }
               >
                 {inCart ? (
@@ -202,10 +202,10 @@ function BundledPerksCard({
         <div>
           <div className="font-num text-[11px] uppercase tracking-[0.3em] text-brand-500 font-bold flex items-center gap-2">
             <Gift className="w-3.5 h-3.5" />
-            추가 혜택 — 신청 시 자동 동봉
+            2026 리뉴얼 기념 추가 혜택
           </div>
           <p className="text-[12px] text-ink-700 mt-1 leading-relaxed">
-            아래 매체들이 추가 비용 없이 함께 제공됩니다.
+            아래 매체들이 비용 없이 함께 제공됩니다 (일부 항목은 신청 시 택1).
           </p>
         </div>
         {totalValue > 0 && (

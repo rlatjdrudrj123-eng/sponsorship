@@ -1,18 +1,28 @@
 "use client";
 
 import Link from "next/link";
+import { useParams } from "next/navigation";
 import { Bookmark } from "lucide-react";
 import { useCartStore } from "@/lib/cart/cartStore";
+import { useLocale } from "@/lib/i18n/locale";
 
 export function CartFloating() {
-  const items = useCartStore((s) => s.items);
+  const params = useParams<{ eventSlug?: string }>();
+  const eventId = params?.eventSlug ?? "";
+  const allItems = useCartStore((s) => s.items);
   const hydrated = useCartStore((s) => s.hasHydrated);
+  const locale = useLocale((s) => s.locale);
+
+  // 현재 행사의 카트 항목만 카운트 — 다른 행사 항목이 1로 stuck 되던 문제
+  const items = eventId
+    ? allItems.filter((it) => it.eventId === eventId)
+    : allItems;
 
   if (!hydrated || items.length === 0) return null;
 
   return (
     <Link
-      href="/cart"
+      href={eventId ? `/${eventId}/cart` : "/cart"}
       className="fixed bottom-6 right-6 z-40 bg-brand-500 text-ink-900 hover:bg-brand-700 hover:text-white px-4 py-3 rounded-full shadow-2xl flex items-center gap-2.5 font-semibold transition-colors"
     >
       <div className="relative">
@@ -21,7 +31,9 @@ export function CartFloating() {
           {items.length}
         </span>
       </div>
-      <span className="text-[13px]">관심 항목 보기</span>
+      <span className="text-[13px]">
+        {locale === "en" ? "View cart" : "관심 항목 보기"}
+      </span>
     </Link>
   );
 }
