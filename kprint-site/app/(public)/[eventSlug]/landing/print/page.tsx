@@ -64,8 +64,9 @@ export default function LandingPrintPage() {
       {/* 인쇄 안내 (인쇄 시 숨김) */}
       <div className="print:hidden bg-surface border-b border-ink-100 px-6 py-3 flex items-center justify-between sticky top-0 z-20">
         <p className="text-[13px] text-ink-700">
-          랜딩 PDF — {blocks.length}페이지. 자동으로 인쇄 다이얼로그가 열립니다.
-          PDF로 저장하려면 [PDF로 저장]을 선택하세요.
+          {blocks.length === 0
+            ? "어드민에서 랜딩 블록을 만들지 않은 행사입니다 — 기본 표지 1장만 출력합니다."
+            : `랜딩 PDF — ${blocks.length}페이지. 자동으로 인쇄 다이얼로그가 열립니다. PDF로 저장하려면 [PDF로 저장]을 선택하세요.`}
         </p>
         <button
           type="button"
@@ -77,13 +78,17 @@ export default function LandingPrintPage() {
         </button>
       </div>
 
-      {/* 블록 — 각 블록 한 페이지 */}
+      {/* 블록 — 각 블록 한 페이지. 어드민 미설정 시 폴백 표지 1장. */}
       <div className="print:m-0">
-        {blocks.map((b) => (
-          <div key={b.id} className="page-slide">
-            <BlockSection block={b} eventId={eventId} settings={settings} />
-          </div>
-        ))}
+        {blocks.length === 0 ? (
+          <FallbackCover settings={settings} />
+        ) : (
+          blocks.map((b) => (
+            <div key={b.id} className="page-slide">
+              <BlockSection block={b} eventId={eventId} settings={settings} />
+            </div>
+          ))
+        )}
       </div>
 
       <style jsx global>{`
@@ -118,6 +123,35 @@ export default function LandingPrintPage() {
           }
         }
       `}</style>
+    </div>
+  );
+}
+
+// ─── 폴백 표지 — 어드민이 랜딩 블록을 안 만든 행사용 ─────────────
+function FallbackCover({ settings }: { settings: SiteSettings | null }) {
+  const eventName = settings?.event.nameKo ?? "K-PRINT 2026";
+  return (
+    <div className="page-slide bg-canvas">
+      <section className="h-screen relative overflow-hidden flex flex-col justify-center px-12 md:px-20 bg-brand-grad text-white">
+        <div className="font-num text-[14px] uppercase tracking-[0.35em] font-bold mb-6 opacity-90">
+          Sponsorship Deck
+        </div>
+        <h1 className="text-[64px] md:text-[88px] font-bold tracking-tight leading-[0.95]">
+          {eventName}
+        </h1>
+        <div className="mt-10 space-y-2 text-[18px] md:text-[20px] leading-relaxed opacity-95">
+          {settings?.event.dateRange && (
+            <div className="font-num font-semibold">
+              {settings.event.dateRange}
+            </div>
+          )}
+          {settings?.event.venue && <div>{settings.event.venue}</div>}
+        </div>
+        <div className="absolute bottom-10 right-12 md:right-20 text-[12px] opacity-80 leading-relaxed">
+          {settings?.contact.phone && <div>{settings.contact.phone}</div>}
+          {settings?.contact.email && <div>{settings.contact.email}</div>}
+        </div>
+      </section>
     </div>
   );
 }

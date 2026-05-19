@@ -678,23 +678,23 @@ function DecisionFocused({
   upsell: UpsellSuggestion | null;
   locale: "ko" | "en";
 }) {
-  void locale; // accepted for future use — upsell texts mostly use t() already
   const detailHref =
     main.kind === "category" && main.category
       ? `/${eventId}/sponsorships/${main.category.slug}`
       : main.kind === "package" && main.package
         ? `/${eventId}/packages/${main.package.id}`
         : `/${eventId}/sponsorships`;
+  const pkgName = locale === "en" ? upsell?.package.name.en : upsell?.package.name.ko;
 
   return (
     <div className="mt-5 space-y-5">
       {/* 메인 — 큰 강조 카드 */}
       <article className="border-2 border-brand-500 rounded-card p-5 md:p-6 bg-brand-50/40">
         <div className="font-num text-[10.5px] uppercase tracking-[0.25em] text-brand-500 font-bold mb-2">
-          고려 중인 상품
+          {t("diag.focused.label", locale)}
         </div>
         <h4 className="text-[20px] md:text-[24px] font-bold text-ink-900 leading-tight">
-          {main.nameKo}
+          {locale === "en" ? main.nameEn : main.nameKo}
         </h4>
         <p className="text-[12.5px] text-ink-700 leading-relaxed mt-3 pl-3 border-l-2 border-brand-500">
           {main.reason}
@@ -705,7 +705,10 @@ function DecisionFocused({
               {main.priceLabel}
             </div>
             <div className="text-[11px] text-ink-500 mt-1">
-              {main.kind === "package" ? "패키지" : "단품"} · 부가세 별도
+              {main.kind === "package"
+                ? t("diag.kind.package", locale)
+                : t("diag.kind.single", locale)}{" "}
+              · {t("diag.vatExcluded", locale)}
             </div>
           </div>
           <div className="flex gap-2">
@@ -713,13 +716,13 @@ function DecisionFocused({
               href={detailHref}
               className="px-4 py-2.5 rounded-btn border border-ink-900 text-ink-900 text-[12.5px] font-bold hover:bg-ink-50"
             >
-              상세 보기
+              {t("diag.focused.detailBtn", locale)}
             </Link>
             <Link
               href={`/${eventId}/contact`}
               className="px-4 py-2.5 rounded-btn bg-brand-500 hover:bg-brand-700 text-white text-[12.5px] font-bold"
             >
-              지금 문의
+              {t("diag.focused.inquireBtn", locale)}
             </Link>
           </div>
         </div>
@@ -729,7 +732,7 @@ function DecisionFocused({
       {supplements.length > 0 && (
         <div>
           <div className="text-[12px] font-bold text-ink-700 mb-2.5">
-            함께 고려하면 좋은 매체
+            {t("diag.supplements.title", locale)}
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
             {supplements.map((s) => {
@@ -746,7 +749,7 @@ function DecisionFocused({
                   className="block border border-ink-100 rounded-btn p-3 hover:border-ink-700 transition-colors"
                 >
                   <div className="text-[13px] font-bold text-ink-900 leading-tight">
-                    {s.nameKo}
+                    {locale === "en" ? s.nameEn : s.nameKo}
                   </div>
                   <div className="font-num text-[13px] font-bold text-ink-900 mt-2">
                     {s.priceLabel}
@@ -761,7 +764,7 @@ function DecisionFocused({
         </div>
       )}
 
-      {/* 패키지 업셀 — 고려 중 상품들이 어느 패키지에 속하면 절감액 안내 */}
+      {/* 패키지 업셀 */}
       {upsell && (
         <Link
           href={`/${eventId}/packages/${upsell.package.id}`}
@@ -773,49 +776,79 @@ function DecisionFocused({
             </div>
             <div className="flex-1 min-w-0">
               <div className="font-num text-[10.5px] uppercase tracking-[0.25em] text-brand-500 font-bold">
-                패키지 추천
+                {t("diag.upsell.label", locale)}
               </div>
               <div className="text-[14px] md:text-[15px] font-bold text-ink-900 leading-snug mt-1">
-                지금 고려 중인 매체 중{" "}
-                <strong className="text-brand-700">
-                  {upsell.matched.length}개
-                </strong>
-                가{" "}
-                <strong>“{upsell.package.name.ko}”</strong>에 포함돼 있어요.
-                <br />
-                묶으면{" "}
-                <strong className="text-brand-700">
-                  {upsell.savings.toLocaleString()}원
-                </strong>{" "}
-                저렴합니다.
+                {locale === "en" ? (
+                  <>
+                    <strong className="text-brand-700">
+                      {upsell.matched.length}
+                    </strong>{" "}
+                    of your considered items are included in{" "}
+                    <strong>“{pkgName}”</strong>. Bundling saves{" "}
+                    <strong className="text-brand-700">
+                      ₩{upsell.savings.toLocaleString()}
+                    </strong>
+                    .
+                  </>
+                ) : (
+                  <>
+                    지금 고려 중인 매체 중{" "}
+                    <strong className="text-brand-700">
+                      {upsell.matched.length}개
+                    </strong>
+                    가 <strong>“{pkgName}”</strong>에 포함돼 있어요.
+                    <br />
+                    묶으면{" "}
+                    <strong className="text-brand-700">
+                      {upsell.savings.toLocaleString()}원
+                    </strong>{" "}
+                    저렴합니다.
+                  </>
+                )}
               </div>
               <div className="mt-2.5 grid grid-cols-1 sm:grid-cols-3 gap-x-3 gap-y-1 text-[11.5px]">
                 <div>
-                  <span className="text-ink-500">단품 합계 </span>
+                  <span className="text-ink-500">
+                    {t("diag.upsell.individualTotal", locale)}{" "}
+                  </span>
                   <span className="font-num font-bold text-ink-900">
-                    {upsell.individualTotal.toLocaleString()}원
+                    {locale === "en" ? "₩" : ""}
+                    {upsell.individualTotal.toLocaleString()}
+                    {locale === "en" ? "" : "원"}
                   </span>
                 </div>
                 <div>
-                  <span className="text-ink-500">패키지 가격 </span>
+                  <span className="text-ink-500">
+                    {t("diag.upsell.packagePrice", locale)}{" "}
+                  </span>
                   <span className="font-num font-bold text-brand-700">
-                    {upsell.packagePrice.toLocaleString()}원
+                    {locale === "en" ? "₩" : ""}
+                    {upsell.packagePrice.toLocaleString()}
+                    {locale === "en" ? "" : "원"}
                   </span>
                 </div>
                 <div>
-                  <span className="text-ink-500">절감 </span>
+                  <span className="text-ink-500">
+                    {t("diag.upsell.savings", locale)}{" "}
+                  </span>
                   <span className="font-num font-bold text-brand-700">
-                    -{upsell.savings.toLocaleString()}원
+                    -{locale === "en" ? "₩" : ""}
+                    {upsell.savings.toLocaleString()}
+                    {locale === "en" ? "" : "원"}
                   </span>
                 </div>
               </div>
               {upsell.extra.length > 0 && (
                 <div className="mt-2 text-[11px] text-ink-500 leading-snug">
-                  보너스: 패키지에는 추가로 {upsell.extra.length}개 매체가 더 포함돼요.
+                  {locale === "en"
+                    ? `Bonus: the package also includes ${upsell.extra.length} more items.`
+                    : `보너스: 패키지에는 추가로 ${upsell.extra.length}개 매체가 더 포함돼요.`}
                 </div>
               )}
               <div className="mt-3 inline-flex items-center gap-1 text-[12.5px] font-bold text-brand-700">
-                패키지 상세 보기 <ArrowRight className="w-3.5 h-3.5" />
+                {t("diag.upsell.cta", locale)}{" "}
+                <ArrowRight className="w-3.5 h-3.5" />
               </div>
             </div>
           </div>
@@ -836,7 +869,6 @@ function Cards({
   ctaStrong: boolean;
   locale: "ko" | "en";
 }) {
-  void locale;
   return (
     <div className="mt-5 space-y-3">
       {recommendations.map((r) => (
@@ -845,6 +877,7 @@ function Cards({
           eventId={eventId}
           entry={r}
           ctaStrong={ctaStrong}
+          locale={locale}
         />
       ))}
     </div>
@@ -855,10 +888,12 @@ function RecommendationCard({
   eventId,
   entry,
   ctaStrong,
+  locale,
 }: {
   eventId: string;
   entry: RecommendedEntry;
   ctaStrong: boolean;
+  locale: "ko" | "en";
 }) {
   const detailHref =
     entry.kind === "category" && entry.category
@@ -872,7 +907,7 @@ function RecommendationCard({
       <header className="flex items-start justify-between gap-3 mb-2">
         <div className="min-w-0">
           <h4 className="text-[15px] font-bold text-ink-900 leading-tight">
-            {entry.nameKo}
+            {locale === "en" ? entry.nameEn : entry.nameKo}
           </h4>
           <div className="font-num text-[10.5px] uppercase tracking-wider text-ink-500 mt-1">
             {entry.kind === "package" ? "Package" : "Single"}
@@ -892,7 +927,7 @@ function RecommendationCard({
           href={detailHref}
           className="px-3.5 py-1.5 rounded-btn border border-ink-100 hover:bg-ink-50 text-[12px] font-bold text-ink-900"
         >
-          상세 보기
+          {t("diag.cards.detailBtn", locale)}
         </Link>
         <Link
           href={`/${eventId}/contact`}
@@ -903,7 +938,7 @@ function RecommendationCard({
               : "border border-ink-100 hover:bg-ink-50 text-ink-900")
           }
         >
-          문의하기
+          {t("diag.cards.inquireBtn", locale)}
         </Link>
       </div>
     </article>
@@ -919,7 +954,6 @@ function ComparisonTable({
   recommendations: RecommendedEntry[];
   locale: "ko" | "en";
 }) {
-  void locale;
   return (
     <div className="mt-5">
       <div className="overflow-x-auto border border-ink-100 rounded-card">
@@ -927,13 +961,13 @@ function ComparisonTable({
           <thead className="bg-ink-50">
             <tr>
               <th className="text-left px-3 py-2 font-bold text-ink-700">
-                상품
+                {t("diag.compare.col.product", locale)}
               </th>
               <th className="text-right px-3 py-2 font-bold text-ink-700 w-28">
-                가격
+                {t("diag.compare.col.price", locale)}
               </th>
               <th className="text-left px-3 py-2 font-bold text-ink-700 w-20">
-                구분
+                {t("diag.compare.col.kind", locale)}
               </th>
               <th className="px-3 py-2 w-20" />
             </tr>
@@ -953,7 +987,7 @@ function ComparisonTable({
                 >
                   <td className="px-3 py-3">
                     <div className="font-bold text-ink-900 leading-tight">
-                      {r.nameKo}
+                      {locale === "en" ? r.nameEn : r.nameKo}
                     </div>
                     <div className="text-[11px] text-ink-500 mt-1 leading-snug">
                       {r.reason}
@@ -963,14 +997,16 @@ function ComparisonTable({
                     {r.priceLabel}
                   </td>
                   <td className="px-3 py-3 text-ink-500 text-[11.5px]">
-                    {r.kind === "package" ? "패키지" : "단품"}
+                    {r.kind === "package"
+                      ? t("diag.kind.package", locale)
+                      : t("diag.kind.single", locale)}
                   </td>
                   <td className="px-3 py-3 text-right">
                     <Link
                       href={detailHref}
                       className="text-[11.5px] font-bold text-brand-500 hover:text-brand-700"
                     >
-                      상세 →
+                      {t("diag.compare.detail", locale)}
                     </Link>
                   </td>
                 </tr>

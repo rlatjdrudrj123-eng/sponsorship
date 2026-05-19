@@ -572,7 +572,7 @@ function CategorySlide({
               <img
                 src={hero}
                 alt={category.name.ko}
-                className="absolute inset-0 w-full h-full object-cover"
+                className="absolute inset-0 w-full h-full object-contain"
               />
             ) : (
               <div className="w-full h-full grid place-items-center text-ink-300 text-sm">
@@ -694,7 +694,7 @@ function PackageSlide({
               <img
                 src={hero}
                 alt={pkg.name.ko}
-                className="absolute inset-0 w-full h-full object-cover"
+                className="absolute inset-0 w-full h-full object-contain"
               />
             ) : (
               <div className="w-full h-full grid place-items-center text-ink-300 text-sm">
