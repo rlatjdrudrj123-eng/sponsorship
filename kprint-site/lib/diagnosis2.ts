@@ -404,7 +404,7 @@ export function findUpsellPackage(args: {
 
     const matched = comp.filter((id) => considering.has(id));
     const matchRatio = matched.length / comp.length;
-    if (matchRatio < 0.6) continue; // 60% 이상 매칭 못 하면 패스
+    if (matchRatio < 0.5) continue; // 50% 이상 매칭 못 하면 패스
     if (matched.length < 2) continue; // 1개 매칭은 의미 없음 (단품 사도 됨)
 
     // 단품 합계 (가격 0/별도 문의는 0 으로 계산해서 절감액에 영향 없게)
