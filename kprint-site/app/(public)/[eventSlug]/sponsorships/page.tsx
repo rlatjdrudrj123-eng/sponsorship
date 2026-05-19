@@ -2095,7 +2095,11 @@ function SlideSection({
   const [pickerOpen, setPickerOpen] = useState(false);
   const [floorOpen, setFloorOpen] = useState(false);
   const [perksOpen, setPerksOpen] = useState(false);
+  const [detailOpen, setDetailOpen] = useState(false);
+  const [casesOpen, setCasesOpen] = useState(false);
   const hero = item.heroImages?.images?.[0]?.url;
+  const detailImages = item.detailImages?.images ?? [];
+  const caseStudies = item.caseStudies ?? [];
   // 도면 보기 가능 — floor_plan / xpace 타입 + 도면 이미지가 있을 때만 노출
   const hasFloorImages =
     (item.type === "floor_plan" || item.type === "xpace") &&
@@ -2181,8 +2185,8 @@ function SlideSection({
           )}
         </div>
 
-        {/* 정보 — 하단 나머지, 컴팩트 */}
-        <div className="flex-1 min-h-0 flex flex-col px-4 py-3 overflow-hidden">
+        {/* 정보 — 하단 나머지, 컴팩트. 토글 펼침 시 영역 내부에서 스크롤 */}
+        <div className="flex-1 min-h-0 flex flex-col px-4 py-3 overflow-y-auto">
           {/* 제목 */}
           <h2 className="text-[20px] font-bold text-ink-900 leading-[1.15] tracking-tight">
             {localized(item.name, locale)}
@@ -2389,8 +2393,8 @@ function SlideSection({
             (inModal ? "" : "h-full")
           }
         >
-          {/* LEFT: 정보 — 세로 중앙 정렬하여 빈공간 분산 */}
-          <div className="flex flex-col justify-center min-w-0 min-h-0">
+          {/* LEFT: 정보 — 세로 중앙 정렬하여 빈공간 분산. 토글 펼침 시 영역 내부에서 스크롤 */}
+          <div className="flex flex-col justify-center min-w-0 min-h-0 overflow-y-auto">
             {/* 해시태그 — layout.showHashtags 가 false 면 숨김 */}
             {showHashtags && (
               <div className="flex flex-wrap gap-x-4 gap-y-1 text-[13px] md:text-[14px] tracking-wide text-brand-500 font-bold mb-4 font-num">
@@ -2715,6 +2719,134 @@ function SlideSection({
                 </div>
               );
             })()}
+
+            {/* 디테일 이미지 미니 토글 — 어드민이 '디테일 이미지' 슬롯에 추가한 사진들 */}
+            {detailImages.length > 0 && (
+              <div className="mt-2 rounded-btn bg-surface border border-ink-100 overflow-hidden">
+                <button
+                  type="button"
+                  onClick={() => setDetailOpen((v) => !v)}
+                  className="w-full px-3.5 py-2.5 flex items-center gap-3 text-[12px] text-left hover:bg-ink-50 transition-colors"
+                >
+                  <span className="text-ink-700 font-bold flex items-center gap-1.5 shrink-0">
+                    <span aria-hidden>🖼️</span>
+                    {locale === "en" ? "Detail images" : "디테일 이미지"}
+                  </span>
+                  <span className="text-ink-500 flex-1 truncate">
+                    <strong className="text-ink-900">
+                      {locale === "en"
+                        ? `${detailImages.length} photos`
+                        : `${detailImages.length}장`}
+                    </strong>
+                  </span>
+                  <ChevronDown
+                    className={
+                      "w-4 h-4 text-ink-500 shrink-0 transition-transform " +
+                      (detailOpen ? "rotate-180" : "")
+                    }
+                  />
+                </button>
+                {detailOpen && (
+                  <div className="px-3.5 pb-3 pt-1 border-t border-ink-100">
+                    <div className="flex gap-2 overflow-x-auto -mx-1 px-1 pb-1">
+                      {detailImages.map((img, i) => (
+                        <div
+                          key={i}
+                          className="shrink-0 w-44 aspect-[4/3] rounded-btn bg-ink-100 border border-ink-100 overflow-hidden relative"
+                        >
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img
+                            src={img.url}
+                            alt={img.caption ?? `detail-${i + 1}`}
+                            className="absolute inset-0 w-full h-full object-cover"
+                          />
+                          {img.caption && (
+                            <div className="absolute bottom-0 inset-x-0 bg-gradient-to-t from-ink-900/85 to-transparent px-2 py-1 text-[10px] text-white font-semibold">
+                              {img.caption}
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* 이전 행사 사례 미니 토글 — 어드민의 caseStudies */}
+            {caseStudies.length > 0 && (
+              <div className="mt-2 rounded-btn bg-surface border border-ink-100 overflow-hidden">
+                <button
+                  type="button"
+                  onClick={() => setCasesOpen((v) => !v)}
+                  className="w-full px-3.5 py-2.5 flex items-center gap-3 text-[12px] text-left hover:bg-ink-50 transition-colors"
+                >
+                  <span className="text-ink-700 font-bold flex items-center gap-1.5 shrink-0">
+                    <span aria-hidden>🏢</span>
+                    {locale === "en"
+                      ? "Companies who chose this"
+                      : "이 자리를 선택한 회사들"}
+                  </span>
+                  <span className="text-ink-500 flex-1 truncate">
+                    <strong className="text-ink-900">
+                      {locale === "en"
+                        ? `${caseStudies.length} cases`
+                        : `${caseStudies.length}곳`}
+                    </strong>
+                  </span>
+                  <ChevronDown
+                    className={
+                      "w-4 h-4 text-ink-500 shrink-0 transition-transform " +
+                      (casesOpen ? "rotate-180" : "")
+                    }
+                  />
+                </button>
+                {casesOpen && (
+                  <div className="px-3.5 pb-3 pt-1 border-t border-ink-100">
+                    <ul className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                      {caseStudies.map((c, i) => (
+                        <li
+                          key={i}
+                          className="bg-canvas border border-ink-100 rounded-btn p-2.5 flex gap-2"
+                        >
+                          {c.logoUrl ? (
+                            // eslint-disable-next-line @next/next/no-img-element
+                            <img
+                              src={c.logoUrl}
+                              alt={c.company}
+                              className="w-9 h-9 rounded object-contain border border-ink-100 shrink-0 bg-white"
+                            />
+                          ) : (
+                            <div className="w-9 h-9 rounded bg-ink-50 border border-ink-100 grid place-items-center shrink-0">
+                              <span className="text-[9px] text-ink-300 font-mono">
+                                LOGO
+                              </span>
+                            </div>
+                          )}
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-baseline justify-between gap-2">
+                              <span className="font-bold text-[12.5px] text-ink-900 truncate">
+                                {c.company}
+                              </span>
+                              {c.year && (
+                                <span className="text-[10px] text-ink-500 font-mono shrink-0">
+                                  {c.year}
+                                </span>
+                              )}
+                            </div>
+                            {c.quote && (
+                              <p className="text-[11px] text-ink-500 mt-0.5 leading-snug line-clamp-2">
+                                {c.quote}
+                              </p>
+                            )}
+                          </div>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+              </div>
+            )}
 
             {/* 버튼: 구좌 선택 / [위치 보기 (도면 있을 때만)] / [자세히 보기 — 모달 외부에서만] / 가이드 다운로드.
                 모바일은 세로 스택, 데스크톱은 가로 */}
