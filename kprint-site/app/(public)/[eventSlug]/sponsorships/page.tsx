@@ -1838,13 +1838,20 @@ function CardGrid({
                 return (
                   <div className="mt-2 text-[10.5px] text-ink-500 leading-snug">
                     <span className="font-num font-semibold text-ink-700">
-                      📦 포함 패키지:{" "}
+                      📦 {locale === "en" ? "In packages:" : "포함 패키지:"}{" "}
                     </span>
                     {pkgs
                       .slice(0, 2)
-                      .map((p) => (p.tier === "signature" ? "★ " : "") + p.name.ko)
+                      .map(
+                        (p) =>
+                          (p.tier === "signature" ? "★ " : "") +
+                          localized(p.name, locale)
+                      )
                       .join(", ")}
-                    {pkgs.length > 2 && ` 외 ${pkgs.length - 2}`}
+                    {pkgs.length > 2 &&
+                      (locale === "en"
+                        ? ` +${pkgs.length - 2}`
+                        : ` 외 ${pkgs.length - 2}`)}
                   </div>
                 );
               })()}
@@ -1852,14 +1859,20 @@ function CardGrid({
               {/* 작년 이 자리 산 회사 — 사회적 증거 */}
               {c.lastYear?.buyers && c.lastYear.buyers.length > 0 && (
                 <div className="mt-3 text-[10.5px] text-ink-500 leading-snug">
-                  <span className="font-num font-bold text-ink-700">작년: </span>
+                  <span className="font-num font-bold text-ink-700">
+                    {locale === "en" ? "Last year: " : "작년: "}
+                  </span>
                   {c.lastYear.buyers.slice(0, 3).join(", ")}
-                  {c.lastYear.buyers.length > 3 && ` 외 ${c.lastYear.buyers.length - 3}곳`}
+                  {c.lastYear.buyers.length > 3 &&
+                    (locale === "en"
+                      ? ` +${c.lastYear.buyers.length - 3}`
+                      : ` 외 ${c.lastYear.buyers.length - 3}곳`)}
                 </div>
               )}
               {c.lastYear?.soldOutDate && (
                 <div className="text-[10.5px] text-amber-700 font-num font-semibold mt-1">
-                  작년 매진: {c.lastYear.soldOutDate}
+                  {locale === "en" ? "Sold out: " : "작년 매진: "}
+                  {c.lastYear.soldOutDate}
                 </div>
               )}
 
@@ -1869,7 +1882,9 @@ function CardGrid({
                     <>
                       <span className="text-ink-500">{t("spons.minPrice", locale)} </span>
                       <span className="text-ink-900 font-bold">
-                        {c.minPrice.toLocaleString()}원
+                        {locale === "en" ? "₩" : ""}
+                        {c.minPrice.toLocaleString()}
+                        {locale === "en" ? "" : "원"}
                       </span>
                     </>
                   ) : (
@@ -2105,11 +2120,8 @@ function SlideSection({
       .join(", ");
   })();
 
-  // 해시태그 — 채널 + 카테고리.tags 중 첫 2개
-  const hashTags: string[] = [
-    channelLabel(item.channel, locale),
-    ...(item.tags ?? []).slice(0, 2),
-  ];
+  // 해시태그 — 채널만 (예: '오프라인'). 카테고리.tags 는 너무 잡다해서 슬라이드에서는 제외.
+  const hashTags: string[] = [channelLabel(item.channel, locale)];
 
   // 유형별 레이아웃 옵션 (해시태그·작년 데이터·혜택 배너·제목 크기·커스텀 행)
   const layout = getTypeLayout(item.type, typeLayouts);
@@ -2632,7 +2644,7 @@ function SlideSection({
                 <div className="text-right">
                   <div className="font-num text-[28px] md:text-[36px] font-bold text-ink-900 leading-none">
                     <span className="text-[16px] md:text-[18px] font-semibold mr-2">
-                      1구좌당
+                      {locale === "en" ? "Per slot" : "1구좌당"}
                     </span>
                     {item.minPrice.toLocaleString()}
                     <span className="text-[18px] md:text-[20px] ml-1 font-bold">
@@ -2640,7 +2652,9 @@ function SlideSection({
                     </span>
                   </div>
                   <p className="text-[11.5px] text-ink-500 mt-2">
-                    (제작설치비 포함, 부가세 별도)
+                    {locale === "en"
+                      ? "(Production & install included, VAT excluded)"
+                      : "(제작설치비 포함, 부가세 별도)"}
                   </p>
                 </div>
               ) : (
