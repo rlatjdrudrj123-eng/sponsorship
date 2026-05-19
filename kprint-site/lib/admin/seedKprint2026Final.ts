@@ -425,7 +425,7 @@ const KPRINT_CATEGORIES: CategorySeedV2[] = [
       {
         name: { ko: "세미나 페이지 배너", en: "Seminar Banner" },
         unit: { ko: "구좌", en: "slot" },
-        priceKRW: 750_000,
+        priceKRW: 1_500_000,
         size: "PC : 1,200px × 200px",
         slotCodes: ["SMR-1", "SMR-2"],
       },
