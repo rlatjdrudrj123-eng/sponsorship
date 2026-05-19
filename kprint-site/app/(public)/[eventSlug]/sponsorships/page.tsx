@@ -1181,57 +1181,49 @@ function FilterPanel({
             : "회사 상황이나 광고 목적 선택"
         }
       >
-        {/* 페르소나 (있으면) */}
-        {personas.length > 0 && (
-          <div className="space-y-1.5 mb-3">
-            {personas.map((p) => {
-              const active = selectedPersona?.id === p.id;
-              return (
-                <button
-                  key={p.id}
-                  type="button"
-                  onClick={() => setSelectedPersona(active ? null : p)}
-                  className={
-                    "w-full text-left px-3 py-2.5 rounded-btn border transition-colors " +
-                    (active
-                      ? "bg-brand-50 border-brand-500"
-                      : "bg-white border-ink-100 hover:border-ink-700")
-                  }
-                >
-                  <div className="flex items-start gap-2">
+        {/* 참가 상황 — 페르소나 + 광고 목적을 한 흐름의 동일 스타일 버튼 리스트로 통합.
+            데이터 모델은 분리(selectedPersona / activePurposes) 되어 있지만 UI는 한 묶음. */}
+        <div className="space-y-1.5">
+          {personas.map((p) => {
+            const active = selectedPersona?.id === p.id;
+            return (
+              <button
+                key={`persona-${p.id}`}
+                type="button"
+                onClick={() => setSelectedPersona(active ? null : p)}
+                className={
+                  "w-full text-left px-3 py-2.5 rounded-btn border transition-colors " +
+                  (active
+                    ? "border-brand-500 bg-brand-50"
+                    : "border-ink-100 bg-white hover:border-ink-700")
+                }
+              >
+                <div className="flex items-start gap-2">
+                  {p.emoji && (
                     <span className="text-[16px] shrink-0 leading-none mt-0.5">
                       {p.emoji}
                     </span>
-                    <div className="min-w-0 flex-1">
-                      <div className="text-[12.5px] font-bold text-ink-900 leading-tight">
-                        {p.title}
-                      </div>
-                      {p.description && (
-                        <div className="text-[10.5px] text-ink-500 mt-0.5 leading-snug line-clamp-2">
-                          {p.description}
-                        </div>
-                      )}
+                  )}
+                  <div className="min-w-0 flex-1">
+                    <div className="text-[12.5px] font-bold text-ink-900 leading-tight">
+                      {p.title}
                     </div>
+                    {p.description && (
+                      <div className="text-[10.5px] text-ink-500 mt-0.5 leading-snug line-clamp-2">
+                        {p.description}
+                      </div>
+                    )}
                   </div>
-                </button>
-              );
-            })}
-          </div>
-        )}
-
-        {/* 광고 목적 */}
-        <div className="space-y-1.5">
-          {personas.length > 0 && (
-            <div className="text-[10.5px] uppercase tracking-wider text-ink-500 font-bold mb-1">
-              {locale === "en" ? "Or by goal" : "또는 목적별"}
-            </div>
-          )}
+                </div>
+              </button>
+            );
+          })}
           {PURPOSE_ORDER.map((p) => {
             const meta = PURPOSE_META[p];
             const active = activePurposes.has(p);
             return (
               <button
-                key={p}
+                key={`purpose-${p}`}
                 type="button"
                 onClick={() => {
                   const next = new Set(activePurposes);
@@ -1240,32 +1232,19 @@ function FilterPanel({
                   setActivePurposes(next);
                 }}
                 className={
-                  "w-full text-left px-3 py-2 rounded-btn border-2 transition-colors " +
+                  "w-full text-left px-3 py-2.5 rounded-btn border transition-colors " +
                   (active
-                    ? "border-brand-500 bg-brand-500 text-white"
-                    : "border-ink-100 bg-surface hover:border-brand-500")
+                    ? "border-brand-500 bg-brand-50"
+                    : "border-ink-100 bg-white hover:border-ink-700")
                 }
               >
-                <div className="flex items-center justify-between gap-2">
-                  <span
-                    className={
-                      "text-[12.5px] font-bold " +
-                      (active ? "text-white" : "text-ink-900")
-                    }
-                  >
+                <div className="min-w-0 flex-1">
+                  <div className="text-[12.5px] font-bold text-ink-900 leading-tight">
                     {locale === "en" ? meta.en : meta.ko}
-                  </span>
-                  {active && (
-                    <span className="w-1.5 h-1.5 rounded-full bg-white" />
-                  )}
-                </div>
-                <div
-                  className={
-                    "text-[10.5px] mt-0.5 leading-snug " +
-                    (active ? "text-white/85" : "text-ink-500")
-                  }
-                >
-                  {meta.desc}
+                  </div>
+                  <div className="text-[10.5px] text-ink-500 mt-0.5 leading-snug line-clamp-2">
+                    {meta.desc}
+                  </div>
                 </div>
               </button>
             );
