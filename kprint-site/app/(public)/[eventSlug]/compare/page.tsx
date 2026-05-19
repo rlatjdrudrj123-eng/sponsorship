@@ -260,17 +260,17 @@ function CompareContent() {
     }
   };
 
+  // columns.key 는 이미 'slot:xxx' / 'cat:xxx' / 'pkg:xxx' 접두사 포함 — 그대로 전달.
+  const compareIdsAsString = useMemo(
+    () => columns.map((c) => c.key).join(","),
+    [columns]
+  );
+
   const printPdf = () => {
     if (typeof window === "undefined") return;
-    const slotIds = columns
-      .filter((c) => c.kind === "slot")
-      .map((c) => `slot:${c.key.replace(/^slot:/, "")}`);
-    const pkgIds = columns
-      .filter((c) => c.kind === "pkg")
-      .map((c) => `pkg:${c.key.replace(/^pkg:/, "")}`);
-    const ids = [...slotIds, ...pkgIds].join(",");
+    if (!compareIdsAsString) return;
     window.open(
-      `/${eventId}/cart/print?ids=${encodeURIComponent(ids)}`,
+      `/${eventId}/cart/print?ids=${encodeURIComponent(compareIdsAsString)}`,
       "_blank"
     );
   };
@@ -325,7 +325,11 @@ function CompareContent() {
                 PDF로 저장
               </button>
               <Link
-                href={`/${eventId}/contact`}
+                href={
+                  compareIdsAsString
+                    ? `/${eventId}/contact?ids=${encodeURIComponent(compareIdsAsString)}`
+                    : `/${eventId}/contact`
+                }
                 className="px-4 py-2 rounded-pill bg-brand-500 text-white text-[12.5px] font-bold hover:bg-brand-700 hover:shadow-glow-sm flex items-center gap-1.5 transition-all"
               >
                 <MessageSquare className="w-3.5 h-3.5" />

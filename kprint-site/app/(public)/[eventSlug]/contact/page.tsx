@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { Suspense, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { useParams, useRouter } from "next/navigation";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -20,9 +20,11 @@ import { ArrowLeft, X } from "lucide-react";
 import { getDb } from "@/lib/firebase/firestore";
 import { useCartStore } from "@/lib/cart/cartStore";
 import type {
+  CartItem,
   Category,
   Package,
   SiteSettings,
+  Slot,
   Subcategory,
 } from "@/lib/types";
 import { Footer } from "@/components/public/Footer";
@@ -38,19 +40,26 @@ const schema = z.object({
 type FormValues = z.infer<typeof schema>;
 
 export default function ContactPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-screen grid place-items-center text-sm text-ink-500">
+          불러오는 중…
+        </div>
+      }
+    >
+      <ContactPageInner />
+    </Suspense>
+  );
+}
+
+function ContactPageInner() {
   const router = useRouter();
   const params = useParams<{ eventSlug: string }>();
+  const search = useSearchParams();
   const eventId = params.eventSlug;
+  const idsParam = search.get("ids") ?? "";
   const allItems = useCartStore((s) => s.items);
-  // 현재 행사 항목만 첨부
-  const items = useMemo(
-    () => allItems.filter((it) => it.eventId === eventId),
-    [allItems, eventId]
-  );
-  const subtotal = useMemo(
-    () => items.reduce((sum, it) => sum + it.price, 0),
-    [items]
-  );
   const removeSlot = useCartStore((s) => s.removeSlot);
   const removePackage = useCartStore((s) => s.removePackage);
   const hydrated = useCartStore((s) => s.hasHydrated);
@@ -59,9 +68,81 @@ export default function ContactPage() {
   const [subcategories, setSubcategories] = useState<Map<string, Subcategory>>(
     new Map()
   );
+  const [slots, setSlots] = useState<Map<string, Slot>>(new Map());
   const [packages, setPackages] = useState<Map<string, Package>>(new Map());
   const [settings, setSettings] = useState<SiteSettings | null>(null);
   const [submitError, setSubmitError] = useState<string | null>(null);
+
+  // idsParam (compare → contact) 모드: idsParam 만으로 CartItem 합성.
+  // 일반 (카트 → contact) 모드: cart store 항목 그대로.
+  const items = useMemo<CartItem[]>(() => {
+    if (idsParam) {
+      const ids = idsParam.split(",");
+      const result: CartItem[] = [];
+      for (const raw of ids) {
+        if (!raw) continue;
+        let id = raw;
+        if (id.startsWith("slot-cat:")) id = "cat:" + id.slice("slot-cat:".length);
+        else if (id.startsWith("slot:cat:")) id = "cat:" + id.slice("slot:cat:".length);
+
+        if (id.startsWith("slot:")) {
+          const slotId = id.slice(5);
+          const slot = slots.get(slotId);
+          if (!slot) continue;
+          const sub = subcategories.get(slot.subcategoryId);
+          result.push({
+            type: "slot",
+            eventId,
+            slotId: slot.id,
+            categoryId: slot.categoryId,
+            subcategoryId: slot.subcategoryId,
+            code: slot.code,
+            price: sub?.priceKRW ?? 0,
+          });
+        } else if (id.startsWith("cat:")) {
+          const catId = id.slice(4);
+          const cat = categories.get(catId);
+          if (!cat) continue;
+          const catSubs = Array.from(subcategories.values())
+            .filter((s) => s.categoryId === catId)
+            .sort((a, b) => a.priceKRW - b.priceKRW);
+          const sub = catSubs[0];
+          if (!sub) continue;
+          const slot = Array.from(slots.values()).find(
+            (s) => s.categoryId === catId && s.subcategoryId === sub.id
+          );
+          if (!slot) continue;
+          result.push({
+            type: "slot",
+            eventId,
+            slotId: slot.id,
+            categoryId: slot.categoryId,
+            subcategoryId: slot.subcategoryId,
+            code: slot.code,
+            price: sub.priceKRW,
+          });
+        } else if (id.startsWith("pkg:")) {
+          const pkgId = id.slice(4);
+          const pkg = packages.get(pkgId);
+          if (!pkg) continue;
+          result.push({
+            type: "package",
+            eventId,
+            packageId: pkg.id,
+            code: pkg.code,
+            price: pkg.discountPrice,
+          });
+        }
+      }
+      return result;
+    }
+    return allItems.filter((it) => it.eventId === eventId);
+  }, [idsParam, allItems, eventId, slots, subcategories, categories, packages]);
+
+  const subtotal = useMemo(
+    () => items.reduce((sum, it) => sum + it.price, 0),
+    [items]
+  );
 
   const {
     register,
@@ -75,7 +156,7 @@ export default function ContactPage() {
       try {
         const db = getDb();
         // 행사·published 필터
-        const [catSnap, subSnap, pkgSnap, settingsSnap] = await Promise.all([
+        const [catSnap, subSnap, slotSnap, pkgSnap, settingsSnap] = await Promise.all([
           getDocs(
             query(
               collection(db, "categories"),
@@ -85,6 +166,9 @@ export default function ContactPage() {
           ),
           getDocs(
             query(collection(db, "subcategories"), where("eventId", "==", eventId))
+          ),
+          getDocs(
+            query(collection(db, "slots"), where("eventId", "==", eventId))
           ),
           getDocs(
             query(
@@ -103,12 +187,17 @@ export default function ContactPage() {
         subSnap.docs.forEach((d) =>
           sm.set(d.id, { ...(d.data() as Subcategory), id: d.id })
         );
+        const slm = new Map<string, Slot>();
+        slotSnap.docs.forEach((d) =>
+          slm.set(d.id, { ...(d.data() as Slot), id: d.id })
+        );
         const pm = new Map<string, Package>();
         pkgSnap.docs.forEach((d) =>
           pm.set(d.id, { ...(d.data() as Package), id: d.id })
         );
         setCategories(cm);
         setSubcategories(sm);
+        setSlots(slm);
         setPackages(pm);
         if (settingsSnap.exists())
           setSettings(settingsSnap.data() as SiteSettings);
@@ -139,11 +228,13 @@ export default function ContactPage() {
         createdAt: Timestamp.fromDate(new Date()),
         updatedAt: Timestamp.fromDate(new Date()),
       });
-      // 현재 행사 항목만 카트에서 제거
-      items.forEach((it) => {
-        if (it.type === "slot") removeSlot(it.slotId);
-        else removePackage(it.packageId);
-      });
+      // 카트 모드일 때만 카트에서 제거 (idsParam 모드는 cart 와 무관)
+      if (!idsParam) {
+        items.forEach((it) => {
+          if (it.type === "slot") removeSlot(it.slotId);
+          else removePackage(it.packageId);
+        });
+      }
       router.push(`/${eventId}/contact/done`);
     } catch (e) {
       setSubmitError(
