@@ -5,9 +5,8 @@ import type { BundledPerk } from "./types";
  * 어드민의 [사이트 설정 → 동봉 혜택] 에서 자유롭게 편집 가능.
  * siteSettings.bundledPerks 가 비어있으면 이 기본값이 fallback.
  */
-// 200만원 이상 스폰서십 구매 시 모두에게 동봉되는 무료 혜택.
-// 단품으로는 사실상 안 팔리는 매체들을 가치로 묶어서 제공.
-// (총 가치 약 950만원 — 메인 매체 구매에 부가가치 강조용)
+// 2026 리뉴얼 기념 추가 혜택 — 스폰서십 구매 시 동봉.
+// 일부 항목은 condition 으로 조건 표기 (UI 에 chip 으로 노출).
 export const DEFAULT_BUNDLED_PERKS: BundledPerk[] = [
   {
     label: "등록대 스폰서 로고 표기",
@@ -17,29 +16,33 @@ export const DEFAULT_BUNDLED_PERKS: BundledPerk[] = [
   },
   {
     label: "도면 내 참가기업 로고",
-    description:
-      "공식 전시장 도면 위에 참가기업 로고 표기 — 4부스 이상 우선 배치",
+    description: "공식 전시장 도면 위에 참가기업 로고 표기",
     valueKRW: 2_000_000,
+    condition: "4부스 이상 신청 가능",
   },
   {
     label: "참가업체 검색 배너 1구좌",
     description: "참가업체 검색 페이지 상단 배너 노출",
     valueKRW: 2_000_000,
+    condition: "택 1",
   },
   {
     label: "전시품 검색 배너 1구좌",
     description: "전시품 검색 페이지 상단 배너 노출",
     valueKRW: 2_000_000,
+    condition: "택 1",
   },
   {
     label: "통합검색 배너 1구좌",
     description: "통합검색 결과 페이지 상단 배너 노출",
     valueKRW: 2_000_000,
+    condition: "택 1",
   },
   {
     label: "세미나 페이지 배너 1구좌",
     description: "세미나/컨퍼런스 페이지 상단 배너 노출",
     valueKRW: 1_500_000,
+    condition: "택 1",
   },
   {
     label: "결과보고서 노출",

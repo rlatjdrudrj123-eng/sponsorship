@@ -388,13 +388,13 @@ function PerksSlide({
         </div>
 
         <h2 className="mt-6 text-[44px] font-bold leading-[1.05] tracking-tight text-ink-900">
-          스폰서십에 모두 동봉
+          2026 리뉴얼 기념
           <br />
           <span className="text-brand-500">추가 혜택 {perks.length}가지</span>
         </h2>
 
         <p className="mt-4 text-[14px] text-ink-700 leading-relaxed max-w-2xl">
-          단품·패키지 어떤 매체를 선택하셔도 아래 혜택이 추가 비용 없이 함께 제공됩니다.
+          단품·패키지 어떤 매체를 선택하셔도 아래 혜택이 함께 제공됩니다 (일부 항목은 신청 시 택1).
         </p>
 
         <ul className="mt-8 grid grid-cols-2 gap-x-10 gap-y-4 flex-1">

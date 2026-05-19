@@ -14,10 +14,14 @@ import type {
   Subcategory,
 } from "@/lib/types";
 import { Footer } from "@/components/public/Footer";
+import { useLocale } from "@/lib/i18n/locale";
+import { localized as localizedHelper } from "@/lib/i18n/locale";
+import { t } from "@/lib/i18n/strings";
 
 export default function CartPage() {
   const params = useParams<{ eventSlug: string }>();
   const eventId = params.eventSlug;
+  const locale = useLocale((s) => s.locale);
 
   const allItems = useCartStore((s) => s.items);
   // 현재 행사 항목만 노출
@@ -154,7 +158,7 @@ export default function CartPage() {
               className="inline-flex items-center gap-1.5 text-[12px] text-ink-500 hover:text-brand-500 mb-4 font-num font-semibold"
             >
               <ArrowLeft className="w-3.5 h-3.5" />
-              전체 스폰서십
+              {t("spons.title", locale)}
             </Link>
             <div className="font-num text-[11px] md:text-[12px] uppercase tracking-[0.3em] text-brand-500 font-bold mb-3 flex items-center gap-2">
               <span className="w-6 h-px bg-brand-500" />
@@ -162,10 +166,12 @@ export default function CartPage() {
             </div>
             <h1 className="text-[36px] md:text-[64px] font-bold tracking-tight leading-[1.05] text-ink-900 flex items-center gap-3">
               <Bookmark className="w-8 h-8 md:w-10 md:h-10 text-brand-500" fill="currentColor" />
-              관심 항목
+              {t("cart.title", locale)}
             </h1>
             <p className="text-[14px] md:text-[16px] text-ink-500 mt-3 leading-relaxed">
-              카트에 담은 항목들입니다. 사무국에 문의하시면 1영업일 내 정식 견적을 회신드려요.
+              {locale === "en"
+                ? "Items you've added. Send to the secretariat to get a quote within 1 business day."
+                : "카트에 담은 항목들입니다. 사무국에 문의하시면 1영업일 내 정식 견적을 회신드려요."}
             </p>
           </div>
         </header>
@@ -174,7 +180,17 @@ export default function CartPage() {
           {cleanedCount > 0 && (
             <div className="bg-amber-50 border border-amber-200 rounded-card p-3 mb-4 flex items-center justify-between gap-3">
               <p className="text-[12.5px] text-amber-800">
-                ⓘ 더 이상 제공되지 않는 항목 <strong>{cleanedCount}개</strong>가 자동으로 정리되었습니다.
+                {locale === "en" ? (
+                  <>
+                    ⓘ <strong>{cleanedCount}</strong> unavailable items were
+                    auto-removed.
+                  </>
+                ) : (
+                  <>
+                    ⓘ 더 이상 제공되지 않는 항목 <strong>{cleanedCount}개</strong>가
+                    자동으로 정리되었습니다.
+                  </>
+                )}
               </p>
               <button
                 type="button"
@@ -187,21 +203,25 @@ export default function CartPage() {
             </div>
           )}
           {!hydrated || !dataLoaded ? (
-            <div className="text-center text-sm text-ink-500 py-16">불러오는 중…</div>
+            <div className="text-center text-sm text-ink-500 py-16">
+              {t("common.loading", locale)}
+            </div>
           ) : items.length === 0 ? (
             <div className="bg-surface border border-ink-100 rounded-card py-20 text-center">
               <Bookmark className="w-10 h-10 text-ink-300 mx-auto mb-4" />
               <p className="text-[15px] text-ink-700 font-semibold">
-                아직 카트에 담은 항목이 없습니다.
+                {t("cart.empty", locale)}
               </p>
               <p className="text-[13px] text-ink-500 mt-1.5">
-                마음에 드는 스폰서십을 찾아보세요.
+                {locale === "en"
+                  ? "Find sponsorships you'd like."
+                  : "마음에 드는 스폰서십을 찾아보세요."}
               </p>
               <Link
                 href={`/${eventId}/sponsorships`}
                 className="mt-6 inline-flex items-center gap-2 px-6 py-3 rounded-pill bg-brand-500 text-white font-bold hover:bg-brand-700 hover:shadow-glow-sm transition-all"
               >
-                스폰서십 둘러보기
+                {locale === "en" ? "Browse sponsorships" : "스폰서십 둘러보기"}
                 <ArrowRight className="w-4 h-4" />
               </Link>
             </div>
@@ -217,7 +237,7 @@ export default function CartPage() {
                     className="accent-brand-500 w-4 h-4"
                   />
                   <span>
-                    전체 선택{" "}
+                    {locale === "en" ? "Select all" : "전체 선택"}{" "}
                     <span className="text-ink-500">
                       ({selected.size}/{items.length})
                     </span>
@@ -236,7 +256,7 @@ export default function CartPage() {
                         : "border-ink-100 text-ink-900 hover:border-ink-900")
                     }
                   >
-                    선택 항목 비교 →
+                    {locale === "en" ? "Compare selected →" : "선택 항목 비교 →"}
                   </Link>
                   <button
                     type="button"
@@ -245,7 +265,7 @@ export default function CartPage() {
                     className="px-3.5 py-2 rounded-btn border border-ink-100 text-[12.5px] font-semibold text-ink-900 hover:bg-ink-50 disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1.5"
                   >
                     <FileDown className="w-3.5 h-3.5" />
-                    PDF로 저장
+                    {t("cart.print", locale)}
                   </button>
                 </div>
               </div>
@@ -275,13 +295,17 @@ export default function CartPage() {
                           <div className="w-1 h-10 bg-brand-500 rounded-full shrink-0" />
                           <div className="flex-1 min-w-0">
                             <div className="text-[10px] uppercase tracking-wider text-brand-700 font-semibold">
-                              스폰서십
+                              {locale === "en" ? "Sponsorship" : "스폰서십"}
                             </div>
                             <div className="font-bold text-[14px] text-ink-900">
-                              {cat?.name.ko ?? "(삭제됨)"}
-                              {sub?.name.ko ? (
+                              {cat
+                                ? localizedHelper(cat.name, locale)
+                                : locale === "en"
+                                  ? "(removed)"
+                                  : "(삭제됨)"}
+                              {sub ? (
                                 <span className="text-ink-500 font-normal ml-1.5">
-                                  · {sub.name.ko}
+                                  · {localizedHelper(sub.name, locale)}
                                 </span>
                               ) : null}
                             </div>
@@ -293,7 +317,7 @@ export default function CartPage() {
                             type="button"
                             onClick={() => removeSlot(item.slotId)}
                             className="w-8 h-8 grid place-items-center text-ink-400 hover:text-red-700 hover:bg-red-50 rounded shrink-0"
-                            title="빼기"
+                            title={t("cart.remove", locale)}
                           >
                             <X className="w-4 h-4" />
                           </button>
@@ -301,6 +325,16 @@ export default function CartPage() {
                       );
                     }
                     const pkg = packages.get(item.packageId);
+                    const tierLabel =
+                      pkg?.tier === "signature"
+                        ? locale === "en"
+                          ? " · Signature"
+                          : " · 시그니처"
+                        : pkg?.tier === "standard"
+                          ? locale === "en"
+                            ? " · Standard"
+                            : " · 스탠다드"
+                          : "";
                     return (
                       <li
                         key={`pkg-${item.packageId}`}
@@ -318,11 +352,15 @@ export default function CartPage() {
                         <div className="w-1 h-10 bg-ink-900 rounded-full shrink-0" />
                         <div className="flex-1 min-w-0">
                           <div className="text-[10px] uppercase tracking-wider text-ink-700 font-semibold">
-                            패키지
-                            {pkg?.tier === "signature" ? " · 시그니처" : pkg?.tier === "standard" ? " · 스탠다드" : ""}
+                            {locale === "en" ? "Package" : "패키지"}
+                            {tierLabel}
                           </div>
                           <div className="font-bold text-[14px] text-ink-900">
-                            {pkg?.name.ko ?? "(삭제됨)"}
+                            {pkg
+                              ? localizedHelper(pkg.name, locale)
+                              : locale === "en"
+                                ? "(removed)"
+                                : "(삭제됨)"}
                           </div>
                           <div className="text-[11px] font-mono text-ink-500 mt-0.5">
                             {item.code}
@@ -332,7 +370,7 @@ export default function CartPage() {
                           type="button"
                           onClick={() => removePackage(item.packageId)}
                           className="w-8 h-8 grid place-items-center text-ink-400 hover:text-red-700 hover:bg-red-50 rounded shrink-0"
-                          title="빼기"
+                          title={t("cart.remove", locale)}
                         >
                           <X className="w-4 h-4" />
                         </button>
@@ -346,24 +384,32 @@ export default function CartPage() {
                 <button
                   type="button"
                   onClick={() => {
-                    if (confirm("관심 항목을 모두 비울까요?")) clear();
+                    const msg =
+                      locale === "en"
+                        ? "Clear all items?"
+                        : "관심 항목을 모두 비울까요?";
+                    if (confirm(msg)) clear();
                   }}
                   className="text-[13px] text-ink-500 hover:text-red-700 flex items-center gap-1.5"
                 >
                   <Trash2 className="w-3.5 h-3.5" />
-                  전체 비우기
+                  {locale === "en" ? "Clear all" : "전체 비우기"}
                 </button>
                 <Link
                   href={`/${eventId}/contact`}
                   className="px-6 py-3.5 rounded-pill bg-brand-500 text-white font-bold hover:bg-brand-700 hover:shadow-glow-sm flex items-center gap-2 transition-all"
                 >
-                  관심 항목으로 문의 보내기
+                  {locale === "en"
+                    ? "Send inquiry with cart"
+                    : "관심 항목으로 문의 보내기"}
                   <ArrowRight className="w-4 h-4" />
                 </Link>
               </div>
 
               <p className="mt-4 text-[11.5px] text-ink-500 leading-relaxed">
-                * 정식 견적은 사무국 검토 후 회신드립니다. 가격은 협의 단계에 따라 달라질 수 있어요.
+                {locale === "en"
+                  ? "* Final quote is sent after secretariat review. Pricing may change depending on the negotiation stage."
+                  : "* 정식 견적은 사무국 검토 후 회신드립니다. 가격은 협의 단계에 따라 달라질 수 있어요."}
               </p>
             </>
           )}

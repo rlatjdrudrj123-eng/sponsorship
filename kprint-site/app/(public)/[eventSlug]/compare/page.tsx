@@ -28,6 +28,8 @@ import type {
 import { derivePurposes } from "@/lib/purposes";
 import { PURPOSE_META } from "@/lib/types";
 import { Footer } from "@/components/public/Footer";
+import { useLocale } from "@/lib/i18n/locale";
+import { t } from "@/lib/i18n/strings";
 
 /**
  * 비교 페이지 — 카트에 담은 후보(또는 URL에 인코딩된 ids)를 나란히 비교.
@@ -62,6 +64,7 @@ function CompareContent() {
   const eventId = params.eventSlug;
   const search = useSearchParams();
   const idsParam = search.get("ids") ?? "";
+  const locale = useLocale((s) => s.locale);
 
   const [categories, setCategories] = useState<Map<string, Category>>(new Map());
   const [subcategories, setSubcategories] = useState<Map<string, Subcategory>>(
@@ -278,7 +281,7 @@ function CompareContent() {
   if (!loaded) {
     return (
       <div className="min-h-screen grid place-items-center text-sm text-ink-500">
-        불러오는 중…
+        {t("common.loading", locale)}
       </div>
     );
   }
@@ -293,18 +296,21 @@ function CompareContent() {
               className="inline-flex items-center gap-1.5 text-[12px] text-ink-500 hover:text-brand-500 mb-4 font-num font-semibold"
             >
               <ArrowLeft className="w-3.5 h-3.5" />
-              스폰서십으로
+              {t("spons.title", locale)}
             </Link>
             <div className="font-num text-[11px] md:text-[12px] uppercase tracking-[0.3em] text-brand-500 font-bold mb-3 flex items-center gap-2">
               <span className="w-6 h-px bg-brand-500" />
               compare
             </div>
             <h1 className="text-[36px] md:text-[56px] font-bold tracking-tight leading-[1.05] text-ink-900">
-              {columns.length}개 항목 비교
+              {locale === "en"
+                ? `Comparing ${columns.length} items`
+                : `${columns.length}개 항목 비교`}
             </h1>
             <p className="text-[14px] md:text-[16px] text-ink-500 mt-3 leading-relaxed max-w-2xl">
-              선택한 후보들을 나란히 봅니다. 이 URL을 그대로 공유하면 임원이 로그인
-              없이 볼 수 있어요. 사내 결재용으로 그대로 활용.
+              {locale === "en"
+                ? "Selected candidates side-by-side. Share this URL — execs can view without login."
+                : "선택한 후보들을 나란히 봅니다. 이 URL을 그대로 공유하면 임원이 로그인 없이 볼 수 있어요. 사내 결재용으로 그대로 활용."}
             </p>
             <div className="mt-5 flex flex-wrap gap-2">
               <button
@@ -313,7 +319,13 @@ function CompareContent() {
                 className="px-4 py-2 rounded-pill border border-ink-100 text-[12.5px] font-semibold text-ink-900 hover:border-ink-900 flex items-center gap-1.5"
               >
                 <Copy className="w-3.5 h-3.5" />
-                {copied ? "복사됨!" : "공유 URL 복사"}
+                {copied
+                  ? locale === "en"
+                    ? "Copied!"
+                    : "복사됨!"
+                  : locale === "en"
+                    ? "Copy share URL"
+                    : "공유 URL 복사"}
               </button>
               <button
                 type="button"
@@ -322,7 +334,7 @@ function CompareContent() {
                 className="px-4 py-2 rounded-pill border border-ink-100 text-[12.5px] font-semibold text-ink-900 hover:border-ink-900 flex items-center gap-1.5 disabled:opacity-40"
               >
                 <FileDown className="w-3.5 h-3.5" />
-                PDF로 저장
+                {t("cart.print", locale)}
               </button>
               <Link
                 href={
@@ -333,7 +345,7 @@ function CompareContent() {
                 className="px-4 py-2 rounded-pill bg-brand-500 text-white text-[12.5px] font-bold hover:bg-brand-700 hover:shadow-glow-sm flex items-center gap-1.5 transition-all"
               >
                 <MessageSquare className="w-3.5 h-3.5" />
-                정식 견적 요청
+                {locale === "en" ? "Request quote" : "정식 견적 요청"}
               </Link>
             </div>
           </div>
@@ -343,16 +355,20 @@ function CompareContent() {
           {columns.length === 0 ? (
             <div className="bg-surface border border-ink-100 rounded-card py-20 text-center">
               <p className="text-[15px] text-ink-700 font-semibold">
-                비교할 항목이 없습니다.
+                {locale === "en"
+                  ? "Nothing to compare yet."
+                  : "비교할 항목이 없습니다."}
               </p>
               <p className="text-[13px] text-ink-500 mt-2">
-                카트에 담은 항목을 선택해 비교할 수 있어요.
+                {locale === "en"
+                  ? "Select items from your cart to compare."
+                  : "카트에 담은 항목을 선택해 비교할 수 있어요."}
               </p>
               <Link
                 href={`/${eventId}/sponsorships`}
                 className="mt-6 inline-flex items-center gap-2 px-6 py-3 rounded-pill bg-brand-500 text-white font-bold hover:bg-brand-700 hover:shadow-glow-sm transition-all"
               >
-                스폰서십 둘러보기
+                {locale === "en" ? "Browse sponsorships" : "스폰서십 둘러보기"}
               </Link>
             </div>
           ) : (
@@ -361,15 +377,19 @@ function CompareContent() {
               <div className="bg-surface border border-ink-100 rounded-card p-5 mb-6 shadow-card flex items-baseline justify-between gap-3 flex-wrap">
                 <div>
                   <div className="font-num text-[11px] uppercase tracking-[0.3em] text-brand-500 font-bold mb-1">
-                    예산 합계
+                    {locale === "en" ? "Budget total" : "예산 합계"}
                   </div>
                   <div className="font-num text-[28px] md:text-[36px] font-bold text-ink-900 leading-none">
                     {totalKRW.toLocaleString()}
-                    <span className="text-[16px] ml-1 font-semibold">원</span>
+                    <span className="text-[16px] ml-1 font-semibold">
+                      {t("common.won", locale)}
+                    </span>
                   </div>
                 </div>
                 <div className="text-[11px] text-ink-500">
-                  (부가세 별도 · 정식 견적은 사무국 검토 후 회신)
+                  {locale === "en"
+                    ? "(VAT excluded · final quote after secretariat review)"
+                    : "(부가세 별도 · 정식 견적은 사무국 검토 후 회신)"}
                 </div>
               </div>
 
@@ -396,11 +416,18 @@ function CompareContent() {
                         />
                       ) : (
                         <div className="w-full h-full grid place-items-center text-ink-300 text-xs">
-                          이미지 없음
+                          {locale === "en" ? "No image" : "이미지 없음"}
                         </div>
                       )}
                       <div className="absolute top-3 left-3 px-2 py-0.5 rounded-pill bg-white/95 text-[10px] font-num font-bold text-ink-900">
-                        {col.kind === "pkg" ? "패키지" : "슬롯"} · {col.code}
+                        {col.kind === "pkg"
+                          ? locale === "en"
+                            ? "Package"
+                            : "패키지"
+                          : locale === "en"
+                            ? "Slot"
+                            : "슬롯"}{" "}
+                        · {col.code}
                       </div>
                     </div>
                     <div className="p-4 flex-1 flex flex-col gap-3 text-[12.5px]">
@@ -410,14 +437,14 @@ function CompareContent() {
                         </div>
                       </div>
 
-                      <Row label="가격">
+                      <Row label={locale === "en" ? "Price" : "가격"}>
                         <span className="font-num font-bold text-ink-900">
                           {col.priceLabel}
                         </span>
                       </Row>
 
                       {col.purposeLabels.length > 0 && (
-                        <Row label="목적">
+                        <Row label={locale === "en" ? "Purpose" : "목적"}>
                           <div className="flex flex-wrap gap-1">
                             {col.purposeLabels.map((p) => (
                               <span
@@ -432,11 +459,21 @@ function CompareContent() {
                       )}
 
                       {col.timing.length > 0 && (
-                        <Row label="시점">
+                        <Row label={locale === "en" ? "Timing" : "시점"}>
                           <span className="text-ink-700">
                             {col.timing
                               .map((t) =>
-                                t === "pre" ? "사전" : t === "onsite" ? "현장" : "사후"
+                                locale === "en"
+                                  ? t === "pre"
+                                    ? "Pre"
+                                    : t === "onsite"
+                                      ? "Onsite"
+                                      : "Post"
+                                  : t === "pre"
+                                    ? "사전"
+                                    : t === "onsite"
+                                      ? "현장"
+                                      : "사후"
                               )
                               .join(" · ")}
                           </span>
@@ -444,7 +481,7 @@ function CompareContent() {
                       )}
 
                       {col.location.length > 0 && (
-                        <Row label="위치">
+                        <Row label={locale === "en" ? "Location" : "위치"}>
                           <span className="text-ink-700">
                             {col.location
                               .map((l) =>
@@ -457,8 +494,12 @@ function CompareContent() {
                                       : l === "hall_d"
                                         ? "Hall D"
                                         : l === "outdoor"
-                                          ? "옥외"
-                                          : "온라인"
+                                          ? locale === "en"
+                                            ? "Outdoor"
+                                            : "옥외"
+                                          : locale === "en"
+                                            ? "Online"
+                                            : "온라인"
                               )
                               .join(" · ")}
                           </span>
@@ -466,11 +507,17 @@ function CompareContent() {
                       )}
 
                       {col.lastYearBuyers && col.lastYearBuyers.length > 0 && (
-                        <Row label="작년 구매">
+                        <Row
+                          label={
+                            locale === "en" ? "Last year" : "작년 구매"
+                          }
+                        >
                           <span className="text-ink-700">
                             {col.lastYearBuyers.slice(0, 2).join(", ")}
                             {col.lastYearBuyers.length > 2 &&
-                              ` 외 ${col.lastYearBuyers.length - 2}곳`}
+                              (locale === "en"
+                                ? ` +${col.lastYearBuyers.length - 2}`
+                                : ` 외 ${col.lastYearBuyers.length - 2}곳`)}
                           </span>
                         </Row>
                       )}

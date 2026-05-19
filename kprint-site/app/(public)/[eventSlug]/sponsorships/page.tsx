@@ -1137,9 +1137,9 @@ function FilterPanel({
       <FilterSection title={t("spons.budget", locale)}>
         <div className="grid grid-cols-2 gap-1.5">
           {[
-            { label: locale === "en" ? "Up to ₩3M" : "300만 이하", value: 3_000_000 },
-            { label: locale === "en" ? "Up to ₩7M" : "700만 이하", value: 7_000_000 },
-            { label: locale === "en" ? "Up to ₩15M" : "1,500만 이하", value: 15_000_000 },
+            { label: locale === "en" ? "Up to ₩2M" : "200만 이하", value: 2_000_000 },
+            { label: locale === "en" ? "Up to ₩5M" : "500만 이하", value: 5_000_000 },
+            { label: locale === "en" ? "Up to ₩10M" : "1,000만 이하", value: 10_000_000 },
             { label: locale === "en" ? "All" : "전체", value: 0 },
           ].map((tier) => {
             const active =
@@ -2638,13 +2638,15 @@ function SlideSection({
                 <div className="mt-5 px-3.5 py-2.5 rounded-btn bg-gradient-to-r from-brand-50 to-canvas border border-brand-100 flex items-center gap-3 text-[12px]">
                   <span className="text-brand-700 font-bold flex items-center gap-1.5 shrink-0">
                     <span aria-hidden>🎁</span>
-                    {locale === "en" ? "On sponsorship" : "스폰서십 신청 시"}
+                    {locale === "en"
+                      ? "2026 renewal perks"
+                      : "2026 리뉴얼 기념 추가 혜택"}
                   </span>
                   <span className="text-ink-700 flex-1 truncate">
                     <strong className="text-ink-900">
                       {locale === "en"
-                        ? `${perks.length} extra perks`
-                        : `추가 혜택 ${perks.length}개`}
+                        ? `${perks.length} items`
+                        : `${perks.length}가지`}
                     </strong>
                     {totalValue > 0 && (
                       <span className="ml-1.5 text-ink-500">
@@ -2652,8 +2654,7 @@ function SlideSection({
                           ? ` · ~₩${totalValue.toLocaleString()} value`
                           : ` · 총 ${totalValue.toLocaleString()}원 상당`}
                       </span>
-                    )}{" "}
-                    {locale === "en" ? "auto-included" : "자동 동봉"}
+                    )}
                   </span>
                 </div>
               );

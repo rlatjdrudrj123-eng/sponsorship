@@ -66,10 +66,10 @@ export const DEFAULT_DIAG_V2_QUESTIONS: Record<
     id: "q3",
     intro: "집행 가능한 최대 예산은?",
     chips: [
-      { value: "under_300", label: "300만원 수준" },
-      { value: "under_700", label: "700만원 수준" },
-      { value: "under_1500", label: "1,500만원 수준" },
-      { value: "over_1500", label: "1,500만원 이상" },
+      { value: "under_200", label: "200만원 수준" },
+      { value: "under_500", label: "500만원 수준" },
+      { value: "under_1000", label: "1,000만원 수준" },
+      { value: "over_1000", label: "1,000만원 이상" },
     ],
   },
   q4: {
@@ -114,10 +114,10 @@ export const DEFAULT_DIAG_V2_QUESTIONS_EN: Record<
     id: "q3",
     intro: "Maximum sponsorship budget?",
     chips: [
-      { value: "under_300", label: "Up to ₩3M" },
-      { value: "under_700", label: "Up to ₩7M" },
-      { value: "under_1500", label: "Up to ₩15M" },
-      { value: "over_1500", label: "₩15M+" },
+      { value: "under_200", label: "Up to ₩2M" },
+      { value: "under_500", label: "Up to ₩5M" },
+      { value: "under_1000", label: "Up to ₩10M" },
+      { value: "over_1000", label: "₩10M+" },
     ],
   },
   q4: {

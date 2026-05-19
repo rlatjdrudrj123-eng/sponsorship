@@ -28,6 +28,8 @@ import type {
   Subcategory,
 } from "@/lib/types";
 import { Footer } from "@/components/public/Footer";
+import { useLocale, localized as localizedHelper } from "@/lib/i18n/locale";
+import { t } from "@/lib/i18n/strings";
 
 const schema = z.object({
   companyName: z.string().min(1, "회사명을 입력하세요"),
@@ -59,6 +61,7 @@ function ContactPageInner() {
   const search = useSearchParams();
   const eventId = params.eventSlug;
   const idsParam = search.get("ids") ?? "";
+  const locale = useLocale((s) => s.locale);
   const allItems = useCartStore((s) => s.items);
   const removeSlot = useCartStore((s) => s.removeSlot);
   const removePackage = useCartStore((s) => s.removePackage);
@@ -253,17 +256,19 @@ function ContactPageInner() {
               className="inline-flex items-center gap-1.5 text-[12px] text-ink-500 hover:text-brand-500 mb-4 font-num font-semibold"
             >
               <ArrowLeft className="w-3.5 h-3.5" />
-              관심 항목으로
+              {t("cart.title", locale)}
             </Link>
             <div className="font-num text-[11px] md:text-[12px] uppercase tracking-[0.3em] text-brand-500 font-bold mb-3 flex items-center gap-2">
               <span className="w-6 h-px bg-brand-500" />
               contact
             </div>
             <h1 className="text-[36px] md:text-[64px] font-bold tracking-tight leading-[1.05] text-ink-900">
-              문의하기
+              {locale === "en" ? "Inquiry" : "문의하기"}
             </h1>
             <p className="text-[14px] md:text-[16px] text-ink-500 mt-3 leading-relaxed max-w-xl">
-              카트에 담은 항목과 함께 보내주시면 사무국에서 1영업일 내 정식 견적을 회신드립니다.
+              {locale === "en"
+                ? "Send with your cart and we'll reply with a quote within 1 business day."
+                : "카트에 담은 항목과 함께 보내주시면 사무국에서 1영업일 내 정식 견적을 회신드립니다."}
             </p>
           </div>
         </header>
@@ -271,22 +276,34 @@ function ContactPageInner() {
         <div className="max-w-5xl mx-auto px-6 md:px-12 py-10 grid lg:grid-cols-[1fr_360px] gap-8 items-start">
           {/* Form */}
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
-            <Field label="회사명" error={errors.companyName?.message} required>
+            <Field
+              label={t("contact.companyName", locale)}
+              error={errors.companyName?.message}
+              required
+            >
               <input
                 {...register("companyName")}
-                placeholder="(주) 인쇄출판"
+                placeholder={locale === "en" ? "Acme Inc." : "(주) 인쇄출판"}
                 className="w-full px-3.5 py-2.5 text-[14px] border border-ink-100 rounded-btn focus:outline-none focus:border-brand-500 bg-white"
               />
             </Field>
             <div className="grid md:grid-cols-2 gap-5">
-              <Field label="담당자명" error={errors.contactName?.message} required>
+              <Field
+                label={t("contact.contactName", locale)}
+                error={errors.contactName?.message}
+                required
+              >
                 <input
                   {...register("contactName")}
-                  placeholder="홍길동"
+                  placeholder={locale === "en" ? "Jane Doe" : "홍길동"}
                   className="w-full px-3.5 py-2.5 text-[14px] border border-ink-100 rounded-btn focus:outline-none focus:border-brand-500 bg-white"
                 />
               </Field>
-              <Field label="전화번호" error={errors.phone?.message} required>
+              <Field
+                label={t("contact.phone", locale)}
+                error={errors.phone?.message}
+                required
+              >
                 <input
                   {...register("phone")}
                   placeholder="010-0000-0000"
@@ -294,7 +311,11 @@ function ContactPageInner() {
                 />
               </Field>
             </div>
-            <Field label="이메일" error={errors.email?.message} required>
+            <Field
+              label={t("contact.email", locale)}
+              error={errors.email?.message}
+              required
+            >
               <input
                 type="email"
                 {...register("email")}
@@ -302,11 +323,18 @@ function ContactPageInner() {
                 className="w-full px-3.5 py-2.5 text-[14px] border border-ink-100 rounded-btn focus:outline-none focus:border-brand-500 bg-white"
               />
             </Field>
-            <Field label="메시지 (선택)" error={errors.message?.message}>
+            <Field
+              label={t("contact.message", locale)}
+              error={errors.message?.message}
+            >
               <textarea
                 {...register("message")}
                 rows={6}
-                placeholder="협의하고 싶은 내용을 적어주세요. 어떤 채널이 우선인지, 예산 범위, 일정 등."
+                placeholder={
+                  locale === "en"
+                    ? "Tell us your priorities — which channels, budget, timing."
+                    : "협의하고 싶은 내용을 적어주세요. 어떤 채널이 우선인지, 예산 범위, 일정 등."
+                }
                 className="w-full px-3.5 py-2.5 text-[14px] border border-ink-100 rounded-btn focus:outline-none focus:border-brand-500 bg-white resize-y"
               />
             </Field>
@@ -322,14 +350,20 @@ function ContactPageInner() {
                 href={`/${eventId}/sponsorships`}
                 className="text-[13px] text-ink-500 hover:text-ink-900"
               >
-                둘러보기로 돌아가기
+                {locale === "en" ? "Back to browse" : "둘러보기로 돌아가기"}
               </Link>
               <button
                 type="submit"
                 disabled={isSubmitting}
                 className="px-7 py-3.5 rounded-pill bg-brand-500 text-white font-bold hover:bg-brand-700 hover:shadow-glow-sm disabled:opacity-50 disabled:cursor-not-allowed transition-all"
               >
-                {isSubmitting ? "전송 중…" : "문의 보내기"}
+                {isSubmitting
+                  ? locale === "en"
+                    ? "Sending…"
+                    : "전송 중…"
+                  : locale === "en"
+                    ? "Send"
+                    : "문의 보내기"}
               </button>
             </div>
           </form>
@@ -338,13 +372,19 @@ function ContactPageInner() {
           <aside className="bg-surface border border-ink-100 rounded-card p-5 lg:sticky lg:top-6 shadow-card">
             <div className="font-num text-[10px] uppercase tracking-[0.3em] text-brand-500 font-bold mb-3 flex items-center gap-2">
               <span className="w-4 h-px bg-brand-500" />
-              첨부될 관심 항목 ({items.length}건)
+              {locale === "en"
+                ? `Attached items (${items.length})`
+                : `첨부될 관심 항목 (${items.length}건)`}
             </div>
             {!hydrated ? (
-              <div className="text-[12px] text-ink-500">불러오는 중…</div>
+              <div className="text-[12px] text-ink-500">
+                {t("common.loading", locale)}
+              </div>
             ) : items.length === 0 ? (
               <div className="text-[12px] text-ink-500 py-2">
-                관심 항목이 없어도 문의는 보낼 수 있어요.
+                {locale === "en"
+                  ? "You can still send an inquiry without items."
+                  : "관심 항목이 없어도 문의는 보낼 수 있어요."}
               </div>
             ) : (
               <ul className="space-y-2.5">
@@ -359,18 +399,22 @@ function ContactPageInner() {
                       >
                         <div className="flex-1 min-w-0">
                           <div className="font-bold text-ink-900 truncate">
-                            {cat?.name.ko ?? "(삭제됨)"}
+                            {cat
+                              ? localizedHelper(cat.name, locale)
+                              : locale === "en"
+                                ? "(removed)"
+                                : "(삭제됨)"}
                           </div>
                           <div className="text-ink-500 font-mono text-[11px]">
                             {item.code}
-                            {sub?.name.ko ? ` · ${sub.name.ko}` : ""}
+                            {sub ? ` · ${localizedHelper(sub.name, locale)}` : ""}
                           </div>
                         </div>
                         <button
                           type="button"
                           onClick={() => removeSlot(item.slotId)}
                           className="w-5 h-5 text-ink-300 hover:text-red-700 shrink-0"
-                          aria-label="빼기"
+                          aria-label={t("cart.remove", locale)}
                         >
                           <X className="w-3.5 h-3.5" />
                         </button>
@@ -385,17 +429,21 @@ function ContactPageInner() {
                     >
                       <div className="flex-1 min-w-0">
                         <div className="font-bold text-ink-900 truncate">
-                          {pkg?.name.ko ?? "(삭제됨)"}
+                          {pkg
+                            ? localizedHelper(pkg.name, locale)
+                            : locale === "en"
+                              ? "(removed)"
+                              : "(삭제됨)"}
                         </div>
                         <div className="text-ink-500 font-mono text-[11px]">
-                          {item.code} · 패키지
+                          {item.code} · {locale === "en" ? "Package" : "패키지"}
                         </div>
                       </div>
                       <button
                         type="button"
                         onClick={() => removePackage(item.packageId)}
                         className="w-5 h-5 text-ink-300 hover:text-red-700 shrink-0"
-                        aria-label="빼기"
+                        aria-label={t("cart.remove", locale)}
                       >
                         <X className="w-3.5 h-3.5" />
                       </button>
@@ -405,7 +453,9 @@ function ContactPageInner() {
               </ul>
             )}
             <p className="mt-4 pt-3 border-t border-ink-100 text-[11px] text-ink-500 leading-relaxed">
-              정식 견적 금액·VAT은 사무국에서 검토 후 회신드립니다.
+              {locale === "en"
+                ? "Final quote and VAT are confirmed after secretariat review."
+                : "정식 견적 금액·VAT은 사무국에서 검토 후 회신드립니다."}
             </p>
           </aside>
         </div>
