@@ -495,14 +495,14 @@ const KPRINT_CATEGORIES: CategorySeedV2[] = [
     channel: "offline",
     type: "floor_plan",
     name: { ko: "분야별 홍보월 안내", en: "Category Wall" },
-    shortDesc: "전시 분야별 안내 월 면 광고 — 7면 × 5구좌.",
-    fileFormat: "ai, pdf",
+    shortDesc: "전시 분야 7면 라이팅 월에 주요 참가기업 로고 노출 — 면당 5구좌.",
+    fileFormat: "ai, pdf, png (투명배경)",
     tags: ["홍보월", "분야별", "신규"],
     subcategories: [
       {
         name: { ko: "분야별 홍보월", en: "Category Wall" },
         unit: { ko: "구좌", en: "slot" },
-        priceKRW: 1_000_000,
+        priceKRW: 300_000,
         slotCodes: [
           // 7면 × 5구좌 = 35
           "CTW-1-1", "CTW-1-2", "CTW-1-3", "CTW-1-4", "CTW-1-5",
