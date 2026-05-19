@@ -292,7 +292,7 @@ const KPRINT_CATEGORIES: CategorySeedV2[] = [
       {
         name: { ko: "참가업체 검색 배너", en: "Exhibitor Search" },
         unit: { ko: "구좌", en: "slot" },
-        priceKRW: 1_000_000,
+        priceKRW: 2_000_000,
         size: "PC : 1,200px × 200px",
         slotCodes: ["EXS-1", "EXS-2", "EXS-3"],
       },
@@ -312,7 +312,7 @@ const KPRINT_CATEGORIES: CategorySeedV2[] = [
       {
         name: { ko: "전시품 검색 배너", en: "Product Search" },
         unit: { ko: "구좌", en: "slot" },
-        priceKRW: 1_000_000,
+        priceKRW: 2_000_000,
         size: "PC : 1,200px × 200px",
         slotCodes: ["PRS-1", "PRS-2", "PRS-3"],
       },
@@ -332,7 +332,7 @@ const KPRINT_CATEGORIES: CategorySeedV2[] = [
       {
         name: { ko: "통합검색 배너", en: "Integrated Search" },
         unit: { ko: "구좌", en: "slot" },
-        priceKRW: 1_000_000,
+        priceKRW: 2_000_000,
         size: "PC : 1,200px × 200px",
         slotCodes: ["ISA-1", "ISA-2", "ISA-3"],
       },
@@ -544,6 +544,8 @@ const KPRINT_CATEGORIES: CategorySeedV2[] = [
 type PackageSeed = {
   code: string;
   selectorId: string;
+  /** 이 패키지를 구성하는 카테고리 selectorId 목록 — 진단 챗봇 업셀 매칭용 */
+  composition: string[];
   name: { ko: string; en: string };
   tier: "signature" | "standard";
   tagline: string;
@@ -557,6 +559,13 @@ const KPRINT_PACKAGES: PackageSeed[] = [
   {
     code: "PKG-AZ",
     selectorId: "visitor_atoz_package",
+    composition: [
+      "registration_logo",
+      "pre_registration_banner",
+      "pre_registration_email",
+      "visitor_lanyard",
+      "lighting_wall",
+    ],
     name: { ko: "참관객 A to Z 패키지", en: "Visitor A to Z Package" },
     tier: "signature",
     tagline: "다수 참관객에게 기업 영향력을 알리는 통합 패키지.",
@@ -574,6 +583,7 @@ const KPRINT_PACKAGES: PackageSeed[] = [
   {
     code: "PKG-PS",
     selectorId: "prime_spot_package",
+    composition: ["ceiling_banner", "floor_map_banner", "company_search_banner"],
     name: { ko: "프라임 스팟 패키지", en: "Prime Spot Package" },
     tier: "signature",
     tagline: "온라인 + 오프라인 최고 노출 빈도 채널을 결합한 패키지.",
@@ -589,6 +599,7 @@ const KPRINT_PACKAGES: PackageSeed[] = [
   {
     code: "PKG-OS",
     selectorId: "onsite_package",
+    composition: ["ceiling_banner", "floor_sticker", "lighting_wall"],
     name: { ko: "온사이트 패키지", en: "Onsite Package" },
     tier: "standard",
     tagline: "현장 노출 위주 — 진입형 시그니처.",
@@ -604,6 +615,12 @@ const KPRINT_PACKAGES: PackageSeed[] = [
   {
     code: "PKG-SC",
     selectorId: "seminar_package",
+    composition: [
+      "seminar_banner",
+      "newsletter_domestic",
+      "interview_sns",
+      "instagram_card",
+    ],
     name: { ko: "세미나/컨퍼런스 패키지", en: "Seminar/Conference Package" },
     tier: "standard",
     tagline: "핵심 산업 관계자에게 배너와 뉴스레터로 노출.",
@@ -769,6 +786,7 @@ export async function resetAndSeedKprint2026(): Promise<Kprint2026FinalSeedResul
       eventId: EVENT_ID,
       code: pkg.code,
       selectorId: pkg.selectorId,
+      composition: pkg.composition,
       name: pkg.name,
       tier: pkg.tier,
       tagline: pkg.tagline,

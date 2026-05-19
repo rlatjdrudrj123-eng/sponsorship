@@ -7,40 +7,15 @@ import type { BundledPerk } from "./types";
  */
 export const DEFAULT_BUNDLED_PERKS: BundledPerk[] = [
   {
-    label: "등록대 스폰서 로고",
+    label: "등록대 스폰서 로고 표기",
     description: "전시장 입구 등록대에 회사 로고 노출 — 전 참관객 첫 접점",
     valueKRW: 1_000_000,
   },
   {
-    label: "사전등록 페이지 배너",
-    description: "공식 사전등록 페이지에 배너 노출 — 등록 동선의 핵심 매체",
-    valueKRW: 3_000_000,
-  },
-  {
-    label: "참관등록 완료 이메일",
-    description: "사전등록 완료자 전원에게 발송되는 이메일에 배너 포함",
+    label: "도면 내 로고 또는 온라인 배너 1구좌",
+    description:
+      "4부스 이상 참가사: 공식 전시장 도면에 참가기업 로고 표기 · 4부스 미만: 참가업체/전시품/통합 검색 배너 중 1구좌",
     valueKRW: 2_000_000,
-  },
-  {
-    label: "참가업체 검색 배너",
-    description: "참가업체 검색 페이지 상단 배너 노출",
-    valueKRW: 1_000_000,
-  },
-  {
-    label: "전시품 검색 배너",
-    description: "전시품 검색 페이지 상단 배너 노출",
-    valueKRW: 1_000_000,
-  },
-  {
-    label: "통합검색 배너",
-    description: "통합검색 결과 페이지 상단 배너 노출",
-    valueKRW: 1_000_000,
-  },
-  {
-    label: "도면 내 참가기업 로고",
-    description: "공식 전시장 도면 위 참가기업 로고 표기",
-    valueKRW: 2_000_000,
-    condition: "큰 회사 우선",
   },
   {
     label: "결과보고서 노출",

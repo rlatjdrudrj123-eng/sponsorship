@@ -217,6 +217,12 @@ export type Package = {
   code: string;
   /** 진단 챗봇 룩업 매트릭스용 안정 ID. 예: 'visitor_atoz_package'. */
   selectorId?: string;
+  /**
+   * 패키지를 구성하는 카테고리의 selectorId 목록.
+   * 진단 챗봇 업셀 로직(사용자가 고른 단품 + 보완재가 어느 패키지에 포함되는지 매칭)
+   * + 카트/비교 페이지의 "이 카테고리가 어느 패키지에 포함됨" 표시용.
+   */
+  composition?: string[];
   name: { ko: string; en: string };
   tier: "signature" | "standard";
   tagline?: string;

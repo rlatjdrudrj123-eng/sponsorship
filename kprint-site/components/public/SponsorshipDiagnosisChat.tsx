@@ -15,12 +15,14 @@ import {
 } from "firebase/firestore";
 import { getDb } from "@/lib/firebase/firestore";
 import {
+  findUpsellPackage,
   getRecommendations,
   getResultLayout,
   mergeQuestion,
   type DiagnosisData,
   type RecommendedEntry,
   type ResultLayout,
+  type UpsellSuggestion,
 } from "@/lib/diagnosis2";
 import type {
   Category,
@@ -288,6 +290,7 @@ export function SponsorshipDiagnosisChat({
               eventId={eventId}
               layout={layout}
               recommendations={recommendations}
+              packages={packages}
               answers={answers}
               onRestart={() => {
                 setAnswers({});
@@ -513,12 +516,14 @@ function ResultScreen({
   eventId,
   layout,
   recommendations,
+  packages,
   answers,
   onRestart,
 }: {
   eventId: string;
   layout: ResultLayout;
   recommendations: RecommendedEntry[];
+  packages: Package[];
   answers: Answers;
   onRestart: () => void;
 }) {
@@ -538,7 +543,7 @@ function ResultScreen({
   const decisionFocused: {
     main: RecommendedEntry | null;
     supplements: RecommendedEntry[];
-  } | null = (() => {
+  } | null = useMemo(() => {
     if (!isDecision || !focusedId) return null;
     const main =
       recommendations.find((r) => r.selectorId === focusedId) ?? null;
@@ -547,7 +552,31 @@ function ResultScreen({
       .filter((r) => r.selectorId !== focusedId)
       .slice(0, 2);
     return { main, supplements };
-  })();
+  }, [isDecision, focusedId, recommendations]);
+
+  // 패키지 업셀 — Decision-focused 일 때만 의미. 사용자가 고려 중인 단품(메인+보완재)이
+  // 어느 패키지에 60% 이상 포함되고 절감액이 양수면 추천.
+  const upsell: UpsellSuggestion | null = useMemo(() => {
+    if (!decisionFocused) return null;
+    const considering = [
+      decisionFocused.main!,
+      ...decisionFocused.supplements,
+    ];
+    // 이미 패키지가 고려 중이면 업셀 의미 없음
+    if (considering.some((r) => r.kind === "package")) return null;
+    const consideringIds = considering.map((r) => r.selectorId);
+    const priceBySelectorId = new Map<string, number>();
+    recommendations.forEach((r) => {
+      if (r.kind === "category" && r.minPriceKRW > 0) {
+        priceBySelectorId.set(r.selectorId, r.minPriceKRW);
+      }
+    });
+    return findUpsellPackage({
+      consideringIds,
+      packages,
+      priceBySelectorId,
+    });
+  }, [decisionFocused, recommendations, packages]);
 
   return (
     <div>
@@ -566,6 +595,7 @@ function ResultScreen({
           eventId={eventId}
           main={decisionFocused.main!}
           supplements={decisionFocused.supplements}
+          upsell={upsell}
         />
       ) : layout === "comparison" ? (
         <ComparisonTable
@@ -614,10 +644,12 @@ function DecisionFocused({
   eventId,
   main,
   supplements,
+  upsell,
 }: {
   eventId: string;
   main: RecommendedEntry;
   supplements: RecommendedEntry[];
+  upsell: UpsellSuggestion | null;
 }) {
   const detailHref =
     main.kind === "category" && main.category
@@ -699,6 +731,67 @@ function DecisionFocused({
             })}
           </div>
         </div>
+      )}
+
+      {/* 패키지 업셀 — 고려 중 상품들이 어느 패키지에 속하면 절감액 안내 */}
+      {upsell && (
+        <Link
+          href={`/${eventId}/packages/${upsell.package.id}`}
+          className="block border border-brand-500 rounded-card p-4 md:p-5 bg-brand-50/60 hover:bg-brand-50 transition-colors"
+        >
+          <div className="flex items-start gap-3">
+            <div className="text-[20px] shrink-0" aria-hidden>
+              💡
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="font-num text-[10.5px] uppercase tracking-[0.25em] text-brand-500 font-bold">
+                패키지 추천
+              </div>
+              <div className="text-[14px] md:text-[15px] font-bold text-ink-900 leading-snug mt-1">
+                지금 고려 중인 매체 중{" "}
+                <strong className="text-brand-700">
+                  {upsell.matched.length}개
+                </strong>
+                가{" "}
+                <strong>“{upsell.package.name.ko}”</strong>에 포함돼 있어요.
+                <br />
+                묶으면{" "}
+                <strong className="text-brand-700">
+                  {upsell.savings.toLocaleString()}원
+                </strong>{" "}
+                저렴합니다.
+              </div>
+              <div className="mt-2.5 grid grid-cols-1 sm:grid-cols-3 gap-x-3 gap-y-1 text-[11.5px]">
+                <div>
+                  <span className="text-ink-500">단품 합계 </span>
+                  <span className="font-num font-bold text-ink-900">
+                    {upsell.individualTotal.toLocaleString()}원
+                  </span>
+                </div>
+                <div>
+                  <span className="text-ink-500">패키지 가격 </span>
+                  <span className="font-num font-bold text-brand-700">
+                    {upsell.packagePrice.toLocaleString()}원
+                  </span>
+                </div>
+                <div>
+                  <span className="text-ink-500">절감 </span>
+                  <span className="font-num font-bold text-brand-700">
+                    -{upsell.savings.toLocaleString()}원
+                  </span>
+                </div>
+              </div>
+              {upsell.extra.length > 0 && (
+                <div className="mt-2 text-[11px] text-ink-500 leading-snug">
+                  보너스: 패키지에는 추가로 {upsell.extra.length}개 매체가 더 포함돼요.
+                </div>
+              )}
+              <div className="mt-3 inline-flex items-center gap-1 text-[12.5px] font-bold text-brand-700">
+                패키지 상세 보기 <ArrowRight className="w-3.5 h-3.5" />
+              </div>
+            </div>
+          </div>
+        </Link>
       )}
     </div>
   );

@@ -362,6 +362,78 @@ function mergeReasons(override?: ReasonTemplates): ReasonTemplates {
   return out;
 }
 
+// ─── 패키지 업셀 ─────────────────────────────────────────
+// 사용자가 Q5 에서 고른 단품 + 보완재의 selectorId 들이 어느 패키지에 일정 비율 이상
+// 포함되면 "이거 묶으면 패키지로 더 싸다" 추천. 매칭률 60% 이상 + 절감액 양수일 때.
+
+export type UpsellSuggestion = {
+  package: Package;
+  /** 사용자가 고려 중인 selectorId 중 이 패키지에 포함된 것들 */
+  matched: string[];
+  /** 패키지에 포함됐지만 사용자가 안 고른 것들 (추가로 따라오는 항목) */
+  extra: string[];
+  /** 단품으로 따로 살 때 합계 */
+  individualTotal: number;
+  /** 패키지 가격 */
+  packagePrice: number;
+  /** 절감액 (individualTotal - packagePrice). 음수면 후보 제외. */
+  savings: number;
+};
+
+/**
+ * 사용자가 고려 중인 단품 selectorId 들과 잘 맞는 패키지를 찾는다.
+ *  - matched / composition >= 0.6 (60% 이상 포함)
+ *  - 절감액 > 0
+ *  - 가장 큰 절감액 1개만 반환 (다중 추천은 혼란만 가중)
+ */
+export function findUpsellPackage(args: {
+  consideringIds: string[];
+  packages: Package[];
+  /** selectorId → 단품 최저가 (원). 매칭 안 된 selectorId 는 단순 무시. */
+  priceBySelectorId: Map<string, number>;
+}): UpsellSuggestion | null {
+  const { consideringIds, packages, priceBySelectorId } = args;
+  if (consideringIds.length === 0) return null;
+
+  const considering = new Set(consideringIds);
+  let best: UpsellSuggestion | null = null;
+
+  for (const pkg of packages) {
+    const comp = pkg.composition ?? [];
+    if (comp.length === 0) continue;
+
+    const matched = comp.filter((id) => considering.has(id));
+    const matchRatio = matched.length / comp.length;
+    if (matchRatio < 0.6) continue; // 60% 이상 매칭 못 하면 패스
+    if (matched.length < 2) continue; // 1개 매칭은 의미 없음 (단품 사도 됨)
+
+    // 단품 합계 (가격 0/별도 문의는 0 으로 계산해서 절감액에 영향 없게)
+    const individualTotal = matched.reduce((sum, id) => {
+      return sum + (priceBySelectorId.get(id) ?? 0);
+    }, 0);
+
+    const packagePrice = pkg.discountPrice;
+    const savings = individualTotal - packagePrice;
+    if (savings <= 0) continue;
+
+    const extra = comp.filter((id) => !considering.has(id));
+    const candidate: UpsellSuggestion = {
+      package: pkg,
+      matched,
+      extra,
+      individualTotal,
+      packagePrice,
+      savings,
+    };
+
+    if (!best || candidate.savings > best.savings) {
+      best = candidate;
+    }
+  }
+
+  return best;
+}
+
 // ─── 질문 텍스트 머지 (어드민 override) ─────────────────────
 
 export function mergeQuestion(
