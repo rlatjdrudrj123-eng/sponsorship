@@ -2318,8 +2318,19 @@ function SlideSection({
       </section>
 
       {/* ─── 데스크톱 전용 (md+) 풀 슬라이드 ──────────────── */}
-      <section className="hidden md:block h-screen snap-start bg-canvas pt-14 relative overflow-hidden">
-        <div className="max-w-7xl mx-auto h-full px-6 md:px-12 py-6 md:py-8 grid lg:grid-cols-[1.1fr_1fr] gap-6 lg:gap-12 items-stretch">
+      {/* inModal 일 때는 모달 컨테이너(max-h 92vh)에 맞춰 자연 height — h-screen/snap/overflow 제거 */}
+      <section
+        className={
+          "hidden md:block bg-canvas pt-14 relative " +
+          (inModal ? "" : "h-screen snap-start overflow-hidden")
+        }
+      >
+        <div
+          className={
+            "max-w-7xl mx-auto px-6 md:px-12 py-6 md:py-8 grid lg:grid-cols-[1.1fr_1fr] gap-6 lg:gap-12 items-stretch " +
+            (inModal ? "" : "h-full")
+          }
+        >
           {/* LEFT: 정보 — 세로 중앙 정렬하여 빈공간 분산 */}
           <div className="flex flex-col justify-center min-w-0 min-h-0">
             {/* 해시태그 — layout.showHashtags 가 false 면 숨김 */}

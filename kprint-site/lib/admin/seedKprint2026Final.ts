@@ -535,6 +535,26 @@ const KPRINT_CATEGORIES: CategorySeedV2[] = [
       },
     ],
   },
+  // ─── KPRINT 라운지 라이팅 X배너 (entry 가격대) ───
+  {
+    code: "KLX",
+    selectorId: "lounge_x_banner",
+    slug: "lounge-x-banner",
+    channel: "offline",
+    type: "floor_plan",
+    name: { ko: "라운지 라이팅 X배너", en: "Lounge Lightbox X-Banner" },
+    shortDesc: "KPRINT 라운지 안에 설치하는 라이팅 X배너 — 작은 단품, 입장 동선 라이트박스.",
+    fileFormat: "ai, pdf",
+    tags: ["라운지", "X배너", "신규"],
+    subcategories: [
+      {
+        name: { ko: "라운지 X배너", en: "Lounge X-Banner" },
+        unit: { ko: "구좌", en: "slot" },
+        priceKRW: 300_000,
+        slotCodes: ["KLX-1", "KLX-2"],
+      },
+    ],
+  },
 ];
 
 // =============================================================
@@ -576,9 +596,8 @@ const KPRINT_PACKAGES: PackageSeed[] = [
       { label: "참관객 목걸이 1구좌 (5,000개)" },
       { label: "라이팅월 1구좌" },
     ],
-    originalPrice: 15_500_000,
-    discountPrice: 12_000_000,
-    priceNote: "2025 대비 가격 -40%",
+    originalPrice: 14_500_000,
+    discountPrice: 9_900_000,
   },
   {
     code: "PKG-PS",
@@ -593,8 +612,7 @@ const KPRINT_PACKAGES: PackageSeed[] = [
       { label: "참가업체 검색 배너" },
     ],
     originalPrice: 9_000_000,
-    discountPrice: 7_500_000,
-    priceNote: "2025 대비 가격 -25%",
+    discountPrice: 6_900_000,
   },
   {
     code: "PKG-OS",
@@ -609,8 +627,7 @@ const KPRINT_PACKAGES: PackageSeed[] = [
       { label: "라이팅월 1구좌" },
     ],
     originalPrice: 5_500_000,
-    discountPrice: 4_000_000,
-    priceNote: "2026 신규 패키지",
+    discountPrice: 3_900_000,
   },
   {
     code: "PKG-SC",
@@ -631,8 +648,7 @@ const KPRINT_PACKAGES: PackageSeed[] = [
       { label: "인스타 카드뉴스 1회" },
     ],
     originalPrice: 4_050_000,
-    discountPrice: 3_200_000,
-    priceNote: "2025 대비 가격 -20%",
+    discountPrice: 2_900_000,
   },
 ];
 

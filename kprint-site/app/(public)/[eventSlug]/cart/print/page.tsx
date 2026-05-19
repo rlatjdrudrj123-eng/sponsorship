@@ -97,13 +97,72 @@ function CartPrintContent() {
     })();
   }, [eventId]);
 
+  // idsParam 모드: cart store 무관하게 idsParam 만 보고 CartItem 합성.
+  // 지원하는 ID 형식: slot:{slotId} / pkg:{pkgId} / slot-cat:{categoryId} / cat:{categoryId}
+  // (compare 페이지의 비교 항목은 cart 에 없을 수 있음 — 직접 fetch 한 데이터에서 매핑)
   const selected = useMemo<CartItem[]>(() => {
     if (!idsParam) return items;
-    const ids = new Set(idsParam.split(","));
-    return items.filter((it) =>
-      it.type === "slot" ? ids.has(`slot:${it.slotId}`) : ids.has(`pkg:${it.packageId}`)
-    );
-  }, [idsParam, items]);
+    const ids = idsParam.split(",");
+    const result: CartItem[] = [];
+    for (const raw of ids) {
+      if (!raw) continue;
+      let id = raw;
+      // 'slot-cat:xxx' 또는 'slot:cat:xxx' 같은 변종 normalize
+      if (id.startsWith("slot-cat:")) id = "cat:" + id.slice("slot-cat:".length);
+      else if (id.startsWith("slot:cat:")) id = "cat:" + id.slice("slot:cat:".length);
+
+      if (id.startsWith("slot:")) {
+        const slotId = id.slice(5);
+        const slot = slots.get(slotId);
+        if (!slot) continue;
+        const sub = subcategories.get(slot.subcategoryId);
+        result.push({
+          type: "slot",
+          eventId,
+          slotId: slot.id,
+          categoryId: slot.categoryId,
+          subcategoryId: slot.subcategoryId,
+          code: slot.code,
+          price: sub?.priceKRW ?? 0,
+        });
+      } else if (id.startsWith("cat:")) {
+        const catId = id.slice(4);
+        const cat = categories.get(catId);
+        if (!cat) continue;
+        // 카테고리 단위 — 최저가 소분류 + 그 안 첫 슬롯 자동 선정
+        const catSubs = Array.from(subcategories.values())
+          .filter((s) => s.categoryId === catId)
+          .sort((a, b) => a.priceKRW - b.priceKRW);
+        const sub = catSubs[0];
+        if (!sub) continue;
+        const slot = Array.from(slots.values()).find(
+          (s) => s.categoryId === catId && s.subcategoryId === sub.id
+        );
+        if (!slot) continue;
+        result.push({
+          type: "slot",
+          eventId,
+          slotId: slot.id,
+          categoryId: slot.categoryId,
+          subcategoryId: slot.subcategoryId,
+          code: slot.code,
+          price: sub.priceKRW,
+        });
+      } else if (id.startsWith("pkg:")) {
+        const pkgId = id.slice(4);
+        const pkg = packages.get(pkgId);
+        if (!pkg) continue;
+        result.push({
+          type: "package",
+          eventId,
+          packageId: pkg.id,
+          code: pkg.code,
+          price: pkg.discountPrice,
+        });
+      }
+    }
+    return result;
+  }, [idsParam, items, slots, subcategories, categories, packages, eventId]);
 
   // 슬롯/패키지 → 카테고리별 묶음 (같은 카테고리의 슬롯들은 1페이지에 합침)
   type Page =
