@@ -561,93 +561,77 @@ const KPRINT_CATEGORIES: CategorySeedV2[] = [
 // 패키지 시드 데이터
 // =============================================================
 
+// 새 형식: items 에 selectorId + count + optional subcategoryName 만 두고
+// includedItems / composition / originalPrice 는 시드 함수에서 자동 채움.
 type PackageSeed = {
   code: string;
   selectorId: string;
-  /** 이 패키지를 구성하는 카테고리 selectorId 목록 — 진단 챗봇 업셀 매칭용 */
-  composition: string[];
+  items: Array<{
+    selectorId: string;
+    count: number;
+    /** 카테고리 내 특정 소분류 지정 (예: "8월 발송"). 없으면 최저가 소분류 자동. */
+    subcategoryName?: string;
+  }>;
   name: { ko: string; en: string };
   tier: "signature" | "standard";
   tagline: string;
-  includedItems: Array<{ label: string }>;
-  originalPrice: number;
   discountPrice: number;
-  priceNote?: string;
 };
 
 const KPRINT_PACKAGES: PackageSeed[] = [
   {
     code: "PKG-AZ",
     selectorId: "visitor_atoz_package",
-    composition: [
-      "registration_logo",
-      "pre_registration_banner",
-      "pre_registration_email",
-      "visitor_lanyard",
-      "lighting_wall",
+    items: [
+      { selectorId: "registration_logo", count: 1 },
+      { selectorId: "pre_registration_banner", count: 1 },
+      { selectorId: "pre_registration_email", count: 1 },
+      { selectorId: "visitor_lanyard", count: 1 },
+      { selectorId: "lighting_wall", count: 1 },
     ],
     name: { ko: "참관객 A to Z 패키지", en: "Visitor A to Z Package" },
     tier: "signature",
     tagline: "다수 참관객에게 기업 영향력을 알리는 통합 패키지.",
-    includedItems: [
-      { label: "등록대 스폰서 로고 1구좌" },
-      { label: "사전등록 페이지 배너" },
-      { label: "참관등록 완료 이메일" },
-      { label: "참관객 목걸이 1구좌 (5,000개)" },
-      { label: "라이팅월 1구좌" },
-    ],
-    originalPrice: 14_500_000,
     discountPrice: 9_900_000,
   },
   {
     code: "PKG-PS",
     selectorId: "prime_spot_package",
-    composition: ["ceiling_banner", "floor_map_banner", "company_search_banner"],
+    items: [
+      { selectorId: "ceiling_banner", count: 2 },
+      { selectorId: "floor_map_banner", count: 1 },
+      { selectorId: "company_search_banner", count: 1 },
+    ],
     name: { ko: "프라임 스팟 패키지", en: "Prime Spot Package" },
     tier: "signature",
     tagline: "온라인 + 오프라인 최고 노출 빈도 채널을 결합한 패키지.",
-    includedItems: [
-      { label: "천장배너 2구좌" },
-      { label: "도면 검색 페이지 배너" },
-      { label: "참가업체 검색 배너" },
-    ],
-    originalPrice: 9_000_000,
     discountPrice: 6_900_000,
   },
   {
     code: "PKG-OS",
     selectorId: "onsite_package",
-    composition: ["ceiling_banner", "floor_sticker", "lighting_wall"],
+    items: [
+      { selectorId: "ceiling_banner", count: 1 },
+      { selectorId: "floor_sticker", count: 2 },
+      { selectorId: "lighting_wall", count: 1 },
+    ],
     name: { ko: "온사이트 패키지", en: "Onsite Package" },
     tier: "standard",
     tagline: "현장 노출 위주 — 진입형 시그니처.",
-    includedItems: [
-      { label: "천장배너 1구좌" },
-      { label: "전시장 바닥 스티커 2구좌" },
-      { label: "라이팅월 1구좌" },
-    ],
-    originalPrice: 5_500_000,
     discountPrice: 3_900_000,
   },
   {
     code: "PKG-SC",
     selectorId: "seminar_package",
-    composition: [
-      "seminar_banner",
-      "newsletter_domestic",
-      "interview_sns",
-      "instagram_card",
+    items: [
+      { selectorId: "seminar_banner", count: 1 },
+      { selectorId: "newsletter_domestic", count: 1, subcategoryName: "8월 발송" },
+      { selectorId: "interview_sns", count: 1 },
+      { selectorId: "instagram_card", count: 1 },
     ],
     name: { ko: "세미나/컨퍼런스 패키지", en: "Seminar/Conference Package" },
     tier: "standard",
     tagline: "핵심 산업 관계자에게 배너와 뉴스레터로 노출.",
-    includedItems: [
-      { label: "세미나 페이지 배너 1구좌" },
-      { label: "국내 뉴스레터 1회 (8월)" },
-      { label: "참가업체 인터뷰 + SNS" },
-      { label: "인스타 카드뉴스 1회" },
-    ],
-    originalPrice: 4_050_000,
     discountPrice: 2_900_000,
   },
 ];
@@ -720,6 +704,20 @@ export async function resetAndSeedKprint2026(): Promise<Kprint2026FinalSeedResul
   let slotCount = 0;
   let categoryOrder = 0;
 
+  // 패키지 시드 시 카테고리/소분류 정보를 참조하기 위한 인덱스
+  type CatSeedInfo = {
+    catId: string;
+    catName: { ko: string; en: string };
+    subs: Array<{
+      subId: string;
+      name: { ko: string; en: string };
+      unit: { ko: string; en: string };
+      priceKRW: number;
+    }>;
+    slotIdsBySubId: Map<string, string[]>;
+  };
+  const catInfoBySelectorId = new Map<string, CatSeedInfo>();
+
   for (const cat of KPRINT_CATEGORIES) {
     const catRef = doc(collection(db, "categories"));
     const catId = catRef.id;
@@ -744,6 +742,13 @@ export async function resetAndSeedKprint2026(): Promise<Kprint2026FinalSeedResul
     });
     catCount++;
 
+    const catInfo: CatSeedInfo = {
+      catId,
+      catName: cat.name,
+      subs: [],
+      slotIdsBySubId: new Map(),
+    };
+
     let subOrder = 0;
     for (const sub of cat.subcategories) {
       const subRef = doc(collection(db, "subcategories"));
@@ -759,7 +764,14 @@ export async function resetAndSeedKprint2026(): Promise<Kprint2026FinalSeedResul
         order: subOrder,
       });
       subCount++;
+      catInfo.subs.push({
+        subId: subRef.id,
+        name: sub.name,
+        unit: sub.unit,
+        priceKRW: sub.priceKRW,
+      });
 
+      const slotIds: string[] = [];
       // 각 소분류마다 명시적 슬롯 코드로 슬롯 생성
       for (const slotCode of sub.slotCodes) {
         const slotRef = doc(collection(db, "slots"));
@@ -773,8 +785,11 @@ export async function resetAndSeedKprint2026(): Promise<Kprint2026FinalSeedResul
           order: slotCount,
         });
         slotCount++;
+        slotIds.push(slotRef.id);
       }
+      catInfo.slotIdsBySubId.set(subRef.id, slotIds);
     }
+    if (cat.selectorId) catInfoBySelectorId.set(cat.selectorId, catInfo);
   }
 
   // 5) KPRINT 페르소나 시드 — 인쇄 업계 회사 5유형
@@ -791,25 +806,64 @@ export async function resetAndSeedKprint2026(): Promise<Kprint2026FinalSeedResul
     personaCount++;
   }
 
-  // 6) 패키지 시드
+  // 6) 패키지 시드 — items 에서 includedItems / composition / originalPrice 자동 산출
   let pkgCount = 0;
   let pkgOrder = 0;
   for (const pkg of KPRINT_PACKAGES) {
     const pkgRef = doc(collection(db, "packages"));
     pkgOrder++;
+
+    let originalPrice = 0;
+    const includedItems: Array<{
+      label: string;
+      referencedSlotIds?: string[];
+      categoryId?: string;
+      subcategoryId?: string;
+      count?: number;
+    }> = [];
+    const composition: string[] = [];
+
+    for (const it of pkg.items) {
+      const ci = catInfoBySelectorId.get(it.selectorId);
+      if (!ci) continue;
+      // 소분류 — subcategoryName 매칭 우선, 없으면 최저가 소분류
+      const sub = it.subcategoryName
+        ? ci.subs.find((s) => s.name.ko === it.subcategoryName)
+        : [...ci.subs].sort((a, b) => a.priceKRW - b.priceKRW)[0];
+      if (!sub) continue;
+      originalPrice += sub.priceKRW * it.count;
+
+      const subLabel =
+        ci.subs.length > 1 && sub.name.ko !== ci.subs[0].name.ko
+          ? ` (${sub.name.ko})`
+          : "";
+      const label = `${ci.catName.ko}${subLabel} ${it.count}${sub.unit.ko}`;
+      const refSlots = (ci.slotIdsBySubId.get(sub.subId) ?? []).slice(
+        0,
+        it.count
+      );
+      includedItems.push({
+        label,
+        referencedSlotIds: refSlots,
+        categoryId: ci.catId,
+        subcategoryId: sub.subId,
+        count: it.count,
+      });
+      composition.push(it.selectorId);
+    }
+
     await setDoc(pkgRef, {
       id: pkgRef.id,
       eventId: EVENT_ID,
       code: pkg.code,
       selectorId: pkg.selectorId,
-      composition: pkg.composition,
+      composition,
       name: pkg.name,
       tier: pkg.tier,
       tagline: pkg.tagline,
-      includedItems: pkg.includedItems,
-      originalPrice: pkg.originalPrice,
+      includedItems,
+      originalPrice,
       discountPrice: pkg.discountPrice,
-      ...(pkg.priceNote ? { priceNote: pkg.priceNote } : {}),
       isPublished: true,
       order: pkgOrder,
     });

@@ -4,6 +4,7 @@ import { ArrowRight, Download, LayoutGrid, Sparkles } from "lucide-react";
 import Link from "next/link";
 import type { LandingBlock, SiteSettings } from "@/lib/types";
 import { BlockSection } from "./blocks";
+import { useLocale } from "@/lib/i18n/locale";
 
 /**
  * 캔버스로 디자인된 슬라이드 데크를 풀스크린 snap-scroll 로 렌더.
@@ -23,6 +24,7 @@ export function LandingRenderer({
   eventId: string;
   settings: SiteSettings | null;
 }) {
+  const locale = useLocale((s) => s.locale);
   return (
     <>
       {/* 우상단 영속 버튼 — 카탈로그·전체 PDF */}
@@ -32,18 +34,26 @@ export function LandingRenderer({
           target="_blank"
           rel="noopener noreferrer"
           className="px-4 py-2.5 rounded-pill bg-white/90 backdrop-blur border border-ink-100 hover:border-ink-900 text-ink-900 text-[12px] md:text-[13px] font-bold transition-colors flex items-center gap-1.5"
-          title="전체 패키지 PDF (인쇄·PDF 저장)"
+          title={
+            locale === "en"
+              ? "Full sponsorship PDF"
+              : "전체 패키지 PDF (인쇄·PDF 저장)"
+          }
         >
           <Download className="w-3.5 h-3.5" />
-          전체 PDF
+          {locale === "en" ? "Full PDF" : "전체 PDF"}
         </Link>
         <Link
           href={`/${eventId}/sponsorships`}
           className="px-5 py-2.5 rounded-pill bg-brand-500 text-white hover:bg-brand-700 text-[12px] md:text-[13px] font-bold transition-colors flex items-center gap-1.5 shadow-glow-sm hover:shadow-glow"
-          title="필터·페르소나로 직접 찾기"
+          title={
+            locale === "en"
+              ? "Browse the catalog"
+              : "필터·페르소나로 직접 찾기"
+          }
         >
           <LayoutGrid className="w-3.5 h-3.5" />
-          카탈로그로 보기
+          {locale === "en" ? "Catalog" : "카탈로그로 보기"}
           <ArrowRight className="w-3.5 h-3.5" />
         </Link>
       </div>
@@ -59,7 +69,7 @@ export function LandingRenderer({
         ))}
 
         {/* 마지막 슬라이드 다음에 양쪽 선택 화면 — 데크 끝에서 자연스럽게 결정 */}
-        <ModeChoice eventId={eventId} />
+        <ModeChoice eventId={eventId} locale={locale} />
       </main>
     </>
   );
@@ -69,17 +79,27 @@ export function LandingRenderer({
  * 데크 마지막에 자동 추가되는 모드 선택 슬라이드.
  * 데크 봤으니 이제 "카탈로그(필터로 찾기)" 또는 "슬라이드 다시 보기" 중 선택.
  */
-function ModeChoice({ eventId }: { eventId: string }) {
+function ModeChoice({
+  eventId,
+  locale,
+}: {
+  eventId: string;
+  locale: "ko" | "en";
+}) {
   return (
     <section className="h-screen snap-start snap-always relative overflow-hidden flex items-center justify-center bg-canvas text-ink-900 px-8 md:px-16">
       <div className="max-w-5xl w-full">
         <div className="font-num text-[12px] md:text-[14px] uppercase tracking-[0.3em] text-brand-500 font-bold mb-4 flex items-center gap-2 justify-center">
           <span className="w-6 h-px bg-brand-500" />
-          어떻게 둘러보시겠어요?
+          {locale === "en"
+            ? "How would you like to explore?"
+            : "어떻게 둘러보시겠어요?"}
           <span className="w-6 h-px bg-brand-500" />
         </div>
         <h2 className="text-[32px] md:text-[56px] font-bold text-center tracking-tight leading-[1.05] text-ink-900 mb-10 md:mb-14">
-          본격적으로 스폰서십 살펴보기
+          {locale === "en"
+            ? "Dive into the sponsorships"
+            : "본격적으로 스폰서십 살펴보기"}
         </h2>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-5">
@@ -92,23 +112,38 @@ function ModeChoice({ eventId }: { eventId: string }) {
               recommended
             </div>
             <div className="text-[26px] md:text-[32px] font-bold text-ink-900 tracking-tight leading-tight">
-              카탈로그
+              {locale === "en" ? "Catalog" : "카탈로그"}
             </div>
             <p className="text-[13px] md:text-[14px] text-ink-500 mt-3 leading-relaxed flex-1">
-              <strong className="text-ink-900">페르소나·예산·목적</strong>으로 추천을 받고,
-              필터로 좁혀 카드 단위로 비교. 처음이라면 여기서 시작하세요.
+              {locale === "en" ? (
+                <>
+                  Get suggestions by{" "}
+                  <strong className="text-ink-900">
+                    persona · budget · goal
+                  </strong>{" "}
+                  and compare candidates as cards. Start here if you&apos;re new.
+                </>
+              ) : (
+                <>
+                  <strong className="text-ink-900">
+                    페르소나·예산·목적
+                  </strong>
+                  으로 추천을 받고, 필터로 좁혀 카드 단위로 비교. 처음이라면
+                  여기서 시작하세요.
+                </>
+              )}
             </p>
             <div className="mt-5 flex items-center gap-1 text-[12.5px] font-num font-bold text-brand-500">
               <LayoutGrid className="w-3.5 h-3.5" />
-              카드 그리드
+              {locale === "en" ? "Card grid" : "카드 그리드"}
               <span className="text-ink-300 mx-1.5">·</span>
               <Sparkles className="w-3 h-3" />
-              페르소나 추천
+              {locale === "en" ? "Persona match" : "페르소나 추천"}
               <span className="text-ink-300 mx-1.5">·</span>
-              비교
+              {locale === "en" ? "Compare" : "비교"}
             </div>
             <div className="mt-5 inline-flex items-center gap-2 text-[13.5px] font-bold text-ink-900 group-hover:text-brand-500 transition-colors">
-              카탈로그 열기
+              {locale === "en" ? "Open catalog" : "카탈로그 열기"}
               <ArrowRight className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" />
             </div>
           </Link>
@@ -122,21 +157,22 @@ function ModeChoice({ eventId }: { eventId: string }) {
               one by one
             </div>
             <div className="text-[26px] md:text-[32px] font-bold text-ink-900 tracking-tight leading-tight">
-              슬라이드
+              {locale === "en" ? "Slides" : "슬라이드"}
             </div>
             <p className="text-[13px] md:text-[14px] text-ink-500 mt-3 leading-relaxed flex-1">
-              슬롯 하나씩 풀스크린으로. 이미지 · 사이즈 · 가격 · 구좌 선택까지 한 화면에.
-              PDF 출력에 그대로 사용 가능합니다.
+              {locale === "en"
+                ? "One slot per fullscreen — image, size, price, slot selector. Print-friendly as is."
+                : "슬롯 하나씩 풀스크린으로. 이미지 · 사이즈 · 가격 · 구좌 선택까지 한 화면에. PDF 출력에 그대로 사용 가능합니다."}
             </p>
             <div className="mt-5 flex items-center gap-1 text-[12.5px] font-num font-bold text-ink-700">
-              한 장씩 보기
+              {locale === "en" ? "One at a time" : "한 장씩 보기"}
               <span className="text-ink-300 mx-1.5">·</span>
               16:9
               <span className="text-ink-300 mx-1.5">·</span>
-              PDF 친화
+              {locale === "en" ? "Print-friendly" : "PDF 친화"}
             </div>
             <div className="mt-5 inline-flex items-center gap-2 text-[13.5px] font-bold text-ink-900 group-hover:text-brand-500 transition-colors">
-              슬라이드 보기
+              {locale === "en" ? "Open slides" : "슬라이드 보기"}
               <ArrowRight className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" />
             </div>
           </Link>
