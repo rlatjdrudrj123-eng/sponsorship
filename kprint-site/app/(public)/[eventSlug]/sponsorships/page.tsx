@@ -2809,19 +2809,13 @@ function SlideSection({
                           key={i}
                           className="bg-canvas border border-ink-100 rounded-btn p-2.5 flex gap-2"
                         >
-                          {c.logoUrl ? (
+                          {c.logoUrl && (
                             // eslint-disable-next-line @next/next/no-img-element
                             <img
                               src={c.logoUrl}
                               alt={c.company}
                               className="w-9 h-9 rounded object-contain border border-ink-100 shrink-0 bg-white"
                             />
-                          ) : (
-                            <div className="w-9 h-9 rounded bg-ink-50 border border-ink-100 grid place-items-center shrink-0">
-                              <span className="text-[9px] text-ink-300 font-mono">
-                                LOGO
-                              </span>
-                            </div>
                           )}
                           <div className="flex-1 min-w-0">
                             <div className="flex items-baseline justify-between gap-2">

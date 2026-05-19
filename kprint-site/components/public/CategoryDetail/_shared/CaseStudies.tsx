@@ -27,17 +27,13 @@ export function CaseStudies({ items }: { items: CaseStudy[] }) {
             key={i}
             className="bg-canvas border border-ink-100 rounded-btn p-4 flex gap-3 hover:border-brand-500 transition-colors"
           >
-            {c.logoUrl ? (
+            {c.logoUrl && (
               // eslint-disable-next-line @next/next/no-img-element
               <img
                 src={c.logoUrl}
                 alt={c.company}
                 className="w-12 h-12 rounded object-contain border border-ink-100 shrink-0 bg-white"
               />
-            ) : (
-              <div className="w-12 h-12 rounded bg-ink-50 border border-ink-100 grid place-items-center shrink-0">
-                <span className="text-[10px] text-ink-300 font-mono">LOGO</span>
-              </div>
             )}
             <div className="flex-1 min-w-0">
               <div className="flex items-baseline justify-between gap-2">
