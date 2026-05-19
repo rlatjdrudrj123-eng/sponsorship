@@ -378,7 +378,7 @@ const KPRINT_CATEGORIES: CategorySeedV2[] = [
       {
         name: { ko: "8월 발송", en: "August" },
         unit: { ko: "회", en: "send" },
-        priceKRW: 2_000_000,
+        priceKRW: 3_000_000,
         size: "630px × 160px",
         slotCodes: ["DNL-2"],
       },
@@ -398,14 +398,14 @@ const KPRINT_CATEGORIES: CategorySeedV2[] = [
       {
         name: { ko: "7월 발송", en: "July" },
         unit: { ko: "회", en: "send" },
-        priceKRW: 1_000_000,
+        priceKRW: 1_500_000,
         size: "630px × 160px",
         slotCodes: ["INL-1"],
       },
       {
         name: { ko: "8월 발송", en: "August" },
         unit: { ko: "회", en: "send" },
-        priceKRW: 1_500_000,
+        priceKRW: 3_000_000,
         size: "630px × 160px",
         slotCodes: ["INL-2"],
       },
