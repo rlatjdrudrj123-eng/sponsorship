@@ -25,13 +25,11 @@ import { getDb } from "@/lib/firebase/firestore";
 import type {
   Category,
   Package,
-  Purpose,
+  Persona,
   Slot,
   Subcategory,
   Taxonomy,
 } from "@/lib/types";
-import { PURPOSE_META, PURPOSE_ORDER } from "@/lib/types";
-import { derivePurposes } from "@/lib/purposes";
 import { LivePreview } from "@/components/admin/CategoryEditor/LivePreview";
 import { CompletenessCheck } from "@/components/admin/CategoryEditor/CompletenessCheck";
 import { SubcategoryTable } from "@/components/admin/CategoryEditor/SubcategoryTable";
@@ -143,6 +141,7 @@ export default function CategoryEditPage() {
   const [taxonomyTags, setTaxonomyTags] = useState<Taxonomy["tags"]>([]);
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [allPackages, setAllPackages] = useState<Package[]>([]);
+  const [allPersonas, setAllPersonas] = useState<Persona[]>([]);
   const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
   const [saveError, setSaveError] = useState<string | null>(null);
   const [lastSaved, setLastSaved] = useState<Date | null>(null);
@@ -222,6 +221,20 @@ export default function CategoryEditPage() {
       query(collection(getDb(), "packages"), where("eventId", "==", evId)),
       (s) =>
         setAllPackages(s.docs.map((d) => ({ ...(d.data() as Package), id: d.id })))
+    );
+    return () => u();
+  }, [category?.eventId]);
+
+  // personas (행사별, 참가 상황 매핑용 — 광고 목적을 페르소나로 흡수)
+  useEffect(() => {
+    const evId = category?.eventId;
+    if (!evId) return;
+    const u = onSnapshot(
+      query(collection(getDb(), "personas"), where("eventId", "==", evId)),
+      (s) =>
+        setAllPersonas(
+          s.docs.map((d) => ({ ...(d.data() as Persona), id: d.id }))
+        )
     );
     return () => u();
   }, [category?.eventId]);
@@ -740,6 +753,7 @@ export default function CategoryEditPage() {
             <ParticipantViewEditor
               category={category}
               allPackages={allPackages}
+              allPersonas={allPersonas}
               onUpdate={async (patch) => {
                 await updateDoc(doc(getDb(), "categories", id), {
                   ...patch,
@@ -1055,22 +1069,21 @@ function SaveStatusBadge({
 function ParticipantViewEditor({
   category,
   allPackages,
+  allPersonas,
   onUpdate,
 }: {
   category: Category;
   allPackages: Package[];
+  allPersonas: Persona[];
   onUpdate: (patch: Partial<Category>) => Promise<void>;
 }) {
-  const purposeOverride = category.purposeOverride;
-  const derived = derivePurposes(category);
-  const usingOverride = !!(purposeOverride && purposeOverride.length > 0);
+  const selectedPersonaIds = category.personas ?? [];
 
-  const togglePurpose = (p: Purpose) => {
-    const current = purposeOverride ?? derived;
-    const next = current.includes(p)
-      ? current.filter((x) => x !== p)
-      : [...current, p];
-    onUpdate({ purposeOverride: next });
+  const togglePersona = (pid: string) => {
+    const next = selectedPersonaIds.includes(pid)
+      ? selectedPersonaIds.filter((x) => x !== pid)
+      : [...selectedPersonaIds, pid];
+    onUpdate({ personas: next });
   };
 
   const lastYear = category.lastYear ?? {};
@@ -1080,62 +1093,67 @@ function ParticipantViewEditor({
 
   return (
     <div className="space-y-6 text-[13px]">
-      {/* 광고 목적 (참가업체 사이드바 필터) */}
+      {/* 참가 상황(페르소나) — 사이드바·카드 칩 매칭 */}
       <div>
         <div className="flex items-baseline justify-between mb-2">
           <div>
             <div className="text-[13px] font-semibold text-ink-900">
-              광고 목적 (사이드바 필터·페르소나 매칭)
+              참가 상황 매핑 (페르소나 다중 선택)
             </div>
             <p className="text-[11px] text-ink-500 mt-0.5">
-              참가업체 시점에서 이 카테고리가 어떤 목적에 맞는지. 비워두면 휴리스틱
-              자동 추정. 직접 토글하면 그게 우선.
+              이 카테고리가 어떤 참가 상황·광고 목적에 맞는지. 사이드바 필터와 카드
+              칩에 직접 노출됩니다. 페르소나 추가는{" "}
+              <Link
+                href="/admin/classification"
+                className="text-brand-700 font-semibold hover:underline"
+              >
+                /admin/classification
+              </Link>
+              에서.
             </p>
           </div>
-          {usingOverride && (
-            <button
-              type="button"
-              onClick={() => onUpdate({ purposeOverride: undefined })}
-              className="text-[10px] text-ink-500 hover:text-ink-900 font-semibold"
-              title="자동 추정으로 되돌리기"
-            >
-              ↺ 자동
-            </button>
-          )}
         </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-          {PURPOSE_ORDER.map((p) => {
-            const active = (purposeOverride ?? derived).includes(p);
-            const wasDerived = derived.includes(p) && !usingOverride;
-            return (
-              <button
-                key={p}
-                type="button"
-                onClick={() => togglePurpose(p)}
-                className={
-                  "text-left px-3 py-2 rounded-btn border-2 transition-colors " +
-                  (active
-                    ? "border-brand-500 bg-brand-50"
-                    : "border-ink-100 bg-white hover:border-ink-300")
-                }
-              >
-                <div className="flex items-center justify-between gap-2">
-                  <span className="text-[12.5px] font-bold text-ink-900">
-                    {PURPOSE_META[p].ko}
-                  </span>
-                  {wasDerived && (
-                    <span className="text-[9px] text-ink-500 font-mono">
-                      auto
+        {allPersonas.length === 0 ? (
+          <div className="bg-ink-50 border border-ink-100 rounded-btn px-3 py-3 text-[11.5px] text-ink-500">
+            등록된 페르소나가 없습니다. /admin/classification 에서 먼저
+            추가하세요.
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+            {allPersonas.map((p) => {
+              const active = selectedPersonaIds.includes(p.id);
+              return (
+                <button
+                  key={p.id}
+                  type="button"
+                  onClick={() => togglePersona(p.id)}
+                  className={
+                    "text-left px-3 py-2 rounded-btn border-2 transition-colors " +
+                    (active
+                      ? "border-brand-500 bg-brand-50"
+                      : "border-ink-100 bg-white hover:border-ink-300")
+                  }
+                >
+                  <div className="flex items-baseline gap-2">
+                    {p.emoji && (
+                      <span className="text-[14px] leading-none shrink-0">
+                        {p.emoji}
+                      </span>
+                    )}
+                    <span className="text-[12.5px] font-bold text-ink-900">
+                      {p.title}
                     </span>
+                  </div>
+                  {p.description && (
+                    <div className="text-[10.5px] text-ink-500 mt-1 leading-snug line-clamp-2">
+                      {p.description}
+                    </div>
                   )}
-                </div>
-                <div className="text-[10.5px] text-ink-500 mt-0.5 leading-snug">
-                  {PURPOSE_META[p].desc}
-                </div>
-              </button>
-            );
-          })}
-        </div>
+                </button>
+              );
+            })}
+          </div>
+        )}
       </div>
 
       <hr className="border-ink-100" />
