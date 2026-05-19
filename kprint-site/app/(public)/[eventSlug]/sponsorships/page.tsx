@@ -15,6 +15,7 @@ import {
 import {
   ArrowLeft,
   ArrowRight,
+  ChevronDown,
   Download,
   Filter,
   LayoutGrid,
@@ -996,6 +997,7 @@ function DetailSlideModal({
             total={total}
             onOpenDetail={onOpenDetail}
             inModal
+            hideDetailButton
             typeLayouts={typeLayouts}
             bundledPerks={bundledPerks}
           />
@@ -2029,7 +2031,7 @@ function SlideStream({
         // 데스크톱·모바일 모두 한 화면당 1 슬라이드 snap.
         // h-dvh 사용 — 모바일 브라우저 toolbar 등장/숨김 시 실제 보이는 영역에 정확히 맞춤.
         // (h-screen 은 100vh 고정이라 사파리에서 toolbar 영역만큼 잘림.)
-        <main className="bg-canvas h-dvh overflow-y-scroll snap-y snap-mandatory scroll-smooth">
+        <main className="bg-canvas h-dvh overflow-y-scroll snap-y snap-mandatory">
           {items.map((c, i) => {
             const subs = subcategories
               .filter((s) => s.categoryId === c.id)
@@ -2050,7 +2052,9 @@ function SlideStream({
                 bundledPerks={bundledPerks}
                 // 슬라이드 모드는 이미 풀스크린이라 '자세히 보기' 버튼이 같은 화면을 한 번 더 모달로
                 // 띄우는 중복이 됨. 데스크톱·모바일 모두 자세히 보기 숨김.
-                inModal
+                // (inModal 은 false — 슬라이드 페이지는 snap-mandatory 가 한 슬라이드 = 한 화면을 강제하므로
+                //  h-screen snap-start 가 유지돼야 떨림 없음.)
+                hideDetailButton
               />
             );
           })}
@@ -2068,6 +2072,7 @@ function SlideSection({
   total,
   onOpenDetail,
   inModal = false,
+  hideDetailButton = false,
   typeLayouts,
   bundledPerks,
 }: {
@@ -2077,8 +2082,10 @@ function SlideSection({
   index: number;
   total: number;
   onOpenDetail: (slug: string) => void;
-  /** 모달 컨텍스트에서 렌더될 때는 "자세히 보기" 버튼 숨김 — 이미 자세히 본 상태이므로 의미 없음 */
+  /** 자연 height 모드. true 면 h-screen / snap-start / overflow-hidden 가 빠져, 부모 컨테이너(모달 또는 자유 스크롤 영역) 가 스크롤을 처리. */
   inModal?: boolean;
+  /** "자세히 보기" 버튼 숨김 — 모달 안 또는 슬라이드 페이지처럼 이미 자세한 화면일 때 */
+  hideDetailButton?: boolean;
   /** SiteSettings.typeLayouts — 유형별 스펙 행 순서/노출 override */
   typeLayouts?: SiteSettings["typeLayouts"];
   /** SiteSettings.bundledPerks — 스폰서십 신청 시 동봉되는 추가 혜택 */
@@ -2087,6 +2094,7 @@ function SlideSection({
   const locale = useLocale((s) => s.locale);
   const [pickerOpen, setPickerOpen] = useState(false);
   const [floorOpen, setFloorOpen] = useState(false);
+  const [perksOpen, setPerksOpen] = useState(false);
   const hero = item.heroImages?.images?.[0]?.url;
   // 도면 보기 가능 — floor_plan / xpace 타입 + 도면 이미지가 있을 때만 노출
   const hasFloorImages =
@@ -2354,7 +2362,7 @@ function SlideSection({
               >
                 {locale === "en" ? "View location" : "위치 보기"}
               </button>
-            ) : !inModal ? (
+            ) : !hideDetailButton ? (
               <button
                 type="button"
                 onClick={() => onOpenDetail(item.slug)}
@@ -2627,7 +2635,7 @@ function SlideSection({
                 </div>
               )}
 
-            {/* 동봉 혜택 미니 배너 — layout.showPerksBanner 가 false 면 숨김 */}
+            {/* 동봉 혜택 미니 배너 — 클릭 시 7개 perks 리스트로 펼침. layout.showPerksBanner 가 false 면 숨김 */}
             {showPerksBanner &&
               (() => {
               const allPerks = bundledPerks ?? DEFAULT_BUNDLED_PERKS;
@@ -2635,27 +2643,75 @@ function SlideSection({
               if (perks.length === 0) return null;
               const totalValue = calcPerksTotalValue(perks);
               return (
-                <div className="mt-5 px-3.5 py-2.5 rounded-btn bg-gradient-to-r from-brand-50 to-canvas border border-brand-100 flex items-center gap-3 text-[12px]">
-                  <span className="text-brand-700 font-bold flex items-center gap-1.5 shrink-0">
-                    <span aria-hidden>🎁</span>
-                    {locale === "en"
-                      ? "2026 renewal perks"
-                      : "2026 리뉴얼 기념 추가 혜택"}
-                  </span>
-                  <span className="text-ink-700 flex-1 truncate">
-                    <strong className="text-ink-900">
+                <div className="mt-5 rounded-btn bg-gradient-to-r from-brand-50 to-canvas border border-brand-100 overflow-hidden">
+                  <button
+                    type="button"
+                    onClick={() => setPerksOpen((v) => !v)}
+                    className="w-full px-3.5 py-2.5 flex items-center gap-3 text-[12px] text-left hover:bg-brand-50/60 transition-colors"
+                  >
+                    <span className="text-brand-700 font-bold flex items-center gap-1.5 shrink-0">
+                      <span aria-hidden>🎁</span>
                       {locale === "en"
-                        ? `${perks.length} items`
-                        : `${perks.length}가지`}
-                    </strong>
-                    {totalValue > 0 && (
-                      <span className="ml-1.5 text-ink-500">
+                        ? "2026 renewal perks"
+                        : "2026 리뉴얼 기념 추가 혜택"}
+                    </span>
+                    <span className="text-ink-700 flex-1 truncate">
+                      <strong className="text-ink-900">
                         {locale === "en"
-                          ? ` · ~₩${totalValue.toLocaleString()} value`
-                          : ` · 총 ${totalValue.toLocaleString()}원 상당`}
-                      </span>
-                    )}
-                  </span>
+                          ? `${perks.length} items`
+                          : `${perks.length}가지`}
+                      </strong>
+                      {totalValue > 0 && (
+                        <span className="ml-1.5 text-ink-500">
+                          {locale === "en"
+                            ? ` · ~₩${totalValue.toLocaleString()} value`
+                            : ` · 총 ${totalValue.toLocaleString()}원 상당`}
+                        </span>
+                      )}
+                    </span>
+                    <ChevronDown
+                      className={
+                        "w-4 h-4 text-brand-700 shrink-0 transition-transform " +
+                        (perksOpen ? "rotate-180" : "")
+                      }
+                    />
+                  </button>
+                  {perksOpen && (
+                    <ul className="px-3.5 pb-3 pt-1 space-y-2 border-t border-brand-100">
+                      {perks.map((p, i) => (
+                        <li
+                          key={i}
+                          className="flex items-start gap-2 text-[11.5px] leading-snug"
+                        >
+                          <span className="text-brand-500 font-bold mt-0.5">•</span>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-baseline gap-1.5 flex-wrap">
+                              <span className="font-bold text-ink-900">
+                                {p.label}
+                              </span>
+                              {p.condition && (
+                                <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-ink-100 text-ink-500">
+                                  {p.condition}
+                                </span>
+                              )}
+                              {p.valueKRW && (
+                                <span className="text-[10.5px] font-num font-bold text-brand-700">
+                                  {locale === "en"
+                                    ? `~₩${p.valueKRW.toLocaleString()}`
+                                    : `${p.valueKRW.toLocaleString()}원 상당`}
+                                </span>
+                              )}
+                            </div>
+                            {p.description && (
+                              <p className="text-ink-500 mt-0.5">
+                                {p.description}
+                              </p>
+                            )}
+                          </div>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
                 </div>
               );
             })()}
@@ -2679,7 +2735,7 @@ function SlideSection({
                   {locale === "en" ? "View location" : "위치 보기"}
                 </button>
               )}
-              {!inModal && (
+              {!hideDetailButton && (
                 <button
                   type="button"
                   onClick={() => onOpenDetail(item.slug)}
