@@ -6,9 +6,7 @@ import { collection, doc, getDoc, getDocs, query, where } from "firebase/firesto
 import { Printer } from "lucide-react";
 import { getDb } from "@/lib/firebase/firestore";
 import { CanvasRenderer } from "@/components/public/canvas/CanvasRenderer";
-import { calcPerksTotalValue } from "@/lib/perks";
 import type {
-  BundledPerk,
   CanvasPageBlock,
   Category,
   Channel,
@@ -132,15 +130,11 @@ function FullPrintContent() {
   // 표지 페이지 수 — 랜딩 캔버스가 있으면 그 개수, 없으면 fallback Cover 1장
   const coverPagesCount = canvasBlocks.length > 0 ? canvasBlocks.length : 1;
 
-  // 동봉 혜택 페이지 — 카테고리/패키지 슬라이드 뒤에 한 페이지 추가
-  const bundledPerks = settings?.bundledPerks ?? [];
-  const hasPerksPage = bundledPerks.length > 0;
+  // 추가 혜택(perks) 페이지는 어드민이 랜딩 빌더에서 직접 만들어 넣는 방향으로 변경 —
+  // PDF 자동 생성 페이지에서는 제외.
 
   const totalPages =
-    coverPagesCount +
-    sortedCategories.length +
-    sortedPackages.length +
-    (hasPerksPage ? 1 : 0);
+    coverPagesCount + sortedPackages.length + sortedCategories.length;
 
   // 데이터 로드 완료 후 자동 인쇄 다이얼로그
   useEffect(() => {
@@ -211,12 +205,11 @@ function FullPrintContent() {
           ))
         )}
 
-        {/* 2) 카테고리 슬라이드 */}
-        {sortedCategories.map((c, i) => (
-          <CategorySlide
-            key={`c-${c.id}`}
-            category={c}
-            subs={subByCat.get(c.id) ?? []}
+        {/* 2) 패키지 슬라이드 — 단품(카테고리) 앞에 배치 */}
+        {sortedPackages.map((pkg, i) => (
+          <PackageSlide
+            key={`p-${pkg.id}`}
+            pkg={pkg}
             index={coverPagesCount + i}
             total={totalPages}
             eventName={eventName}
@@ -224,32 +217,18 @@ function FullPrintContent() {
           />
         ))}
 
-        {/* 3) 패키지 슬라이드 */}
-        {sortedPackages.map((pkg, i) => (
-          <PackageSlide
-            key={`p-${pkg.id}`}
-            pkg={pkg}
-            index={coverPagesCount + sortedCategories.length + i}
+        {/* 3) 카테고리(단품) 슬라이드 */}
+        {sortedCategories.map((c, i) => (
+          <CategorySlide
+            key={`c-${c.id}`}
+            category={c}
+            subs={subByCat.get(c.id) ?? []}
+            index={coverPagesCount + sortedPackages.length + i}
             total={totalPages}
             eventName={eventName}
             locale={locale}
           />
         ))}
-
-        {/* 4) 동봉 혜택 페이지 — 영업 마지막 어필 */}
-        {hasPerksPage && (
-          <PerksSlide
-            perks={bundledPerks}
-            index={
-              coverPagesCount +
-              sortedCategories.length +
-              sortedPackages.length
-            }
-            total={totalPages}
-            eventName={eventName}
-            locale={locale}
-          />
-        )}
       </div>
 
       <style jsx global>{`
@@ -386,127 +365,6 @@ function CoverSlide({
             </div>
           </div>
         </div>
-      </div>
-    </section>
-  );
-}
-
-// ============================================================================
-// PerksSlide — 스폰서십 신청 시 동봉되는 혜택 페이지
-// ============================================================================
-
-function PerksSlide({
-  perks,
-  index,
-  total,
-  eventName,
-  locale,
-}: {
-  perks: BundledPerk[];
-  index: number;
-  total: number;
-  eventName: string;
-  locale: "ko" | "en";
-}) {
-  const totalValue = calcPerksTotalValue(perks);
-  return (
-    <section className="a4-page bg-white shadow print:shadow-none mx-auto print:mx-0 my-4 print:my-0 w-[297mm] h-[210mm] relative overflow-hidden">
-      <div className="h-full px-16 py-14 flex flex-col">
-        <div className="text-[11px] uppercase tracking-[0.3em] text-brand-700 font-bold flex items-center gap-2">
-          <span aria-hidden>🎁</span>
-          Bonus Perks · {eventName}
-        </div>
-
-        <h2 className="mt-6 text-[44px] font-bold leading-[1.05] tracking-tight text-ink-900">
-          {locale === "en" ? "2026 Renewal" : "2026 리뉴얼 기념"}
-          <br />
-          <span className="text-brand-500">
-            {locale === "en"
-              ? `${perks.length} extra perks`
-              : `추가 혜택 ${perks.length}가지`}
-          </span>
-        </h2>
-
-        <p className="mt-4 text-[14px] text-ink-700 leading-relaxed max-w-2xl">
-          {locale === "en"
-            ? "Whichever single or package you pick, the perks below are included (some items are pick-one)."
-            : "단품·패키지 어떤 매체를 선택하셔도 아래 혜택이 함께 제공됩니다 (일부 항목은 신청 시 택1)."}
-        </p>
-
-        <ul className="mt-8 grid grid-cols-2 gap-x-10 gap-y-4 flex-1">
-          {perks.map((perk, i) => (
-            <li
-              key={i}
-              className="flex items-start gap-3 border-l-2 border-brand-500 pl-4"
-            >
-              <div className="flex-1 min-w-0">
-                <div className="flex items-baseline gap-2 flex-wrap">
-                  <span className="text-[14px] font-bold text-ink-900">
-                    {perk.label}
-                  </span>
-                  {perk.condition && (
-                    <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-ink-100 text-ink-500">
-                      {perk.condition}
-                    </span>
-                  )}
-                </div>
-                {perk.description && (
-                  <p className="text-[11.5px] text-ink-500 mt-1 leading-snug">
-                    {perk.description}
-                  </p>
-                )}
-                {perk.valueKRW && (
-                  <div className="text-[11px] font-num text-brand-700 font-bold mt-1">
-                    {locale === "en"
-                      ? `~₩${perk.valueKRW.toLocaleString()}`
-                      : `${perk.valueKRW.toLocaleString()}원 상당`}
-                  </div>
-                )}
-              </div>
-            </li>
-          ))}
-        </ul>
-
-        {totalValue > 0 && (
-          <div className="mt-auto pt-6 border-t border-ink-100 flex items-end justify-between">
-            <p className="text-[11px] text-ink-500 leading-relaxed">
-              {locale === "en" ? (
-                <>
-                  * Conditional perks are excluded from the total.
-                  <br />* This deck is auto-generated from the data.
-                </>
-              ) : (
-                <>
-                  * 조건부 혜택은 합산에서 제외됩니다.
-                  <br />* 본 자료는 데이터를 기반으로 자동 생성되었습니다.
-                </>
-              )}
-            </p>
-            <div className="text-right">
-              <div className="text-[10.5px] uppercase tracking-[0.25em] text-ink-500 font-bold">
-                Total Value
-              </div>
-              <div className="text-[32px] font-num font-bold text-brand-700 leading-none mt-1">
-                {locale === "en" ? "₩" : ""}
-                {totalValue.toLocaleString()}
-                <span className="text-[16px] ml-1 text-ink-900">
-                  {locale === "en" ? "" : "원"}
-                </span>
-              </div>
-              <div className="text-[11px] text-ink-500 mt-1">
-                {locale === "en" ? "in extra exposure" : "상당의 추가 노출"}
-              </div>
-            </div>
-          </div>
-        )}
-      </div>
-
-      <div className="absolute bottom-3 right-12 font-mono tracking-widest text-ink-300 text-[12px]">
-        <span className="text-ink-700 font-bold">
-          {String(index + 1).padStart(2, "0")}
-        </span>
-        <span className="mx-1">/</span>
-        {String(total).padStart(2, "0")}
       </div>
     </section>
   );
