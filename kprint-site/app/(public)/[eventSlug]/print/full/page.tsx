@@ -638,15 +638,18 @@ function CategorySlide({
           </div>
         </div>
 
-        {/* RIGHT */}
-        <div className="relative flex flex-col min-h-0">
-          <div className="flex-1 rounded-card bg-ink-100 overflow-hidden border border-ink-100 relative">
+        {/* RIGHT — 슬라이드 페이지 hero 와 같은 패턴: 4:3 비율 박스 + cover */}
+        <div className="flex items-center justify-center min-h-0">
+          <div
+            className="w-full rounded-card bg-ink-100 overflow-hidden border border-ink-100 relative shadow-card"
+            style={{ aspectRatio: "4 / 3" }}
+          >
             {hero ? (
               // eslint-disable-next-line @next/next/no-img-element
               <img
                 src={hero}
                 alt={localizedHelper(category.name, locale)}
-                className="absolute inset-0 w-full h-full object-contain"
+                className="absolute inset-0 w-full h-full object-cover"
               />
             ) : (
               <div className="w-full h-full grid place-items-center text-ink-300 text-sm">
@@ -778,14 +781,17 @@ function PackageSlide({
           </div>
         </div>
 
-        <div className="relative flex flex-col min-h-0">
-          <div className="flex-1 rounded-card bg-ink-100 overflow-hidden border border-ink-100 relative">
+        <div className="flex items-center justify-center min-h-0">
+          <div
+            className="w-full rounded-card bg-ink-100 overflow-hidden border border-ink-100 relative shadow-card"
+            style={{ aspectRatio: "4 / 3" }}
+          >
             {hero ? (
               // eslint-disable-next-line @next/next/no-img-element
               <img
                 src={hero}
                 alt={localizedHelper(pkg.name, locale)}
-                className="absolute inset-0 w-full h-full object-contain"
+                className="absolute inset-0 w-full h-full object-cover"
               />
             ) : (
               <div className="w-full h-full grid place-items-center text-ink-300 text-sm">

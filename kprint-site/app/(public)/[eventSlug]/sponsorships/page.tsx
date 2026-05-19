@@ -2163,6 +2163,7 @@ function SlideSection({
           <HeroMedia
             videoUrl={item.heroVideoUrl}
             imageUrl={hero}
+            images={item.heroImages?.images}
             alt={localized(item.name, locale)}
             locale={locale}
           />
@@ -2393,8 +2394,10 @@ function SlideSection({
             (inModal ? "" : "h-full")
           }
         >
-          {/* LEFT: 정보 — 세로 중앙 정렬하여 빈공간 분산. 토글 펼침 시 영역 내부에서 스크롤 */}
-          <div className="flex flex-col justify-center min-w-0 min-h-0 overflow-y-auto">
+          {/* LEFT: 정보 — 세로 중앙 정렬하여 빈공간 분산.
+              overflow-y-auto 는 의도적으로 빼둠 — 토글 닫힌 상태 2개까지는 한 화면에 들어가야 하므로
+              column 내부 스크롤 대신 모달/부모 컨테이너가 스크롤하도록 위임. */}
+          <div className="flex flex-col justify-center min-w-0 min-h-0">
             {/* 해시태그 — layout.showHashtags 가 false 면 숨김 */}
             {showHashtags && (
               <div className="flex flex-wrap gap-x-4 gap-y-1 text-[13px] md:text-[14px] tracking-wide text-brand-500 font-bold mb-4 font-num">
@@ -2424,7 +2427,7 @@ function SlideSection({
               </p>
             )}
 
-            <hr className="border-ink-100 my-6" />
+            <hr className="border-ink-100 my-4" />
 
             {/* 스펙 표 — 어드민의 typeLayouts 설정 (또는 기본 레이아웃) 기반으로 행 노출.
                 /admin/settings/type-layouts 에서 유형별로 어떤 행을 어떤 순서로 보일지 조정 가능. */}
@@ -2647,7 +2650,7 @@ function SlideSection({
               if (perks.length === 0) return null;
               const totalValue = calcPerksTotalValue(perks);
               return (
-                <div className="mt-5 rounded-btn bg-gradient-to-r from-brand-50 to-canvas border border-brand-100 overflow-hidden">
+                <div className="mt-3 rounded-btn bg-gradient-to-r from-brand-50 to-canvas border border-brand-100 overflow-hidden">
                   <button
                     type="button"
                     onClick={() => setPerksOpen((v) => !v)}
@@ -2722,7 +2725,7 @@ function SlideSection({
 
             {/* 디테일 이미지 미니 토글 — 어드민이 '디테일 이미지' 슬롯에 추가한 사진들 */}
             {detailImages.length > 0 && (
-              <div className="mt-2 rounded-btn bg-surface border border-ink-100 overflow-hidden">
+              <div className="mt-1.5 rounded-btn bg-surface border border-ink-100 overflow-hidden">
                 <button
                   type="button"
                   onClick={() => setDetailOpen((v) => !v)}
@@ -2775,7 +2778,7 @@ function SlideSection({
 
             {/* 이전 행사 사례 미니 토글 — 어드민의 caseStudies */}
             {caseStudies.length > 0 && (
-              <div className="mt-2 rounded-btn bg-surface border border-ink-100 overflow-hidden">
+              <div className="mt-1.5 rounded-btn bg-surface border border-ink-100 overflow-hidden">
                 <button
                   type="button"
                   onClick={() => setCasesOpen((v) => !v)}
@@ -2844,7 +2847,7 @@ function SlideSection({
 
             {/* 버튼: 구좌 선택 / [위치 보기 (도면 있을 때만)] / [자세히 보기 — 모달 외부에서만] / 가이드 다운로드.
                 모바일은 세로 스택, 데스크톱은 가로 */}
-            <div className="mt-6 flex flex-col sm:flex-row gap-2 sm:gap-3">
+            <div className="mt-4 flex flex-col sm:flex-row gap-2 sm:gap-3">
               <button
                 type="button"
                 onClick={() => setPickerOpen(true)}
@@ -2919,6 +2922,7 @@ function SlideSection({
               <HeroMedia
                 videoUrl={item.heroVideoUrl}
                 imageUrl={hero}
+                images={item.heroImages?.images}
                 alt={localized(item.name, locale)}
                 locale={locale}
               />
@@ -3198,14 +3202,18 @@ function SlotPickerModal({
 function HeroMedia({
   videoUrl,
   imageUrl,
+  images,
   alt,
   locale,
 }: {
   videoUrl?: string;
   imageUrl?: string;
+  /** 여러 장이면 좌우 화살표 + dot 으로 수동 캐러셀. 비디오 우선. */
+  images?: Array<{ url: string; caption?: string }>;
   alt: string;
   locale: "ko" | "en";
 }) {
+  const [idx, setIdx] = useState(0);
   const embed = videoUrl ? heroVideoEmbed(videoUrl) : null;
   if (embed?.kind === "iframe") {
     return (
@@ -3229,20 +3237,75 @@ function HeroMedia({
       />
     );
   }
-  if (imageUrl) {
+  const list =
+    images && images.length > 0
+      ? images
+      : imageUrl
+        ? [{ url: imageUrl }]
+        : [];
+  if (list.length === 0) {
     return (
-      // eslint-disable-next-line @next/next/no-img-element
-      <img
-        src={imageUrl}
-        alt={alt}
-        className="absolute inset-0 w-full h-full object-cover"
-      />
+      <div className="w-full h-full grid place-items-center text-ink-300 text-sm">
+        {locale === "en" ? "Image coming soon" : "이미지 준비 중"}
+      </div>
     );
   }
+  const safeIdx = Math.min(idx, list.length - 1);
+  const cur = list[safeIdx];
   return (
-    <div className="w-full h-full grid place-items-center text-ink-300 text-sm">
-      {locale === "en" ? "Image coming soon" : "이미지 준비 중"}
-    </div>
+    <>
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
+        src={cur.url}
+        alt={alt}
+        loading="lazy"
+        decoding="async"
+        className="absolute inset-0 w-full h-full object-cover"
+      />
+      {list.length > 1 && (
+        <>
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              setIdx((i) => (i - 1 + list.length) % list.length);
+            }}
+            className="absolute left-2 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full bg-white/90 hover:bg-white shadow grid place-items-center"
+            aria-label={locale === "en" ? "Previous" : "이전"}
+          >
+            <ArrowLeft className="w-4 h-4" />
+          </button>
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              setIdx((i) => (i + 1) % list.length);
+            }}
+            className="absolute right-2 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full bg-white/90 hover:bg-white shadow grid place-items-center"
+            aria-label={locale === "en" ? "Next" : "다음"}
+          >
+            <ArrowRight className="w-4 h-4" />
+          </button>
+          <div className="absolute bottom-2 left-1/2 -translate-x-1/2 flex gap-1">
+            {list.map((_, i) => (
+              <button
+                key={i}
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setIdx(i);
+                }}
+                className={
+                  "w-1.5 h-1.5 rounded-full transition-colors " +
+                  (safeIdx === i ? "bg-white" : "bg-white/40 hover:bg-white/70")
+                }
+                aria-label={`${i + 1}`}
+              />
+            ))}
+          </div>
+        </>
+      )}
+    </>
   );
 }
 
