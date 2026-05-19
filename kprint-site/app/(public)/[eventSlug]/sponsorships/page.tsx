@@ -1126,8 +1126,8 @@ function FilterPanel({
         {/* 빠른 가격대 칩 — 진단 챗봇 Q3 와 동일한 구간 */}
         <div className="grid grid-cols-2 gap-1.5 mb-3">
           {[
-            { label: "100만 이하", value: 1_000_000 },
-            { label: "500만 이하", value: 5_000_000 },
+            { label: "300만 이하", value: 3_000_000 },
+            { label: "700만 이하", value: 7_000_000 },
             { label: "1,500만 이하", value: 15_000_000 },
             { label: "전체", value: 0 },
           ].map((tier) => {

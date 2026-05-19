@@ -535,6 +535,59 @@ const KPRINT_CATEGORIES: CategorySeedV2[] = [
       },
     ],
   },
+  // ─── VIP 라운지 협찬 (현물 / 현금 ─ 사무국 진행 가능) ───
+  {
+    code: "VIP",
+    selectorId: "vip_lounge_sponsor",
+    slug: "vip-lounge-sponsor",
+    channel: "offline",
+    type: "quantity",
+    name: { ko: "VIP 라운지 협찬", en: "VIP Lounge Sponsor" },
+    shortDesc:
+      "VIP 바이어·관계자가 머무는 라운지에 협찬 — 경품·커피·간식 중 택일 (현물 또는 현금 후 사무국 진행).",
+    tags: ["VIP", "라운지", "협찬", "신규"],
+    subcategories: [
+      {
+        name: { ko: "경품 협찬", en: "Prize Sponsorship" },
+        unit: { ko: "건", en: "deal" },
+        priceKRW: 2_000_000,
+        slotCodes: ["VIP-1"],
+      },
+      {
+        name: { ko: "커피 협찬", en: "Coffee Sponsorship" },
+        unit: { ko: "건", en: "deal" },
+        priceKRW: 2_000_000,
+        slotCodes: ["VIP-2"],
+      },
+      {
+        name: { ko: "간식 협찬", en: "Snack Sponsorship" },
+        unit: { ko: "건", en: "deal" },
+        priceKRW: 2_000_000,
+        slotCodes: ["VIP-3"],
+      },
+    ],
+  },
+  // ─── 수출상담회 외벽 포스터 (해외 바이어 동선) ───
+  {
+    code: "EXP",
+    selectorId: "export_consultation_poster",
+    slug: "export-consultation-poster",
+    channel: "offline",
+    type: "floor_plan",
+    name: { ko: "수출상담회 외벽 포스터", en: "Export Consultation Poster" },
+    shortDesc:
+      "수출상담회 부스 외벽에 포스터 부착 — 해외 바이어 동선 위에 직접 노출.",
+    fileFormat: "ai, pdf",
+    tags: ["수출상담회", "포스터", "해외", "신규"],
+    subcategories: [
+      {
+        name: { ko: "수출상담회 외벽", en: "Export Booth Exterior" },
+        unit: { ko: "구좌", en: "slot" },
+        priceKRW: 1_000_000,
+        slotCodes: ["EXP-1"],
+      },
+    ],
+  },
 ];
 
 // =============================================================

@@ -377,13 +377,13 @@ export type DiagnosisConfig = {
 
 export type DiagQ1Value = "launch" | "acquisition" | "retention" | "awareness";
 export type DiagQ2Value = "small" | "medium" | "large";
-export type DiagQ3Value = "under_100" | "under_500" | "under_1500" | "over_1500";
+export type DiagQ3Value = "under_300" | "under_700" | "under_1500" | "over_1500";
 export type DiagQ4Value = "early" | "compare" | "decision";
 
 /** Q3 값별 가격 상한 (원) — 룩업 매트릭스 결과를 가격 필터링할 때 사용. */
 export const DIAG_Q3_PRICE_CEILING: Record<DiagQ3Value, number> = {
-  under_100: 1_000_000,
-  under_500: 5_000_000,
+  under_300: 3_000_000,
+  under_700: 7_000_000,
   under_1500: 15_000_000,
   over_1500: 1_000_000_000, // 사실상 무제한
 };

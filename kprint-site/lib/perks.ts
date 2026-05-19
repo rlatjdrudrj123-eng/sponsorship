@@ -5,21 +5,46 @@ import type { BundledPerk } from "./types";
  * 어드민의 [사이트 설정 → 동봉 혜택] 에서 자유롭게 편집 가능.
  * siteSettings.bundledPerks 가 비어있으면 이 기본값이 fallback.
  */
+// 200만원 이상 스폰서십 구매 시 모두에게 동봉되는 무료 혜택.
+// 단품으로는 사실상 안 팔리는 매체들을 가치로 묶어서 제공.
+// (총 가치 약 950만원 — 메인 매체 구매에 부가가치 강조용)
 export const DEFAULT_BUNDLED_PERKS: BundledPerk[] = [
   {
     label: "등록대 스폰서 로고 표기",
-    description: "전시장 입구 등록대에 회사 로고 노출 — 전 참관객 첫 접점",
+    description:
+      "전시장 입구 등록대에 회사 로고 노출 — 전 참관객 첫 접점",
     valueKRW: 1_000_000,
   },
   {
-    label: "도면 내 로고 또는 온라인 배너 1구좌",
+    label: "도면 내 참가기업 로고",
     description:
-      "4부스 이상 참가사: 공식 전시장 도면에 참가기업 로고 표기 · 4부스 미만: 참가업체/전시품/통합 검색 배너 중 1구좌",
+      "공식 전시장 도면 위에 참가기업 로고 표기 — 4부스 이상 우선 배치",
     valueKRW: 2_000_000,
   },
   {
+    label: "참가업체 검색 배너 1구좌",
+    description: "참가업체 검색 페이지 상단 배너 노출",
+    valueKRW: 2_000_000,
+  },
+  {
+    label: "전시품 검색 배너 1구좌",
+    description: "전시품 검색 페이지 상단 배너 노출",
+    valueKRW: 2_000_000,
+  },
+  {
+    label: "통합검색 배너 1구좌",
+    description: "통합검색 결과 페이지 상단 배너 노출",
+    valueKRW: 2_000_000,
+  },
+  {
+    label: "세미나 페이지 배너 1구좌",
+    description: "세미나/컨퍼런스 페이지 상단 배너 노출",
+    valueKRW: 1_500_000,
+  },
+  {
     label: "결과보고서 노출",
-    description: "행사 종료 후 발행되는 공식 결과보고서에 스폰서 명단 노출",
+    description:
+      "행사 종료 후 발행되는 공식 결과보고서에 스폰서 명단 노출",
   },
 ];
 

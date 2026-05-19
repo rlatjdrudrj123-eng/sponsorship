@@ -66,8 +66,8 @@ export const DEFAULT_DIAG_V2_QUESTIONS: Record<
     id: "q3",
     intro: "집행 가능한 최대 예산은?",
     chips: [
-      { value: "under_100", label: "100만원 수준" },
-      { value: "under_500", label: "500만원 수준" },
+      { value: "under_300", label: "300만원 수준" },
+      { value: "under_700", label: "700만원 수준" },
       { value: "under_1500", label: "1,500만원 수준" },
       { value: "over_1500", label: "1,500만원 이상" },
     ],
@@ -88,22 +88,29 @@ export const DEFAULT_DIAG_V2_QUESTIONS: Record<
 // 스펙 3.1 기준. selectorId 는 categories.selectorId / packages.selectorId 와 매칭.
 // 어드민 override 가능.
 
+// 단품 추천 풀에서 제외하는 매체들 — perks (200만 이상 구매 시 동봉 혜택) 로 흡수.
+// 등록대 스폰서 로고, 참가업체/전시품/통합 검색 배너, 세미나 페이지 배너, 도면 내 로고.
+// (selectorId 로 보존하되 매트릭스 셀에선 등장 X)
 export const DEFAULT_RECOMMENDATION_MATRIX: RecommendationMatrix = {
   // Q1 = launch (신제품·신기술 런칭)
   launch: {
-    small: ["seminar_banner", "instagram_card", "company_search_banner"],
+    small: ["instagram_card", "interview_sns", "category_wall"],
     medium: ["seminar_package", "interview_sns", "distribution_stand"],
     large: ["custom_seminar_package", "seminar_package", "guidebook_back"],
   },
-  // Q1 = acquisition (신규 거래선·대리점 발굴)
+  // Q1 = acquisition (신규 거래선·대리점 발굴 — 해외 바이어 포함)
   acquisition: {
-    small: ["company_search_banner", "product_search_banner", "category_wall"],
-    medium: ["prime_spot_package", "floor_map_banner", "floor_map_logo"],
+    small: ["category_wall", "distribution_stand", "export_consultation_poster"],
+    medium: [
+      "prime_spot_package",
+      "floor_map_banner",
+      "export_consultation_poster",
+    ],
     large: [
       "prime_spot_package",
       "floor_map_banner",
-      "floor_map_logo",
-      "pre_registration_banner",
+      "export_consultation_poster",
+      "visitor_atoz_package",
     ],
   },
   // Q1 = retention (기존 고객·파트너 관계 강화)
@@ -112,17 +119,17 @@ export const DEFAULT_RECOMMENDATION_MATRIX: RecommendationMatrix = {
     medium: [
       "pre_registration_banner",
       "invitation_insert",
-      "newsletter_domestic",
+      "vip_lounge_sponsor",
     ],
     large: [
       "invitation_insert",
       "visitor_atoz_package",
-      "newsletter_domestic",
+      "vip_lounge_sponsor",
     ],
   },
   // Q1 = awareness (브랜드 인지도·점유율 확대)
   awareness: {
-    small: ["floor_sticker", "integrated_search_banner", "category_wall"],
+    small: ["floor_sticker", "category_wall", "instagram_card"],
     medium: ["onsite_package", "ceiling_banner", "lighting_wall"],
     large: ["visitor_atoz_package", "ceiling_banner", "visitor_lanyard"],
   },
@@ -193,6 +200,12 @@ export const SELECTOR_TO_REASON_KEY: Record<string, ReasonCategoryKey> = {
   ceiling_banner: "ceiling",
   // 목걸이
   visitor_lanyard: "lanyard",
+  // 분야별 홍보월 / 배포대 / VIP 라운지 / 수출상담회 — other 폴백
+  category_wall: "other",
+  distribution_stand: "other",
+  vip_lounge_sponsor: "other",
+  export_consultation_poster: "other",
+  floor_sticker: "other",
 };
 
 /** 카테고리/패키지의 selectorId → reason key 결정. 매핑 없으면 'other'. */
