@@ -43,8 +43,6 @@ import { SlotPicker } from "@/components/public/CategoryDetail/_shared/SlotPicke
 import { PersonaRecommendation } from "@/components/public/PersonaRecommendation";
 import { localized, useLocale, type Locale } from "@/lib/i18n/locale";
 import { t } from "@/lib/i18n/strings";
-import { derivePurposes } from "@/lib/purposes";
-import { PURPOSE_META, PURPOSE_ORDER, type Purpose } from "@/lib/types";
 import { getTypeLayout } from "@/lib/typeLayouts";
 import {
   DEFAULT_BUNDLED_PERKS,
@@ -213,7 +211,6 @@ export default function SponsorshipsPage() {
   // + PersonaRecommendation 배너 띄움.
   const [personas, setPersonas] = useState<Persona[]>([]);
   const [selectedPersona, setSelectedPersona] = useState<Persona | null>(null);
-  const [activePurposes, setActivePurposes] = useState<Set<Purpose>>(new Set());
   const [activeMediaTypes, setActiveMediaTypes] = useState<Set<MediaType>>(new Set());
   const [activeTimings, setActiveTimings] = useState<Set<Timing>>(new Set());
   const [activeLocations, setActiveLocations] = useState<Set<LocationTag>>(new Set());
@@ -343,13 +340,6 @@ export default function SponsorshipsPage() {
       // 페르소나는 태그·맥락 기반 추천만. 예산은 슬라이더에서 별도로 제어.
       rows = rows.filter((r) => matchesPersona(r, selectedPersona));
     }
-    if (activePurposes.size > 0) {
-      // 참가업체 시점의 광고 목적 필터 (단일 진실원)
-      rows = rows.filter((r) => {
-        const purps = derivePurposes(r);
-        return purps.some((p) => activePurposes.has(p));
-      });
-    }
     if (activeMediaTypes.size > 0) {
       rows = rows.filter((r) => {
         // floor_plan 선택 시 media(이벤트 LED)도 같이 포함
@@ -391,7 +381,6 @@ export default function SponsorshipsPage() {
     deadlineSoon,
     search,
     selectedPersona,
-    activePurposes,
     activeMediaTypes,
     activeTimings,
     activeLocations,
@@ -401,7 +390,6 @@ export default function SponsorshipsPage() {
     setFilterChannel("all");
     setBudget(0);
     setSelectedPersona(null);
-    setActivePurposes(new Set());
     setActiveMediaTypes(new Set());
     setActiveTimings(new Set());
     setActiveLocations(new Set());
@@ -416,7 +404,6 @@ export default function SponsorshipsPage() {
     deadlineSoon ||
     search.trim() !== "" ||
     !!selectedPersona ||
-    activePurposes.size > 0 ||
     activeMediaTypes.size > 0 ||
     activeTimings.size > 0 ||
     activeLocations.size > 0;
@@ -638,8 +625,6 @@ export default function SponsorshipsPage() {
                   personas={personas}
                   selectedPersona={selectedPersona}
                   setSelectedPersona={setSelectedPersona}
-                  activePurposes={activePurposes}
-                  setActivePurposes={setActivePurposes}
                   activeMediaTypes={activeMediaTypes}
                   setActiveMediaTypes={setActiveMediaTypes}
                   activeTimings={activeTimings}
@@ -689,6 +674,7 @@ export default function SponsorshipsPage() {
                   <CardGrid
                     items={filtered}
                     packages={packages}
+                    personas={personas}
                     compareIds={compareIds}
                     onToggleCompare={toggleCompare}
                     onOpenDetail={setDetailModalSlug}
@@ -737,8 +723,6 @@ export default function SponsorshipsPage() {
                 personas={personas}
                 selectedPersona={selectedPersona}
                 setSelectedPersona={setSelectedPersona}
-                activePurposes={activePurposes}
-                setActivePurposes={setActivePurposes}
                 activeMediaTypes={activeMediaTypes}
                 setActiveMediaTypes={setActiveMediaTypes}
                 activeTimings={activeTimings}
@@ -1022,8 +1006,6 @@ function FilterPanel({
   personas,
   selectedPersona,
   setSelectedPersona,
-  activePurposes,
-  setActivePurposes,
   activeMediaTypes,
   setActiveMediaTypes,
   activeTimings,
@@ -1050,8 +1032,6 @@ function FilterPanel({
   personas: Persona[];
   selectedPersona: Persona | null;
   setSelectedPersona: (p: Persona | null) => void;
-  activePurposes: Set<Purpose>;
-  setActivePurposes: (s: Set<Purpose>) => void;
   activeMediaTypes: Set<MediaType>;
   setActiveMediaTypes: (s: Set<MediaType>) => void;
   activeTimings: Set<Timing>;
@@ -1172,17 +1152,16 @@ function FilterPanel({
         )}
       </FilterSection>
 
-      {/* (2) 참가 상황 — 페르소나(있으면) + 광고 목적 한 섹션으로 통합 */}
+      {/* (2) 참가 상황 — 페르소나(어드민 /admin/classification 에서 자유롭게 추가/수정).
+          이전에 분리되어 있던 "광고 목적" 4개는 페르소나 시스템으로 흡수됨. */}
       <FilterSection
         title={locale === "en" ? "Your situation" : "참가 상황"}
         hint={
           locale === "en"
-            ? "Pre-curated profile or pick your goal"
-            : "회사 상황이나 광고 목적 선택"
+            ? "Pick the profile that fits"
+            : "회사 상황·목적과 맞는 항목 선택"
         }
       >
-        {/* 참가 상황 — 페르소나 + 광고 목적을 한 흐름의 동일 스타일 버튼 리스트로 통합.
-            데이터 모델은 분리(selectedPersona / activePurposes) 되어 있지만 UI는 한 묶음. */}
         <div className="space-y-1.5">
           {personas.map((p) => {
             const active = selectedPersona?.id === p.id;
@@ -1213,37 +1192,6 @@ function FilterPanel({
                         {p.description}
                       </div>
                     )}
-                  </div>
-                </div>
-              </button>
-            );
-          })}
-          {PURPOSE_ORDER.map((p) => {
-            const meta = PURPOSE_META[p];
-            const active = activePurposes.has(p);
-            return (
-              <button
-                key={`purpose-${p}`}
-                type="button"
-                onClick={() => {
-                  const next = new Set(activePurposes);
-                  if (active) next.delete(p);
-                  else next.add(p);
-                  setActivePurposes(next);
-                }}
-                className={
-                  "w-full text-left px-3 py-2.5 rounded-btn border transition-colors " +
-                  (active
-                    ? "border-brand-500 bg-brand-50"
-                    : "border-ink-100 bg-white hover:border-ink-700")
-                }
-              >
-                <div className="min-w-0 flex-1">
-                  <div className="text-[12.5px] font-bold text-ink-900 leading-tight">
-                    {locale === "en" ? meta.en : meta.ko}
-                  </div>
-                  <div className="text-[10.5px] text-ink-500 mt-0.5 leading-snug line-clamp-2">
-                    {meta.desc}
                   </div>
                 </div>
               </button>
@@ -1690,12 +1638,14 @@ function PackageCard({
 function CardGrid({
   items,
   packages,
+  personas,
   compareIds,
   onToggleCompare,
   onOpenDetail,
 }: {
   items: EnrichedCategory[];
   packages: Package[];
+  personas: Persona[];
   compareIds: Set<string>;
   onToggleCompare: (key: string) => void;
   onOpenDetail: (slug: string) => void;
@@ -1706,6 +1656,11 @@ function CardGrid({
     packages.forEach((p) => m.set(p.id, p));
     return m;
   }, [packages]);
+  const personasById = useMemo(() => {
+    const m = new Map<string, Persona>();
+    personas.forEach((p) => m.set(p.id, p));
+    return m;
+  }, [personas]);
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
       {items.map((c) => {
@@ -1801,18 +1756,22 @@ function CardGrid({
                 </p>
               )}
 
-              {/* 목적 칩 — 참가업체 시점 */}
+              {/* 참가 상황 칩 — 카테고리.personas 매핑된 페르소나 라벨 (최대 2개) */}
               {(() => {
-                const purps = derivePurposes(c).slice(0, 2);
-                if (purps.length === 0) return null;
+                const ids = (c.personas ?? []).slice(0, 2);
+                const matched = ids
+                  .map((id) => personasById.get(id))
+                  .filter((p): p is Persona => !!p);
+                if (matched.length === 0) return null;
                 return (
                   <div className="mt-3 flex flex-wrap gap-1">
-                    {purps.map((p) => (
+                    {matched.map((p) => (
                       <span
-                        key={p}
-                        className="text-[10px] font-num font-semibold text-brand-500 bg-brand-50 px-2 py-0.5 rounded-pill"
+                        key={p.id}
+                        className="text-[10px] font-num font-semibold text-brand-500 bg-brand-50 px-2 py-0.5 rounded-pill inline-flex items-center gap-1"
                       >
-                        {PURPOSE_META[p][locale === "en" ? "en" : "ko"]}
+                        {p.emoji && <span aria-hidden>{p.emoji}</span>}
+                        {p.title}
                       </span>
                     ))}
                   </div>
