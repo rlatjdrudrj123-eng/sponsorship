@@ -62,30 +62,12 @@ function channelLabel(c: Channel | "all", locale: Locale): string {
   return t(key, locale);
 }
 
-// 사이드바 필터에서는 패키지를 별도 섹션으로 분리했으므로 채널 옵션에서 제외
-const CHANNEL_FILTER_IDS: Array<Channel | "all"> = ["all", "offline", "online"];
-
 // ============================================================================
 // 매체 유형 / 노출 시점 / 위치 — 실무 필터
 // ============================================================================
 
-type MediaType = Exclude<Category["type"], "package">;
 type Timing = "pre" | "onsite" | "post";
 type LocationTag = "hall_a" | "hall_b" | "hall_c" | "hall_d" | "outdoor" | "online";
-
-// 'floor_plan' 옵션은 media 도 같이 매칭 (LDL 같은 실내 LED 영상도 전시장 설치물에 속함)
-const MEDIA_TYPE_OPTIONS: Array<{
-  id: MediaType;
-  label: { ko: string; en: string };
-}> = [
-  { id: "floor_plan", label: { ko: "전시장 내부 설치", en: "On-floor install" } },
-  { id: "xpace", label: { ko: "LED 영상 광고", en: "LED video ads" } },
-  { id: "digital_banner", label: { ko: "사이트·앱 배너", en: "Web/app banners" } },
-  { id: "mailing", label: { ko: "뉴스레터·푸시", en: "Newsletter / push" } },
-  { id: "print_page", label: { ko: "쇼가이드 인쇄", en: "Show guide print" } },
-  { id: "content", label: { ko: "SNS 콘텐츠", en: "SNS content" } },
-  { id: "quantity", label: { ko: "참관객 배포물", en: "Visitor giveaways" } },
-];
 
 const TIMING_OPTIONS: Array<{
   id: Timing;
@@ -205,13 +187,11 @@ export default function SponsorshipsPage() {
   const [settings, setSettings] = useState<SiteSettings | null>(null);
   const [taxonomy, setTaxonomy] = useState<Taxonomy | null>(null);
 
-  const [filterChannel, setFilterChannel] = useState<Channel | "all">("all");
   const [budget, setBudget] = useState<number>(0); // 0 = 필터 X
   // 페르소나 — 필터 사이드바에서 직접 선택. 선택 시 그 페르소나 매칭 매체만 노출
   // + PersonaRecommendation 배너 띄움.
   const [personas, setPersonas] = useState<Persona[]>([]);
   const [selectedPersona, setSelectedPersona] = useState<Persona | null>(null);
-  const [activeMediaTypes, setActiveMediaTypes] = useState<Set<MediaType>>(new Set());
   const [activeTimings, setActiveTimings] = useState<Set<Timing>>(new Set());
   const [activeLocations, setActiveLocations] = useState<Set<LocationTag>>(new Set());
   const [deadlineSoon, setDeadlineSoon] = useState(false);
@@ -221,7 +201,6 @@ export default function SponsorshipsPage() {
   const [viewMode, setViewMode] = useState<"card" | "slide">(
     searchParams?.get("view") === "slide" ? "slide" : "card"
   );
-  const [advancedOpen, setAdvancedOpen] = useState(false);
   const [aiChatOpen, setAiChatOpen] = useState(false);
   // 첫 질문 Q1 (목적) 의 4가지 (룩업 매트릭스 Q1 값)
   const [aiChatInitial, setAiChatInitial] = useState<
@@ -330,22 +309,12 @@ export default function SponsorshipsPage() {
 
   const filtered = useMemo(() => {
     let rows = enriched;
-    if (filterChannel !== "all") {
-      rows = rows.filter((r) => r.channel === filterChannel);
-    }
     if (budget > 0) {
       rows = rows.filter((r) => r.minPrice > 0 && r.minPrice <= budget);
     }
     if (selectedPersona) {
       // 페르소나는 태그·맥락 기반 추천만. 예산은 슬라이더에서 별도로 제어.
       rows = rows.filter((r) => matchesPersona(r, selectedPersona));
-    }
-    if (activeMediaTypes.size > 0) {
-      rows = rows.filter((r) => {
-        // floor_plan 선택 시 media(이벤트 LED)도 같이 포함
-        if (r.type === "media" && activeMediaTypes.has("floor_plan")) return true;
-        return activeMediaTypes.has(r.type as MediaType);
-      });
     }
     if (activeTimings.size > 0) {
       rows = rows.filter((r) => {
@@ -376,21 +345,17 @@ export default function SponsorshipsPage() {
     return rows;
   }, [
     enriched,
-    filterChannel,
     budget,
     deadlineSoon,
     search,
     selectedPersona,
-    activeMediaTypes,
     activeTimings,
     activeLocations,
   ]);
 
   const resetFilters = () => {
-    setFilterChannel("all");
     setBudget(0);
     setSelectedPersona(null);
-    setActiveMediaTypes(new Set());
     setActiveTimings(new Set());
     setActiveLocations(new Set());
     setDeadlineSoon(false);
@@ -399,12 +364,10 @@ export default function SponsorshipsPage() {
 
 
   const hasActiveFilter =
-    filterChannel !== "all" ||
     budget > 0 ||
     deadlineSoon ||
     search.trim() !== "" ||
     !!selectedPersona ||
-    activeMediaTypes.size > 0 ||
     activeTimings.size > 0 ||
     activeLocations.size > 0;
 
@@ -617,16 +580,12 @@ export default function SponsorshipsPage() {
                 <FilterPanel
                   search={search}
                   setSearch={setSearch}
-                  filterChannel={filterChannel}
-                  setFilterChannel={setFilterChannel}
                   budget={budget}
                   setBudget={setBudget}
                   inBudgetCount={inBudgetCount}
                   personas={personas}
                   selectedPersona={selectedPersona}
                   setSelectedPersona={setSelectedPersona}
-                  activeMediaTypes={activeMediaTypes}
-                  setActiveMediaTypes={setActiveMediaTypes}
                   activeTimings={activeTimings}
                   setActiveTimings={setActiveTimings}
                   activeLocations={activeLocations}
@@ -637,8 +596,6 @@ export default function SponsorshipsPage() {
                   resultCount={filtered.length}
                   hasActiveFilter={hasActiveFilter}
                   onReset={resetFilters}
-                  advancedOpen={advancedOpen}
-                  setAdvancedOpen={setAdvancedOpen}
                   taxonomy={taxonomy}
                 />
               </aside>
@@ -715,16 +672,12 @@ export default function SponsorshipsPage() {
               <FilterPanel
                 search={search}
                 setSearch={setSearch}
-                filterChannel={filterChannel}
-                setFilterChannel={setFilterChannel}
                 budget={budget}
                 setBudget={setBudget}
                 inBudgetCount={inBudgetCount}
                 personas={personas}
                 selectedPersona={selectedPersona}
                 setSelectedPersona={setSelectedPersona}
-                activeMediaTypes={activeMediaTypes}
-                setActiveMediaTypes={setActiveMediaTypes}
                 activeTimings={activeTimings}
                 setActiveTimings={setActiveTimings}
                 activeLocations={activeLocations}
@@ -735,8 +688,6 @@ export default function SponsorshipsPage() {
                 resultCount={filtered.length}
                 hasActiveFilter={hasActiveFilter}
                 onReset={resetFilters}
-                advancedOpen={advancedOpen}
-                setAdvancedOpen={setAdvancedOpen}
                 taxonomy={taxonomy}
               />
             </div>
@@ -998,16 +949,12 @@ function DetailSlideModal({
 function FilterPanel({
   search,
   setSearch,
-  filterChannel,
-  setFilterChannel,
   budget,
   setBudget,
   inBudgetCount,
   personas,
   selectedPersona,
   setSelectedPersona,
-  activeMediaTypes,
-  setActiveMediaTypes,
   activeTimings,
   setActiveTimings,
   activeLocations,
@@ -1018,22 +965,16 @@ function FilterPanel({
   resultCount,
   hasActiveFilter,
   onReset,
-  advancedOpen,
-  setAdvancedOpen,
   taxonomy,
 }: {
   search: string;
   setSearch: (s: string) => void;
-  filterChannel: Channel | "all";
-  setFilterChannel: (c: Channel | "all") => void;
   budget: number;
   setBudget: (n: number) => void;
   inBudgetCount: number;
   personas: Persona[];
   selectedPersona: Persona | null;
   setSelectedPersona: (p: Persona | null) => void;
-  activeMediaTypes: Set<MediaType>;
-  setActiveMediaTypes: (s: Set<MediaType>) => void;
   activeTimings: Set<Timing>;
   setActiveTimings: (s: Set<Timing>) => void;
   activeLocations: Set<LocationTag>;
@@ -1044,19 +985,11 @@ function FilterPanel({
   resultCount: number;
   hasActiveFilter: boolean;
   onReset: () => void;
-  advancedOpen: boolean;
-  setAdvancedOpen: (v: boolean) => void;
   taxonomy?: Taxonomy | null;
 }) {
   const locale = useLocale((s) => s.locale);
-  // taxonomy 도큐먼트의 mediaBuckets / timingBuckets / locationBuckets 우선,
+  // taxonomy 도큐먼트의 timingBuckets / locationBuckets 우선,
   // 없으면 코드 상수 fallback. 어드민 「분류 관리 > 항목 편집」 변경이 즉시 반영됨.
-  const mediaOptions = (taxonomy?.mediaBuckets && taxonomy.mediaBuckets.length > 0
-    ? taxonomy.mediaBuckets.map((b) => ({ id: b.id as MediaType, label: b.label }))
-    : MEDIA_TYPE_OPTIONS.map((o) => ({
-        id: o.id,
-        label: localized(o.label, locale),
-      })));
   const timingOptions = (taxonomy?.timingBuckets && taxonomy.timingBuckets.length > 0
     ? taxonomy.timingBuckets.map((b) => ({ id: b.id as Timing, label: b.label }))
     : TIMING_OPTIONS.map((o) => ({
@@ -1241,60 +1174,6 @@ function FilterPanel({
         </label>
       </FilterSection>
 
-      {/* (6) 고급 필터 — 접힘. 사무국·내부 표현(매체 유형/채널/검색) */}
-      <details
-        open={advancedOpen}
-        onToggle={(e) => setAdvancedOpen((e.target as HTMLDetailsElement).open)}
-        className="border-t border-ink-100 pt-5"
-      >
-        <summary className="cursor-pointer text-[11px] uppercase tracking-widest text-ink-500 font-semibold flex items-center gap-1.5 list-none">
-          <span className="inline-block transition-transform" style={{ transform: advancedOpen ? "rotate(90deg)" : "none" }}>
-            ›
-          </span>
-          {locale === "en" ? "Advanced filters" : "고급 필터"}
-          <span className="ml-auto text-[10px] text-ink-300 normal-case tracking-normal font-normal">
-            {locale === "en" ? "(media · channel · search)" : "(매체 · 채널 · 검색)"}
-          </span>
-        </summary>
-
-        <div className="space-y-5 mt-4">
-          <FilterSection title={t("spons.channel", locale)}>
-            <div className="flex flex-wrap lg:flex-col gap-1">
-              {CHANNEL_FILTER_IDS.map((id) => (
-                <button
-                  key={id}
-                  type="button"
-                  onClick={() => setFilterChannel(id)}
-                  className={
-                    "text-left px-3 py-1.5 rounded-btn text-[13px] transition-colors " +
-                    (filterChannel === id
-                      ? "bg-ink-900 text-white font-semibold"
-                      : "text-ink-700 hover:bg-ink-50")
-                  }
-                >
-                  {channelLabel(id, locale)}
-                </button>
-              ))}
-            </div>
-          </FilterSection>
-
-          <FilterSection
-            title={t("spons.media", locale)}
-            hint={locale === "en" ? "Organizer's view" : "사무국 분류 — 참고용"}
-          >
-            <CheckboxList
-              options={mediaOptions}
-              active={activeMediaTypes}
-              onToggle={(id) => {
-                const next = new Set(activeMediaTypes);
-                if (next.has(id)) next.delete(id);
-                else next.add(id);
-                setActiveMediaTypes(next);
-              }}
-            />
-          </FilterSection>
-        </div>
-      </details>
     </div>
   );
 }
