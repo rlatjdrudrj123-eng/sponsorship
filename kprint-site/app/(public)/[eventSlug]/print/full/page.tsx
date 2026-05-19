@@ -17,22 +17,23 @@ import type {
   SiteSettings,
   Subcategory,
 } from "@/lib/types";
+import { useLocale, localized as localizedHelper } from "@/lib/i18n/locale";
 
 // 전체 패키지 PDF — 행사 랜딩 캔버스(표지/패키지 안내 등) + 모든 카테고리 +
 // 모든 패키지를 A4 가로 슬라이드로 출력하여 브라우저 인쇄(→PDF 저장) 으로
 // 받을 수 있게 함. 데이터가 바뀌면 자동 반영되므로 별도 PDF 업로드/동기화 불필요.
 
-const CHANNEL_LABELS: Record<Channel, string> = {
-  offline: "오프라인",
-  online: "온라인",
-  package: "패키지",
+const CHANNEL_LABELS: Record<Channel, { ko: string; en: string }> = {
+  offline: { ko: "오프라인", en: "Offline" },
+  online: { ko: "온라인", en: "Online" },
+  package: { ko: "패키지", en: "Package" },
 };
 
 export default function FullPrintPage() {
   return (
     <Suspense
       fallback={
-        <div className="p-12 text-center text-sm text-ink-500">불러오는 중…</div>
+        <div className="p-12 text-center text-sm text-ink-500">Loading…</div>
       }
     >
       <FullPrintContent />
@@ -43,6 +44,7 @@ export default function FullPrintPage() {
 function FullPrintContent() {
   const params = useParams<{ eventSlug: string }>();
   const eventId = params.eventSlug;
+  const locale = useLocale((s) => s.locale);
 
   const [categories, setCategories] = useState<Category[]>([]);
   const [subcategories, setSubcategories] = useState<Subcategory[]>([]);
@@ -147,12 +149,22 @@ function FullPrintContent() {
     return () => clearTimeout(t);
   }, [ready]);
 
-  const eventName = settings?.event?.nameKo ?? eventId ?? "행사";
+  const eventName =
+    (locale === "en"
+      ? settings?.event?.nameEn
+      : settings?.event?.nameKo) ??
+    settings?.event?.nameKo ??
+    eventId ??
+    (locale === "en" ? "Event" : "행사");
   const eventVenue = settings?.event?.venue ?? "";
   const eventDateRange = settings?.event?.dateRange ?? "";
 
   if (!ready) {
-    return <div className="p-12 text-center text-sm text-ink-500">불러오는 중…</div>;
+    return (
+      <div className="p-12 text-center text-sm text-ink-500">
+        {locale === "en" ? "Loading…" : "불러오는 중…"}
+      </div>
+    );
   }
 
   return (
@@ -160,8 +172,9 @@ function FullPrintContent() {
       {/* 인쇄 안내 */}
       <div className="print:hidden bg-white border-b border-ink-100 px-6 py-3 flex items-center justify-between sticky top-0 z-20">
         <p className="text-[13px] text-ink-700">
-          전체 패키지 PDF 미리보기 — 총 {totalPages}페이지. 자동으로 인쇄
-          다이얼로그가 열립니다. PDF로 저장하려면 [PDF로 저장]을 선택하세요.
+          {locale === "en"
+            ? `Full sponsorship PDF preview — ${totalPages} pages total. The print dialog opens automatically. Choose "Save as PDF" to download.`
+            : `전체 패키지 PDF 미리보기 — 총 ${totalPages}페이지. 자동으로 인쇄 다이얼로그가 열립니다. PDF로 저장하려면 [PDF로 저장]을 선택하세요.`}
         </p>
         <button
           type="button"
@@ -169,7 +182,7 @@ function FullPrintContent() {
           className="px-3.5 py-2 rounded-btn bg-ink-900 text-white text-[12px] font-semibold hover:bg-ink-700 flex items-center gap-1.5"
         >
           <Printer className="w-3.5 h-3.5" />
-          인쇄 / PDF
+          {locale === "en" ? "Print / PDF" : "인쇄 / PDF"}
         </button>
       </div>
 
@@ -183,6 +196,7 @@ function FullPrintContent() {
             totalPages={totalPages || 1}
             totalCategories={sortedCategories.length}
             totalPackages={sortedPackages.length}
+            locale={locale}
           />
         ) : (
           canvasBlocks.map((block, i) => (
@@ -206,6 +220,7 @@ function FullPrintContent() {
             index={coverPagesCount + i}
             total={totalPages}
             eventName={eventName}
+            locale={locale}
           />
         ))}
 
@@ -217,6 +232,7 @@ function FullPrintContent() {
             index={coverPagesCount + sortedCategories.length + i}
             total={totalPages}
             eventName={eventName}
+            locale={locale}
           />
         ))}
 
@@ -231,6 +247,7 @@ function FullPrintContent() {
             }
             total={totalPages}
             eventName={eventName}
+            locale={locale}
           />
         )}
       </div>
@@ -309,6 +326,7 @@ function CoverSlide({
   totalPages,
   totalCategories,
   totalPackages,
+  locale,
 }: {
   eventName: string;
   venue: string;
@@ -316,6 +334,7 @@ function CoverSlide({
   totalPages: number;
   totalCategories: number;
   totalPackages: number;
+  locale: "ko" | "en";
 }) {
   return (
     <section className="a4-page bg-white shadow print:shadow-none mx-auto print:mx-0 my-4 print:my-0 w-[297mm] h-[210mm] relative overflow-hidden">
@@ -328,7 +347,9 @@ function CoverSlide({
         <h1 className="mt-12 text-[88px] font-bold leading-[0.98] tracking-tight text-ink-900">
           {eventName}
           <br />
-          <span className="text-brand-500">스폰서십 안내</span>
+          <span className="text-brand-500">
+            {locale === "en" ? "Sponsorship Deck" : "스폰서십 안내"}
+          </span>
         </h1>
 
         {(dateRange || venue) && (
@@ -341,20 +362,27 @@ function CoverSlide({
 
         <div className="mt-auto flex items-end justify-between">
           <div className="text-[12.5px] text-ink-500 leading-relaxed">
-            본 자료는 데이터를 기반으로 자동 생성되었습니다.
+            {locale === "en"
+              ? "This deck is auto-generated from the data."
+              : "본 자료는 데이터를 기반으로 자동 생성되었습니다."}
             <br />
-            정식 견적은 사무국 문의 후 1영업일 내 회신됩니다.
+            {locale === "en"
+              ? "Final quotes are sent within 1 business day after secretariat review."
+              : "정식 견적은 사무국 문의 후 1영업일 내 회신됩니다."}
           </div>
           <div className="text-right">
             <div className="text-[10.5px] uppercase tracking-[0.25em] text-ink-500 font-bold">
               Contents
             </div>
             <div className="text-[16px] text-ink-900 font-bold mt-1">
-              카테고리 {totalCategories}개
-              {totalPackages > 0 && ` · 패키지 ${totalPackages}개`}
+              {locale === "en"
+                ? `${totalCategories} categories${totalPackages > 0 ? ` · ${totalPackages} packages` : ""}`
+                : `카테고리 ${totalCategories}개${totalPackages > 0 ? ` · 패키지 ${totalPackages}개` : ""}`}
             </div>
             <div className="text-[11px] text-ink-500 font-num mt-1">
-              총 {totalPages} 페이지
+              {locale === "en"
+                ? `${totalPages} pages`
+                : `총 ${totalPages} 페이지`}
             </div>
           </div>
         </div>
@@ -372,11 +400,13 @@ function PerksSlide({
   index,
   total,
   eventName,
+  locale,
 }: {
   perks: BundledPerk[];
   index: number;
   total: number;
   eventName: string;
+  locale: "ko" | "en";
 }) {
   const totalValue = calcPerksTotalValue(perks);
   return (
@@ -388,13 +418,19 @@ function PerksSlide({
         </div>
 
         <h2 className="mt-6 text-[44px] font-bold leading-[1.05] tracking-tight text-ink-900">
-          2026 리뉴얼 기념
+          {locale === "en" ? "2026 Renewal" : "2026 리뉴얼 기념"}
           <br />
-          <span className="text-brand-500">추가 혜택 {perks.length}가지</span>
+          <span className="text-brand-500">
+            {locale === "en"
+              ? `${perks.length} extra perks`
+              : `추가 혜택 ${perks.length}가지`}
+          </span>
         </h2>
 
         <p className="mt-4 text-[14px] text-ink-700 leading-relaxed max-w-2xl">
-          단품·패키지 어떤 매체를 선택하셔도 아래 혜택이 함께 제공됩니다 (일부 항목은 신청 시 택1).
+          {locale === "en"
+            ? "Whichever single or package you pick, the perks below are included (some items are pick-one)."
+            : "단품·패키지 어떤 매체를 선택하셔도 아래 혜택이 함께 제공됩니다 (일부 항목은 신청 시 택1)."}
         </p>
 
         <ul className="mt-8 grid grid-cols-2 gap-x-10 gap-y-4 flex-1">
@@ -421,7 +457,9 @@ function PerksSlide({
                 )}
                 {perk.valueKRW && (
                   <div className="text-[11px] font-num text-brand-700 font-bold mt-1">
-                    {perk.valueKRW.toLocaleString()}원 상당
+                    {locale === "en"
+                      ? `~₩${perk.valueKRW.toLocaleString()}`
+                      : `${perk.valueKRW.toLocaleString()}원 상당`}
                   </div>
                 )}
               </div>
@@ -432,18 +470,32 @@ function PerksSlide({
         {totalValue > 0 && (
           <div className="mt-auto pt-6 border-t border-ink-100 flex items-end justify-between">
             <p className="text-[11px] text-ink-500 leading-relaxed">
-              * 조건부 혜택은 합산에서 제외됩니다.
-              <br />* 본 자료는 데이터를 기반으로 자동 생성되었습니다.
+              {locale === "en" ? (
+                <>
+                  * Conditional perks are excluded from the total.
+                  <br />* This deck is auto-generated from the data.
+                </>
+              ) : (
+                <>
+                  * 조건부 혜택은 합산에서 제외됩니다.
+                  <br />* 본 자료는 데이터를 기반으로 자동 생성되었습니다.
+                </>
+              )}
             </p>
             <div className="text-right">
               <div className="text-[10.5px] uppercase tracking-[0.25em] text-ink-500 font-bold">
                 Total Value
               </div>
               <div className="text-[32px] font-num font-bold text-brand-700 leading-none mt-1">
+                {locale === "en" ? "₩" : ""}
                 {totalValue.toLocaleString()}
-                <span className="text-[16px] ml-1 text-ink-900">원</span>
+                <span className="text-[16px] ml-1 text-ink-900">
+                  {locale === "en" ? "" : "원"}
+                </span>
               </div>
-              <div className="text-[11px] text-ink-500 mt-1">상당의 추가 노출</div>
+              <div className="text-[11px] text-ink-500 mt-1">
+                {locale === "en" ? "in extra exposure" : "상당의 추가 노출"}
+              </div>
             </div>
           </div>
         )}
@@ -470,28 +522,33 @@ function CategorySlide({
   index,
   total,
   eventName: _eventName,
+  locale,
 }: {
   category: Category;
   subs: Subcategory[];
   index: number;
   total: number;
   eventName: string;
+  locale: "ko" | "en";
 }) {
   void _eventName;
   const hero = category.heroImages?.images?.[0]?.url;
   const deadlineStr = category.deadline
-    ? category.deadline.toDate().toLocaleDateString("ko-KR", {
-        year: "numeric",
-        month: "long",
-        day: "numeric",
-      })
+    ? category.deadline.toDate().toLocaleDateString(
+        locale === "en" ? "en-US" : "ko-KR",
+        {
+          year: "numeric",
+          month: locale === "en" ? "short" : "long",
+          day: "numeric",
+        }
+      )
     : null;
 
   const validPrices = subs.map((s) => s.priceKRW).filter((p) => p > 0);
   const minPrice = validPrices.length > 0 ? Math.min(...validPrices) : 0;
 
   const hashTags: string[] = [
-    CHANNEL_LABELS[category.channel],
+    CHANNEL_LABELS[category.channel][locale === "en" ? "en" : "ko"],
     ...(category.tags ?? []).slice(0, 2),
   ];
 
@@ -508,7 +565,7 @@ function CategorySlide({
 
           <div className="flex items-baseline gap-3 flex-wrap">
             <h2 className="text-[44px] font-bold leading-[0.95] tracking-tight text-ink-900 break-keep">
-              {category.name.ko}
+              {localizedHelper(category.name, locale)}
             </h2>
             <span className="text-[15px] text-ink-300 font-num">
               #{category.code}
@@ -524,17 +581,30 @@ function CategorySlide({
           <hr className="border-ink-100 my-6" />
 
           <dl className="space-y-3">
-            {category.size && <SpecRow label="사이즈" value={category.size} />}
+            {category.size && (
+              <SpecRow
+                label={locale === "en" ? "Size" : "사이즈"}
+                value={category.size}
+              />
+            )}
             {category.fileFormat && (
-              <SpecRow label="파일 형식" value={category.fileFormat} />
+              <SpecRow
+                label={locale === "en" ? "File format" : "파일 형식"}
+                value={category.fileFormat}
+              />
             )}
             {deadlineStr && (
-              <SpecRow label="제출 마감" value={deadlineStr} />
+              <SpecRow
+                label={locale === "en" ? "Deadline" : "제출 마감"}
+                value={deadlineStr}
+              />
             )}
             {subs.length > 0 && (
               <SpecRow
-                label="구성"
-                value={subs.map((s) => s.name.ko).join(", ")}
+                label={locale === "en" ? "Composition" : "구성"}
+                value={subs
+                  .map((s) => localizedHelper(s.name, locale))
+                  .join(", ")}
               />
             )}
           </dl>
@@ -546,18 +616,22 @@ function CategorySlide({
                 <div className="text-right">
                   <div className="font-num text-[32px] font-bold text-ink-900 leading-none tracking-tight">
                     <span className="text-[16px] font-semibold mr-2">
-                      1구좌당
+                      {locale === "en" ? "Per slot" : "1구좌당"}
                     </span>
                     {minPrice.toLocaleString()}
-                    <span className="text-[18px] ml-1 font-bold">원</span>
+                    <span className="text-[18px] ml-1 font-bold">
+                      {locale === "en" ? " KRW" : "원"}
+                    </span>
                   </div>
                   <p className="text-[11px] text-ink-500 mt-2">
-                    (제작설치비 포함, 부가세 별도)
+                    {locale === "en"
+                      ? "(Production & install included, VAT excluded)"
+                      : "(제작설치비 포함, 부가세 별도)"}
                   </p>
                 </div>
               ) : (
                 <div className="text-[14px] text-ink-500 font-semibold">
-                  가격 협의
+                  {locale === "en" ? "Negotiable" : "가격 협의"}
                 </div>
               )}
             </div>
@@ -571,12 +645,12 @@ function CategorySlide({
               // eslint-disable-next-line @next/next/no-img-element
               <img
                 src={hero}
-                alt={category.name.ko}
+                alt={localizedHelper(category.name, locale)}
                 className="absolute inset-0 w-full h-full object-contain"
               />
             ) : (
               <div className="w-full h-full grid place-items-center text-ink-300 text-sm">
-                이미지 준비 중
+                {locale === "en" ? "Image coming soon" : "이미지 준비 중"}
               </div>
             )}
           </div>
@@ -603,11 +677,13 @@ function PackageSlide({
   index,
   total,
   eventName: _eventName,
+  locale,
 }: {
   pkg: Package;
   index: number;
   total: number;
   eventName: string;
+  locale: "ko" | "en";
 }) {
   void _eventName;
   const hero = pkg.heroImages?.images?.[0]?.url;
@@ -619,13 +695,22 @@ function PackageSlide({
       <div className="h-full px-12 py-10 grid grid-cols-[1.1fr_1fr] gap-10 items-stretch">
         <div className="flex flex-col justify-center min-w-0">
           <div className="flex flex-wrap gap-x-4 gap-y-1 text-[13px] tracking-wide text-brand-700 font-bold mb-4 font-num">
-            <span>#패키지</span>
-            <span>#{pkg.tier === "signature" ? "시그니처" : "스탠다드"}</span>
+            <span>#{locale === "en" ? "Package" : "패키지"}</span>
+            <span>
+              #
+              {pkg.tier === "signature"
+                ? locale === "en"
+                  ? "Signature"
+                  : "시그니처"
+                : locale === "en"
+                  ? "Standard"
+                  : "스탠다드"}
+            </span>
           </div>
 
           <div className="flex items-baseline gap-3 flex-wrap">
             <h2 className="text-[44px] font-bold leading-[0.95] tracking-tight text-ink-900 break-keep">
-              {pkg.name.ko}
+              {localizedHelper(pkg.name, locale)}
             </h2>
             <span className="text-[15px] text-ink-300 font-num">#{pkg.code}</span>
           </div>
@@ -641,7 +726,7 @@ function PackageSlide({
           {pkg.includedItems && pkg.includedItems.length > 0 && (
             <div>
               <div className="text-[12px] font-bold text-ink-900 mb-2">
-                포함 항목
+                {locale === "en" ? "Included" : "포함 항목"}
               </div>
               <ul className="space-y-1 text-[12.5px] text-ink-700">
                 {pkg.includedItems.map((it, i) => (
@@ -664,23 +749,29 @@ function PackageSlide({
                 <div className="text-right">
                   {hasDiscount && (
                     <div className="text-[14px] text-ink-500 line-through font-num mb-1">
-                      {pkg.originalPrice.toLocaleString()}원
+                      {locale === "en" ? "₩" : ""}
+                      {pkg.originalPrice.toLocaleString()}
+                      {locale === "en" ? "" : "원"}
                     </div>
                   )}
                   <div className="font-num text-[32px] font-bold text-ink-900 leading-none tracking-tight">
                     <span className="text-[16px] font-semibold mr-2">
-                      패키지가
+                      {locale === "en" ? "Package price" : "패키지가"}
                     </span>
                     {pkg.discountPrice.toLocaleString()}
-                    <span className="text-[18px] ml-1 font-bold">원</span>
+                    <span className="text-[18px] ml-1 font-bold">
+                      {locale === "en" ? " KRW" : "원"}
+                    </span>
                   </div>
                   <p className="text-[11px] text-ink-500 mt-2">
-                    (제작설치비 포함, 부가세 별도)
+                    {locale === "en"
+                      ? "(Production & install included, VAT excluded)"
+                      : "(제작설치비 포함, 부가세 별도)"}
                   </p>
                 </div>
               ) : (
                 <div className="text-[14px] text-ink-500 font-semibold">
-                  가격 협의
+                  {locale === "en" ? "Negotiable" : "가격 협의"}
                 </div>
               )}
             </div>
@@ -693,12 +784,12 @@ function PackageSlide({
               // eslint-disable-next-line @next/next/no-img-element
               <img
                 src={hero}
-                alt={pkg.name.ko}
+                alt={localizedHelper(pkg.name, locale)}
                 className="absolute inset-0 w-full h-full object-contain"
               />
             ) : (
               <div className="w-full h-full grid place-items-center text-ink-300 text-sm">
-                이미지 준비 중
+                {locale === "en" ? "Image coming soon" : "이미지 준비 중"}
               </div>
             )}
           </div>
