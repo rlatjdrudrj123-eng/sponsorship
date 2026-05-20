@@ -7,6 +7,8 @@ import { ArrowLeft, Bookmark, BookmarkCheck, Check, Gift, X } from "lucide-react
 import type { Category, Package, SiteSettings, Slot } from "@/lib/types";
 import { useCartStore } from "@/lib/cart/cartStore";
 import { Footer } from "@/components/public/Footer";
+import { useLocale } from "@/lib/i18n/locale";
+import { getDisplayPackagePrice, formatPrice } from "@/lib/price";
 import {
   DEFAULT_BUNDLED_PERKS,
   calcPerksTotalValue,
@@ -36,6 +38,8 @@ export function PackageType({
   const removePackage = useCartStore((s) => s.removePackage);
   const hydrated = useCartStore((s) => s.hasHydrated);
 
+  const locale = useLocale((s) => s.locale);
+  const price = getDisplayPackagePrice(pkg, locale);
   const inCart = hydrated && hasPackage(pkg.id);
   const discount =
     pkg.originalPrice > 0
@@ -125,18 +129,17 @@ export function PackageType({
             <div className="bg-surface border border-ink-100 rounded-card p-6 shadow-card">
               <div className="flex items-baseline gap-3 mb-1 flex-wrap">
                 <span className="text-[40px] md:text-[44px] font-bold font-num leading-none text-ink-900">
-                  {pkg.discountPrice.toLocaleString()}
+                  {formatPrice(price.discount.value, price.discount.currency)}
                 </span>
-                <span className="text-[18px] font-bold text-ink-900">원</span>
                 {discount > 0 && (
                   <span className="ml-auto text-[12px] font-bold text-brand-700 bg-brand-50 border border-brand-100 px-2.5 py-1 rounded-pill font-num">
                     {discount}% OFF
                   </span>
                 )}
               </div>
-              {pkg.originalPrice > pkg.discountPrice && (
+              {price.original.value > price.discount.value && (
                 <div className="text-[13px] text-ink-500 line-through font-num">
-                  {pkg.originalPrice.toLocaleString()}원
+                  {formatPrice(price.original.value, price.original.currency)}
                 </div>
               )}
               {pkg.priceNote && (

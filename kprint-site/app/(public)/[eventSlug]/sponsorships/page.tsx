@@ -26,6 +26,7 @@ import {
 } from "lucide-react";
 import { getDb } from "@/lib/firebase/firestore";
 import { cachedFetch } from "@/lib/firebase/cache";
+import { getDisplayPackagePrice, formatPrice } from "@/lib/price";
 import { matchesPersona } from "@/components/public/PersonaCourses";
 import type { Taxonomy } from "@/lib/types";
 import { SponsorshipDiagnosisChat } from "@/components/public/SponsorshipDiagnosisChat";
@@ -1545,6 +1546,7 @@ function PackageCard({
         ((pkg.originalPrice - pkg.discountPrice) / pkg.originalPrice) * 100
       )
     : 0;
+  const price = getDisplayPackagePrice(pkg, locale);
 
   return (
     <Link
@@ -1598,9 +1600,9 @@ function PackageCard({
         {hasDiscount && (
           <>
             <div className="flex items-center gap-1.5 text-[11.5px] text-ink-400">
-              <span>기존</span>
+              <span>{locale === "en" ? "Was" : "기존"}</span>
               <span className="line-through font-num">
-                {pkg.originalPrice.toLocaleString()}원
+                {formatPrice(price.original.value, price.original.currency)}
               </span>
             </div>
             <div className="text-[10px] font-num font-bold text-brand-500 mt-0.5">
@@ -1610,20 +1612,21 @@ function PackageCard({
         )}
         <div className="flex items-baseline gap-1.5 mt-1.5">
           <span className="text-[11.5px] text-ink-900 font-semibold">
-            할인가
+            {locale === "en" ? "Now" : "할인가"}
           </span>
-          {pkg.discountPrice > 0 ? (
+          {price.discount.value > 0 ? (
             <span
               className={
                 "font-num font-bold leading-none " +
                 (accent ? "text-[20px] text-brand-700" : "text-[18px] text-ink-900")
               }
             >
-              {pkg.discountPrice.toLocaleString()}
-              <span className="text-[11px] ml-0.5 font-semibold">원</span>
+              {formatPrice(price.discount.value, price.discount.currency)}
             </span>
           ) : (
-            <span className="text-[12.5px] text-ink-500">문의</span>
+            <span className="text-[12.5px] text-ink-500">
+              {locale === "en" ? "Negotiable" : "문의"}
+            </span>
           )}
         </div>
       </div>
@@ -2427,6 +2430,7 @@ function PackageOverviewCard({
       ? Math.round((1 - pkg.discountPrice / pkg.originalPrice) * 100)
       : 0;
   const items = (pkg.includedItems ?? []).slice(0, 5);
+  const price = getDisplayPackagePrice(pkg, locale);
 
   return (
     <Link
@@ -2434,7 +2438,6 @@ function PackageOverviewCard({
       className="group bg-surface border border-ink-100 rounded-card p-4 md:p-5 hover:border-brand-500 hover:shadow-card transition-all flex flex-col"
     >
       <div className="grid grid-cols-[1.4fr_1fr] gap-3 items-start">
-        {/* 좌측 — 패키지명 + 포함 항목 bullet */}
         <div className="min-w-0">
           {pkg.tagline && (
             <p className="text-[11px] md:text-[12px] text-brand-500 font-semibold leading-snug mb-1.5 line-clamp-1">
@@ -2455,13 +2458,11 @@ function PackageOverviewCard({
             </ul>
           )}
         </div>
-        {/* 우측 — 가격 박스 */}
         <div className="text-right shrink-0 self-center">
-          {pkg.originalPrice > pkg.discountPrice && (
+          {price.original.value > price.discount.value && (
             <div className="text-[11px] md:text-[12px] text-ink-300 line-through font-num leading-none">
               {locale === "en" ? "Was " : "기존 "}
-              {pkg.originalPrice.toLocaleString()}
-              {locale === "en" ? "" : "원"}
+              {formatPrice(price.original.value, price.original.currency)}
             </div>
           )}
           {discount > 0 && (
@@ -2474,10 +2475,7 @@ function PackageOverviewCard({
               {locale === "en" ? "Now" : "할인가"}
             </span>
             <span className="text-[20px] md:text-[26px] font-bold text-ink-900 font-num">
-              {pkg.discountPrice.toLocaleString()}
-            </span>
-            <span className="text-[11px] md:text-[13px] text-ink-700 font-bold ml-0.5">
-              {locale === "en" ? " KRW" : "원"}
+              {formatPrice(price.discount.value, price.discount.currency)}
             </span>
           </div>
         </div>
