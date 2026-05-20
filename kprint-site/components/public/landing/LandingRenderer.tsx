@@ -68,45 +68,10 @@ export function LandingRenderer({
           />
         ))}
 
-        {/* 마지막 슬라이드 다음에 양쪽 선택 화면 — 데크 끝에서 자연스럽게 결정 */}
-        <ModeChoice eventId={eventId} locale={locale} />
+        {/* ModeChoice 슬라이드 제거 — 우상단 "스폰서십 상세 보기" 영속 버튼이
+            동일 동선을 더 자연스럽게 제공. 사용자 작업 블록만으로 데크 마무리. */}
       </main>
     </>
   );
 }
 
-/**
- * 데크 마지막에 자동 추가되는 모드 선택 슬라이드.
- * 데크 봤으니 이제 "카탈로그(필터로 찾기)" 또는 "슬라이드 다시 보기" 중 선택.
- */
-function ModeChoice({
-  eventId,
-  locale,
-}: {
-  eventId: string;
-  locale: "ko" | "en";
-}) {
-  return (
-    <section className="h-screen snap-start snap-always relative overflow-hidden flex items-center justify-center bg-canvas text-ink-900 px-8 md:px-16">
-      <div className="max-w-3xl w-full text-center">
-        <h2 className="text-[32px] md:text-[56px] font-bold tracking-tight leading-[1.05] text-ink-900 mb-6 md:mb-8">
-          {locale === "en"
-            ? "Ready to dive deeper?"
-            : "스폰서십, 자세히 알아볼까요?"}
-        </h2>
-        <p className="text-[14px] md:text-[16px] text-ink-500 leading-relaxed mb-10 md:mb-14">
-          {locale === "en"
-            ? "Browse the full lineup with images, sizes, prices, and slot availability — pick the ones that fit your goals."
-            : "이미지·사이즈·가격·구좌 잔여까지 한눈에. 참가 목적에 맞는 항목을 골라보세요."}
-        </p>
-        <Link
-          href={`/${eventId}/sponsorships`}
-          className="inline-flex items-center gap-2.5 px-7 md:px-9 py-4 md:py-5 rounded-pill bg-ink-900 text-white hover:bg-brand-500 hover:text-ink-900 text-[15px] md:text-[16px] font-bold transition-colors shadow-glow-sm hover:shadow-glow"
-        >
-          {locale === "en" ? "Explore sponsorships" : "자세히 알아보기"}
-          <ArrowRight className="w-4 h-4" />
-        </Link>
-      </div>
-    </section>
-  );
-}

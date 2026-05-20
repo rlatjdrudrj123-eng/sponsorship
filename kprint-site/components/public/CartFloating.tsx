@@ -23,7 +23,8 @@ export function CartFloating() {
   return (
     <Link
       href={eventId ? `/${eventId}/cart` : "/cart"}
-      className="fixed bottom-6 right-6 z-40 bg-brand-500 text-ink-900 hover:bg-brand-700 hover:text-white px-4 py-3 rounded-full shadow-2xl flex items-center gap-2.5 font-semibold transition-colors"
+      // 진단 FAB(z-50, bottom-5/7) 위에 stack — bottom 을 더 위로(20/24).
+      className="fixed bottom-20 right-5 md:bottom-24 md:right-7 z-40 bg-brand-500 text-ink-900 hover:bg-brand-700 hover:text-white px-4 py-3 rounded-full shadow-2xl flex items-center gap-2.5 font-semibold transition-colors"
     >
       <div className="relative">
         <Bookmark className="w-5 h-5" fill="currentColor" />

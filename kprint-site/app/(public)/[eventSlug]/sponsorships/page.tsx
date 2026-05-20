@@ -537,39 +537,81 @@ export default function SponsorshipsPage() {
               </section>
             )}
 
-            {/* 단품 섹션 상단 고정 바 — 페이지 어디서 스크롤해도 viewport top 에 붙음 */}
-            <div className="sticky top-0 z-30 bg-canvas/95 backdrop-blur border-b border-ink-100">
-              <div className="max-w-7xl mx-auto px-6 md:px-16 py-3 flex items-center justify-between gap-3">
-                <div className="flex items-baseline gap-3">
-                  <span className="font-num text-[10.5px] uppercase tracking-[0.25em] text-ink-500 font-bold">
-                    개별 스폰서십
+            {/* 카드(필터로 보기 BETA) 모드 상단 sticky 바 — 슬라이드 모드 헤더와 같은 톤
+                (bg-canvas/95, h-14, max-w-7xl) 으로 통일. 좌측 홈/카운트, 우측 보조+모드 토글. */}
+            <div className="sticky top-0 z-30 bg-canvas/95 backdrop-blur border-b border-ink-100 h-14">
+              <div className="max-w-7xl mx-auto h-full px-3 md:px-16 flex items-center gap-2 md:gap-3 overflow-hidden">
+                <Link
+                  href={`/${eventId}`}
+                  className="text-[12px] text-ink-500 hover:text-ink-900 flex items-center gap-1 shrink-0"
+                  title={t("common.home", locale)}
+                >
+                  <ArrowLeft className="w-3.5 h-3.5" />
+                  <span className="hidden sm:inline">
+                    {t("common.home", locale)}
                   </span>
-                  <span className="text-[12.5px] text-ink-700">
-                    전체{" "}
-                    <strong className="text-ink-900 font-num">
-                      {totalCount}
-                    </strong>
-                    개 중{" "}
-                    <strong className="text-brand-500 font-num">
-                      {filtered.length}
-                    </strong>
-                    개
+                </Link>
+                <span className="text-ink-300 hidden sm:inline">/</span>
+                <span className="text-[13px] font-bold text-ink-900 hidden sm:inline">
+                  {t("spons.title", locale)}
+                </span>
+                <span className="text-[12px] text-ink-500 truncate min-w-0">
+                  <span className="md:hidden font-num">
+                    <strong className="text-brand-700">{filtered.length}</strong>
+                    <span className="text-ink-300 mx-0.5">/</span>
+                    <strong className="text-ink-900">{totalCount}</strong>
                   </span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setSheetOpen(true)}
-                    className="lg:hidden px-3 py-1.5 rounded-btn border border-ink-100 text-[12.5px] font-semibold flex items-center gap-1.5"
-                  >
-                    <Filter className="w-3.5 h-3.5" />
-                    {t("spons.filter", locale)}
-                    {hasActiveFilter && (
-                      <span className="w-1.5 h-1.5 rounded-full bg-brand-500 ml-0.5" />
+                  <span className="hidden md:inline">
+                    {locale === "en" ? (
+                      <>
+                        <strong className="text-brand-700">
+                          {filtered.length}
+                        </strong>{" "}
+                        of{" "}
+                        <strong className="text-ink-900">{totalCount}</strong>
+                      </>
+                    ) : (
+                      <>
+                        전체{" "}
+                        <strong className="text-ink-900">{totalCount}</strong>
+                        개 중{" "}
+                        <strong className="text-brand-700">
+                          {filtered.length}
+                        </strong>
+                        개
+                      </>
                     )}
-                  </button>
-                  <ViewModeToggle viewMode={viewMode} setViewMode={setViewMode} />
+                  </span>
+                </span>
+                <span className="ml-auto" />
+                <div className="hidden md:flex items-center gap-2">
+                  <LocaleSwitch size="sm" />
+                  <Link
+                    href={`/${eventId}/print/full`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="px-2.5 py-1.5 rounded-btn border border-ink-100 hover:border-ink-900 text-[12px] font-semibold flex items-center gap-1"
+                    title="전체 PDF 다운로드"
+                  >
+                    <Download className="w-3.5 h-3.5" />
+                    {locale === "en" ? "PDF" : "전체 PDF"}
+                  </Link>
                 </div>
+                <button
+                  type="button"
+                  onClick={() => setSheetOpen(true)}
+                  className="lg:hidden px-2.5 py-1.5 rounded-btn border border-ink-100 text-[12px] font-semibold flex items-center gap-1 shrink-0"
+                  title={t("spons.filter", locale)}
+                >
+                  <Filter className="w-3.5 h-3.5" />
+                  <span className="hidden sm:inline">
+                    {t("spons.filter", locale)}
+                  </span>
+                  {hasActiveFilter && (
+                    <span className="w-1.5 h-1.5 rounded-full bg-brand-500 ml-0.5" />
+                  )}
+                </button>
+                <ViewModeToggle viewMode={viewMode} setViewMode={setViewMode} />
               </div>
             </div>
 
@@ -715,7 +757,7 @@ export default function SponsorshipsPage() {
 
       {/* 플로팅 비교 바 — 카드 체크박스로 모은 항목이 있으면 표시 */}
       {compareIds.size > 0 && (
-        <div className="fixed bottom-5 left-1/2 -translate-x-1/2 z-40 bg-ink-900 text-white rounded-pill px-2 pl-5 py-2 shadow-2xl flex items-center gap-3 text-[13px] max-w-[90vw]">
+        <div className="fixed bottom-5 left-1/2 -translate-x-1/2 z-30 bg-ink-900 text-white rounded-pill px-2 pl-5 py-2 shadow-2xl flex items-center gap-3 text-[13px] max-w-[90vw]">
           <span className="font-num font-bold">
             {locale === "en"
               ? `${compareIds.size} selected`
@@ -745,12 +787,13 @@ export default function SponsorshipsPage() {
         </div>
       )}
 
-      {/* 우하단 floating 진단 챗봇 버튼 — 모달이 열려있을 때는 숨김 */}
+      {/* 우하단 floating 진단 챗봇 — z-50 (메인 액션, 항상 위). 모달 열림 시 숨김.
+          카트 floating(z-40) / 비교 bar(z-30) 와 z 분리. */}
       {!aiChatOpen && (
         <button
           type="button"
           onClick={() => setAiChatOpen(true)}
-          className="fixed bottom-5 right-5 md:bottom-7 md:right-7 z-40 group flex items-center gap-2.5 pl-3 pr-4 py-3 rounded-pill bg-ink-900 text-white shadow-glow hover:bg-brand-500 hover:text-ink-900 transition-colors"
+          className="fixed bottom-5 right-5 md:bottom-7 md:right-7 z-50 group flex items-center gap-2.5 pl-3 pr-4 py-3 rounded-pill bg-ink-900 text-white shadow-glow hover:bg-brand-500 hover:text-ink-900 transition-colors"
           title={locale === "en" ? "1-min sponsorship advisor" : "1분 맞춤 진단"}
         >
           <span
@@ -1786,86 +1829,78 @@ function SlideStream({
   const locale = useLocale((s) => s.locale);
   return (
     <>
-      {/* 상단 고정 바 — 모바일은 핵심만 (홈 아이콘 / 카운트 / 필터 / 카드형) */}
-      <div className="fixed top-0 inset-x-0 z-20 bg-white/90 backdrop-blur border-b border-ink-100 px-3 md:px-8 h-14 flex items-center gap-2 md:gap-3 overflow-hidden">
-        <Link
-          href={`/${eventId}`}
-          className="text-[12px] text-ink-500 hover:text-ink-900 flex items-center gap-1 shrink-0"
-          title={t("common.home", locale)}
-        >
-          <ArrowLeft className="w-3.5 h-3.5" />
-          <span className="hidden sm:inline">{t("common.home", locale)}</span>
-        </Link>
-        <span className="text-ink-300 hidden sm:inline">/</span>
-        <span className="text-[13px] font-bold text-ink-900 hidden sm:inline">
-          {t("spons.title", locale)}
-        </span>
-        {/* 카운트 — 모바일 짧게 X/Y, 데스크톱 상세 */}
-        <span className="text-[12px] text-ink-500 truncate min-w-0">
-          <span className="md:hidden font-num">
-            <strong className="text-brand-700">{items.length}</strong>
-            <span className="text-ink-300 mx-0.5">/</span>
-            <strong className="text-ink-900">{totalCount}</strong>
-          </span>
-          <span className="hidden md:inline">
-            {locale === "en" ? (
-              <>
-                <strong className="text-brand-700">{items.length}</strong> of{" "}
-                <strong className="text-ink-900">{totalCount}</strong>
-              </>
-            ) : (
-              <>
-                전체 <strong className="text-ink-900">{totalCount}</strong>개 중{" "}
-                <strong className="text-brand-700">{items.length}</strong>개
-              </>
-            )}
-          </span>
-        </span>
-        <span className="ml-auto" />
-        {/* 데스크톱 전용 — 로케일 / PDF */}
-        <div className="hidden md:flex items-center gap-3">
-          <LocaleSwitch size="sm" />
+      {/* 상단 고정 바 — 카드 모드 sticky 헤더와 같은 톤(bg-canvas/95, h-14, max-w-7xl)
+          으로 통일. 모바일은 핵심만 (홈 / 카운트 / 모드 토글). PDF·Locale 은 데스크톱만. */}
+      <div className="fixed top-0 inset-x-0 z-30 bg-canvas/95 backdrop-blur border-b border-ink-100 h-14">
+        <div className="max-w-7xl mx-auto h-full px-3 md:px-16 flex items-center gap-2 md:gap-3 overflow-hidden">
           <Link
-            href={`/${eventId}/print/full`}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="px-2.5 py-1.5 rounded-btn border border-ink-100 hover:border-ink-900 text-[12px] font-semibold flex items-center gap-1"
-            title="전체 PDF 다운로드"
+            href={`/${eventId}`}
+            className="text-[12px] text-ink-500 hover:text-ink-900 flex items-center gap-1 shrink-0"
+            title={t("common.home", locale)}
           >
-            <Download className="w-3.5 h-3.5" />
-            전체 PDF
+            <ArrowLeft className="w-3.5 h-3.5" />
+            <span className="hidden sm:inline">{t("common.home", locale)}</span>
           </Link>
+          <span className="text-ink-300 hidden sm:inline">/</span>
+          <span className="text-[13px] font-bold text-ink-900 hidden sm:inline">
+            {t("spons.title", locale)}
+          </span>
+          <span className="text-[12px] text-ink-500 truncate min-w-0">
+            <span className="md:hidden font-num">
+              <strong className="text-brand-700">{items.length}</strong>
+              <span className="text-ink-300 mx-0.5">/</span>
+              <strong className="text-ink-900">{totalCount}</strong>
+            </span>
+            <span className="hidden md:inline">
+              {locale === "en" ? (
+                <>
+                  <strong className="text-brand-700">{items.length}</strong> of{" "}
+                  <strong className="text-ink-900">{totalCount}</strong>
+                </>
+              ) : (
+                <>
+                  전체 <strong className="text-ink-900">{totalCount}</strong>개 중{" "}
+                  <strong className="text-brand-700">{items.length}</strong>개
+                </>
+              )}
+            </span>
+          </span>
+          <span className="ml-auto" />
+          {/* 데스크톱 전용 보조 — 로케일 / PDF */}
+          <div className="hidden md:flex items-center gap-2">
+            <LocaleSwitch size="sm" />
+            <Link
+              href={`/${eventId}/print/full`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="px-2.5 py-1.5 rounded-btn border border-ink-100 hover:border-ink-900 text-[12px] font-semibold flex items-center gap-1"
+              title="전체 PDF 다운로드"
+            >
+              <Download className="w-3.5 h-3.5" />
+              {locale === "en" ? "PDF" : "전체 PDF"}
+            </Link>
+          </div>
+          {/* 필터 — 카드 모드 진입 후 모바일에서 sheet 호출. 슬라이드 모드에서는 직접 노출 안 함 */}
+          <button
+            type="button"
+            onClick={onOpenFilter}
+            className="lg:hidden px-2.5 py-1.5 rounded-btn border border-ink-100 text-[12px] font-semibold flex items-center gap-1 shrink-0"
+            title={t("spons.filter", locale)}
+          >
+            <Filter className="w-3.5 h-3.5" />
+            <span className="hidden sm:inline">{t("spons.filter", locale)}</span>
+            {hasActiveFilter && (
+              <span className="w-1.5 h-1.5 rounded-full bg-brand-500 ml-0.5" />
+            )}
+          </button>
+          {/* 모드 토글 — 카드 모드 헤더와 동일 컴포넌트 */}
+          <ViewModeToggle
+            viewMode="slide"
+            setViewMode={(m) => {
+              if (m === "card") onCardMode();
+            }}
+          />
         </div>
-        <button
-          type="button"
-          onClick={onOpenFilter}
-          className="px-2.5 py-1.5 rounded-btn border border-ink-100 text-[12px] font-semibold flex items-center gap-1 shrink-0"
-          title={t("spons.filter", locale)}
-        >
-          <Filter className="w-3.5 h-3.5" />
-          <span className="hidden sm:inline">{t("spons.filter", locale)}</span>
-          {hasActiveFilter && (
-            <span className="w-1.5 h-1.5 rounded-full bg-brand-500 ml-0.5" />
-          )}
-        </button>
-        <button
-          type="button"
-          onClick={onCardMode}
-          className="px-2.5 py-1.5 rounded-btn bg-ink-900 text-white hover:bg-brand-500 hover:text-ink-900 text-[12px] font-semibold flex items-center gap-1.5 shrink-0"
-          title={
-            locale === "en"
-              ? "Filter view (BETA — card grid + filter/search)"
-              : "필터로 보기 (BETA · 카드 그리드 + 필터·검색)"
-          }
-        >
-          <LayoutGrid className="w-3.5 h-3.5" />
-          <span className="hidden sm:inline">
-            {locale === "en" ? "Filter view" : "필터로 보기"}
-          </span>
-          <span className="text-[9px] font-mono font-bold px-1 py-0.5 rounded bg-brand-500 text-ink-900 leading-none">
-            BETA
-          </span>
-        </button>
       </div>
 
       {items.length === 0 ? (

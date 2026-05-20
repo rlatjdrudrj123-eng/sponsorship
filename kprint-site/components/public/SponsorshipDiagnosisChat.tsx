@@ -231,8 +231,8 @@ export function SponsorshipDiagnosisChat({
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 z-50 bg-ink-900/40 backdrop-blur-sm grid place-items-center p-4">
-      <div className="w-full max-w-2xl bg-white rounded-card shadow-card overflow-hidden flex flex-col max-h-[90vh]">
+    <div className="fixed inset-0 z-[60] bg-ink-900/40 backdrop-blur-sm grid place-items-center p-4">
+      <div className="w-full max-w-2xl bg-canvas rounded-card shadow-card overflow-hidden flex flex-col max-h-[90vh]">
         {/* 헤더 */}
         <header className="px-5 md:px-7 py-4 border-b border-ink-100 flex items-center justify-between shrink-0">
           <div>
