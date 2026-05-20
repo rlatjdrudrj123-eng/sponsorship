@@ -170,8 +170,8 @@ export default function CartPage() {
             </h1>
             <p className="text-[14px] md:text-[16px] text-ink-500 mt-3 leading-relaxed">
               {locale === "en"
-                ? "Items you've added. Send to the secretariat to get a quote within 1 business day."
-                : "카트에 담은 항목들입니다. 사무국에 문의하시면 1영업일 내 정식 견적을 회신드려요."}
+                ? "Items you've added. Send to the secretariat and we'll reply with a quote shortly."
+                : "카트에 담은 항목들입니다. 사무국에 문의하시면 확인 후 정식 견적을 빠르게 회신드려요."}
             </p>
           </div>
         </header>

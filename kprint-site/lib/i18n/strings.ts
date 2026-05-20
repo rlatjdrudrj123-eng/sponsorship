@@ -105,8 +105,8 @@ export const STRINGS = {
   // contact
   "contact.title": { ko: "사무국에 문의하기", en: "Send inquiry" },
   "contact.subtitle": {
-    ko: "선택하신 항목과 함께 1영업일 내 회신드립니다.",
-    en: "We'll reply within 1 business day with the items you selected.",
+    ko: "선택하신 항목과 함께 확인 후 빠르게 회신드릴게요.",
+    en: "We'll review your items and reply shortly.",
   },
   "contact.companyName": { ko: "회사명", en: "Company name" },
   "contact.contactName": { ko: "담당자명", en: "Contact name" },
@@ -116,8 +116,8 @@ export const STRINGS = {
   "contact.submit": { ko: "보내기", en: "Send" },
   "contact.doneTitle": { ko: "문의가 접수됐어요", en: "Inquiry received" },
   "contact.doneBody": {
-    ko: "사무국이 1영업일 내 회신드립니다.",
-    en: "We'll reply within 1 business day.",
+    ko: "사무국에서 확인 후 빠르게 회신드릴게요.",
+    en: "Our team will review and reply shortly.",
   },
   "contact.toHome": { ko: "홈으로", en: "Back to home" },
   "contact.browseMore": { ko: "추가 둘러보기", en: "Browse more" },

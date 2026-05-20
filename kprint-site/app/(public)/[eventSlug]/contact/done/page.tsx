@@ -44,8 +44,8 @@ export default function ContactDonePage() {
           </h1>
           <p className="text-[14px] md:text-[15px] text-ink-500 leading-relaxed">
             {locale === "en"
-              ? "We'll reply within 1 business day to the email and phone you provided."
-              : "사무국이 1영업일 내 회신드립니다. 입력하신 이메일과 전화번호로 연락드릴 예정이니 확인 부탁드려요."}
+              ? "We'll review and reply shortly to the email and phone you provided."
+              : "사무국에서 확인 후 빠르게 회신드릴게요. 입력하신 이메일과 전화번호로 연락드릴 예정이니 확인 부탁드려요."}
           </p>
           {settings?.contact && (
             <div className="mt-8 pt-6 border-t border-ink-100 text-[12px] text-ink-500 space-y-1 font-num">

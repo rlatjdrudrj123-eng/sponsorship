@@ -267,8 +267,8 @@ function ContactPageInner() {
             </h1>
             <p className="text-[14px] md:text-[16px] text-ink-500 mt-3 leading-relaxed max-w-xl">
               {locale === "en"
-                ? "Send with your cart and we'll reply with a quote within 1 business day."
-                : "카트에 담은 항목과 함께 보내주시면 사무국에서 1영업일 내 정식 견적을 회신드립니다."}
+                ? "Send with your cart and we'll review and reply with a quote shortly."
+                : "카트에 담은 항목과 함께 보내주시면 사무국에서 확인 후 정식 견적을 빠르게 회신드릴게요."}
             </p>
           </div>
         </header>

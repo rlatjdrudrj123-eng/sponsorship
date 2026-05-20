@@ -747,8 +747,8 @@ function CoverSlide({
               : "본 자료는 데이터를 기반으로 자동 생성되었습니다."}
             <br />
             {locale === "en"
-              ? "Final quotes are sent within 1 business day after secretariat review."
-              : "정식 견적은 사무국 문의 후 1영업일 내 회신됩니다."}
+              ? "Final quotes are sent shortly after secretariat review."
+              : "정식 견적은 사무국 문의 후 빠르게 회신드립니다."}
           </div>
           <div className="text-right">
             <div className="text-[10.5px] uppercase tracking-[0.25em] text-ink-500 font-bold">

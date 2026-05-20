@@ -24,19 +24,16 @@ export default function InquiriesListPage() {
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
 
-  const { eventId, ready } = useEventFilter();
+  const { eventId } = useEventFilter();
 
   useEffect(() => {
-    if (!ready || !eventId) {
-      setLoading(false);
-      return;
-    }
+    // eventId 선택 시 그 행사만, 미선택 시 전체. (사이드바 카운트와 일치하도록.)
+    const base = collection(getDb(), "inquiries");
+    const q = eventId
+      ? query(base, where("eventId", "==", eventId), orderBy("createdAt", "desc"))
+      : query(base, orderBy("createdAt", "desc"));
     const u = onSnapshot(
-      query(
-        collection(getDb(), "inquiries"),
-        where("eventId", "==", eventId),
-        orderBy("createdAt", "desc")
-      ),
+      q,
       (s) => {
         setInquiries(s.docs.map((d) => ({ ...(d.data() as Inquiry), id: d.id })));
         setLoading(false);
@@ -44,7 +41,7 @@ export default function InquiriesListPage() {
       () => setLoading(false)
     );
     return () => u();
-  }, [ready, eventId]);
+  }, [eventId]);
 
   const filtered = useMemo(() => {
     let rows = inquiries;
