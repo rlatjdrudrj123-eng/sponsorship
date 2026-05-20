@@ -5,6 +5,7 @@ import { useParams } from "next/navigation";
 import { collection, doc, getDoc, getDocs, query, where } from "firebase/firestore";
 import { Printer } from "lucide-react";
 import { getDb } from "@/lib/firebase/firestore";
+import { cachedFetch } from "@/lib/firebase/cache";
 import { CanvasRenderer } from "@/components/public/canvas/CanvasRenderer";
 import type {
   CanvasPageBlock,
@@ -58,41 +59,48 @@ function FullPrintContent() {
       try {
         const db = getDb();
         const [c, s, p, pr, st] = await Promise.all([
-          getDocs(
-            query(
-              collection(db, "categories"),
-              where("eventId", "==", eventId),
-              where("isPublished", "==", true)
-            )
-          ),
-          getDocs(
-            query(collection(db, "subcategories"), where("eventId", "==", eventId))
-          ),
-          getDocs(
-            query(
-              collection(db, "packages"),
-              where("eventId", "==", eventId),
-              where("isPublished", "==", true)
-            )
-          ),
-          getDocs(
-            query(collection(db, "personas"), where("eventId", "==", eventId))
-          ),
-          getDoc(doc(db, "siteSettings", eventId)),
+          cachedFetch(`pub:cat:${eventId}`, async () => {
+            const r = await getDocs(
+              query(
+                collection(db, "categories"),
+                where("eventId", "==", eventId),
+                where("isPublished", "==", true)
+              )
+            );
+            return r.docs.map((d) => ({ ...(d.data() as Category), id: d.id }));
+          }),
+          cachedFetch(`pub:sub:${eventId}`, async () => {
+            const r = await getDocs(
+              query(collection(db, "subcategories"), where("eventId", "==", eventId))
+            );
+            return r.docs.map((d) => ({ ...(d.data() as Subcategory), id: d.id }));
+          }),
+          cachedFetch(`pub:pkg:${eventId}`, async () => {
+            const r = await getDocs(
+              query(
+                collection(db, "packages"),
+                where("eventId", "==", eventId),
+                where("isPublished", "==", true)
+              )
+            );
+            return r.docs.map((d) => ({ ...(d.data() as Package), id: d.id }));
+          }),
+          cachedFetch(`pub:persona:${eventId}`, async () => {
+            const r = await getDocs(
+              query(collection(db, "personas"), where("eventId", "==", eventId))
+            );
+            return r.docs.map((d) => ({ ...(d.data() as Persona), id: d.id }));
+          }),
+          cachedFetch(`pub:settings:${eventId}`, async () => {
+            const r = await getDoc(doc(db, "siteSettings", eventId));
+            return r.exists() ? (r.data() as SiteSettings) : null;
+          }),
         ]);
-        setCategories(
-          c.docs.map((d) => ({ ...(d.data() as Category), id: d.id }))
-        );
-        setSubcategories(
-          s.docs.map((d) => ({ ...(d.data() as Subcategory), id: d.id }))
-        );
-        setPackages(
-          p.docs.map((d) => ({ ...(d.data() as Package), id: d.id }))
-        );
-        setPersonas(
-          pr.docs.map((d) => ({ ...(d.data() as Persona), id: d.id }))
-        );
-        if (st.exists()) setSettings(st.data() as SiteSettings);
+        setCategories(c);
+        setSubcategories(s);
+        setPackages(p);
+        setPersonas(pr);
+        if (st) setSettings(st);
         setReady(true);
       } catch (e) {
         console.error("full print fetch failed", e);

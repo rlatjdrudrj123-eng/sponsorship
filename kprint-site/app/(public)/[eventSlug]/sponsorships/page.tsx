@@ -25,6 +25,7 @@ import {
   X,
 } from "lucide-react";
 import { getDb } from "@/lib/firebase/firestore";
+import { cachedFetch } from "@/lib/firebase/cache";
 import { matchesPersona } from "@/components/public/PersonaCourses";
 import type { Taxonomy } from "@/lib/types";
 import { SponsorshipDiagnosisChat } from "@/components/public/SponsorshipDiagnosisChat";
@@ -231,51 +232,70 @@ export default function SponsorshipsPage() {
     (async () => {
       try {
         const db = getDb();
-        const [catSnap, subSnap, slotSnap, pkgSnap, settingsSnap, taxonomySnap, personaSnap] = await Promise.all([
-          getDocs(
-            query(
-              collection(db, "categories"),
-              where("eventId", "==", eventId),
-              where("isPublished", "==", true)
-            )
-          ),
-          getDocs(
-            query(collection(db, "subcategories"), where("eventId", "==", eventId))
-          ),
-          getDocs(
-            query(collection(db, "slots"), where("eventId", "==", eventId))
-          ),
-          getDocs(
-            query(
-              collection(db, "packages"),
-              where("eventId", "==", eventId),
-              where("isPublished", "==", true)
-            )
-          ),
-          getDoc(doc(db, "siteSettings", eventId)),
-          getDoc(doc(db, "taxonomy", eventId)),
-          getDocs(
-            query(collection(db, "personas"), where("eventId", "==", eventId))
-          ),
+        // 5분 메모리 캐시 — 같은 세션에서 페이지 이동 시 Firestore reads 절감
+        const [
+          categoriesAll,
+          subsAll,
+          slotsAll,
+          packagesAll,
+          settingsData,
+          taxonomyData,
+          personasAll,
+        ] = await Promise.all([
+          cachedFetch(`pub:cat:${eventId}`, async () => {
+            const s = await getDocs(
+              query(
+                collection(db, "categories"),
+                where("eventId", "==", eventId),
+                where("isPublished", "==", true)
+              )
+            );
+            return s.docs.map((d) => ({ ...(d.data() as Category), id: d.id }));
+          }),
+          cachedFetch(`pub:sub:${eventId}`, async () => {
+            const s = await getDocs(
+              query(collection(db, "subcategories"), where("eventId", "==", eventId))
+            );
+            return s.docs.map((d) => ({ ...(d.data() as Subcategory), id: d.id }));
+          }),
+          cachedFetch(`pub:slot:${eventId}`, async () => {
+            const s = await getDocs(
+              query(collection(db, "slots"), where("eventId", "==", eventId))
+            );
+            return s.docs.map((d) => ({ ...(d.data() as Slot), id: d.id }));
+          }),
+          cachedFetch(`pub:pkg:${eventId}`, async () => {
+            const s = await getDocs(
+              query(
+                collection(db, "packages"),
+                where("eventId", "==", eventId),
+                where("isPublished", "==", true)
+              )
+            );
+            return s.docs.map((d) => ({ ...(d.data() as Package), id: d.id }));
+          }),
+          cachedFetch(`pub:settings:${eventId}`, async () => {
+            const s = await getDoc(doc(db, "siteSettings", eventId));
+            return s.exists() ? (s.data() as SiteSettings) : null;
+          }),
+          cachedFetch(`pub:tax:${eventId}`, async () => {
+            const s = await getDoc(doc(db, "taxonomy", eventId));
+            return s.exists() ? (s.data() as Taxonomy) : null;
+          }),
+          cachedFetch(`pub:persona:${eventId}`, async () => {
+            const s = await getDocs(
+              query(collection(db, "personas"), where("eventId", "==", eventId))
+            );
+            return s.docs.map((d) => ({ ...(d.data() as Persona), id: d.id }));
+          }),
         ]);
-        setCategories(
-          // type='package'인 카테고리는 통합 후 별도 섹션에 표시되므로 그리드에서 제외
-          catSnap.docs
-            .map((d) => ({ ...(d.data() as Category), id: d.id }))
-            .filter((c) => c.type !== "package")
-        );
-        setSubcategories(
-          subSnap.docs.map((d) => ({ ...(d.data() as Subcategory), id: d.id }))
-        );
-        setSlots(slotSnap.docs.map((d) => ({ ...(d.data() as Slot), id: d.id })));
-        setPackages(
-          pkgSnap.docs.map((d) => ({ ...(d.data() as Package), id: d.id }))
-        );
-        if (settingsSnap.exists()) setSettings(settingsSnap.data() as SiteSettings);
-        if (taxonomySnap.exists()) setTaxonomy(taxonomySnap.data() as Taxonomy);
-        setPersonas(
-          personaSnap.docs.map((d) => ({ ...(d.data() as Persona), id: d.id }))
-        );
+        setCategories(categoriesAll.filter((c) => c.type !== "package"));
+        setSubcategories(subsAll);
+        setSlots(slotsAll);
+        setPackages(packagesAll);
+        if (settingsData) setSettings(settingsData);
+        if (taxonomyData) setTaxonomy(taxonomyData);
+        setPersonas(personasAll);
       } catch (e) {
         console.error(e);
       }
