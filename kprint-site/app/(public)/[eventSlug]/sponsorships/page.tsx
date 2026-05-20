@@ -2507,8 +2507,9 @@ function SlideSection({
   const showLastYear = layout.showLastYear !== false;
   const showPerksBanner = layout.showPerksBanner !== false;
   const titleSize = layout.titleSize ?? "large";
+  // 데스크톱 제목 max 폰트 — 사용자 의견 반영해 전반적으로 한 단계 축소.
   const titleMaxPx =
-    titleSize === "small" ? 36 : titleSize === "medium" ? 44 : 56;
+    titleSize === "small" ? 30 : titleSize === "medium" ? 38 : 48;
 
   return (
     <>
@@ -2545,12 +2546,12 @@ function SlideSection({
 
         {/* 정보 — 하단 나머지, 컴팩트. 토글 펼침 시 영역 내부에서 스크롤 */}
         <div className="flex-1 min-h-0 flex flex-col px-4 py-3 overflow-y-auto">
-          {/* 제목 */}
-          <h2 className="text-[20px] font-bold text-ink-900 leading-[1.15] tracking-tight">
+          {/* 제목 — 살짝 축소 + 설명 키워 균형 */}
+          <h2 className="text-[18px] font-bold text-ink-900 leading-[1.2] tracking-tight">
             {localized(item.name, locale)}
           </h2>
           {item.shortDesc && (
-            <p className="text-[11.5px] text-ink-500 mt-1 leading-snug line-clamp-1">
+            <p className="text-[13px] text-ink-700 mt-1.5 leading-snug line-clamp-2">
               {item.shortDesc}
             </p>
           )}
@@ -2777,9 +2778,9 @@ function SlideSection({
               </span>
             </div>
 
-            {/* 한 줄 설명 */}
+            {/* 한 줄 설명 — 제목 축소에 맞춰 상대적으로 키워 균형 */}
             {item.shortDesc && (
-              <p className="text-[13px] md:text-[14px] text-ink-700 mt-3 leading-relaxed max-w-xl">
+              <p className="text-[15px] md:text-[17px] text-ink-700 mt-3 leading-relaxed max-w-xl">
                 {item.shortDesc}
               </p>
             )}
