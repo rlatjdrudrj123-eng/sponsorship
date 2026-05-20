@@ -18,9 +18,17 @@ type Props = {
   resolvedSlots?: Map<string, Slot>;
   categories?: Category[];
   settings: SiteSettings | null;
+  /** 모달 컨텍스트 — Footer 안 그리고 main 대신 div 로 (외부 모달 wrapper 가 viewport 처리) */
+  inModal?: boolean;
 };
 
-export function PackageType({ pkg, resolvedSlots, categories, settings }: Props) {
+export function PackageType({
+  pkg,
+  resolvedSlots,
+  categories,
+  settings,
+  inModal = false,
+}: Props) {
   const params = useParams<{ eventSlug?: string }>();
   const eventId = params?.eventSlug ?? "";
   const hasPackage = useCartStore((s) => s.hasPackage);
@@ -36,18 +44,27 @@ export function PackageType({ pkg, resolvedSlots, categories, settings }: Props)
 
   const [confirming, setConfirming] = useState(false);
 
+  const Container = inModal ? "div" : "main";
   return (
     <>
-      <main className="min-h-screen bg-canvas">
-        <div className="border-b border-ink-100 bg-surface">
-          <div className="max-w-6xl mx-auto px-6 md:px-12 pt-12 md:pt-16 pb-10">
-            <Link
-              href={eventId ? `/${eventId}` : "/"}
-              className="inline-flex items-center gap-1.5 text-[12px] text-ink-500 hover:text-brand-500 mb-6 font-num font-semibold"
-            >
-              <ArrowLeft className="w-3.5 h-3.5" />
-              홈으로
-            </Link>
+      <Container className={inModal ? "bg-canvas" : "min-h-screen bg-canvas"}>
+        <div className={inModal ? "" : "border-b border-ink-100 bg-surface"}>
+          <div
+            className={
+              inModal
+                ? "max-w-6xl mx-auto px-6 md:px-12 pt-6 pb-6"
+                : "max-w-6xl mx-auto px-6 md:px-12 pt-12 md:pt-16 pb-10"
+            }
+          >
+            {!inModal && (
+              <Link
+                href={eventId ? `/${eventId}` : "/"}
+                className="inline-flex items-center gap-1.5 text-[12px] text-ink-500 hover:text-brand-500 mb-6 font-num font-semibold"
+              >
+                <ArrowLeft className="w-3.5 h-3.5" />
+                홈으로
+              </Link>
+            )}
             <div className="font-num text-[11px] uppercase tracking-[0.3em] font-bold mb-3 flex items-center gap-3 text-brand-500">
               <span className="w-6 h-px bg-brand-500" />
               <span>{pkg.tier === "signature" ? "Signature" : "Standard"}</span>
@@ -152,8 +169,8 @@ export function PackageType({ pkg, resolvedSlots, categories, settings }: Props)
             </div>
           </div>
         </div>
-      </main>
-      <Footer settings={settings} />
+      </Container>
+      {!inModal && <Footer settings={settings} />}
 
       {confirming && (
         <PackageConfirmModal

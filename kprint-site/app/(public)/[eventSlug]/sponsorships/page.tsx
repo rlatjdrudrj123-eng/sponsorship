@@ -805,25 +805,22 @@ export default function SponsorshipsPage() {
         </div>
       )}
 
-      {/* 우하단 floating 진단 챗봇 — z-50. 모바일에서는 라벨 숨기고 원형 아이콘만
-          (구좌 선택 버튼 등 정보 영역 하단 액션과 시각 충돌 방지). 데스크톱은 라벨 포함. */}
+      {/* 우하단 floating 진단 챗봇 — z-50. 모바일·데스크톱 모두 라벨 노출(사용자가 SA만 보고
+          뭔지 모름). 구좌 선택 영역은 정보 패널 상단으로 올려서 시각 충돌 없음. */}
       {!aiChatOpen && (
         <button
           type="button"
           onClick={() => setAiChatOpen(true)}
-          className="fixed bottom-5 right-5 md:bottom-7 md:right-7 z-50 group flex items-center md:gap-2.5 md:pl-3 md:pr-4 md:py-3 md:rounded-pill w-12 h-12 md:w-auto md:h-auto rounded-full bg-ink-900 text-white shadow-glow hover:bg-brand-500 hover:text-ink-900 transition-colors justify-center"
+          className="fixed bottom-5 right-5 md:bottom-7 md:right-7 z-50 group flex items-center gap-2 pl-2.5 pr-3.5 py-2.5 md:pl-3 md:pr-4 md:py-3 rounded-pill bg-ink-900 text-white shadow-glow hover:bg-brand-500 hover:text-ink-900 transition-colors"
           title={locale === "en" ? "1-min sponsorship advisor" : "1분 맞춤 진단"}
-          aria-label={
-            locale === "en" ? "1-min sponsorship advisor" : "1분 맞춤 진단"
-          }
         >
           <span
-            className="w-7 h-7 rounded-full bg-white/15 grid place-items-center text-[10.5px] font-bold tracking-wider"
+            className="w-6 h-6 md:w-7 md:h-7 rounded-full bg-white/15 grid place-items-center text-[9.5px] md:text-[10.5px] font-bold tracking-wider shrink-0"
             aria-hidden
           >
             SA
           </span>
-          <span className="hidden md:inline text-[12.5px] font-bold whitespace-nowrap">
+          <span className="text-[11.5px] md:text-[12.5px] font-bold whitespace-nowrap">
             {locale === "en" ? "1-min advisor" : "1분 맞춤 진단"}
           </span>
         </button>
@@ -2547,7 +2544,8 @@ function SlideSection({
           )}
         </div>
 
-        {/* 정보 — 하단 나머지, 컴팩트. 토글 펼침 시 영역 내부에서 스크롤 */}
+        {/* 정보 — 하단 나머지, 컴팩트. 토글 펼침 시 영역 내부에서 스크롤.
+            모바일 동선: 제목/설명 → 가격·CTA(즉시 결정) → 스펙·토글(부가 정보) */}
         <div className="flex-1 min-h-0 flex flex-col px-4 py-3 overflow-y-auto">
           {/* 제목 — 살짝 축소 + 설명 키워 균형 */}
           <h2 className="text-[18px] font-bold text-ink-900 leading-[1.2] tracking-tight">
@@ -2558,6 +2556,64 @@ function SlideSection({
               {item.shortDesc}
             </p>
           )}
+
+          {/* 가격 — 설명 바로 아래로 끌어올림 (FAB 와 시각 충돌 해소) */}
+          <div className="mt-3 pt-3 border-t border-ink-100">
+            <div className="flex items-end justify-between gap-3">
+              {item.minPrice > 0 ? (
+                <div>
+                  <div className="text-[10px] text-ink-500 font-semibold">
+                    {locale === "en" ? "Per slot" : "1구좌당"}
+                  </div>
+                  <div className="font-num text-[22px] font-bold text-ink-900 leading-none">
+                    {item.minPrice.toLocaleString()}
+                    <span className="text-[12px] ml-1 font-bold">
+                      {t("common.won", locale)}
+                    </span>
+                  </div>
+                </div>
+              ) : (
+                <span className="text-[14px] text-ink-500 font-semibold">
+                  {t("common.priceNegotiable", locale)}
+                </span>
+              )}
+              <div className="font-mono tracking-widest text-ink-300 text-[10.5px]">
+                <span className="text-ink-700 font-bold">
+                  {String(index + 1).padStart(2, "0")}
+                </span>
+                <span className="mx-0.5">/</span>
+                {String(total).padStart(2, "0")}
+              </div>
+            </div>
+          </div>
+
+          {/* CTA — 도면 있으면 위치 보기, 없고 모달 외부면 자세히 보기 */}
+          <div className="mt-2.5 grid grid-cols-2 gap-2">
+            <button
+              type="button"
+              onClick={() => setPickerOpen(true)}
+              className="h-10 rounded-btn bg-ink-900 text-white font-bold text-[12.5px]"
+            >
+              {locale === "en" ? "Select slot" : "구좌 선택"}
+            </button>
+            {hasFloorImages ? (
+              <button
+                type="button"
+                onClick={() => setFloorOpen(true)}
+                className="h-10 rounded-btn border-2 border-ink-900 text-ink-900 font-bold text-[12.5px]"
+              >
+                {locale === "en" ? "View location" : "위치 보기"}
+              </button>
+            ) : !hideDetailButton ? (
+              <button
+                type="button"
+                onClick={() => onOpenDetail(item.slug)}
+                className="h-10 rounded-btn border-2 border-ink-900 text-ink-900 font-bold text-[12.5px]"
+              >
+                {locale === "en" ? "Details" : "자세히 보기"}
+              </button>
+            ) : null}
+          </div>
 
           {/* 스펙 — 어드민 type-layout 의 specFields 따라 최대 3개, 각 행 한 줄 truncate */}
           {(() => {
@@ -2665,7 +2721,7 @@ function SlideSection({
             });
             if (rows.length === 0) return null;
             return (
-              <dl className="mt-2.5 space-y-1 text-[11px]">
+              <dl className="mt-4 space-y-1 text-[11px]">
                 {rows.map((r, i) => (
                   <div key={i} className="flex gap-2 min-w-0">
                     <dt className="text-ink-500 w-10 shrink-0 font-semibold">
@@ -2679,65 +2735,6 @@ function SlideSection({
               </dl>
             );
           })()}
-
-          {/* 가격 — 강조 */}
-          <div className="mt-auto pt-2.5 border-t border-ink-100">
-            <div className="flex items-end justify-between gap-3">
-              {item.minPrice > 0 ? (
-                <div>
-                  <div className="text-[10px] text-ink-500 font-semibold">
-                    {locale === "en" ? "Per slot" : "1구좌당"}
-                  </div>
-                  <div className="font-num text-[22px] font-bold text-ink-900 leading-none">
-                    {item.minPrice.toLocaleString()}
-                    <span className="text-[12px] ml-1 font-bold">
-                      {t("common.won", locale)}
-                    </span>
-                  </div>
-                </div>
-              ) : (
-                <span className="text-[14px] text-ink-500 font-semibold">
-                  {t("common.priceNegotiable", locale)}
-                </span>
-              )}
-              {/* 페이지 인디케이터 */}
-              <div className="font-mono tracking-widest text-ink-300 text-[10.5px]">
-                <span className="text-ink-700 font-bold">
-                  {String(index + 1).padStart(2, "0")}
-                </span>
-                <span className="mx-0.5">/</span>
-                {String(total).padStart(2, "0")}
-              </div>
-            </div>
-          </div>
-
-          {/* CTA — 도면 있으면 위치 보기, 없고 모달 외부면 자세히 보기 */}
-          <div className="mt-2.5 grid grid-cols-2 gap-2">
-            <button
-              type="button"
-              onClick={() => setPickerOpen(true)}
-              className="h-10 rounded-btn bg-ink-900 text-white font-bold text-[12.5px]"
-            >
-              {locale === "en" ? "Select slot" : "구좌 선택"}
-            </button>
-            {hasFloorImages ? (
-              <button
-                type="button"
-                onClick={() => setFloorOpen(true)}
-                className="h-10 rounded-btn border-2 border-ink-900 text-ink-900 font-bold text-[12.5px]"
-              >
-                {locale === "en" ? "View location" : "위치 보기"}
-              </button>
-            ) : !hideDetailButton ? (
-              <button
-                type="button"
-                onClick={() => onOpenDetail(item.slug)}
-                className="h-10 rounded-btn border-2 border-ink-900 text-ink-900 font-bold text-[12.5px]"
-              >
-                {locale === "en" ? "Details" : "자세히 보기"}
-              </button>
-            ) : null}
-          </div>
         </div>
       </section>
 
