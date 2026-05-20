@@ -510,7 +510,7 @@ export default function CategoryEditPage() {
           <Section title="스펙·가이드">
             <div className="grid grid-cols-2 gap-3">
               <Field
-                label="사이즈"
+                label="규격"
                 lockable
                 lockOn={isLocked("size")}
                 onLockToggle={() => toggleLock("size")}

@@ -59,7 +59,7 @@ export const STRINGS = {
   "spons.viewSlide": { ko: "슬라이드", en: "Slide" },
   "spons.searchPlaceholder": { ko: "이름·코드", en: "Name or code" },
   "spons.slotsAvailable": { ko: "가능", en: "available" },
-  "spons.size": { ko: "사이즈", en: "Size" },
+  "spons.size": { ko: "규격", en: "Size" },
   "spons.fileFormat": { ko: "파일 형식", en: "File format" },
   "spons.submitDeadline": { ko: "제출 마감", en: "Submission deadline" },
   "spons.slots": { ko: "구좌", en: "Slots" },

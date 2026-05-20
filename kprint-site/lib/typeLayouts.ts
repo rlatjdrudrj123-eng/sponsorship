@@ -44,7 +44,7 @@ export function getTypeLayout(
 /** 스펙 필드 라벨 (어드민 + 공개 사이트 공용) */
 export const SPEC_FIELD_LABEL: Record<SpecField, string> = {
   location: "게재 위치",
-  size: "사이즈",
+  size: "규격",
   fileFormat: "파일 형식",
   deadline: "제출 마감",
   detail: "세부사항",

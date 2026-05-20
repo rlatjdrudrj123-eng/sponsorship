@@ -101,7 +101,7 @@ const TOKENS_BY_TYPE: Record<CategoryType, Array<{ token: string; desc: string }
   mailing: [
     { token: "{{title}}", desc: "카테고리 이름" },
     { token: "{{mailing}}", desc: "발송 (대상·시기)" },
-    { token: "{{size}}", desc: "사이즈" },
+    { token: "{{size}}", desc: "규격" },
     { token: "{{fileFormat}}", desc: "파일 포맷" },
     { token: "{{deadline}}", desc: "마감일" },
     { token: "{{detail}}", desc: "상세" },

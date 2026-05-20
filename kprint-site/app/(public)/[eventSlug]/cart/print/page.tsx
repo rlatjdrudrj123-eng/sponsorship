@@ -399,7 +399,7 @@ function CategorySlide({
 
           {/* 스펙 표 */}
           <dl className="space-y-2.5">
-            {category.size && <SpecRow label="사이즈" value={category.size} />}
+            {category.size && <SpecRow label="규격" value={category.size} />}
             {category.fileFormat && <SpecRow label="파일 형식" value={category.fileFormat} />}
             {deadlineStr && <SpecRow label="제출 마감" value={deadlineStr} />}
             <SpecRow

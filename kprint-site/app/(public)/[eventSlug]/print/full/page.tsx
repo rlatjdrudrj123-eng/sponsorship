@@ -842,7 +842,7 @@ function CategorySlide({
           <dl className="space-y-3">
             {category.size && (
               <SpecRow
-                label={locale === "en" ? "Size" : "사이즈"}
+                label={locale === "en" ? "Size" : "규격"}
                 value={category.size}
               />
             )}

@@ -6,7 +6,7 @@ import type { Category } from "@/lib/types";
 export function SpecCard({ category }: { category: Category }) {
   const items: Array<{ label: string; value: React.ReactNode }> = [];
 
-  if (category.size) items.push({ label: "사이즈", value: category.size });
+  if (category.size) items.push({ label: "규격", value: category.size });
   if (category.fileFormat)
     items.push({ label: "파일 형식", value: category.fileFormat });
   if (category.deadline)

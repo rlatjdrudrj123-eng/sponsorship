@@ -2568,7 +2568,7 @@ function SlideSection({
                   break;
                 case "size":
                   if (item.size)
-                    rows.push({ label: "사이즈", value: item.size });
+                    rows.push({ label: "규격", value: item.size });
                   break;
                 case "fileFormat":
                   if (item.fileFormat)
