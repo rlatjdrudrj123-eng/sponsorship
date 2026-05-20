@@ -4,8 +4,7 @@ import { useEffect, useState } from "react";
 import { doc, setDoc, Timestamp } from "firebase/firestore";
 import { X } from "lucide-react";
 import { getDb } from "@/lib/firebase/firestore";
-import type { Persona, Purpose } from "@/lib/types";
-import { PURPOSE_META, PURPOSE_ORDER } from "@/lib/types";
+import type { Persona } from "@/lib/types";
 
 // 페르소나 이모지 — 산업·마케팅 컨텍스트
 const EMOJI_OPTIONS = [
@@ -40,8 +39,10 @@ export function PersonaEditModal({
   const [emoji, setEmoji] = useState(initial.emoji ?? "🎯");
   const [title, setTitle] = useState(initial.title ?? "");
   const [description, setDescription] = useState(initial.description ?? "");
-  const [purposes, setPurposes] = useState<Purpose[]>(
-    (initial.purposes ?? []) as Purpose[]
+  // targetTags — 카테고리.personas 매핑 안 된 카테고리에 대한 fallback 매칭 키워드.
+  // 콤마 구분 입력. matchesPersona() 가 c.tags 와 교집합 확인.
+  const [targetTags, setTargetTags] = useState(
+    (initial.targetTags ?? []).join(", ")
   );
   const [socialProofNote, setSocialProofNote] = useState(
     initial.socialProofNote ?? ""
@@ -113,12 +114,16 @@ export function PersonaEditModal({
 
     const minN = budgetMin ? parseInt(budgetMin, 10) : undefined;
     const maxN = budgetMax ? parseInt(budgetMax, 10) : undefined;
+    const tags = targetTags
+      .split(",")
+      .map((s) => s.trim())
+      .filter(Boolean);
 
     const payload: Partial<Persona> = {
       emoji,
       title: t,
       description: description.trim(),
-      purposes: purposes.length > 0 ? purposes : undefined,
+      targetTags: tags,
       socialProofNote: socialProofNote.trim() || undefined,
       budgetNote: budgetNote.trim() || undefined,
       budgetMin: minN,
@@ -134,7 +139,6 @@ export function PersonaEditModal({
           ...payload,
           id,
           eventId: mode.eventId,
-          targetTags: [],
           order: mode.order,
           isActive: true,
         });
@@ -155,12 +159,6 @@ export function PersonaEditModal({
     } finally {
       setSaving(false);
     }
-  };
-
-  const togglePurpose = (p: Purpose) => {
-    setPurposes((prev) =>
-      prev.includes(p) ? prev.filter((x) => x !== p) : [...prev, p]
-    );
   };
 
   return (
@@ -336,36 +334,18 @@ export function PersonaEditModal({
             </select>
           </Field>
 
-          {/* 광고 목적 (사이드바 자동 연동) */}
+          {/* 매칭 키워드 (fallback) — 카테고리에 personas 매핑이 없을 때 c.tags 와 교집합 매칭 */}
           <Field
-            label="광고 목적 (선택 시 사이드바 필터 자동 적용)"
-            hint="이 페르소나를 선택하면 여기서 고른 목적이 사이드바에 자동 체크됩니다"
+            label="매칭 키워드 (콤마 구분)"
+            hint='카테고리 편집에서 페르소나 매핑을 못 했을 때의 fallback — 카테고리.tags 와 겹치는 것이 있으면 매칭. 예: "옥외, 동선, 인지도"'
           >
-            <div className="grid grid-cols-2 gap-2">
-              {PURPOSE_ORDER.map((p) => {
-                const on = purposes.includes(p);
-                return (
-                  <button
-                    key={p}
-                    type="button"
-                    onClick={() => togglePurpose(p)}
-                    className={
-                      "text-left px-3 py-2 rounded-btn border-2 transition-colors " +
-                      (on
-                        ? "border-brand-500 bg-brand-50"
-                        : "border-ink-100 bg-white hover:border-ink-300")
-                    }
-                  >
-                    <div className="text-[12px] font-bold text-ink-900">
-                      {PURPOSE_META[p].ko}
-                    </div>
-                    <div className="text-[10px] text-ink-500 mt-0.5 leading-snug">
-                      {PURPOSE_META[p].desc}
-                    </div>
-                  </button>
-                );
-              })}
-            </div>
+            <input
+              type="text"
+              value={targetTags}
+              onChange={(e) => setTargetTags(e.target.value)}
+              placeholder="옥외, 동선, 인지도"
+              className={inputCls() + " font-mono text-[11.5px]"}
+            />
           </Field>
 
           {/* ── 추천 콤보 ── */}
