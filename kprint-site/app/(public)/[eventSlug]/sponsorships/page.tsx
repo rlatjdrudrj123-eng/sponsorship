@@ -2040,16 +2040,16 @@ function SlideStream({
           />
         </main>
       )}
-      {/* 슬라이드 모드 — 맨 위로 floating 버튼. items 1개 이상이고 main scroll 위치가
-          첫 슬라이드를 벗어났을 때만 노출. */}
-      <SlideTopFab mainRef={mainRef} />
+      {/* 슬라이드 모드 — 맨 위로 floating 버튼. items 가 있을 때만(빈 상태 main 은 ref 미연결). */}
+      {items.length > 0 && <SlideTopFab mainRef={mainRef} />}
     </>
   );
 }
 
 /**
- * 슬라이드 모드 우하단(진단 FAB·카트 FAB 옆) 위로가기 버튼.
- * main scrollTop 이 viewport 절반 넘으면 노출 → 클릭 시 첫 슬라이드로 스무스 점프.
+ * 슬라이드 모드 좌하단 위로가기 버튼.
+ * main scrollTop 이 일정 이상 넘으면 노출 → 클릭 시 첫 슬라이드로 스무스 점프.
+ * (우하단은 진단 FAB·카트 FAB 차지 — 충돌 X)
  */
 function SlideTopFab({
   mainRef,
@@ -2058,14 +2058,28 @@ function SlideTopFab({
 }) {
   const [visible, setVisible] = useState(false);
   useEffect(() => {
-    const main = mainRef.current;
-    if (!main) return;
-    const onScroll = () => {
-      setVisible(main.scrollTop > window.innerHeight * 0.6);
+    // mount 직후 ref.current 가 잡힐 때까지 폴링 (한 번이라도 main 이 잡히면 listener 부착)
+    let detach: (() => void) | null = null;
+    const tryAttach = () => {
+      const main = mainRef.current;
+      if (!main) return false;
+      const onScroll = () => {
+        setVisible(main.scrollTop > 200);
+      };
+      main.addEventListener("scroll", onScroll, { passive: true });
+      onScroll();
+      detach = () => main.removeEventListener("scroll", onScroll);
+      return true;
     };
-    main.addEventListener("scroll", onScroll, { passive: true });
-    onScroll();
-    return () => main.removeEventListener("scroll", onScroll);
+    if (!tryAttach()) {
+      // RAF 한 번 더 시도
+      const raf = window.requestAnimationFrame(() => tryAttach());
+      return () => {
+        window.cancelAnimationFrame(raf);
+        detach?.();
+      };
+    }
+    return () => detach?.();
   }, [mainRef]);
   if (!visible) return null;
   return (

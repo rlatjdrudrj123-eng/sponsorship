@@ -285,15 +285,17 @@ function ClosingSlide({
   total: number;
   locale: "ko" | "en";
 }) {
-  const contact = settings?.contact;
+  const phone = settings?.contact?.phone || "02-551-0102";
+  const email = settings?.contact?.email || "kprint@kprint.kr";
+  const address = settings?.contact?.address;
   return (
     <section className="a4-page bg-white shadow print:shadow-none mx-auto print:mx-0 my-4 print:my-0 w-[297mm] h-[210mm] relative overflow-hidden">
-      <div className="h-full px-20 py-14 flex flex-col items-center justify-center text-center">
+      <div className="h-full px-20 py-14 flex flex-col items-center justify-center text-center break-keep">
         <div className="font-bold text-[44px] tracking-tight text-brand-500 leading-none mb-10">
           K·print
         </div>
 
-        <h2 className="text-[32px] font-bold tracking-tight text-ink-900 leading-[1.25] mb-10">
+        <h2 className="text-[30px] font-bold tracking-tight text-ink-900 leading-[1.3] mb-10 break-keep">
           {locale === "en" ? (
             <>
               Reach decision-makers in the
@@ -302,7 +304,7 @@ function ClosingSlide({
             </>
           ) : (
             <>
-              인쇄·디지털프린팅 산업 전문가가 모이는 자리에서
+              인쇄·디지털프린팅 전문가가 모이는 자리,
               <br />
               지금 바로 브랜드를 알리세요!
             </>
@@ -322,25 +324,19 @@ function ClosingSlide({
           {APPLY_URL}
         </div>
 
-        {contact && (
-          <div className="mt-2">
-            <div className="font-bold text-[12px] text-ink-700 mb-1.5">
-              Contact.
-            </div>
-            <div className="text-[12px] text-ink-500 leading-relaxed font-num">
-              {contact.phone}
-              {contact.phone && contact.email && (
-                <span className="mx-2 text-ink-300">|</span>
-              )}
-              {contact.email}
-            </div>
-            {contact.address && (
-              <div className="text-[11px] text-ink-500 mt-1">
-                {contact.address}
-              </div>
-            )}
+        <div className="mt-2">
+          <div className="font-bold text-[12px] text-ink-700 mb-1.5">
+            Contact.
           </div>
-        )}
+          <div className="text-[12px] text-ink-500 leading-relaxed font-num">
+            {phone}
+            <span className="mx-2 text-ink-300">|</span>
+            {email}
+          </div>
+          {address && (
+            <div className="text-[11px] text-ink-500 mt-1">{address}</div>
+          )}
+        </div>
       </div>
 
       <div className="absolute bottom-3 right-12 font-mono tracking-widest text-ink-300 text-[12px]">

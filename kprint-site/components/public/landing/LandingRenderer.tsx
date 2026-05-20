@@ -102,17 +102,20 @@ export function ClosingSlide({
   settings: SiteSettings | null;
   locale: "ko" | "en";
 }) {
-  const contact = settings?.contact;
+  // settings.contact 가 비어있어도 기본값으로 노출. 라벨만 있고 정보 없으면 어색.
+  const phone = settings?.contact?.phone || "02-551-0102";
+  const email = settings?.contact?.email || "kprint@kprint.kr";
+  const address = settings?.contact?.address;
   return (
     <section className="h-dvh snap-start snap-always relative overflow-hidden flex flex-col items-center justify-center bg-canvas text-ink-900 px-8 md:px-16 pt-14">
-      <div className="max-w-3xl w-full text-center flex flex-col items-center">
+      <div className="max-w-3xl w-full text-center flex flex-col items-center break-keep">
         {/* 브랜드 — K·print */}
-        <div className="font-bold text-[34px] md:text-[44px] tracking-tight text-brand-500 leading-none mb-12 md:mb-16">
+        <div className="font-bold text-[34px] md:text-[44px] tracking-tight text-brand-500 leading-none mb-10 md:mb-14">
           K·print
         </div>
 
-        {/* 메인 카피 */}
-        <h2 className="text-[26px] md:text-[42px] font-bold tracking-tight text-ink-900 leading-[1.25] md:leading-[1.2] mb-10 md:mb-14">
+        {/* 메인 카피 — break-keep 으로 단어 단위 줄바꿈 보장. 카피 자체도 짧게 정리. */}
+        <h2 className="text-[24px] md:text-[40px] font-bold tracking-tight text-ink-900 leading-[1.3] mb-10 md:mb-14 break-keep">
           {locale === "en" ? (
             <>
               Reach decision-makers in the
@@ -121,7 +124,7 @@ export function ClosingSlide({
             </>
           ) : (
             <>
-              인쇄·디지털프린팅 산업 전문가가 모이는 자리에서
+              인쇄·디지털프린팅 전문가가 모이는 자리,
               <br />
               지금 바로 브랜드를 알리세요!
             </>
@@ -150,33 +153,22 @@ export function ClosingSlide({
           </Link>
         </div>
 
-        {/* Contact — settings.contact 있을 때만 */}
-        {contact && (
-          <div className="mt-14 md:mt-20 text-center">
-            <div className="font-bold text-[13px] text-ink-700 mb-2">
-              Contact.
-            </div>
-            <div className="text-[12px] md:text-[13px] text-ink-500 leading-relaxed font-num">
-              {contact.phone}
-              {contact.phone && contact.email && (
-                <span className="mx-2 text-ink-300">|</span>
-              )}
-              {contact.email && (
-                <a
-                  href={`mailto:${contact.email}`}
-                  className="hover:text-ink-900"
-                >
-                  {contact.email}
-                </a>
-              )}
-            </div>
-            {contact.address && (
-              <div className="text-[11.5px] md:text-[12.5px] text-ink-500 mt-1">
-                {contact.address}
-              </div>
-            )}
+        {/* Contact — settings 비어도 기본값(KPRINT 사무국) 으로 항상 노출 */}
+        <div className="mt-14 md:mt-20 text-center">
+          <div className="font-bold text-[13px] text-ink-700 mb-2">Contact.</div>
+          <div className="text-[12px] md:text-[13px] text-ink-500 leading-relaxed font-num">
+            {phone}
+            <span className="mx-2 text-ink-300">|</span>
+            <a href={`mailto:${email}`} className="hover:text-ink-900">
+              {email}
+            </a>
           </div>
-        )}
+          {address && (
+            <div className="text-[11.5px] md:text-[12.5px] text-ink-500 mt-1">
+              {address}
+            </div>
+          )}
+        </div>
       </div>
     </section>
   );
