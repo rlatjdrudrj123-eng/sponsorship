@@ -600,19 +600,16 @@ export default function SponsorshipsPage() {
                   </span>
                 </span>
                 <span className="ml-auto" />
-                <div className="hidden md:flex items-center gap-2">
-                  <LocaleSwitch size="sm" />
-                  <Link
-                    href={`/${eventId}/print/full`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="px-2.5 py-1.5 rounded-btn border border-ink-100 hover:border-ink-900 text-[12px] font-semibold flex items-center gap-1"
-                    title="전체 PDF 다운로드"
-                  >
-                    <Download className="w-3.5 h-3.5" />
-                    {locale === "en" ? "PDF" : "전체 PDF"}
-                  </Link>
-                </div>
+                <Link
+                  href={`/${eventId}/print/full`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="hidden md:inline-flex px-2.5 py-1.5 rounded-btn border border-ink-100 hover:border-ink-900 text-[12px] font-semibold items-center gap-1"
+                  title="전체 PDF 다운로드"
+                >
+                  <Download className="w-3.5 h-3.5" />
+                  {locale === "en" ? "PDF" : "전체 PDF"}
+                </Link>
                 <button
                   type="button"
                   onClick={() => setSheetOpen(true)}
@@ -628,6 +625,10 @@ export default function SponsorshipsPage() {
                   )}
                 </button>
                 <ViewModeToggle viewMode={viewMode} setViewMode={setViewMode} />
+                {/* 언어 토글 — 가장 오른쪽 */}
+                <div className="hidden md:block">
+                  <LocaleSwitch size="sm" />
+                </div>
               </div>
             </div>
 
@@ -1932,20 +1933,18 @@ function SlideStream({
           </span>
           <span className="ml-auto" />
           {/* 데스크톱 전용 보조 — 로케일 / PDF */}
-          <div className="hidden md:flex items-center gap-2">
-            <LocaleSwitch size="sm" />
-            <Link
-              href={`/${eventId}/print/full`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="px-2.5 py-1.5 rounded-btn border border-ink-100 hover:border-ink-900 text-[12px] font-semibold flex items-center gap-1"
-              title="전체 PDF 다운로드"
-            >
-              <Download className="w-3.5 h-3.5" />
-              {locale === "en" ? "PDF" : "전체 PDF"}
-            </Link>
-          </div>
-          {/* 필터 — 카드 모드 진입 후 모바일에서 sheet 호출. 슬라이드 모드에서는 직접 노출 안 함 */}
+          {/* PDF — 데스크톱 보조 */}
+          <Link
+            href={`/${eventId}/print/full`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="hidden md:inline-flex px-2.5 py-1.5 rounded-btn border border-ink-100 hover:border-ink-900 text-[12px] font-semibold items-center gap-1"
+            title="전체 PDF 다운로드"
+          >
+            <Download className="w-3.5 h-3.5" />
+            {locale === "en" ? "PDF" : "전체 PDF"}
+          </Link>
+          {/* 필터 — 카드 모드 진입 후 모바일에서 sheet 호출. */}
           <button
             type="button"
             onClick={onOpenFilter}
@@ -1958,13 +1957,17 @@ function SlideStream({
               <span className="w-1.5 h-1.5 rounded-full bg-brand-500 ml-0.5" />
             )}
           </button>
-          {/* 모드 토글 — 카드 모드 헤더와 동일 컴포넌트 */}
+          {/* 모드 토글 */}
           <ViewModeToggle
             viewMode="slide"
             setViewMode={(m) => {
               if (m === "card") onCardMode();
             }}
           />
+          {/* 언어 토글 — 가장 오른쪽 (보편적 위치) */}
+          <div className="hidden md:block">
+            <LocaleSwitch size="sm" />
+          </div>
         </div>
       </div>
 

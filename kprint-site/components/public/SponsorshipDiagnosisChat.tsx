@@ -305,6 +305,7 @@ export function SponsorshipDiagnosisChat({
                 sessionIdRef.current = randomId();
                 loggedFinalRef.current = false;
               }}
+              onClose={onCloseWithLog}
             />
           )}
         </div>
@@ -539,6 +540,7 @@ function ResultScreen({
   answers,
   locale,
   onRestart,
+  onClose,
 }: {
   eventId: string;
   layout: ResultLayout;
@@ -547,6 +549,8 @@ function ResultScreen({
   answers: Answers;
   locale: "ko" | "en";
   onRestart: () => void;
+  /** 결과 화면의 Link 클릭 시 호출 — 페이지 이동 후 모달 잔존 방지 */
+  onClose: () => void;
 }) {
   const isDecision = answers.q4 === "decision";
   const focusedId = answers.q5 && answers.q5 !== "none" ? answers.q5 : null;
@@ -617,12 +621,14 @@ function ResultScreen({
           supplements={decisionFocused.supplements}
           upsell={upsell}
           locale={locale}
+          onClose={onClose}
         />
       ) : layout === "comparison" ? (
         <ComparisonTable
           eventId={eventId}
           recommendations={recommendations}
           locale={locale}
+          onClose={onClose}
         />
       ) : (
         <Cards
@@ -630,6 +636,7 @@ function ResultScreen({
           recommendations={recommendations}
           ctaStrong={isDecision}
           locale={locale}
+          onClose={onClose}
         />
       )}
 
@@ -645,6 +652,7 @@ function ResultScreen({
         <div className="flex flex-wrap gap-2">
           <Link
             href={`/${eventId}/contact`}
+            onClick={onClose}
             className={
               "px-4 py-2 rounded-btn text-[13px] font-bold flex items-center gap-1.5 " +
               (isDecision
@@ -671,12 +679,14 @@ function DecisionFocused({
   supplements,
   upsell,
   locale,
+  onClose,
 }: {
   eventId: string;
   main: RecommendedEntry;
   supplements: RecommendedEntry[];
   upsell: UpsellSuggestion | null;
   locale: "ko" | "en";
+  onClose: () => void;
 }) {
   // 자세히 보기 = 슬라이드 모드의 해당 카테고리로 자동 점프 (?focus=slug).
   // 패키지는 패키지 상세 페이지 그대로. eventId 비어 fallback 시 홈으로 안전망.
@@ -718,12 +728,14 @@ function DecisionFocused({
           <div className="flex gap-2">
             <Link
               href={detailHref}
+              onClick={onClose}
               className="px-4 py-2.5 rounded-btn border border-ink-900 text-ink-900 text-[12.5px] font-bold hover:bg-ink-50"
             >
               {t("diag.focused.detailBtn", locale)}
             </Link>
             <Link
               href={`/${eventId}/contact`}
+              onClick={onClose}
               className="px-4 py-2.5 rounded-btn bg-brand-500 hover:bg-brand-700 text-white text-[12.5px] font-bold"
             >
               {t("diag.focused.inquireBtn", locale)}
@@ -750,6 +762,7 @@ function DecisionFocused({
                 <Link
                   key={s.selectorId}
                   href={href}
+                  onClick={onClose}
                   className="block border border-ink-100 rounded-btn p-3 hover:border-ink-700 transition-colors"
                 >
                   <div className="text-[13px] font-bold text-ink-900 leading-tight">
@@ -772,6 +785,7 @@ function DecisionFocused({
       {upsell && (
         <Link
           href={`/${eventId}/packages/${upsell.package.id}`}
+          onClick={onClose}
           className="block border border-brand-500 rounded-card p-4 md:p-5 bg-brand-50/60 hover:bg-brand-50 transition-colors"
         >
           <div className="flex items-start gap-3">
@@ -867,11 +881,13 @@ function Cards({
   recommendations,
   ctaStrong,
   locale,
+  onClose,
 }: {
   eventId: string;
   recommendations: RecommendedEntry[];
   ctaStrong: boolean;
   locale: "ko" | "en";
+  onClose: () => void;
 }) {
   return (
     <div className="mt-5 space-y-3">
@@ -882,6 +898,7 @@ function Cards({
           entry={r}
           ctaStrong={ctaStrong}
           locale={locale}
+          onClose={onClose}
         />
       ))}
     </div>
@@ -893,11 +910,13 @@ function RecommendationCard({
   entry,
   ctaStrong,
   locale,
+  onClose,
 }: {
   eventId: string;
   entry: RecommendedEntry;
   ctaStrong: boolean;
   locale: "ko" | "en";
+  onClose: () => void;
 }) {
   const detailHref =
     entry.kind === "category" && entry.category && eventId
@@ -931,12 +950,14 @@ function RecommendationCard({
       <div className="mt-4 flex flex-wrap gap-2">
         <Link
           href={detailHref}
+          onClick={onClose}
           className="px-3.5 py-1.5 rounded-btn border border-ink-100 hover:bg-ink-50 text-[12px] font-bold text-ink-900"
         >
           {t("diag.cards.detailBtn", locale)}
         </Link>
         <Link
           href={`/${eventId}/contact`}
+          onClick={onClose}
           className={
             "px-3.5 py-1.5 rounded-btn text-[12px] font-bold " +
             (ctaStrong
@@ -955,10 +976,12 @@ function ComparisonTable({
   eventId,
   recommendations,
   locale,
+  onClose,
 }: {
   eventId: string;
   recommendations: RecommendedEntry[];
   locale: "ko" | "en";
+  onClose: () => void;
 }) {
   return (
     <div className="mt-5">
@@ -1012,6 +1035,7 @@ function ComparisonTable({
                   <td className="px-3 py-3 text-right">
                     <Link
                       href={detailHref}
+                      onClick={onClose}
                       className="text-[11.5px] font-bold text-brand-500 hover:text-brand-700"
                     >
                       {t("diag.compare.detail", locale)}
