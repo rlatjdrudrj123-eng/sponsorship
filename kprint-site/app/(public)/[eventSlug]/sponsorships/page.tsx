@@ -385,6 +385,7 @@ export default function SponsorshipsPage() {
           totalCount={totalCount}
           onCardMode={() => setViewMode("card")}
           onOpenFilter={() => setSheetOpen(true)}
+          onResetFilters={resetFilters}
           hasActiveFilter={hasActiveFilter}
           eventId={eventId}
           onOpenDetail={setDetailModalSlug}
@@ -657,15 +658,27 @@ export default function SponsorshipsPage() {
                 )}
 
                 {filtered.length === 0 ? (
-                  <div className="bg-ink-50 rounded-card py-16 text-center text-sm text-ink-500">
-                    {t("spons.filterEmpty", locale)}
+                  <div className="bg-ink-50 rounded-card py-16 px-6 text-center">
+                    <div className="font-num text-[11px] uppercase tracking-[0.3em] text-ink-300 font-bold mb-3">
+                      0 / {totalCount}
+                    </div>
+                    <p className="text-[15px] md:text-[16px] text-ink-700 font-semibold leading-snug mb-1.5">
+                      {locale === "en"
+                        ? "No items match these filters."
+                        : "조건에 맞는 항목이 없어요."}
+                    </p>
+                    <p className="text-[12.5px] text-ink-500 leading-relaxed mb-5 max-w-md mx-auto">
+                      {locale === "en"
+                        ? "Try resetting the filters or pick a different persona / budget."
+                        : "필터를 초기화하거나 다른 참가 상황·예산을 시도해보세요."}
+                    </p>
                     {hasActiveFilter && (
                       <button
                         type="button"
                         onClick={resetFilters}
-                        className="block mx-auto mt-3 text-brand-700 font-semibold hover:underline"
+                        className="px-4 py-2.5 rounded-pill bg-ink-900 text-white text-[13px] font-bold hover:bg-brand-500 hover:text-ink-900 transition-colors"
                       >
-                        {t("spons.resetFilters", locale)}
+                        {locale === "en" ? "Reset filters" : "필터 초기화"}
                       </button>
                     )}
                   </div>
@@ -1808,6 +1821,7 @@ function SlideStream({
   totalCount,
   onCardMode,
   onOpenFilter,
+  onResetFilters,
   hasActiveFilter,
   eventId,
   onOpenDetail,
@@ -1820,6 +1834,7 @@ function SlideStream({
   totalCount: number;
   onCardMode: () => void;
   onOpenFilter: () => void;
+  onResetFilters: () => void;
   hasActiveFilter: boolean;
   eventId: string;
   onOpenDetail: (slug: string) => void;
@@ -1904,9 +1919,43 @@ function SlideStream({
       </div>
 
       {items.length === 0 ? (
-        <main className="h-dvh pt-14 grid place-items-center bg-canvas">
-          <div className="text-center text-sm text-ink-500">
-            {t("spons.filterEmpty", locale)}
+        <main className="h-dvh pt-14 grid place-items-center bg-canvas px-6">
+          <div className="text-center max-w-md">
+            <div className="font-num text-[11px] uppercase tracking-[0.3em] text-ink-300 font-bold mb-3">
+              0 / {totalCount}
+            </div>
+            <p className="text-[16px] md:text-[18px] text-ink-700 font-semibold leading-snug mb-1.5">
+              {locale === "en"
+                ? "No items match these filters."
+                : "조건에 맞는 항목이 없어요."}
+            </p>
+            <p className="text-[13px] text-ink-500 leading-relaxed mb-6">
+              {locale === "en"
+                ? "Reset the filters or try a different persona / budget."
+                : "필터를 초기화하거나 다른 참가 상황·예산으로 시도해보세요."}
+            </p>
+            <div className="flex items-center justify-center gap-2 flex-wrap">
+              {hasActiveFilter && (
+                <button
+                  type="button"
+                  onClick={onResetFilters}
+                  className="px-4 py-2.5 rounded-pill bg-ink-900 text-white text-[13px] font-bold hover:bg-brand-500 hover:text-ink-900 transition-colors"
+                >
+                  {locale === "en" ? "Reset filters" : "필터 초기화"}
+                </button>
+              )}
+              <button
+                type="button"
+                onClick={onCardMode}
+                className="px-4 py-2.5 rounded-pill border border-ink-100 hover:border-ink-900 text-[13px] font-bold flex items-center gap-1.5"
+              >
+                <LayoutGrid className="w-3.5 h-3.5" />
+                {locale === "en" ? "Filter view" : "필터로 보기"}
+                <span className="text-[9px] font-mono font-bold px-1 py-0.5 rounded bg-brand-500 text-ink-900 leading-none">
+                  BETA
+                </span>
+              </button>
+            </div>
           </div>
         </main>
       ) : (
