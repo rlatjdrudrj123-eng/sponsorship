@@ -678,12 +678,16 @@ function DecisionFocused({
   upsell: UpsellSuggestion | null;
   locale: "ko" | "en";
 }) {
+  // 자세히 보기 = 슬라이드 모드의 해당 카테고리로 자동 점프 (?focus=slug).
+  // 패키지는 패키지 상세 페이지 그대로. eventId 비어 fallback 시 홈으로 안전망.
   const detailHref =
-    main.kind === "category" && main.category
-      ? `/${eventId}/sponsorships/${main.category.slug}`
-      : main.kind === "package" && main.package
+    main.kind === "category" && main.category && eventId
+      ? `/${eventId}/sponsorships?focus=${main.category.slug}`
+      : main.kind === "package" && main.package && eventId
         ? `/${eventId}/packages/${main.package.id}`
-        : `/${eventId}/sponsorships`;
+        : eventId
+          ? `/${eventId}/sponsorships`
+          : "/";
   const pkgName = locale === "en" ? upsell?.package.name.en : upsell?.package.name.ko;
 
   return (
@@ -896,11 +900,13 @@ function RecommendationCard({
   locale: "ko" | "en";
 }) {
   const detailHref =
-    entry.kind === "category" && entry.category
-      ? `/${eventId}/sponsorships/${entry.category.slug}`
-      : entry.kind === "package" && entry.package
+    entry.kind === "category" && entry.category && eventId
+      ? `/${eventId}/sponsorships?focus=${entry.category.slug}`
+      : entry.kind === "package" && entry.package && eventId
         ? `/${eventId}/packages/${entry.package.id}`
-        : `/${eventId}/sponsorships`;
+        : eventId
+          ? `/${eventId}/sponsorships`
+          : "/";
 
   return (
     <article className="border border-ink-100 rounded-card p-5 hover:border-ink-700 transition-colors">
@@ -975,11 +981,13 @@ function ComparisonTable({
           <tbody>
             {recommendations.map((r) => {
               const detailHref =
-                r.kind === "category" && r.category
-                  ? `/${eventId}/sponsorships/${r.category.slug}`
-                  : r.kind === "package" && r.package
+                r.kind === "category" && r.category && eventId
+                  ? `/${eventId}/sponsorships?focus=${r.category.slug}`
+                  : r.kind === "package" && r.package && eventId
                     ? `/${eventId}/packages/${r.package.id}`
-                    : `/${eventId}/sponsorships`;
+                    : eventId
+                      ? `/${eventId}/sponsorships`
+                      : "/";
               return (
                 <tr
                   key={r.selectorId}

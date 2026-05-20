@@ -1850,6 +1850,24 @@ function SlideStream({
   typeLayouts?: SiteSettings["typeLayouts"];
   bundledPerks?: SiteSettings["bundledPerks"];
 }) {
+  const sp = useSearchParams();
+  const focusSlug = sp?.get("focus") ?? null;
+  const mainRef = useRef<HTMLElement>(null);
+
+  // ?focus=slug 로 진입 시 해당 슬라이드로 자동 스크롤. 진단 챗봇의 [자세히 보기] 동선.
+  useEffect(() => {
+    if (!focusSlug || !mainRef.current) return;
+    // items 가 로드된 후에 querySelector 가 잡을 수 있도록 약간의 지연
+    const tid = window.setTimeout(() => {
+      const el = mainRef.current?.querySelector<HTMLElement>(
+        `[data-focus-slug="${focusSlug}"]`
+      );
+      if (el) {
+        el.scrollIntoView({ behavior: "smooth", block: "start" });
+      }
+    }, 80);
+    return () => window.clearTimeout(tid);
+  }, [focusSlug, items.length]);
   const locale = useLocale((s) => s.locale);
   return (
     <>
@@ -1971,7 +1989,10 @@ function SlideStream({
         // 데스크톱·모바일 모두 한 화면당 1 슬라이드 snap.
         // h-dvh 사용 — 모바일 브라우저 toolbar 등장/숨김 시 실제 보이는 영역에 정확히 맞춤.
         // (h-screen 은 100vh 고정이라 사파리에서 toolbar 영역만큼 잘림.)
-        <main className="bg-canvas h-dvh overflow-y-scroll snap-y snap-mandatory">
+        <main
+          ref={mainRef}
+          className="bg-canvas h-dvh overflow-y-scroll snap-y snap-mandatory"
+        >
           {/* 슬라이드 진입 첫 자리 — 한눈에 보기 (페르소나별 카테고리 그리드). */}
           <AtAGlanceSlide
             categories={items}
@@ -1986,7 +2007,8 @@ function SlideStream({
               eventName={eventName}
             />
           )}
-          {/* 그 다음 — 단품 카테고리 슬라이드들 */}
+          {/* 그 다음 — 단품 카테고리 슬라이드들. wrap div 에 data-focus-slug 부여 —
+              ?focus=slug 점프 (진단 챗봇 자세히 보기) 가 정확한 슬라이드에 도착. */}
           {items.map((c, i) => {
             const subs = subcategories
               .filter((s) => s.categoryId === c.id)
@@ -1995,20 +2017,19 @@ function SlideStream({
               .filter((s) => s.categoryId === c.id)
               .sort((a, b) => a.order - b.order);
             return (
-              <SlideSection
-                key={c.id}
-                item={c}
-                subcategories={subs}
-                slots={catSlots}
-                index={i}
-                total={items.length}
-                onOpenDetail={onOpenDetail}
-                typeLayouts={typeLayouts}
-                bundledPerks={bundledPerks}
-                // 슬라이드 모드는 이미 풀스크린이라 '자세히 보기' 버튼이 같은 화면을 한 번 더 모달로
-                // 띄우는 중복이 됨. 데스크톱·모바일 모두 자세히 보기 숨김.
-                hideDetailButton
-              />
+              <div key={c.id} data-focus-slug={c.slug}>
+                <SlideSection
+                  item={c}
+                  subcategories={subs}
+                  slots={catSlots}
+                  index={i}
+                  total={items.length}
+                  onOpenDetail={onOpenDetail}
+                  typeLayouts={typeLayouts}
+                  bundledPerks={bundledPerks}
+                  hideDetailButton
+                />
+              </div>
             );
           })}
         </main>
