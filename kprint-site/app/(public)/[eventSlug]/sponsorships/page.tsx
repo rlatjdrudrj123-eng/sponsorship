@@ -533,16 +533,6 @@ export default function SponsorshipsPage() {
               </div>
             </section>
 
-
-            {/* 패키지 — 별도 섹션, 필터 무관 */}
-            {packages.length > 0 && (
-              <section className="border-b border-ink-100 bg-surface">
-                <div className="max-w-7xl mx-auto px-6 md:px-16 py-10">
-                  <PackageSection packages={packages} eventId={eventId} />
-                </div>
-              </section>
-            )}
-
             {/* 카드(필터로 보기 BETA) 모드 상단 sticky 바 — 슬라이드 모드 헤더와 같은 톤
                 (bg-canvas/95, h-14, max-w-7xl) 으로 통일. 좌측 홈/카운트, 우측 보조+모드 토글. */}
             <div className="sticky top-0 z-30 bg-canvas/95 backdrop-blur border-b border-ink-100 h-14">
@@ -699,6 +689,15 @@ export default function SponsorshipsPage() {
                 )}
               </section>
             </div>
+
+            {/* 패키지 — 카드 모드 맨 하단. 필터 무관·항상 노출. */}
+            {packages.length > 0 && (
+              <section className="border-t border-ink-100 bg-surface">
+                <div className="max-w-7xl mx-auto px-6 md:px-16 py-10">
+                  <PackageSection packages={packages} eventId={eventId} />
+                </div>
+              </section>
+            )}
           </main>
           <Footer settings={settings} />
         </>
