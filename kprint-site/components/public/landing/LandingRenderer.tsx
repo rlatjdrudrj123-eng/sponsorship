@@ -28,14 +28,13 @@ export function LandingRenderer({
   const locale = useLocale((s) => s.locale);
   const mainRef = useRef<HTMLElement>(null);
 
-  // 페이지 진입 시 무조건 첫 슬라이드부터 시작 — 브라우저 scroll restoration 으로
-  // 마지막 슬라이드(ModeChoice) 위치로 점프하는 버그 방지.
-  // snap-mandatory main 자체 scrollTop 을 명시적으로 0 으로.
+  // 페이지 진입·blocks 로드 시 무조건 첫 슬라이드부터 시작 — 데이터 로드 직전 빈 main 위에
+  // 마지막 슬라이드(ModeChoice) 만 잡혀 그 위치로 머무는 버그 방지.
   useEffect(() => {
     if (mainRef.current) {
       mainRef.current.scrollTop = 0;
     }
-  }, []);
+  }, [blocks.length]);
 
   return (
     <>
@@ -85,8 +84,104 @@ export function LandingRenderer({
 
         {/* 데크 마지막 — 자세히 알아보기 CTA */}
         <ModeChoice eventId={eventId} locale={locale} />
+
+        {/* 클로징 — 외부 신청 링크 + PDF + 연락처 */}
+        <ClosingSlide eventId={eventId} settings={settings} locale={locale} />
       </main>
     </>
+  );
+}
+
+/**
+ * 마지막 슬라이드 — KPRINT 신청 외부 링크 + 전체 PDF 다운로드 + Contact.
+ * KIMES 패턴 참조.
+ */
+function ClosingSlide({
+  eventId,
+  settings,
+  locale,
+}: {
+  eventId: string;
+  settings: SiteSettings | null;
+  locale: "ko" | "en";
+}) {
+  const contact = settings?.contact;
+  return (
+    <section className="h-screen snap-start snap-always relative overflow-hidden flex flex-col items-center justify-center bg-canvas text-ink-900 px-8 md:px-16">
+      <div className="max-w-3xl w-full text-center flex flex-col items-center">
+        {/* 브랜드 — K·print */}
+        <div className="font-bold text-[34px] md:text-[44px] tracking-tight text-brand-500 leading-none mb-12 md:mb-16">
+          K·print
+        </div>
+
+        {/* 메인 카피 */}
+        <h2 className="text-[26px] md:text-[42px] font-bold tracking-tight text-ink-900 leading-[1.25] md:leading-[1.2] mb-10 md:mb-14">
+          {locale === "en" ? (
+            <>
+              Reach decision-makers in the
+              <br />
+              print &amp; digital industry — start now.
+            </>
+          ) : (
+            <>
+              인쇄·디지털프린팅 산업 전문가가 모이는 자리에서
+              <br />
+              지금 바로 브랜드를 알리세요!
+            </>
+          )}
+        </h2>
+
+        {/* CTA 두 버튼 */}
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 md:gap-3 w-full sm:w-auto">
+          <a
+            href="https://kprint.kr/ko/mypage/exhibitor/advertise"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="px-7 md:px-9 py-3.5 md:py-4 rounded-btn bg-brand-500 text-white hover:bg-brand-700 text-[14px] md:text-[15px] font-bold transition-colors inline-flex items-center justify-center gap-2"
+          >
+            {locale === "en" ? "Apply online" : "온라인 신청 바로가기"}
+            <ArrowRight className="w-4 h-4" />
+          </a>
+          <Link
+            href={`/${eventId}/print/full`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="px-7 md:px-9 py-3.5 md:py-4 rounded-btn bg-ink-900 text-white hover:bg-ink-700 text-[14px] md:text-[15px] font-bold transition-colors inline-flex items-center justify-center gap-2"
+          >
+            <Download className="w-4 h-4" />
+            {locale === "en" ? "Download PDF" : "PDF 다운로드"}
+          </Link>
+        </div>
+
+        {/* Contact — settings.contact 있을 때만 */}
+        {contact && (
+          <div className="mt-14 md:mt-20 text-center">
+            <div className="font-bold text-[13px] text-ink-700 mb-2">
+              Contact.
+            </div>
+            <div className="text-[12px] md:text-[13px] text-ink-500 leading-relaxed font-num">
+              {contact.phone}
+              {contact.phone && contact.email && (
+                <span className="mx-2 text-ink-300">|</span>
+              )}
+              {contact.email && (
+                <a
+                  href={`mailto:${contact.email}`}
+                  className="hover:text-ink-900"
+                >
+                  {contact.email}
+                </a>
+              )}
+            </div>
+            {contact.address && (
+              <div className="text-[11.5px] md:text-[12.5px] text-ink-500 mt-1">
+                {contact.address}
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+    </section>
   );
 }
 

@@ -34,8 +34,18 @@ export function HomePage({ eventId }: { eventId: string }) {
 
   const blocks = useMemo(() => settings?.landing ?? [], [settings?.landing]);
 
+  // settings 로딩 중 — LandingRenderer 가 빈 blocks 로 그려져 ModeChoice 만 보이는
+  // 버그 방지. 로딩 끝난 후 데이터로 한 번에 그려야 main snap-scroll 이 첫 슬라이드부터.
+  if (!loaded) {
+    return (
+      <main className="min-h-screen grid place-items-center bg-canvas">
+        <div className="text-[12px] text-ink-300">불러오는 중…</div>
+      </main>
+    );
+  }
+
   // 빈 상태 — 어드민이 아직 랜딩을 만들지 않음. 카탈로그로 바로 가는 링크만 노출.
-  if (loaded && blocks.length === 0) {
+  if (blocks.length === 0) {
     return <EmptyLanding eventId={eventId} />;
   }
 
