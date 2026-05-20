@@ -805,14 +805,17 @@ export default function SponsorshipsPage() {
         </div>
       )}
 
-      {/* 우하단 floating 진단 챗봇 — z-50 (메인 액션, 항상 위). 모달 열림 시 숨김.
-          카트 floating(z-40) / 비교 bar(z-30) 와 z 분리. */}
+      {/* 우하단 floating 진단 챗봇 — z-50. 모바일에서는 라벨 숨기고 원형 아이콘만
+          (구좌 선택 버튼 등 정보 영역 하단 액션과 시각 충돌 방지). 데스크톱은 라벨 포함. */}
       {!aiChatOpen && (
         <button
           type="button"
           onClick={() => setAiChatOpen(true)}
-          className="fixed bottom-5 right-5 md:bottom-7 md:right-7 z-50 group flex items-center gap-2.5 pl-3 pr-4 py-3 rounded-pill bg-ink-900 text-white shadow-glow hover:bg-brand-500 hover:text-ink-900 transition-colors"
+          className="fixed bottom-5 right-5 md:bottom-7 md:right-7 z-50 group flex items-center md:gap-2.5 md:pl-3 md:pr-4 md:py-3 md:rounded-pill w-12 h-12 md:w-auto md:h-auto rounded-full bg-ink-900 text-white shadow-glow hover:bg-brand-500 hover:text-ink-900 transition-colors justify-center"
           title={locale === "en" ? "1-min sponsorship advisor" : "1분 맞춤 진단"}
+          aria-label={
+            locale === "en" ? "1-min sponsorship advisor" : "1분 맞춤 진단"
+          }
         >
           <span
             className="w-7 h-7 rounded-full bg-white/15 grid place-items-center text-[10.5px] font-bold tracking-wider"
@@ -820,7 +823,7 @@ export default function SponsorshipsPage() {
           >
             SA
           </span>
-          <span className="text-[12.5px] font-bold whitespace-nowrap">
+          <span className="hidden md:inline text-[12.5px] font-bold whitespace-nowrap">
             {locale === "en" ? "1-min advisor" : "1분 맞춤 진단"}
           </span>
         </button>
