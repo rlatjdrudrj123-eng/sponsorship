@@ -312,9 +312,9 @@ export default function TaxonomyPage() {
     <div className="space-y-5">
       <header className="flex items-center justify-between gap-4">
         <div>
-          <h1 className="text-[22px] font-bold text-ink-900 leading-tight">분류·태그</h1>
+          <h1 className="text-[22px] font-bold text-ink-900 leading-tight">참가 상황·태그</h1>
           <p className="text-[13px] text-ink-700 mt-1">
-            카테고리에 붙일 태그를 종류별로 관리합니다. 채널은 고정입니다.
+            스폰서십 매체에 붙일 태그를 종류별로 관리합니다. 채널은 고정입니다.
           </p>
         </div>
         <div className="flex items-center gap-3 flex-wrap">

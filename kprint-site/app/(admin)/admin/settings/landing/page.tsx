@@ -170,10 +170,10 @@ export default function LandingBuilderPage() {
               사이트 설정
             </Link>
             <span>/</span>
-            <span>랜딩 빌더</span>
+            <span>메인 페이지 디자인</span>
           </div>
           <h1 className="text-[22px] font-bold text-ink-900 leading-tight">
-            랜딩 빌더
+            메인 페이지 디자인
           </h1>
           <p className="text-[13px] text-ink-700 mt-1 max-w-2xl">
             행사 메인 페이지(/{eventId})를 블록 단위로 자유 구성합니다. 각 블록은

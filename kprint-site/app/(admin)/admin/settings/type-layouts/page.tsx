@@ -258,7 +258,7 @@ export default function TypeLayoutsAdminPage() {
       <header className="mb-6 flex items-end justify-between">
         <div>
           <h1 className="text-[24px] font-bold text-ink-900">
-            유형별 슬라이드 레이아웃
+            유형별 표시 설정
           </h1>
           <p className="text-[13px] text-ink-500 mt-1 leading-relaxed">
             각 카테고리 유형의 공개 슬라이드를 <strong>자유 캔버스(1920×1080)</strong> 로 디자인합니다.

@@ -216,7 +216,7 @@ export default function DiagnosisAdminPage() {
           <div>
             <h1 className="text-[24px] font-bold text-ink-900 flex items-center gap-2">
               <Brain className="w-5 h-5 text-brand-500" />
-              진단 챗봇 관리 (v2)
+              1분 맞춤 진단 설정
             </h1>
             <p className="text-[13px] text-ink-500 mt-1 leading-relaxed">
               4문항 룩업 매트릭스 기반. 비어있는 셀은 시스템 기본값이 사용됩니다.

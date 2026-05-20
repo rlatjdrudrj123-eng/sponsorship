@@ -199,7 +199,7 @@ export default function PerksAdminPage() {
         <div>
           <h1 className="text-[24px] font-bold text-ink-900 flex items-center gap-2">
             <Gift className="w-5 h-5 text-brand-500" />
-            동봉 혜택 관리
+            추가 혜택 관리
           </h1>
           <p className="text-[13px] text-ink-500 mt-1 leading-relaxed">
             스폰서십 신청 시 모두에게 자동으로 제공되는 추가 매체 권리.

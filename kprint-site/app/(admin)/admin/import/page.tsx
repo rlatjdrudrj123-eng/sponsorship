@@ -153,10 +153,10 @@ export default function ImportPage() {
       <header className="flex items-start justify-between gap-4">
         <div>
           <h1 className="text-[22px] font-bold text-ink-900 leading-tight">
-            엑셀 일괄 업로드
+            엑셀 일괄 등록
           </h1>
           <p className="text-[13px] text-ink-700 mt-1">
-            기존 사무국 엑셀 양식 그대로 올리면 카테고리·소분류·구좌가 한 번에 생성됩니다.
+            기존 사무국 엑셀 양식 그대로 올리면 스폰서십 매체·구좌 분류·구좌가 한 번에 생성됩니다.
           </p>
         </div>
         <button

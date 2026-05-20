@@ -48,9 +48,9 @@ export default function SlotsHubPage() {
   return (
     <div className="space-y-5">
       <header>
-        <h1 className="text-[22px] font-bold text-ink-900 leading-tight">슬롯 관리</h1>
+        <h1 className="text-[22px] font-bold text-ink-900 leading-tight">구좌 관리</h1>
         <p className="text-[13px] text-ink-700 mt-1">
-          카테고리별로 슬롯 마감을 일괄 처리합니다.
+          스폰서십 매체별로 구좌 마감을 일괄 처리합니다.
         </p>
       </header>
 

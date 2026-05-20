@@ -2220,6 +2220,33 @@ function AtAGlanceSlide({
           )}
         </div>
       </div>
+      {/* 다음 슬라이드 진입 힌트 — 스크롤 가능함을 보여주는 인디케이터 */}
+      <button
+        type="button"
+        onClick={(e) => {
+          const sec = e.currentTarget.closest("section")
+            ?.nextElementSibling as HTMLElement | null;
+          sec?.scrollIntoView({ behavior: "smooth", block: "start" });
+        }}
+        className="absolute bottom-3 md:bottom-5 left-1/2 -translate-x-1/2 flex flex-col items-center gap-1 text-ink-500 hover:text-ink-900 transition-colors animate-bounce z-10"
+        aria-label="다음 슬라이드"
+        title={
+          locale === "en" ? "Scroll down to see more" : "스크롤해서 더 보기"
+        }
+      >
+        <span className="text-[10.5px] font-num font-semibold tracking-wider">
+          {locale === "en" ? "SCROLL" : "스크롤"}
+        </span>
+        <svg
+          viewBox="0 0 24 24"
+          className="w-5 h-5 stroke-current fill-none"
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        >
+          <polyline points="6 9 12 15 18 9" />
+        </svg>
+      </button>
     </section>
   );
 }

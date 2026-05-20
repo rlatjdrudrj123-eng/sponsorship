@@ -219,10 +219,10 @@ export default function ClassificationPage() {
         <div>
           <h1 className="text-[22px] font-bold text-ink-900 leading-tight flex items-center gap-2">
             <Layers className="w-5 h-5 text-brand-700" />
-            분류 관리
+            매체 분류
           </h1>
           <p className="text-[13px] text-ink-700 mt-1">
-            페르소나·매체 유형·시점·위치를 그룹별로 보고 드래그로 카테고리를 이동하세요.
+            참가 상황·매체 유형·시점·위치를 그룹별로 보고 드래그로 스폰서십 매체를 이동하세요.
           </p>
         </div>
         <button
@@ -240,7 +240,7 @@ export default function ClassificationPage() {
       <div className="flex items-center gap-1 bg-white border border-ink-100 rounded-btn p-1 w-fit">
         {(
           [
-            { id: "persona", label: "페르소나" },
+            { id: "persona", label: "참가 상황" },
             { id: "media", label: "매체 유형" },
             { id: "timing", label: "노출 시점" },
             { id: "location", label: "위치" },

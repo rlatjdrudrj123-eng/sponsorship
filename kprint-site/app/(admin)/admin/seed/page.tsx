@@ -77,7 +77,7 @@ export default function SeedPage() {
       <header>
         <h1 className="text-[22px] font-bold text-ink-900 leading-tight flex items-center gap-2">
           <Database className="w-5 h-5 text-brand-700" />
-          데이터 시드·초기화
+          샘플 데이터 채우기·초기화
         </h1>
         <p className="text-[13px] text-ink-700 mt-1">
           K-PRINT 2026 라인업으로 초기화하거나, 테스트용 샘플 데이터를 채워 넣습니다.

@@ -115,10 +115,10 @@ export function AdminSidebar() {
     {
       label: "콘텐츠",
       items: [
-        { href: "/admin/categories", label: "카테고리", Icon: FolderKanban },
+        { href: "/admin/categories", label: "스폰서십 매체", Icon: FolderKanban },
         { href: "/admin/packages", label: "패키지", Icon: Package },
-        { href: "/admin/slots", label: "슬롯 관리", Icon: Grid2x2 },
-        { href: "/admin/classification", label: "타입·채널", Icon: Layers },
+        { href: "/admin/slots", label: "구좌 관리", Icon: Grid2x2 },
+        { href: "/admin/classification", label: "매체 분류", Icon: Layers },
       ],
     },
     {
@@ -137,19 +137,19 @@ export function AdminSidebar() {
       label: "사이트",
       items: [
         { href: "/admin/settings", label: "사이트 설정", Icon: Settings, exact: true },
-        { href: "/admin/settings/landing", label: "랜딩 빌더", Icon: Layout },
-        { href: "/admin/settings/type-layouts", label: "유형별 레이아웃", Icon: LayoutTemplate },
-        { href: "/admin/settings/perks", label: "동봉 혜택", Icon: Gift },
-        { href: "/admin/settings/diagnosis", label: "진단 로직", Icon: Brain },
-        { href: "/admin/settings/taxonomy", label: "분류·태그", Icon: Tags },
+        { href: "/admin/settings/landing", label: "메인 페이지 디자인", Icon: Layout },
+        { href: "/admin/settings/type-layouts", label: "유형별 표시 설정", Icon: LayoutTemplate },
+        { href: "/admin/settings/perks", label: "추가 혜택", Icon: Gift },
+        { href: "/admin/settings/diagnosis", label: "1분 진단 설정", Icon: Brain },
+        { href: "/admin/settings/taxonomy", label: "참가 상황·태그", Icon: Tags },
         { href: "/admin/settings/quote", label: "견적서 설정", Icon: FileText },
       ],
     },
     {
       label: "도구",
       items: [
-        { href: "/admin/import", label: "엑셀 업로드", Icon: Upload },
-        { href: "/admin/seed", label: "데모 시드", Icon: Database },
+        { href: "/admin/import", label: "엑셀 일괄 등록", Icon: Upload },
+        { href: "/admin/seed", label: "샘플 데이터 채우기", Icon: Database },
       ],
     },
   ];

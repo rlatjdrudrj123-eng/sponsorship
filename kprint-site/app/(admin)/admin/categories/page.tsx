@@ -290,7 +290,7 @@ export default function CategoriesListPage() {
     <div className="space-y-5">
       <header className="flex items-end justify-between gap-4">
         <div>
-          <h1 className="text-[22px] font-bold text-ink-900 leading-tight">카테고리</h1>
+          <h1 className="text-[22px] font-bold text-ink-900 leading-tight">스폰서십 매체</h1>
           <p className="text-[13px] text-ink-700 mt-1">
             대분류를 편집하거나 게시 여부를 토글합니다.
           </p>
