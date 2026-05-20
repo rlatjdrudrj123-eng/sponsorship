@@ -155,6 +155,9 @@ export default function InquiriesListPage() {
                   >
                     {inq.companyName}
                   </Link>
+                  <div className="text-[10px] text-ink-300 font-mono mt-0.5">
+                    {inq.eventId || "(event 없음)"}
+                  </div>
                 </td>
                 <td className="px-4 py-2.5">
                   <div className="text-ink-700">{inq.contactName}</div>

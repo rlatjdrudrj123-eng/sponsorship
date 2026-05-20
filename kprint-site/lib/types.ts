@@ -242,6 +242,9 @@ export type Package = {
 
   originalPrice: number;
   discountPrice: number;
+  /** 영문(USD) 가격. 비우면 KRW 에서 1USD=1,000KRW 자동 변환. */
+  originalPriceUSD?: number;
+  discountPriceUSD?: number;
   unit?: string;
   priceNote?: string;
 
