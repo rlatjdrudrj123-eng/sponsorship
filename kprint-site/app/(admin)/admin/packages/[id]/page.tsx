@@ -38,6 +38,9 @@ type FormValues = {
   tagline: string;
   /** 할인가 수기 입력. 원가는 includedItems 합산으로 자동. */
   discountPrice: number;
+  /** 해외 가격(USD). 비워두면 KRW 에서 자동 변환. */
+  originalPriceUSD?: number;
+  discountPriceUSD?: number;
   unit: string;
   priceNote: string;
   isPublished: boolean;
@@ -73,6 +76,8 @@ export default function PackageEditPage() {
       tier: "standard",
       tagline: "",
       discountPrice: 0,
+      originalPriceUSD: undefined,
+      discountPriceUSD: undefined,
       unit: "패키지",
       priceNote: "",
       isPublished: false,
@@ -100,6 +105,8 @@ export default function PackageEditPage() {
           tier: data.tier,
           tagline: data.tagline ?? "",
           discountPrice: data.discountPrice ?? 0,
+          originalPriceUSD: data.originalPriceUSD,
+          discountPriceUSD: data.discountPriceUSD,
           unit: data.unit ?? "패키지",
           priceNote: data.priceNote ?? "",
           isPublished: data.isPublished,
@@ -213,6 +220,14 @@ export default function PackageEditPage() {
             tagline: v.tagline || undefined,
             originalPrice,
             discountPrice: Number(v.discountPrice) || 0,
+            originalPriceUSD:
+              typeof v.originalPriceUSD === "number" && v.originalPriceUSD > 0
+                ? v.originalPriceUSD
+                : null,
+            discountPriceUSD:
+              typeof v.discountPriceUSD === "number" && v.discountPriceUSD > 0
+                ? v.discountPriceUSD
+                : null,
             unit: v.unit || undefined,
             priceNote: v.priceNote || undefined,
             isPublished: !!v.isPublished,
@@ -431,6 +446,22 @@ export default function PackageEditPage() {
               <div className="px-3 py-2 text-sm bg-ink-50 rounded-btn border border-ink-100 text-ink-700 font-mono">
                 {discountPct > 0 ? `${discountPct}%` : "—"}
               </div>
+            </Field>
+            <Field label="해외 원가 ($) — 비워두면 자동 (1USD≈1,000KRW)">
+              <input
+                type="number"
+                {...form.register("originalPriceUSD", { valueAsNumber: true })}
+                className={inputCls() + " font-mono text-right"}
+                placeholder="auto"
+              />
+            </Field>
+            <Field label="해외 할인가 ($) — 비워두면 자동">
+              <input
+                type="number"
+                {...form.register("discountPriceUSD", { valueAsNumber: true })}
+                className={inputCls() + " font-mono text-right"}
+                placeholder="auto"
+              />
             </Field>
             <Field label="단위">
               <input {...form.register("unit")} className={inputCls()} />

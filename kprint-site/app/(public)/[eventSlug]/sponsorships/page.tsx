@@ -147,6 +147,8 @@ type EnrichedCategory = Category & {
   slotTotal: number;
   slotAvailable: number;
   minPrice: number;
+  /** USD 최저가 — priceUSD 우선, 없으면 priceKRW 자동 변환 */
+  minPriceUSD: number;
   badges: Badge[];
 };
 
@@ -309,6 +311,16 @@ export default function SponsorshipsPage() {
         const cs = slots.filter((s) => s.categoryId === c.id);
         const subs = subcategories.filter((s) => s.categoryId === c.id);
         const prices = subs.map((s) => s.priceKRW).filter((p) => p > 0);
+        // USD 최저가 — 어드민이 USD 직접 입력했으면 그것, 없으면 KRW 자동 변환(1USD=1000KRW)
+        const usdPrices = subs
+          .map((s) =>
+            typeof s.priceUSD === "number" && s.priceUSD > 0
+              ? s.priceUSD
+              : s.priceKRW > 0
+                ? Math.round(s.priceKRW / 1000)
+                : 0
+          )
+          .filter((p) => p > 0);
         const slotTotal = cs.length;
         const slotAvailable = cs.filter((s) => s.status === "available").length;
         return {
@@ -316,6 +328,7 @@ export default function SponsorshipsPage() {
           slotTotal,
           slotAvailable,
           minPrice: prices.length > 0 ? Math.min(...prices) : 0,
+          minPriceUSD: usdPrices.length > 0 ? Math.min(...usdPrices) : 0,
           badges: computeBadges(c, slotAvailable, slotTotal),
         };
       });
@@ -1810,12 +1823,15 @@ function CardGrid({
 
               <div className="mt-auto pt-4 flex items-center justify-between text-[11.5px] font-num">
                 <span>
-                  {c.minPrice > 0 ? (
+                  {(locale === "en" ? c.minPriceUSD : c.minPrice) > 0 ? (
                     <>
                       <span className="text-ink-500">{t("spons.minPrice", locale)} </span>
                       <span className="text-ink-900 font-bold">
-                        {locale === "en" ? "₩" : ""}
-                        {c.minPrice.toLocaleString()}
+                        {locale === "en" ? "$" : ""}
+                        {(locale === "en"
+                          ? c.minPriceUSD
+                          : c.minPrice
+                        ).toLocaleString()}
                         {locale === "en" ? "" : "원"}
                       </span>
                     </>
@@ -2609,16 +2625,24 @@ function SlideSection({
           {/* 가격 — 설명 바로 아래로 끌어올림 (FAB 와 시각 충돌 해소) */}
           <div className="mt-3 pt-3 border-t border-ink-100">
             <div className="flex items-end justify-between gap-3">
-              {item.minPrice > 0 ? (
+              {(locale === "en" ? item.minPriceUSD : item.minPrice) > 0 ? (
                 <div>
                   <div className="text-[10px] text-ink-500 font-semibold">
                     {locale === "en" ? "Per slot" : "1구좌당"}
                   </div>
                   <div className="font-num text-[22px] font-bold text-ink-900 leading-none">
-                    {item.minPrice.toLocaleString()}
-                    <span className="text-[12px] ml-1 font-bold">
-                      {t("common.won", locale)}
-                    </span>
+                    {locale === "en" && (
+                      <span className="text-[14px] mr-0.5">$</span>
+                    )}
+                    {(locale === "en"
+                      ? item.minPriceUSD
+                      : item.minPrice
+                    ).toLocaleString()}
+                    {locale !== "en" && (
+                      <span className="text-[12px] ml-1 font-bold">
+                        {t("common.won", locale)}
+                      </span>
+                    )}
                   </div>
                 </div>
               ) : (
@@ -3295,16 +3319,24 @@ function SlideSection({
 
             {/* 가격 — 큰 텍스트 (타겟 레이아웃) */}
             <div className="mt-6 pt-6 border-t border-ink-100 flex items-end justify-end gap-3">
-              {item.minPrice > 0 ? (
+              {(locale === "en" ? item.minPriceUSD : item.minPrice) > 0 ? (
                 <div className="text-right">
                   <div className="font-num text-[28px] md:text-[36px] font-bold text-ink-900 leading-none">
                     <span className="text-[16px] md:text-[18px] font-semibold mr-2">
                       {locale === "en" ? "Per slot" : "1구좌당"}
                     </span>
-                    {item.minPrice.toLocaleString()}
-                    <span className="text-[18px] md:text-[20px] ml-1 font-bold">
-                      {t("common.won", locale)}
-                    </span>
+                    {locale === "en" && (
+                      <span className="text-[20px] md:text-[24px] mr-0.5">$</span>
+                    )}
+                    {(locale === "en"
+                      ? item.minPriceUSD
+                      : item.minPrice
+                    ).toLocaleString()}
+                    {locale !== "en" && (
+                      <span className="text-[18px] md:text-[20px] ml-1 font-bold">
+                        {t("common.won", locale)}
+                      </span>
+                    )}
                   </div>
                   <p className="text-[11.5px] text-ink-500 mt-2">
                     {locale === "en"
