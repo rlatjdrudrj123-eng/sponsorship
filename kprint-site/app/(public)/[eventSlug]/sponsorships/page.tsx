@@ -383,6 +383,9 @@ export default function SponsorshipsPage() {
           subcategories={subcategories}
           slots={slots}
           totalCount={totalCount}
+          packages={packages}
+          personas={personas}
+          eventName={settings?.event?.nameKo ?? eventId}
           onCardMode={() => setViewMode("card")}
           onOpenFilter={() => setSheetOpen(true)}
           onResetFilters={resetFilters}
@@ -1819,6 +1822,9 @@ function SlideStream({
   subcategories,
   slots,
   totalCount,
+  packages,
+  personas,
+  eventName,
   onCardMode,
   onOpenFilter,
   onResetFilters,
@@ -1832,6 +1838,9 @@ function SlideStream({
   subcategories: Subcategory[];
   slots: Slot[];
   totalCount: number;
+  packages: Package[];
+  personas: Persona[];
+  eventName: string;
   onCardMode: () => void;
   onOpenFilter: () => void;
   onResetFilters: () => void;
@@ -1963,6 +1972,21 @@ function SlideStream({
         // h-dvh 사용 — 모바일 브라우저 toolbar 등장/숨김 시 실제 보이는 영역에 정확히 맞춤.
         // (h-screen 은 100vh 고정이라 사파리에서 toolbar 영역만큼 잘림.)
         <main className="bg-canvas h-dvh overflow-y-scroll snap-y snap-mandatory">
+          {/* 슬라이드 진입 첫 자리 — 한눈에 보기 (페르소나별 카테고리 그리드). */}
+          <AtAGlanceSlide
+            categories={items}
+            personas={personas}
+            eventName={eventName}
+          />
+          {/* 두 번째 — 패키지 광고 안내 (패키지 있을 때만). */}
+          {packages.length > 0 && (
+            <PackageOverviewSlide
+              packages={packages}
+              eventId={eventId}
+              eventName={eventName}
+            />
+          )}
+          {/* 그 다음 — 단품 카테고리 슬라이드들 */}
           {items.map((c, i) => {
             const subs = subcategories
               .filter((s) => s.categoryId === c.id)
@@ -1983,8 +2007,6 @@ function SlideStream({
                 bundledPerks={bundledPerks}
                 // 슬라이드 모드는 이미 풀스크린이라 '자세히 보기' 버튼이 같은 화면을 한 번 더 모달로
                 // 띄우는 중복이 됨. 데스크톱·모바일 모두 자세히 보기 숨김.
-                // (inModal 은 false — 슬라이드 페이지는 snap-mandatory 가 한 슬라이드 = 한 화면을 강제하므로
-                //  h-screen snap-start 가 유지돼야 떨림 없음.)
                 hideDetailButton
               />
             );
@@ -1992,6 +2014,239 @@ function SlideStream({
         </main>
       )}
     </>
+  );
+}
+
+// ============================================================================
+// AtAGlanceSlide — 슬라이드 진입 첫 자리. 페르소나 탭 + 카테고리 그리드 카드
+// (KIMES 스타일). 페르소나가 1개 이상이면 탭으로, 0개면 전체 카테고리 그리드.
+// ============================================================================
+
+function AtAGlanceSlide({
+  categories,
+  personas,
+  eventName,
+}: {
+  categories: EnrichedCategory[];
+  personas: Persona[];
+  eventName: string;
+}) {
+  const locale = useLocale((s) => s.locale);
+  const [activePersonaId, setActivePersonaId] = useState<string | null>(
+    personas[0]?.id ?? null
+  );
+
+  // 페르소나별 카테고리 매핑 (category.personas 기반).
+  const filteredByPersona = useMemo(() => {
+    if (!activePersonaId) return categories;
+    return categories.filter((c) =>
+      (c.personas ?? []).includes(activePersonaId)
+    );
+  }, [categories, activePersonaId]);
+
+  return (
+    <section className="h-dvh snap-start snap-always relative overflow-hidden bg-canvas pt-14">
+      <div className="h-full max-w-7xl mx-auto px-6 md:px-16 py-8 md:py-12 flex flex-col">
+        <h2 className="text-[24px] md:text-[40px] font-bold tracking-tight text-ink-900 text-center mb-4 md:mb-6">
+          {eventName}{" "}
+          <span className="text-brand-500">
+            {locale === "en" ? "at a glance" : "스폰서십 한눈에 보기"}
+          </span>
+        </h2>
+
+        {/* 페르소나 탭 */}
+        {personas.length > 0 && (
+          <div className="flex items-center justify-center gap-4 md:gap-10 mb-6 md:mb-8 flex-wrap">
+            {personas.map((p) => {
+              const active = activePersonaId === p.id;
+              return (
+                <button
+                  key={p.id}
+                  type="button"
+                  onClick={() => setActivePersonaId(p.id)}
+                  className={
+                    "text-[13px] md:text-[16px] font-bold transition-colors pb-1 border-b-2 " +
+                    (active
+                      ? "text-ink-900 border-ink-900"
+                      : "text-ink-300 border-transparent hover:text-ink-700")
+                  }
+                >
+                  {p.emoji && <span className="mr-1.5">{p.emoji}</span>}
+                  {p.title}
+                </button>
+              );
+            })}
+          </div>
+        )}
+
+        {/* 우상단 범례 */}
+        <div className="flex items-center justify-end gap-3 mb-3 text-[10.5px] md:text-[11px] text-ink-500 font-num">
+          <span className="flex items-center gap-1.5">
+            <span className="w-1.5 h-1.5 rounded-full bg-brand-100" />
+            {locale === "en" ? "online" : "온라인"}
+          </span>
+          <span className="flex items-center gap-1.5">
+            <span className="w-1.5 h-1.5 rounded-full bg-brand-500" />
+            {locale === "en" ? "offline" : "오프라인"}
+          </span>
+        </div>
+
+        {/* 카테고리 그리드 */}
+        <div className="flex-1 min-h-0 overflow-y-auto">
+          {filteredByPersona.length === 0 ? (
+            <div className="h-full grid place-items-center text-[13px] text-ink-500">
+              {locale === "en"
+                ? "No items in this persona."
+                : "이 상황에 매칭된 항목이 아직 없어요."}
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 md:gap-3">
+              {filteredByPersona.map((c) => (
+                <div
+                  key={c.id}
+                  className="bg-white border border-ink-100 rounded-card px-4 py-3 md:px-5 md:py-4 flex items-center justify-between gap-3 shadow-sm"
+                >
+                  <span className="text-[13px] md:text-[14.5px] font-semibold text-ink-900 truncate">
+                    {localized(c.name, locale)}
+                  </span>
+                  <span
+                    className={
+                      "w-2 h-2 rounded-full shrink-0 " +
+                      (c.channel === "online" ? "bg-brand-100" : "bg-brand-500")
+                    }
+                    aria-hidden
+                  />
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+// ============================================================================
+// PackageOverviewSlide — 한눈에 보기 다음. 패키지 광고 안내.
+// 패키지 카드들을 한 화면에 그리드로.
+// ============================================================================
+
+function PackageOverviewSlide({
+  packages,
+  eventId,
+  eventName,
+}: {
+  packages: Package[];
+  eventId: string;
+  eventName: string;
+}) {
+  const locale = useLocale((s) => s.locale);
+  const sorted = useMemo(
+    () => [...packages].sort((a, b) => (a.order ?? 0) - (b.order ?? 0)),
+    [packages]
+  );
+
+  return (
+    <section className="h-dvh snap-start snap-always relative overflow-hidden bg-canvas pt-14">
+      <div className="h-full max-w-7xl mx-auto px-6 md:px-16 py-8 md:py-12 flex flex-col">
+        <div className="font-num text-[11px] uppercase tracking-[0.3em] text-brand-500 font-bold mb-2">
+          {locale === "en" ? "Package deals" : "패키지 광고"}
+        </div>
+        <h2 className="text-[24px] md:text-[40px] font-bold tracking-tight text-ink-900 mb-2">
+          {locale === "en" ? (
+            <>
+              Bundle multiple sponsorships,{" "}
+              <span className="text-brand-500">save more</span>
+            </>
+          ) : (
+            <>
+              여러 매체를 한번에,{" "}
+              <span className="text-brand-500">패키지가로 더 합리적으로</span>
+            </>
+          )}
+        </h2>
+        <p className="text-[13px] md:text-[14px] text-ink-500 mb-6 md:mb-8 max-w-2xl">
+          {locale === "en"
+            ? `${eventName} curated bundles. Pick the one that fits your goal.`
+            : `${eventName} 사무국이 큐레이션한 조합. 참가 목표에 맞는 패키지로 시작하세요.`}
+        </p>
+
+        <div className="flex-1 min-h-0 overflow-y-auto">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 md:gap-4">
+            {sorted.map((pkg) => {
+              const hero = pkg.heroImages?.images?.[0]?.url;
+              const discount =
+                pkg.originalPrice > 0
+                  ? Math.round(
+                      (1 - pkg.discountPrice / pkg.originalPrice) * 100
+                    )
+                  : 0;
+              return (
+                <Link
+                  key={pkg.id}
+                  href={`/${eventId}/packages/${pkg.id}`}
+                  className="group bg-surface border border-ink-100 rounded-card overflow-hidden hover:border-brand-500 hover:shadow-card transition-all flex flex-col"
+                >
+                  <div className="aspect-[16/9] bg-ink-100 relative shrink-0">
+                    {hero ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img
+                        src={hero}
+                        alt={localized(pkg.name, locale)}
+                        loading="lazy"
+                        decoding="async"
+                        className="absolute inset-0 w-full h-full object-cover"
+                      />
+                    ) : (
+                      <div className="absolute inset-0 grid place-items-center text-ink-300 text-xs">
+                        {locale === "en" ? "No image" : "이미지 없음"}
+                      </div>
+                    )}
+                    <div className="absolute top-2 left-2 flex gap-1">
+                      <span className="text-[9px] uppercase tracking-wider bg-brand-500 text-ink-900 px-1.5 py-0.5 rounded font-bold">
+                        {pkg.tier === "signature"
+                          ? locale === "en"
+                            ? "Signature"
+                            : "시그니처"
+                          : locale === "en"
+                            ? "Standard"
+                            : "스탠다드"}
+                      </span>
+                    </div>
+                    {discount > 0 && (
+                      <div className="absolute top-2 right-2 bg-ink-900 text-brand-500 text-[10px] font-bold px-1.5 py-0.5 rounded">
+                        {discount}% OFF
+                      </div>
+                    )}
+                  </div>
+                  <div className="p-3 md:p-4 flex-1 flex flex-col">
+                    <div className="font-bold text-[14px] md:text-[15px] text-ink-900 group-hover:text-brand-500 transition-colors leading-tight">
+                      {localized(pkg.name, locale)}
+                    </div>
+                    {pkg.tagline && (
+                      <p className="text-[11.5px] text-ink-500 mt-1 leading-snug line-clamp-2">
+                        {pkg.tagline}
+                      </p>
+                    )}
+                    <div className="mt-auto pt-3 flex items-baseline gap-1.5">
+                      <span className="text-[16px] md:text-[18px] font-bold text-brand-700 font-num">
+                        {pkg.discountPrice.toLocaleString()}
+                        {locale === "en" ? "" : "원"}
+                      </span>
+                      {pkg.originalPrice > pkg.discountPrice && (
+                        <span className="text-[10.5px] text-ink-300 line-through font-num">
+                          {pkg.originalPrice.toLocaleString()}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                </Link>
+              );
+            })}
+          </div>
+        </div>
+      </div>
+    </section>
   );
 }
 
