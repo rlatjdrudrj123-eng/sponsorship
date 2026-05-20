@@ -12,6 +12,7 @@ import type {
   Channel,
   LandingBlock,
   Package,
+  Persona,
   SiteSettings,
   Subcategory,
 } from "@/lib/types";
@@ -47,6 +48,7 @@ function FullPrintContent() {
   const [categories, setCategories] = useState<Category[]>([]);
   const [subcategories, setSubcategories] = useState<Subcategory[]>([]);
   const [packages, setPackages] = useState<Package[]>([]);
+  const [personas, setPersonas] = useState<Persona[]>([]);
   const [settings, setSettings] = useState<SiteSettings | null>(null);
   const [ready, setReady] = useState(false);
 
@@ -55,7 +57,7 @@ function FullPrintContent() {
     (async () => {
       try {
         const db = getDb();
-        const [c, s, p, st] = await Promise.all([
+        const [c, s, p, pr, st] = await Promise.all([
           getDocs(
             query(
               collection(db, "categories"),
@@ -73,6 +75,9 @@ function FullPrintContent() {
               where("isPublished", "==", true)
             )
           ),
+          getDocs(
+            query(collection(db, "personas"), where("eventId", "==", eventId))
+          ),
           getDoc(doc(db, "siteSettings", eventId)),
         ]);
         setCategories(
@@ -83,6 +88,9 @@ function FullPrintContent() {
         );
         setPackages(
           p.docs.map((d) => ({ ...(d.data() as Package), id: d.id }))
+        );
+        setPersonas(
+          pr.docs.map((d) => ({ ...(d.data() as Persona), id: d.id }))
         );
         if (st.exists()) setSettings(st.data() as SiteSettings);
         setReady(true);
@@ -130,12 +138,18 @@ function FullPrintContent() {
   // 표지 페이지 수 — 랜딩 캔버스가 있으면 그 개수, 없으면 fallback Cover 1장
   const coverPagesCount = canvasBlocks.length > 0 ? canvasBlocks.length : 1;
 
-  // 추가 혜택(perks) 페이지는 어드민이 랜딩 빌더에서 직접 만들어 넣는 방향으로 변경 —
-  // PDF 자동 생성 페이지에서는 제외.
+  // 한눈에 보기 페이지 수 — 페르소나마다 한 페이지. 페르소나 없으면 전체 카테고리 1페이지.
+  const atGlancePageCount = personas.length > 0 ? personas.length : 1;
+  // 패키지 광고 안내 — 패키지 있을 때만 1페이지 (모든 패키지를 한 화면에 그룹별 카드).
+  const packageOverviewPageCount = sortedPackages.length > 0 ? 1 : 0;
 
-  // 마지막 — 클로징 슬라이드 (KPRINT 외부 신청 + Contact). 랜딩 페이지와 동일 흐름.
+  // 전체 페이지: 표지 + 한눈에보기(페르소나별) + 패키지광고안내 + 단품카테고리 + 클로징
   const totalPages =
-    coverPagesCount + sortedPackages.length + sortedCategories.length + 1;
+    coverPagesCount +
+    atGlancePageCount +
+    packageOverviewPageCount +
+    sortedCategories.length +
+    1;
 
   // 데이터 로드 완료 후 자동 인쇄 다이얼로그
   useEffect(() => {
@@ -206,36 +220,68 @@ function FullPrintContent() {
           ))
         )}
 
-        {/* 2) 패키지 슬라이드 — 단품(카테고리) 앞에 배치 */}
-        {sortedPackages.map((pkg, i) => (
-          <PackageSlide
-            key={`p-${pkg.id}`}
-            pkg={pkg}
-            index={coverPagesCount + i}
-            total={totalPages}
+        {/* 2) 한눈에 보기 — 페르소나마다 한 페이지. 페르소나 없으면 전체 카테고리 1페이지. */}
+        {personas.length > 0 ? (
+          personas.map((p, i) => (
+            <AtAGlancePrintSlide
+              key={`atg-${p.id}`}
+              persona={p}
+              categories={sortedCategories.filter((c) =>
+                (c.personas ?? []).includes(p.id)
+              )}
+              eventName={eventName}
+              index={coverPagesCount + i}
+              total={totalPages}
+              locale={locale}
+            />
+          ))
+        ) : (
+          <AtAGlancePrintSlide
+            persona={null}
+            categories={sortedCategories}
             eventName={eventName}
+            index={coverPagesCount}
+            total={totalPages}
             locale={locale}
           />
-        ))}
+        )}
 
-        {/* 3) 카테고리(단품) 슬라이드 */}
+        {/* 3) 패키지 광고 안내 — 한 페이지에 Signature·Standard 그룹 */}
+        {sortedPackages.length > 0 && (
+          <PackageOverviewPrintSlide
+            packages={sortedPackages}
+            index={coverPagesCount + atGlancePageCount}
+            total={totalPages}
+            locale={locale}
+          />
+        )}
+
+        {/* 4) 단품 카테고리 슬라이드 */}
         {sortedCategories.map((c, i) => (
           <CategorySlide
             key={`c-${c.id}`}
             category={c}
             subs={subByCat.get(c.id) ?? []}
-            index={coverPagesCount + sortedPackages.length + i}
+            index={
+              coverPagesCount +
+              atGlancePageCount +
+              packageOverviewPageCount +
+              i
+            }
             total={totalPages}
             eventName={eventName}
             locale={locale}
           />
         ))}
 
-        {/* 4) 클로징 — 외부 신청 링크 + Contact (랜딩 페이지와 동일 흐름) */}
+        {/* 5) 클로징 — 외부 신청 링크 + Contact (랜딩 페이지와 동일 흐름) */}
         <ClosingSlide
           settings={settings}
           index={
-            coverPagesCount + sortedPackages.length + sortedCategories.length
+            coverPagesCount +
+            atGlancePageCount +
+            packageOverviewPageCount +
+            sortedCategories.length
           }
           total={totalPages}
           locale={locale}
@@ -263,6 +309,267 @@ function FullPrintContent() {
           }
         }
       `}</style>
+    </div>
+  );
+}
+
+// ============================================================================
+// AtAGlancePrintSlide — PDF 한눈에 보기 (페르소나별 한 페이지).
+// 페르소나 헤더 + 매핑된 카테고리 그리드. 슬라이드 모드와 동일 톤.
+// ============================================================================
+
+function AtAGlancePrintSlide({
+  persona,
+  categories,
+  eventName,
+  index,
+  total,
+  locale,
+}: {
+  persona: Persona | null;
+  categories: Category[];
+  eventName: string;
+  index: number;
+  total: number;
+  locale: "ko" | "en";
+}) {
+  return (
+    <section className="a4-page bg-white shadow print:shadow-none mx-auto print:mx-0 my-4 print:my-0 w-[297mm] h-[210mm] relative overflow-hidden">
+      <div className="h-full px-16 py-12 flex flex-col">
+        <h2 className="text-[28px] font-bold tracking-tight text-ink-900 text-center mb-4">
+          {eventName}{" "}
+          <span className="text-brand-500">
+            {locale === "en" ? "at a glance" : "스폰서십 한눈에 보기"}
+          </span>
+        </h2>
+
+        {persona && (
+          <div className="text-center mb-6">
+            <div className="inline-flex items-baseline gap-2 text-[16px] font-bold text-ink-900 pb-1.5 border-b-2 border-ink-900">
+              {persona.emoji && <span className="text-[18px]">{persona.emoji}</span>}
+              {persona.title}
+            </div>
+            {persona.description && (
+              <p className="text-[11.5px] text-ink-500 mt-2 leading-snug max-w-2xl mx-auto">
+                {persona.description}
+              </p>
+            )}
+          </div>
+        )}
+
+        {/* 우상단 범례 */}
+        <div className="flex items-center justify-end gap-3 mb-3 text-[10.5px] text-ink-500 font-num">
+          <span className="flex items-center gap-1.5">
+            <span className="w-1.5 h-1.5 rounded-full bg-brand-100" />
+            {locale === "en" ? "online" : "온라인"}
+          </span>
+          <span className="flex items-center gap-1.5">
+            <span className="w-1.5 h-1.5 rounded-full bg-brand-500" />
+            {locale === "en" ? "offline" : "오프라인"}
+          </span>
+        </div>
+
+        <div className="flex-1 min-h-0">
+          {categories.length === 0 ? (
+            <div className="h-full grid place-items-center text-[12.5px] text-ink-500">
+              {locale === "en"
+                ? "No items in this persona."
+                : "이 상황에 매칭된 항목이 아직 없어요."}
+            </div>
+          ) : (
+            <div className="grid grid-cols-3 gap-2.5">
+              {categories.map((c) => (
+                <div
+                  key={c.id}
+                  className="bg-white border border-ink-100 rounded-card px-4 py-3 flex items-center justify-between gap-3 shadow-sm"
+                >
+                  <span className="text-[12.5px] font-semibold text-ink-900 truncate">
+                    {localizedHelper(c.name, locale)}
+                  </span>
+                  <span
+                    className={
+                      "w-2 h-2 rounded-full shrink-0 " +
+                      (c.channel === "online" ? "bg-brand-100" : "bg-brand-500")
+                    }
+                    aria-hidden
+                  />
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+      <div className="absolute bottom-3 right-12 font-mono tracking-widest text-ink-300 text-[12px]">
+        <span className="text-ink-700 font-bold">
+          {String(index + 1).padStart(2, "0")}
+        </span>
+        <span className="mx-1">/</span>
+        {String(total).padStart(2, "0")}
+      </div>
+    </section>
+  );
+}
+
+// ============================================================================
+// PackageOverviewPrintSlide — PDF 패키지 광고 안내 (한 페이지에 Signature·Standard 그룹).
+// 슬라이드 모드 PackageOverviewSlide 와 동일 디자인.
+// ============================================================================
+
+function PackageOverviewPrintSlide({
+  packages,
+  index,
+  total,
+  locale,
+}: {
+  packages: Package[];
+  index: number;
+  total: number;
+  locale: "ko" | "en";
+}) {
+  const signaturePkgs = packages.filter((p) => p.tier === "signature");
+  const standardPkgs = packages.filter((p) => p.tier === "standard");
+
+  return (
+    <section className="a4-page bg-white shadow print:shadow-none mx-auto print:mx-0 my-4 print:my-0 w-[297mm] h-[210mm] relative overflow-hidden">
+      <div className="h-full px-16 py-10 flex flex-col">
+        <div className="text-center mb-4">
+          <h2 className="text-[28px] font-bold tracking-tight text-ink-900">
+            {locale === "en" ? "Package deals" : "패키지 광고 안내"}
+          </h2>
+          <p className="text-[12px] text-ink-500 mt-1.5 leading-relaxed max-w-2xl mx-auto">
+            {locale === "en"
+              ? "Discounted bundles — premium packages combining key on-floor traffic and exposure channels."
+              : "단품을 묶어 할인된 가격에 — 전시회 핵심 동선 + 노출 채널을 통합 구성한 프리미엄 패키지입니다."}
+          </p>
+        </div>
+
+        <div className="flex-1 min-h-0 space-y-4 overflow-hidden">
+          {signaturePkgs.length > 0 && (
+            <PrintPackageGroup
+              label="Signature Package"
+              tagline={
+                locale === "en"
+                  ? "Premium bundles built around key on-floor traffic and high-visibility channels"
+                  : "전시회 핵심 동선과 주요 노출 지면을 중심으로 구성된 프리미엄 패키지"
+              }
+              packages={signaturePkgs}
+              locale={locale}
+            />
+          )}
+          {standardPkgs.length > 0 && (
+            <PrintPackageGroup
+              label="Standard Package"
+              tagline={
+                locale === "en"
+                  ? "Flexible bundles you can adapt to your specific goal"
+                  : "선택 가능한 스폰서십 항목을 유연하게 구성한 실속형 패키지"
+              }
+              packages={standardPkgs}
+              locale={locale}
+            />
+          )}
+        </div>
+      </div>
+      <div className="absolute bottom-3 right-12 font-mono tracking-widest text-ink-300 text-[12px]">
+        <span className="text-ink-700 font-bold">
+          {String(index + 1).padStart(2, "0")}
+        </span>
+        <span className="mx-1">/</span>
+        {String(total).padStart(2, "0")}
+      </div>
+    </section>
+  );
+}
+
+function PrintPackageGroup({
+  label,
+  tagline,
+  packages,
+  locale,
+}: {
+  label: string;
+  tagline: string;
+  packages: Package[];
+  locale: "ko" | "en";
+}) {
+  return (
+    <div>
+      <div className="flex items-baseline justify-between gap-3 mb-2 border-b border-ink-100 pb-1.5">
+        <div className="font-num text-[11px] uppercase tracking-[0.3em] text-brand-500 font-bold">
+          {label}
+        </div>
+        <p className="text-[10.5px] text-ink-300 leading-tight">{tagline}</p>
+      </div>
+      <div className="grid grid-cols-2 gap-3">
+        {packages.map((pkg) => (
+          <PrintPackageCard key={pkg.id} pkg={pkg} locale={locale} />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function PrintPackageCard({
+  pkg,
+  locale,
+}: {
+  pkg: Package;
+  locale: "ko" | "en";
+}) {
+  const discount =
+    pkg.originalPrice > 0
+      ? Math.round((1 - pkg.discountPrice / pkg.originalPrice) * 100)
+      : 0;
+  const items = (pkg.includedItems ?? []).slice(0, 5);
+  return (
+    <div className="bg-surface border border-ink-100 rounded-card p-3">
+      <div className="grid grid-cols-[1.4fr_1fr] gap-3 items-start">
+        <div className="min-w-0">
+          {pkg.tagline && (
+            <p className="text-[10.5px] text-brand-500 font-semibold leading-snug mb-1 line-clamp-1">
+              {pkg.tagline}
+            </p>
+          )}
+          <div className="text-[16px] font-bold text-ink-900 leading-tight mb-2">
+            {localizedHelper(pkg.name, locale)}
+          </div>
+          {items.length > 0 && (
+            <ul className="space-y-0.5 text-[10.5px] text-ink-700 leading-snug">
+              {items.map((it, i) => (
+                <li key={i} className="flex items-start gap-1.5">
+                  <span className="text-brand-500 shrink-0 mt-0.5">•</span>
+                  <span className="line-clamp-1">{it.label}</span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+        <div className="text-right shrink-0 self-center">
+          {pkg.originalPrice > pkg.discountPrice && (
+            <div className="text-[10px] text-ink-300 line-through font-num leading-none">
+              {locale === "en" ? "Was " : "기존 "}
+              {pkg.originalPrice.toLocaleString()}
+              {locale === "en" ? "" : "원"}
+            </div>
+          )}
+          {discount > 0 && (
+            <div className="text-[11px] font-num font-bold text-brand-500 mt-1">
+              {discount}% OFF
+            </div>
+          )}
+          <div className="mt-1.5 leading-none">
+            <span className="text-[9.5px] text-ink-500 mr-1">
+              {locale === "en" ? "Now" : "할인가"}
+            </span>
+            <span className="text-[18px] font-bold text-ink-900 font-num">
+              {pkg.discountPrice.toLocaleString()}
+            </span>
+            <span className="text-[10.5px] text-ink-700 font-bold ml-0.5">
+              {locale === "en" ? " KRW" : "원"}
+            </span>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
@@ -623,11 +930,9 @@ function CategorySlide({
   );
 }
 
-// ============================================================================
-// PackageSlide — 패키지 1개당 1페이지
-// ============================================================================
-
-function PackageSlide({
+// 옛 PackageSlide(패키지 1개당 1페이지) 는 PackageOverviewPrintSlide 로 통합되어 사용 안 함.
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+function _LegacyPackageSlide({
   pkg,
   index,
   total,
