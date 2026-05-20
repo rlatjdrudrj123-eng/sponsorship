@@ -82,11 +82,8 @@ export function LandingRenderer({
           />
         ))}
 
-        {/* 데크 마지막 — 자세히 알아보기 CTA */}
+        {/* 데크 마지막 — 자세히 알아보기 CTA. ClosingSlide 은 슬라이드 모드 끝으로 이동. */}
         <ModeChoice eventId={eventId} locale={locale} />
-
-        {/* 클로징 — 외부 신청 링크 + PDF + 연락처 */}
-        <ClosingSlide eventId={eventId} settings={settings} locale={locale} />
       </main>
     </>
   );
@@ -94,9 +91,9 @@ export function LandingRenderer({
 
 /**
  * 마지막 슬라이드 — KPRINT 신청 외부 링크 + 전체 PDF 다운로드 + Contact.
- * KIMES 패턴 참조.
+ * 랜딩 데크 + /sponsorships 슬라이드 모드 양쪽 끝에 공통으로 사용.
  */
-function ClosingSlide({
+export function ClosingSlide({
   eventId,
   settings,
   locale,
@@ -107,7 +104,7 @@ function ClosingSlide({
 }) {
   const contact = settings?.contact;
   return (
-    <section className="h-screen snap-start snap-always relative overflow-hidden flex flex-col items-center justify-center bg-canvas text-ink-900 px-8 md:px-16">
+    <section className="h-dvh snap-start snap-always relative overflow-hidden flex flex-col items-center justify-center bg-canvas text-ink-900 px-8 md:px-16 pt-14">
       <div className="max-w-3xl w-full text-center flex flex-col items-center">
         {/* 브랜드 — K·print */}
         <div className="font-bold text-[34px] md:text-[44px] tracking-tight text-brand-500 leading-none mb-12 md:mb-16">

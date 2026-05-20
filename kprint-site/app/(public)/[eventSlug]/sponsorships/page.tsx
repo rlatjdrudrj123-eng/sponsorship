@@ -41,6 +41,7 @@ import { Footer } from "@/components/public/Footer";
 import { LocaleSwitch } from "@/components/public/LocaleSwitch";
 import { SlotPicker } from "@/components/public/CategoryDetail/_shared/SlotPicker";
 import { PersonaRecommendation } from "@/components/public/PersonaRecommendation";
+import { ClosingSlide } from "@/components/public/landing/LandingRenderer";
 import { localized, useLocale, type Locale } from "@/lib/i18n/locale";
 import { t } from "@/lib/i18n/strings";
 import { getTypeLayout } from "@/lib/typeLayouts";
@@ -386,6 +387,7 @@ export default function SponsorshipsPage() {
           packages={packages}
           personas={personas}
           eventName={settings?.event?.nameKo ?? eventId}
+          settings={settings}
           onCardMode={() => setViewMode("card")}
           onOpenFilter={() => setSheetOpen(true)}
           onResetFilters={resetFilters}
@@ -1825,6 +1827,7 @@ function SlideStream({
   packages,
   personas,
   eventName,
+  settings,
   onCardMode,
   onOpenFilter,
   onResetFilters,
@@ -1841,6 +1844,7 @@ function SlideStream({
   packages: Package[];
   personas: Persona[];
   eventName: string;
+  settings: SiteSettings | null;
   onCardMode: () => void;
   onOpenFilter: () => void;
   onResetFilters: () => void;
@@ -2028,9 +2032,65 @@ function SlideStream({
               </div>
             );
           })}
+          {/* 마지막 — 클로징 (KPRINT 외부 신청 + Contact). 랜딩 데크 끝과 동일 패턴. */}
+          <ClosingSlide
+            eventId={eventId}
+            settings={settings}
+            locale={locale}
+          />
         </main>
       )}
+      {/* 슬라이드 모드 — 맨 위로 floating 버튼. items 1개 이상이고 main scroll 위치가
+          첫 슬라이드를 벗어났을 때만 노출. */}
+      <SlideTopFab mainRef={mainRef} />
     </>
+  );
+}
+
+/**
+ * 슬라이드 모드 우하단(진단 FAB·카트 FAB 옆) 위로가기 버튼.
+ * main scrollTop 이 viewport 절반 넘으면 노출 → 클릭 시 첫 슬라이드로 스무스 점프.
+ */
+function SlideTopFab({
+  mainRef,
+}: {
+  mainRef: React.RefObject<HTMLElement>;
+}) {
+  const [visible, setVisible] = useState(false);
+  useEffect(() => {
+    const main = mainRef.current;
+    if (!main) return;
+    const onScroll = () => {
+      setVisible(main.scrollTop > window.innerHeight * 0.6);
+    };
+    main.addEventListener("scroll", onScroll, { passive: true });
+    onScroll();
+    return () => main.removeEventListener("scroll", onScroll);
+  }, [mainRef]);
+  if (!visible) return null;
+  return (
+    <button
+      type="button"
+      onClick={() => {
+        mainRef.current?.scrollTo({ top: 0, behavior: "smooth" });
+      }}
+      className="fixed left-5 bottom-5 md:left-7 md:bottom-7 z-40 w-11 h-11 md:w-12 md:h-12 rounded-full bg-ink-900 text-white shadow-2xl hover:bg-brand-500 hover:text-ink-900 grid place-items-center transition-colors"
+      title="맨 위로"
+      aria-label="맨 위로"
+    >
+      <svg
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2.5"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        className="w-5 h-5"
+      >
+        <line x1="12" y1="19" x2="12" y2="5" />
+        <polyline points="5 12 12 5 19 12" />
+      </svg>
+    </button>
   );
 }
 
@@ -2119,9 +2179,17 @@ function AtAGlanceSlide({
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 md:gap-3">
               {filteredByPersona.map((c) => (
-                <div
+                <button
                   key={c.id}
-                  className="bg-white border border-ink-100 rounded-card px-4 py-3 md:px-5 md:py-4 flex items-center justify-between gap-3 shadow-sm"
+                  type="button"
+                  onClick={() => {
+                    // 같은 main 안의 해당 슬라이드로 스무스 스크롤
+                    const el = document.querySelector<HTMLElement>(
+                      `[data-focus-slug="${c.slug}"]`
+                    );
+                    el?.scrollIntoView({ behavior: "smooth", block: "start" });
+                  }}
+                  className="bg-white border border-ink-100 rounded-card px-4 py-3 md:px-5 md:py-4 flex items-center justify-between gap-3 shadow-sm hover:border-brand-500 hover:shadow-card transition-all text-left"
                 >
                   <span className="text-[13px] md:text-[14.5px] font-semibold text-ink-900 truncate">
                     {localized(c.name, locale)}
@@ -2133,7 +2201,7 @@ function AtAGlanceSlide({
                     }
                     aria-hidden
                   />
-                </div>
+                </button>
               ))}
             </div>
           )}
