@@ -133,8 +133,9 @@ function FullPrintContent() {
   // 추가 혜택(perks) 페이지는 어드민이 랜딩 빌더에서 직접 만들어 넣는 방향으로 변경 —
   // PDF 자동 생성 페이지에서는 제외.
 
+  // 마지막 — 클로징 슬라이드 (KPRINT 외부 신청 + Contact). 랜딩 페이지와 동일 흐름.
   const totalPages =
-    coverPagesCount + sortedPackages.length + sortedCategories.length;
+    coverPagesCount + sortedPackages.length + sortedCategories.length + 1;
 
   // 데이터 로드 완료 후 자동 인쇄 다이얼로그
   useEffect(() => {
@@ -229,6 +230,16 @@ function FullPrintContent() {
             locale={locale}
           />
         ))}
+
+        {/* 4) 클로징 — 외부 신청 링크 + Contact (랜딩 페이지와 동일 흐름) */}
+        <ClosingSlide
+          settings={settings}
+          index={
+            coverPagesCount + sortedPackages.length + sortedCategories.length
+          }
+          total={totalPages}
+          locale={locale}
+        />
       </div>
 
       <style jsx global>{`
@@ -253,6 +264,93 @@ function FullPrintContent() {
         }
       `}</style>
     </div>
+  );
+}
+
+// ============================================================================
+// ClosingSlide — PDF 마지막 페이지. 랜딩 ClosingSlide 와 동일 흐름.
+// 외부 신청 링크(인쇄해도 URL 보이도록 노출) + Contact + K·print 브랜드.
+// ============================================================================
+
+const APPLY_URL = "https://kprint.kr/ko/mypage/exhibitor/advertise";
+
+function ClosingSlide({
+  settings,
+  index,
+  total,
+  locale,
+}: {
+  settings: SiteSettings | null;
+  index: number;
+  total: number;
+  locale: "ko" | "en";
+}) {
+  const contact = settings?.contact;
+  return (
+    <section className="a4-page bg-white shadow print:shadow-none mx-auto print:mx-0 my-4 print:my-0 w-[297mm] h-[210mm] relative overflow-hidden">
+      <div className="h-full px-20 py-14 flex flex-col items-center justify-center text-center">
+        <div className="font-bold text-[44px] tracking-tight text-brand-500 leading-none mb-10">
+          K·print
+        </div>
+
+        <h2 className="text-[32px] font-bold tracking-tight text-ink-900 leading-[1.25] mb-10">
+          {locale === "en" ? (
+            <>
+              Reach decision-makers in the
+              <br />
+              print &amp; digital industry — start now.
+            </>
+          ) : (
+            <>
+              인쇄·디지털프린팅 산업 전문가가 모이는 자리에서
+              <br />
+              지금 바로 브랜드를 알리세요!
+            </>
+          )}
+        </h2>
+
+        {/* PDF 인쇄용 — URL 직접 노출 (탭 동작 X, 종이에 URL 인쇄) */}
+        <div className="flex items-center gap-3 mb-3">
+          <div className="px-7 py-3 rounded-btn bg-brand-500 text-white text-[14px] font-bold inline-flex items-center gap-2">
+            {locale === "en" ? "Apply online" : "온라인 신청 바로가기"}
+          </div>
+          <div className="px-7 py-3 rounded-btn bg-ink-900 text-white text-[14px] font-bold inline-flex items-center gap-2">
+            {locale === "en" ? "Full PDF" : "PDF 다운로드"}
+          </div>
+        </div>
+        <div className="text-[10.5px] text-ink-500 font-mono mb-12">
+          {APPLY_URL}
+        </div>
+
+        {contact && (
+          <div className="mt-2">
+            <div className="font-bold text-[12px] text-ink-700 mb-1.5">
+              Contact.
+            </div>
+            <div className="text-[12px] text-ink-500 leading-relaxed font-num">
+              {contact.phone}
+              {contact.phone && contact.email && (
+                <span className="mx-2 text-ink-300">|</span>
+              )}
+              {contact.email}
+            </div>
+            {contact.address && (
+              <div className="text-[11px] text-ink-500 mt-1">
+                {contact.address}
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+
+      <div className="absolute bottom-3 right-12 font-mono tracking-widest text-ink-300 text-[12px]">
+        <span className="text-ink-700 font-bold">
+          {String(index + 1).padStart(2, "0")}
+        </span>
+        <span className="mx-1">/</span>
+        {String(total).padStart(2, "0")}
+      </div>
+    </section>
   );
 }
 
