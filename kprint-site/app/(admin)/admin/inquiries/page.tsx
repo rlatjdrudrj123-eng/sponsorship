@@ -2,10 +2,9 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { collection, onSnapshot, orderBy, query, where } from "firebase/firestore";
+import { collection, onSnapshot, orderBy, query } from "firebase/firestore";
 import { ChevronRight, Search } from "lucide-react";
 import { getDb } from "@/lib/firebase/firestore";
-import { useEventFilter } from "@/lib/admin/useEventFilter";
 import type { Inquiry } from "@/lib/types";
 
 type StatusFilter = "all" | "new" | "in_progress" | "closed";
@@ -24,14 +23,13 @@ export default function InquiriesListPage() {
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
 
-  const { eventId } = useEventFilter();
-
+  // 문의는 행사와 무관하게 전체를 보여줌 (사이드바 카운트와 항상 일치).
+  // inquiry.eventId 는 row 내 라벨로 노출 — 어느 행사 문의인지 운영자가 직접 확인.
   useEffect(() => {
-    // eventId 선택 시 그 행사만, 미선택 시 전체. (사이드바 카운트와 일치하도록.)
-    const base = collection(getDb(), "inquiries");
-    const q = eventId
-      ? query(base, where("eventId", "==", eventId), orderBy("createdAt", "desc"))
-      : query(base, orderBy("createdAt", "desc"));
+    const q = query(
+      collection(getDb(), "inquiries"),
+      orderBy("createdAt", "desc")
+    );
     const u = onSnapshot(
       q,
       (s) => {
@@ -41,7 +39,7 @@ export default function InquiriesListPage() {
       () => setLoading(false)
     );
     return () => u();
-  }, [eventId]);
+  }, []);
 
   const filtered = useMemo(() => {
     let rows = inquiries;
