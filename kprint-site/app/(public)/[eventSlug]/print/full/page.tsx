@@ -18,6 +18,7 @@ import type {
   Subcategory,
 } from "@/lib/types";
 import { useLocale, localized as localizedHelper } from "@/lib/i18n/locale";
+import { getDisplayPackagePrice, formatPrice } from "@/lib/price";
 
 // 전체 패키지 PDF — 행사 랜딩 캔버스(표지/패키지 안내 등) + 모든 카테고리 +
 // 모든 패키지를 A4 가로 슬라이드로 출력하여 브라우저 인쇄(→PDF 저장) 으로
@@ -529,6 +530,7 @@ function PrintPackageCard({
       ? Math.round((1 - pkg.discountPrice / pkg.originalPrice) * 100)
       : 0;
   const items = (pkg.includedItems ?? []).slice(0, 5);
+  const price = getDisplayPackagePrice(pkg, locale);
   return (
     <div className="bg-surface border border-ink-100 rounded-card p-3">
       <div className="grid grid-cols-[1.4fr_1fr] gap-3 items-start">
@@ -553,11 +555,10 @@ function PrintPackageCard({
           )}
         </div>
         <div className="text-right shrink-0 self-center">
-          {pkg.originalPrice > pkg.discountPrice && (
+          {price.original.value > price.discount.value && (
             <div className="text-[10px] text-ink-300 line-through font-num leading-none">
               {locale === "en" ? "Was " : "기존 "}
-              {pkg.originalPrice.toLocaleString()}
-              {locale === "en" ? "" : "원"}
+              {formatPrice(price.original.value, price.original.currency)}
             </div>
           )}
           {discount > 0 && (
@@ -570,10 +571,7 @@ function PrintPackageCard({
               {locale === "en" ? "Now" : "할인가"}
             </span>
             <span className="text-[18px] font-bold text-ink-900 font-num">
-              {pkg.discountPrice.toLocaleString()}
-            </span>
-            <span className="text-[10.5px] text-ink-700 font-bold ml-0.5">
-              {locale === "en" ? " KRW" : "원"}
+              {formatPrice(price.discount.value, price.discount.currency)}
             </span>
           </div>
         </div>
@@ -811,8 +809,19 @@ function CategorySlide({
       )
     : null;
 
+  // KRW + USD 최저가 둘 다. USD 는 priceUSD 우선, 없으면 1USD=1000KRW 변환.
   const validPrices = subs.map((s) => s.priceKRW).filter((p) => p > 0);
   const minPrice = validPrices.length > 0 ? Math.min(...validPrices) : 0;
+  const usdPrices = subs
+    .map((s) =>
+      typeof s.priceUSD === "number" && s.priceUSD > 0
+        ? s.priceUSD
+        : s.priceKRW > 0
+          ? Math.round(s.priceKRW / 1000)
+          : 0
+    )
+    .filter((p) => p > 0);
+  const minPriceUSD = usdPrices.length > 0 ? Math.min(...usdPrices) : 0;
 
   const hashTags: string[] = [
     CHANNEL_LABELS[category.channel][locale === "en" ? "en" : "ko"],
@@ -879,16 +888,22 @@ function CategorySlide({
           <div className="mt-auto pt-6">
             <hr className="border-ink-100 mb-5" />
             <div className="flex items-end justify-end">
-              {minPrice > 0 ? (
+              {(locale === "en" ? minPriceUSD : minPrice) > 0 ? (
                 <div className="text-right">
                   <div className="font-num text-[32px] font-bold text-ink-900 leading-none tracking-tight">
                     <span className="text-[16px] font-semibold mr-2">
                       {locale === "en" ? "Per slot" : "1구좌당"}
                     </span>
-                    {minPrice.toLocaleString()}
-                    <span className="text-[18px] ml-1 font-bold">
-                      {locale === "en" ? " KRW" : "원"}
-                    </span>
+                    {locale === "en" && (
+                      <span className="text-[22px] mr-0.5">$</span>
+                    )}
+                    {(locale === "en"
+                      ? minPriceUSD
+                      : minPrice
+                    ).toLocaleString()}
+                    {locale !== "en" && (
+                      <span className="text-[18px] ml-1 font-bold">원</span>
+                    )}
                   </div>
                   <p className="text-[11px] text-ink-500 mt-2">
                     {locale === "en"
