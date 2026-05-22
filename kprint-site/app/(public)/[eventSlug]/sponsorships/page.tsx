@@ -3939,11 +3939,11 @@ function PackageDetailModal({
 
   return (
     <div
-      className="fixed inset-0 z-[60] bg-ink-900/50 backdrop-blur-sm flex items-start justify-center overflow-y-auto"
+      className="fixed inset-0 z-[60] bg-ink-900/50 backdrop-blur-sm flex items-center justify-center p-4"
       onClick={onClose}
     >
       <div
-        className="bg-canvas rounded-card max-w-6xl w-full mx-4 my-8 shadow-card relative"
+        className="bg-canvas rounded-card max-w-6xl w-full max-h-[90vh] shadow-card relative overflow-hidden flex flex-col"
         onClick={(e) => e.stopPropagation()}
       >
         <button
@@ -3954,12 +3954,14 @@ function PackageDetailModal({
         >
           <X className="w-4 h-4" />
         </button>
-        <PackageType
-          pkg={pkg}
-          categories={categories}
-          settings={settings}
-          inModal
-        />
+        <div className="flex-1 min-h-0 overflow-y-auto">
+          <PackageType
+            pkg={pkg}
+            categories={categories}
+            settings={settings}
+            inModal
+          />
+        </div>
       </div>
     </div>
   );

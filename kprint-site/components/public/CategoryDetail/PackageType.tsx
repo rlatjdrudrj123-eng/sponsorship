@@ -49,26 +49,166 @@ export function PackageType({
   const [confirming, setConfirming] = useState(false);
 
   const Container = inModal ? "div" : "main";
+
+  // 모달 안에서는 컴팩트 2열 (image 좌 / 정보 우) — viewport 내 모두 노출.
+  // 풀 페이지에서는 기존 hero 헤더 + 2열 본문 유지.
+  if (inModal) {
+    return (
+      <>
+        <Container className="bg-canvas">
+          <div className="px-5 md:px-8 py-5 md:py-6 grid lg:grid-cols-[1.1fr_1fr] gap-5 md:gap-7 items-start">
+            {/* LEFT — 4:3 이미지 carousel */}
+            <PackageHeroAutoCarousel
+              pkg={pkg}
+              categories={categories ?? []}
+              aspectClass="aspect-[4/3]"
+            />
+
+            {/* RIGHT — 헤더 + 포함 항목 + 가격/CTA */}
+            <div className="space-y-4 min-w-0">
+              <div>
+                <div className="font-num text-[10.5px] uppercase tracking-[0.3em] font-bold flex items-center gap-2 text-brand-500">
+                  <span className="w-4 h-px bg-brand-500" />
+                  <span>{pkg.tier === "signature" ? "Signature" : "Standard"}</span>
+                  <span className="text-ink-300">·</span>
+                  <span className="text-ink-500">{pkg.code}</span>
+                </div>
+                <h1 className="text-[24px] md:text-[28px] font-bold tracking-tight leading-[1.2] text-ink-900 break-keep mt-2">
+                  {locale === "en"
+                    ? pkg.name.en?.trim() || pkg.name.ko
+                    : pkg.name.ko}
+                </h1>
+                {pkg.tagline && (
+                  <p className="text-[12.5px] text-ink-500 mt-2 leading-relaxed">
+                    {pkg.tagline}
+                  </p>
+                )}
+              </div>
+
+              {/* 포함 항목 — 컴팩트 리스트 (카드 외곽 없이) */}
+              <div className="border-t border-ink-100 pt-3">
+                <div className="font-num text-[10.5px] uppercase tracking-[0.3em] text-brand-500 font-bold mb-2 flex items-center gap-2">
+                  <span className="w-3 h-px bg-brand-500" />
+                  {locale === "en" ? "Included items" : "포함 항목"}
+                </div>
+                <ul className="space-y-1.5">
+                  {(pkg.includedItems ?? []).map((it, i) => (
+                    <li
+                      key={i}
+                      className="flex gap-2 text-[13px] text-ink-900 leading-snug"
+                    >
+                      <Check className="w-3.5 h-3.5 text-brand-500 shrink-0 mt-1" />
+                      <span className="flex-1">{it.label}</span>
+                    </li>
+                  ))}
+                  {(pkg.includedItems ?? []).length === 0 && (
+                    <li className="text-[12px] text-ink-500">
+                      {locale === "en"
+                        ? "No included items."
+                        : "포함 항목이 없습니다."}
+                    </li>
+                  )}
+                </ul>
+              </div>
+
+              {/* 동봉 혜택 — 컴팩트 변형 */}
+              <BundledPerksCard
+                settings={settings}
+                packageCode={pkg.code}
+                compact
+              />
+
+              {/* 가격 + CTA */}
+              <div className="border-t border-ink-100 pt-4 flex items-end justify-between gap-3 flex-wrap">
+                <div>
+                  {price.original.value > price.discount.value && (
+                    <div className="text-[12px] text-ink-500 line-through font-num leading-none">
+                      {formatPrice(price.original.value, price.original.currency)}
+                    </div>
+                  )}
+                  <div className="flex items-baseline gap-2 mt-1">
+                    <span className="text-[28px] md:text-[32px] font-bold font-num leading-none text-ink-900">
+                      {formatPrice(price.discount.value, price.discount.currency)}
+                    </span>
+                    {discount > 0 && (
+                      <span className="text-[11px] font-bold text-brand-700 bg-brand-50 border border-brand-100 px-2 py-0.5 rounded-pill font-num">
+                        {discount}% OFF
+                      </span>
+                    )}
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  aria-pressed={inCart}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    setConfirming(true);
+                  }}
+                  className={
+                    "px-6 h-11 rounded-pill font-bold text-[13.5px] flex items-center justify-center gap-2 transition-colors " +
+                    (inCart
+                      ? "bg-ink-900 text-white hover:bg-ink-700"
+                      : "bg-ink-900 text-white hover:bg-brand-500 hover:text-ink-900")
+                  }
+                >
+                  {inCart ? (
+                    <BookmarkCheck className="w-4 h-4" />
+                  ) : (
+                    <Bookmark className="w-4 h-4" />
+                  )}
+                  {locale === "en"
+                    ? inCart
+                      ? "Added · Remove"
+                      : "Add to cart"
+                    : inCart
+                      ? "담김 · 빼기"
+                      : "담기"}
+                </button>
+              </div>
+            </div>
+          </div>
+        </Container>
+
+        {confirming && (
+          <PackageConfirmModal
+            pkg={pkg}
+            inCart={inCart}
+            discount={discount}
+            onClose={() => setConfirming(false)}
+            onAdd={() => {
+              addPackage({
+                type: "package",
+                eventId: pkg.eventId,
+                packageId: pkg.id,
+                code: pkg.code,
+                price: pkg.discountPrice,
+              });
+              setConfirming(false);
+            }}
+            onRemove={() => {
+              removePackage(pkg.id);
+              setConfirming(false);
+            }}
+          />
+        )}
+      </>
+    );
+  }
+
+  // ─── 풀 페이지 (기존) ─────────────────────────────────────
   return (
     <>
-      <Container className={inModal ? "bg-canvas" : "min-h-screen bg-canvas"}>
-        <div className={inModal ? "" : "border-b border-ink-100 bg-surface"}>
-          <div
-            className={
-              inModal
-                ? "max-w-6xl mx-auto px-6 md:px-12 pt-6 pb-6"
-                : "max-w-6xl mx-auto px-6 md:px-12 pt-12 md:pt-16 pb-10"
-            }
-          >
-            {!inModal && (
-              <Link
-                href={eventId ? `/${eventId}` : "/"}
-                className="inline-flex items-center gap-1.5 text-[12px] text-ink-500 hover:text-brand-500 mb-6 font-num font-semibold"
-              >
-                <ArrowLeft className="w-3.5 h-3.5" />
-                {locale === "en" ? "Home" : "홈으로"}
-              </Link>
-            )}
+      <Container className="min-h-screen bg-canvas">
+        <div className="border-b border-ink-100 bg-surface">
+          <div className="max-w-6xl mx-auto px-6 md:px-12 pt-12 md:pt-16 pb-10">
+            <Link
+              href={eventId ? `/${eventId}` : "/"}
+              className="inline-flex items-center gap-1.5 text-[12px] text-ink-500 hover:text-brand-500 mb-6 font-num font-semibold"
+            >
+              <ArrowLeft className="w-3.5 h-3.5" />
+              {locale === "en" ? "Home" : "홈으로"}
+            </Link>
             <div className="font-num text-[11px] uppercase tracking-[0.3em] font-bold mb-3 flex items-center gap-3 text-brand-500">
               <span className="w-6 h-px bg-brand-500" />
               <span>{pkg.tier === "signature" ? "Signature" : "Standard"}</span>
@@ -181,7 +321,7 @@ export function PackageType({
           </div>
         </div>
       </Container>
-      {!inModal && <Footer settings={settings} />}
+      <Footer settings={settings} />
 
       {confirming && (
         <PackageConfirmModal
@@ -217,9 +357,11 @@ export function PackageType({
 function PackageHeroAutoCarousel({
   pkg,
   categories,
+  aspectClass = "aspect-[16/10]",
 }: {
   pkg: Package;
   categories: Category[];
+  aspectClass?: string;
 }) {
   const slides = useMemo(() => {
     const byId = new Map(categories.map((c) => [c.id, c]));
@@ -263,7 +405,9 @@ function PackageHeroAutoCarousel({
 
   if (slides.length === 0) {
     return (
-      <div className="aspect-[16/10] bg-ink-100 rounded-card grid place-items-center text-ink-300 text-sm">
+      <div
+        className={`${aspectClass} bg-ink-100 rounded-card grid place-items-center text-ink-300 text-sm`}
+      >
         이미지 준비 중
       </div>
     );
@@ -271,7 +415,9 @@ function PackageHeroAutoCarousel({
 
   return (
     <div className="relative">
-      <div className="aspect-[16/10] bg-ink-100 rounded-card overflow-hidden relative">
+      <div
+        className={`${aspectClass} bg-ink-100 rounded-card overflow-hidden relative`}
+      >
         {slides.map((s, i) => (
           // eslint-disable-next-line @next/next/no-img-element
           <img
@@ -322,10 +468,13 @@ function PackageHeroAutoCarousel({
 function BundledPerksCard({
   settings,
   packageCode,
+  compact = false,
 }: {
   settings: SiteSettings | null;
   /** 현재 패키지 코드 — 적용 범위 필터링용 */
   packageCode: string;
+  /** 모달용 컴팩트 — 패딩·폰트 축소, 설명문 생략 */
+  compact?: boolean;
 }) {
   const locale = useLocale((s) => s.locale);
   const allPerks = settings?.bundledPerks ?? DEFAULT_BUNDLED_PERKS;
@@ -336,53 +485,78 @@ function BundledPerksCard({
   const isEn = locale === "en";
 
   return (
-    <div className="bg-gradient-to-br from-brand-50 to-canvas border border-brand-100 rounded-card p-6 shadow-card">
-      <div className="flex items-start justify-between gap-3 mb-4">
-        <div>
-          <div className="font-num text-[11px] uppercase tracking-[0.3em] text-brand-500 font-bold flex items-center gap-2">
-            <Gift className="w-3.5 h-3.5" />
-            {isEn ? "2026 renewal bonus perks" : "2026 리뉴얼 기념 추가 혜택"}
+    <div
+      className={
+        compact
+          ? "bg-brand-50/60 border border-brand-100 rounded-btn p-3"
+          : "bg-gradient-to-br from-brand-50 to-canvas border border-brand-100 rounded-card p-6 shadow-card"
+      }
+    >
+      <div
+        className={
+          "flex items-start justify-between gap-3 " + (compact ? "mb-2" : "mb-4")
+        }
+      >
+        <div className="min-w-0">
+          <div className="font-num text-[10.5px] uppercase tracking-[0.3em] text-brand-500 font-bold flex items-center gap-1.5">
+            <Gift className="w-3 h-3" />
+            {isEn ? "2026 bonus perks" : "2026 추가 혜택"}
           </div>
-          <p className="text-[12px] text-ink-700 mt-1 leading-relaxed">
-            {isEn
-              ? "The following items are included at no extra cost (some may require a pick-one at signup)."
-              : "아래 매체들이 비용 없이 함께 제공됩니다 (일부 항목은 신청 시 택1)."}
-          </p>
+          {!compact && (
+            <p className="text-[12px] text-ink-700 mt-1 leading-relaxed">
+              {isEn
+                ? "The following items are included at no extra cost (some may require a pick-one at signup)."
+                : "아래 매체들이 비용 없이 함께 제공됩니다 (일부 항목은 신청 시 택1)."}
+            </p>
+          )}
         </div>
         {totalValue > 0 && (
           <div className="text-right shrink-0">
             <div className="text-[10px] text-ink-500 font-semibold">
               {isEn ? "Total value" : "총 상당 가치"}
             </div>
-            <div className="text-[20px] font-bold text-brand-700 font-num leading-tight">
+            <div
+              className={
+                "font-bold text-brand-700 font-num leading-tight " +
+                (compact ? "text-[15px]" : "text-[20px]")
+              }
+            >
               {isEn
                 ? `$${Math.round(totalValue / 1000).toLocaleString()}`
                 : (
                     <>
                       {totalValue.toLocaleString()}
-                      <span className="text-[12px] ml-0.5">원</span>
+                      <span className="text-[11px] ml-0.5">원</span>
                     </>
                   )}
             </div>
           </div>
         )}
       </div>
-      <ul className="space-y-2">
+      <ul className={compact ? "space-y-1" : "space-y-2"}>
         {perks.map((perk, i) => (
           <li
             key={i}
-            className="flex items-start gap-2.5 text-[13px] text-ink-900"
+            className={
+              "flex items-start gap-2 text-ink-900 " +
+              (compact ? "text-[12px]" : "text-[13px]")
+            }
           >
-            <Check className="w-4 h-4 text-brand-500 shrink-0 mt-0.5" />
+            <Check
+              className={
+                "text-brand-500 shrink-0 mt-0.5 " +
+                (compact ? "w-3 h-3" : "w-4 h-4")
+              }
+            />
             <div className="flex-1 min-w-0">
               <div className="flex items-baseline gap-2 flex-wrap">
-                <span className="font-bold">{perk.label}</span>
+                <span className="font-semibold">{perk.label}</span>
                 {perk.condition && (
-                  <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-ink-100 text-ink-500">
+                  <span className="text-[9.5px] font-mono px-1.5 py-0.5 rounded bg-ink-100 text-ink-500">
                     {perk.condition}
                   </span>
                 )}
-                {perk.valueKRW && (
+                {perk.valueKRW && !compact && (
                   <span className="text-[11px] text-ink-500 font-num ml-auto">
                     {isEn
                       ? `~$${Math.round(perk.valueKRW / 1000).toLocaleString()} value`
@@ -390,7 +564,7 @@ function BundledPerksCard({
                   </span>
                 )}
               </div>
-              {perk.description && (
+              {perk.description && !compact && (
                 <p className="text-[11.5px] text-ink-500 mt-0.5 leading-snug">
                   {perk.description}
                 </p>
