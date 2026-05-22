@@ -4,6 +4,7 @@ import type { Category, SiteSettings, Slot, Subcategory } from "@/lib/types";
 import { Scaffold } from "./_shared/Scaffold";
 import { SlotPicker } from "./_shared/SlotPicker";
 import { ImageCarousel } from "./_shared/ImageCarousel";
+import { useLocale } from "@/lib/i18n/locale";
 
 type Props = {
   category: Category;
@@ -21,6 +22,8 @@ export function ContentType({
   settings,
 }: Props) {
   const spec = category.contentSpec;
+  const locale = useLocale((s) => s.locale);
+  const isEn = locale === "en";
 
   return (
     <Scaffold
@@ -37,17 +40,21 @@ export function ContentType({
           {spec && (
             <div className="bg-brand-50 border border-brand-100 rounded-card p-5">
               <h3 className="text-[10px] uppercase tracking-[0.2em] text-brand-700 font-bold mb-3">
-                채널 / 포맷
+                {isEn ? "Channel / Format" : "채널 / 포맷"}
               </h3>
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <div className="text-[11px] text-brand-700 mb-1">채널</div>
+                  <div className="text-[11px] text-brand-700 mb-1">
+                    {isEn ? "Channel" : "채널"}
+                  </div>
                   <div className="text-[16px] font-bold text-ink-900">
                     {spec.channel}
                   </div>
                 </div>
                 <div>
-                  <div className="text-[11px] text-brand-700 mb-1">포맷</div>
+                  <div className="text-[11px] text-brand-700 mb-1">
+                    {isEn ? "Format" : "포맷"}
+                  </div>
                   <div className="text-[16px] font-bold text-ink-900">
                     {spec.format}
                   </div>

@@ -6,6 +6,7 @@ import { Scaffold } from "./_shared/Scaffold";
 import { SlotPicker } from "./_shared/SlotPicker";
 import { PinOverlay } from "./_shared/PinOverlay";
 import { ImageCarousel } from "./_shared/ImageCarousel";
+import { localized, useLocale } from "@/lib/i18n/locale";
 
 type Props = {
   category: Category;
@@ -29,6 +30,8 @@ export function XpaceType({
   const floorImage = (category.floorImages ?? []).find(
     (fi) => fi.subcategoryId === tabId
   );
+  const locale = useLocale((s) => s.locale);
+  const isEn = locale === "en";
 
   return (
     <Scaffold
@@ -46,7 +49,9 @@ export function XpaceType({
             className="w-full aspect-video bg-ink-900 rounded-card"
           />
           <p className="mt-2 text-[11px] text-ink-500">
-            행사장 진입 동선의 LED 송출 미리보기
+            {isEn
+              ? "LED preview on the venue entrance approach"
+              : "행사장 진입 동선의 LED 송출 미리보기"}
           </p>
         </div>
       )}
@@ -65,7 +70,7 @@ export function XpaceType({
                   : "border-transparent text-ink-500 hover:text-ink-900")
               }
             >
-              {s.name.ko || "기본"}
+              {localized(s.name, locale) || (isEn ? "Default" : "기본")}
             </button>
           ))}
         </div>

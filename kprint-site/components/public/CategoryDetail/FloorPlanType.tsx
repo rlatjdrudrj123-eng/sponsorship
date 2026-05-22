@@ -5,6 +5,7 @@ import type { Category, SiteSettings, Slot, Subcategory } from "@/lib/types";
 import { Scaffold } from "./_shared/Scaffold";
 import { SlotPicker } from "./_shared/SlotPicker";
 import { PinOverlay } from "./_shared/PinOverlay";
+import { localized, useLocale } from "@/lib/i18n/locale";
 
 type Props = {
   category: Category;
@@ -28,6 +29,8 @@ export function FloorPlanType({
   const floorImage = (category.floorImages ?? []).find(
     (fi) => fi.subcategoryId === tabId
   );
+  const locale = useLocale((s) => s.locale);
+  const isEn = locale === "en";
 
   return (
     <Scaffold
@@ -51,7 +54,7 @@ export function FloorPlanType({
                   : "border-transparent text-ink-500 hover:text-ink-900")
               }
             >
-              {s.name.ko || "기본"}
+              {localized(s.name, locale) || (isEn ? "Default" : "기본")}
             </button>
           ))}
         </div>
@@ -69,11 +72,13 @@ export function FloorPlanType({
             />
           ) : (
             <div className="bg-ink-50 rounded-card aspect-[4/3] grid place-items-center text-ink-300 text-sm border border-ink-100">
-              도면 준비 중
+              {isEn ? "Floor plan coming soon" : "도면 준비 중"}
             </div>
           )}
           <p className="mt-3 text-[11px] text-ink-500">
-            도면 위 핀을 클릭하면 해당 구좌가 카트에 담깁니다.
+            {isEn
+              ? "Click a pin on the floor plan to add that slot to your cart."
+              : "도면 위 핀을 클릭하면 해당 구좌가 카트에 담깁니다."}
           </p>
         </div>
         <div>
@@ -85,7 +90,9 @@ export function FloorPlanType({
               slots={tabSlots}
             />
           ) : (
-            <p className="text-sm text-ink-500">소분류가 없습니다.</p>
+            <p className="text-sm text-ink-500">
+              {isEn ? "No subcategories." : "소분류가 없습니다."}
+            </p>
           )}
         </div>
       </div>

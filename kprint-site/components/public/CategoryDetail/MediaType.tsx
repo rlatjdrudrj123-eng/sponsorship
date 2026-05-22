@@ -34,9 +34,9 @@ export function MediaType({
             src={category.videoUrl}
             controls
             className="w-full aspect-video bg-ink-900 rounded-card"
-          >
-            영상을 재생할 수 없습니다.
-          </video>
+            aria-label="Video preview"
+          />
+          {/* 영상 재생 실패 시 브라우저 기본 fallback (텍스트 노드는 SSR/i18n 충돌 위험 — 제거) */}
         </div>
       ) : (
         <ImageCarousel slot={category.heroImages} aspectRatio="aspect-video" />

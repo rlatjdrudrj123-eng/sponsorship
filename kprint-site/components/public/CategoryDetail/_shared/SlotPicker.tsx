@@ -4,6 +4,8 @@ import { useEffect, useState } from "react";
 import { Bookmark, BookmarkCheck, Check, MapPin, X } from "lucide-react";
 import { useCartStore } from "@/lib/cart/cartStore";
 import type { Slot, Subcategory } from "@/lib/types";
+import { localized, useLocale } from "@/lib/i18n/locale";
+import { getDisplayPrice, formatPrice } from "@/lib/price";
 
 type Props = {
   categoryId: string;
@@ -19,6 +21,8 @@ export function SlotPicker({ categoryId, eventId, subcategories, slots }: Props)
   const addSlot = useCartStore((s) => s.addSlot);
   const removeSlot = useCartStore((s) => s.removeSlot);
   const hydrated = useCartStore((s) => s.hasHydrated);
+  const locale = useLocale((s) => s.locale);
+  const isEn = locale === "en";
 
   const [picked, setPicked] = useState<SelectedSlot>(null);
 
@@ -39,24 +43,26 @@ export function SlotPicker({ categoryId, eventId, subcategories, slots }: Props)
               <div className="flex items-baseline justify-between mb-3">
                 <div>
                   <h4 className="font-bold text-[16px] text-ink-900 tracking-tight">
-                    {sub.name.ko || "기본"}
+                    {localized(sub.name, locale) || (isEn ? "Default" : "기본")}
                   </h4>
                   <div className="text-[11.5px] text-ink-500 mt-1 font-num">
                     <span className="text-brand-500 font-bold">{available}</span>
-                    <span> / {total} 가능</span>
+                    <span> / {total} {isEn ? "available" : "가능"}</span>
                   </div>
                 </div>
-                {sub.priceKRW > 0 && (
-                  <div className="text-right font-num">
-                    <div className="text-[18px] font-bold text-ink-900">
-                      {sub.priceKRW.toLocaleString()}
-                      <span className="text-[12px] ml-1 font-semibold">원</span>
+                {sub.priceKRW > 0 && (() => {
+                  const price = getDisplayPrice(sub, locale);
+                  return (
+                    <div className="text-right font-num">
+                      <div className="text-[18px] font-bold text-ink-900">
+                        {formatPrice(price.value, price.currency)}
+                      </div>
+                      <div className="text-[10.5px] text-ink-500">
+                        / {localized(sub.unit, locale) || (isEn ? "per slot" : "구좌당")}
+                      </div>
                     </div>
-                    <div className="text-[10.5px] text-ink-500">
-                      / {sub.unit?.ko ?? "구좌당"}
-                    </div>
-                  </div>
-                )}
+                  );
+                })()}
               </div>
               {sub.priceNote && (
                 <div className="text-[11.5px] text-ink-500 mb-3 italic">
@@ -98,10 +104,12 @@ export function SlotPicker({ categoryId, eventId, subcategories, slots }: Props)
                       )}
                       <div className="font-bold truncate">{slot.code}</div>
                       {isSold ? (
-                        <div className="text-[10px] mt-0.5 text-ink-300">마감</div>
+                        <div className="text-[10px] mt-0.5 text-ink-300">
+                          {isEn ? "Sold" : "마감"}
+                        </div>
                       ) : inCart ? (
                         <div className="text-[10px] mt-0.5 font-bold opacity-90">
-                          담김
+                          {isEn ? "Added" : "담김"}
                         </div>
                       ) : slot.note ? (
                         <div className="text-[10px] mt-0.5 truncate opacity-70">
@@ -164,6 +172,9 @@ function SlotConfirmModal({
   onAdd: () => void;
   onRemove: () => void;
 }) {
+  const locale = useLocale((s) => s.locale);
+  const isEn = locale === "en";
+  const price = getDisplayPrice(sub, locale);
   // ESC 닫기
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -187,20 +198,22 @@ function SlotConfirmModal({
         <header className="px-5 py-4 border-b border-ink-100 flex items-start justify-between gap-3">
           <div className="min-w-0">
             <div className="text-[10px] uppercase tracking-[0.2em] text-brand-700 font-bold">
-              구좌 상세
+              {isEn ? "Slot detail" : "구좌 상세"}
             </div>
             <div className="mt-1 flex items-baseline gap-2 flex-wrap">
               <h3 className="text-[22px] font-bold text-ink-900 leading-tight font-mono">
                 {slot.code}
               </h3>
-              <span className="text-[12px] text-ink-500">{sub.name.ko || "기본"}</span>
+              <span className="text-[12px] text-ink-500">
+                {localized(sub.name, locale) || (isEn ? "Default" : "기본")}
+              </span>
             </div>
           </div>
           <button
             type="button"
             onClick={onClose}
             className="w-8 h-8 grid place-items-center rounded-btn hover:bg-ink-50 text-ink-500 shrink-0"
-            aria-label="닫기"
+            aria-label={isEn ? "Close" : "닫기"}
           >
             <X className="w-4 h-4" />
           </button>
@@ -211,22 +224,27 @@ function SlotConfirmModal({
             <div className="flex items-start gap-2.5">
               <MapPin className="w-4 h-4 text-brand-700 shrink-0 mt-0.5" />
               <div>
-                <div className="text-[11px] text-ink-500 mb-0.5">위치</div>
+                <div className="text-[11px] text-ink-500 mb-0.5">
+                  {isEn ? "Location" : "위치"}
+                </div>
                 <div className="text-[14px] text-ink-900">{slot.note}</div>
               </div>
             </div>
           )}
           <div>
-            <div className="text-[11px] text-ink-500 mb-0.5">단가</div>
+            <div className="text-[11px] text-ink-500 mb-0.5">
+              {isEn ? "Unit price" : "단가"}
+            </div>
             <div className="text-[18px] font-bold text-ink-900 font-mono">
-              {sub.priceKRW.toLocaleString()}
-              <span className="text-[12px] ml-1 font-semibold">원</span>
+              {formatPrice(price.value, price.currency)}
               <span className="text-[11px] ml-2 text-ink-500 font-sans">
-                / {sub.unit?.ko ?? "구좌당"}
+                / {localized(sub.unit, locale) || (isEn ? "per slot" : "구좌당")}
               </span>
             </div>
             <div className="text-[10.5px] text-ink-500 mt-0.5">
-              (정식 견적은 사무국 회신 시 안내드립니다)
+              {isEn
+                ? "(Final quote follows secretariat reply.)"
+                : "(정식 견적은 사무국 회신 시 안내드립니다)"}
             </div>
           </div>
         </div>
@@ -237,7 +255,7 @@ function SlotConfirmModal({
             onClick={onClose}
             className="px-4 py-2.5 rounded-btn border border-ink-100 text-[13px] font-semibold text-ink-700 hover:bg-ink-50"
           >
-            취소
+            {isEn ? "Cancel" : "취소"}
           </button>
           {inCart ? (
             <button
@@ -246,7 +264,7 @@ function SlotConfirmModal({
               className="px-4 py-2.5 rounded-pill bg-ink-900 text-white text-[13px] font-bold hover:bg-ink-700 flex items-center justify-center gap-1.5 transition-colors"
             >
               <BookmarkCheck className="w-4 h-4" />
-              빼기
+              {isEn ? "Remove" : "빼기"}
             </button>
           ) : (
             <button
@@ -255,7 +273,7 @@ function SlotConfirmModal({
               className="px-4 py-2.5 rounded-pill bg-brand-500 text-white text-[13px] font-bold hover:bg-brand-700 hover:shadow-glow-sm flex items-center justify-center gap-1.5 transition-all"
             >
               <Bookmark className="w-4 h-4" />
-              담기
+              {isEn ? "Add" : "담기"}
             </button>
           )}
         </footer>

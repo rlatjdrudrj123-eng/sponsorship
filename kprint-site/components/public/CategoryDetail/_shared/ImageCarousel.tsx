@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import type { ImageSlot } from "@/lib/types";
+import { useLocale } from "@/lib/i18n/locale";
 
 type Props = {
   slot: ImageSlot | undefined;
@@ -14,13 +15,15 @@ export function ImageCarousel({ slot, className = "", aspectRatio = "aspect-[4/3
   const images = slot?.images ?? [];
   const mode = slot?.mode ?? "carousel";
   const [idx, setIdx] = useState(0);
+  const locale = useLocale((s) => s.locale);
+  const isEn = locale === "en";
 
   if (images.length === 0) {
     return (
       <div
         className={`${aspectRatio} bg-ink-100 rounded-card grid place-items-center text-ink-300 text-sm ${className}`}
       >
-        이미지 준비 중
+        {isEn ? "Image coming soon" : "이미지 준비 중"}
       </div>
     );
   }
@@ -99,7 +102,7 @@ export function ImageCarousel({ slot, className = "", aspectRatio = "aspect-[4/3
             type="button"
             onClick={prev}
             className="absolute left-3 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full bg-white/90 hover:bg-white shadow grid place-items-center"
-            aria-label="이전"
+            aria-label={isEn ? "Previous" : "이전"}
           >
             <ChevronLeft className="w-4 h-4" />
           </button>
@@ -107,7 +110,7 @@ export function ImageCarousel({ slot, className = "", aspectRatio = "aspect-[4/3
             type="button"
             onClick={next}
             className="absolute right-3 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full bg-white/90 hover:bg-white shadow grid place-items-center"
-            aria-label="다음"
+            aria-label={isEn ? "Next" : "다음"}
           >
             <ChevronRight className="w-4 h-4" />
           </button>
@@ -121,7 +124,7 @@ export function ImageCarousel({ slot, className = "", aspectRatio = "aspect-[4/3
                   "w-1.5 h-1.5 rounded-full transition-colors " +
                   (idx === i ? "bg-white" : "bg-white/40 hover:bg-white/70")
                 }
-                aria-label={`${i + 1}번 이미지`}
+                aria-label={isEn ? `Image ${i + 1}` : `${i + 1}번 이미지`}
               />
             ))}
           </div>

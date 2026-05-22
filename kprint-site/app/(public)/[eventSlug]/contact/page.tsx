@@ -31,22 +31,33 @@ import { Footer } from "@/components/public/Footer";
 import { useLocale, localized as localizedHelper } from "@/lib/i18n/locale";
 import { t } from "@/lib/i18n/strings";
 
-const schema = z.object({
-  companyName: z.string().min(1, "회사명을 입력하세요"),
-  contactName: z.string().min(1, "담당자명을 입력하세요"),
-  email: z.string().email("올바른 이메일을 입력하세요"),
-  phone: z.string().min(7, "전화번호를 입력하세요"),
-  message: z.string().optional(),
-});
+function buildSchema(locale: "ko" | "en") {
+  const isEn = locale === "en";
+  return z.object({
+    companyName: z
+      .string()
+      .min(1, isEn ? "Please enter your company name" : "회사명을 입력하세요"),
+    contactName: z
+      .string()
+      .min(1, isEn ? "Please enter your contact name" : "담당자명을 입력하세요"),
+    email: z
+      .string()
+      .email(isEn ? "Please enter a valid email" : "올바른 이메일을 입력하세요"),
+    phone: z
+      .string()
+      .min(7, isEn ? "Please enter your phone number" : "전화번호를 입력하세요"),
+    message: z.string().optional(),
+  });
+}
 
-type FormValues = z.infer<typeof schema>;
+type FormValues = z.infer<ReturnType<typeof buildSchema>>;
 
 export default function ContactPage() {
   return (
     <Suspense
       fallback={
         <div className="min-h-screen grid place-items-center text-sm text-ink-500">
-          불러오는 중…
+          Loading…
         </div>
       }
     >
@@ -147,6 +158,7 @@ function ContactPageInner() {
     [items]
   );
 
+  const schema = useMemo(() => buildSchema(locale), [locale]);
   const {
     register,
     handleSubmit,

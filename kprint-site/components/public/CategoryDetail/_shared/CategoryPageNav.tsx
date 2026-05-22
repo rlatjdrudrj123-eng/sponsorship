@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import type { Category } from "@/lib/types";
+import { localized, useLocale } from "@/lib/i18n/locale";
 
 type Props = {
   current: Category;
@@ -15,6 +16,8 @@ export function CategoryPageNav({ current, all }: Props) {
   const router = useRouter();
   const params = useParams<{ eventSlug?: string }>();
   const eventId = params?.eventSlug ?? "";
+  const locale = useLocale((s) => s.locale);
+  const isEn = locale === "en";
 
   const sorted = [...all]
     .filter((c) => c.isPublished)
@@ -51,9 +54,9 @@ export function CategoryPageNav({ current, all }: Props) {
             <ChevronLeft className="w-5 h-5 text-ink-300 group-hover:text-brand-500 group-hover:-translate-x-0.5 transition-all" />
             <div>
               <div className="text-[10px] text-ink-500 uppercase tracking-[0.2em] font-num font-bold">
-                이전
+                {isEn ? "Prev" : "이전"}
               </div>
-              <div className="font-bold mt-0.5">{prev.name.ko}</div>
+              <div className="font-bold mt-0.5">{localized(prev.name, locale)}</div>
             </div>
           </Link>
         ) : (
@@ -63,7 +66,7 @@ export function CategoryPageNav({ current, all }: Props) {
           href={`${base}/sponsorships`}
           className="text-[12px] text-ink-500 hover:text-brand-500 font-num font-semibold"
         >
-          전체 보기
+          {isEn ? "All sponsorships" : "전체 보기"}
         </Link>
         {next ? (
           <Link
@@ -72,9 +75,9 @@ export function CategoryPageNav({ current, all }: Props) {
           >
             <div>
               <div className="text-[10px] text-ink-500 uppercase tracking-[0.2em] font-num font-bold">
-                다음
+                {isEn ? "Next" : "다음"}
               </div>
-              <div className="font-bold mt-0.5">{next.name.ko}</div>
+              <div className="font-bold mt-0.5">{localized(next.name, locale)}</div>
             </div>
             <ChevronRight className="w-5 h-5 text-ink-300 group-hover:text-brand-500 group-hover:translate-x-0.5 transition-all" />
           </Link>

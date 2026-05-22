@@ -4,13 +4,18 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import { Download, FileText, Layers, Mail, MapPin, Phone } from "lucide-react";
 import type { SiteSettings } from "@/lib/types";
+import { useLocale } from "@/lib/i18n/locale";
 
 export function Footer({ settings }: { settings: SiteSettings | null }) {
   const params = useParams<{ eventSlug?: string }>();
   const eventId = params?.eventSlug ?? "";
   const base = eventId ? `/${eventId}` : "";
+  const locale = useLocale((s) => s.locale);
+  const isEn = locale === "en";
 
-  const eventName = settings?.event.nameKo ?? "";
+  const eventName = isEn
+    ? settings?.event.nameEn || settings?.event.nameKo || ""
+    : settings?.event.nameKo ?? "";
   const year = new Date().getFullYear();
 
   return (
@@ -36,14 +41,16 @@ export function Footer({ settings }: { settings: SiteSettings | null }) {
               ) : null}
             </p>
             <p className="mt-4 text-[12px] text-ink-500 leading-relaxed max-w-sm">
-              인쇄·라벨·패키징 산업 종사자를 한 자리에 모으는 국내 최대 규모 전시회.
+              {isEn
+                ? "Korea's largest exhibition gathering professionals across the print · label · packaging industries."
+                : "인쇄·라벨·패키징 산업 종사자를 한 자리에 모으는 국내 최대 규모 전시회."}
             </p>
           </div>
 
           {/* 사무국 연락처 */}
           <div>
             <h4 className="font-bold text-[11px] uppercase tracking-[0.2em] text-brand-500 mb-3 font-num">
-              사무국 연락처
+              {isEn ? "Secretariat" : "사무국 연락처"}
             </h4>
             <ul className="text-ink-300 leading-relaxed space-y-2">
               {settings?.contact.phone && (
@@ -80,7 +87,7 @@ export function Footer({ settings }: { settings: SiteSettings | null }) {
           {/* 바로가기 */}
           <div>
             <h4 className="font-bold text-[11px] uppercase tracking-[0.2em] text-brand-500 mb-3 font-num">
-              바로가기
+              {isEn ? "Links" : "바로가기"}
             </h4>
             <ul className="text-ink-300 space-y-2">
               <li>
@@ -89,7 +96,7 @@ export function Footer({ settings }: { settings: SiteSettings | null }) {
                   className="hover:text-brand-500 flex items-center gap-2"
                 >
                   <Layers className="w-3.5 h-3.5 text-ink-500" />
-                  스폰서십 카탈로그
+                  {isEn ? "Sponsorship catalog" : "스폰서십 카탈로그"}
                 </Link>
               </li>
               <li>
@@ -98,7 +105,7 @@ export function Footer({ settings }: { settings: SiteSettings | null }) {
                   className="hover:text-brand-500 flex items-center gap-2"
                 >
                   <FileText className="w-3.5 h-3.5 text-ink-500" />
-                  스폰서십 문의
+                  {isEn ? "Sponsorship inquiry" : "스폰서십 문의"}
                 </Link>
               </li>
             </ul>
@@ -107,7 +114,7 @@ export function Footer({ settings }: { settings: SiteSettings | null }) {
           {/* 자료 */}
           <div>
             <h4 className="font-bold text-[11px] uppercase tracking-[0.2em] text-brand-500 mb-3 font-num">
-              자료
+              {isEn ? "Resources" : "자료"}
             </h4>
             <ul className="text-ink-300 space-y-2">
               <li>
@@ -118,7 +125,7 @@ export function Footer({ settings }: { settings: SiteSettings | null }) {
                   className="hover:text-brand-500 flex items-center gap-2"
                 >
                   <Download className="w-3.5 h-3.5 text-ink-500" />
-                  전체 스폰서십 PDF
+                  {isEn ? "Full sponsorship PDF" : "전체 스폰서십 PDF"}
                 </Link>
               </li>
               <li>
@@ -129,7 +136,7 @@ export function Footer({ settings }: { settings: SiteSettings | null }) {
                   className="hover:text-brand-500 flex items-center gap-2"
                 >
                   <Download className="w-3.5 h-3.5 text-ink-500" />
-                  소개 자료 PDF
+                  {isEn ? "Overview PDF" : "소개 자료 PDF"}
                 </Link>
               </li>
             </ul>
@@ -140,17 +147,28 @@ export function Footer({ settings }: { settings: SiteSettings | null }) {
         <div className="mt-12 pt-6 border-t border-white/10 grid md:grid-cols-2 gap-4 text-[11px] text-ink-500">
           <div className="space-y-1">
             <div className="text-ink-300 font-bold">
-              ㈜한국이앤엑스 (Korea E&amp;EX)
+              {isEn ? "Korea E&EX Co., Ltd." : "㈜한국이앤엑스 (Korea E&EX)"}
             </div>
             <div className="font-num text-ink-500/80 leading-relaxed">
-              사업자등록번호 220-87-30068 · 대표이사 김응식
-              <br />
-              서울특별시 강남구 영동대로 511 트레이드타워 7층
+              {isEn ? (
+                <>
+                  Biz Reg. No. 220-87-30068 · CEO Eung-sik Kim
+                  <br />
+                  7F, Trade Tower, 511 Yeongdong-daero, Gangnam-gu, Seoul
+                </>
+              ) : (
+                <>
+                  사업자등록번호 220-87-30068 · 대표이사 김응식
+                  <br />
+                  서울특별시 강남구 영동대로 511 트레이드타워 7층
+                </>
+              )}
             </div>
           </div>
           <div className="md:text-right flex md:items-end md:justify-end">
             <span className="text-ink-500/70">
-              © {year} {eventName || "K-PRINT"} 사무국. All rights reserved.
+              © {year} {eventName || "K-PRINT"}{" "}
+              {isEn ? "Secretariat. All rights reserved." : "사무국. All rights reserved."}
             </span>
           </div>
         </div>

@@ -66,7 +66,7 @@ export function PackageType({
                 className="inline-flex items-center gap-1.5 text-[12px] text-ink-500 hover:text-brand-500 mb-6 font-num font-semibold"
               >
                 <ArrowLeft className="w-3.5 h-3.5" />
-                홈으로
+                {locale === "en" ? "Home" : "홈으로"}
               </Link>
             )}
             <div className="font-num text-[11px] uppercase tracking-[0.3em] font-bold mb-3 flex items-center gap-3 text-brand-500">
@@ -75,8 +75,8 @@ export function PackageType({
               <span className="text-ink-300">·</span>
               <span className="text-ink-500">{pkg.code}</span>
             </div>
-            <h1 className="text-[36px] md:text-[64px] font-bold tracking-tight leading-[1.05] text-ink-900">
-              {pkg.name.ko}
+            <h1 className="text-[32px] md:text-[56px] font-bold tracking-tight leading-[1.15] text-ink-900 break-keep">
+              {locale === "en" ? (pkg.name.en?.trim() || pkg.name.ko) : pkg.name.ko}
             </h1>
             {pkg.tagline && (
               <p className="text-[14px] md:text-[16px] text-ink-500 mt-4 max-w-3xl leading-relaxed">
@@ -96,7 +96,7 @@ export function PackageType({
             <div className="bg-surface border border-ink-100 rounded-card p-6 shadow-card">
               <div className="font-num text-[11px] uppercase tracking-[0.3em] text-brand-500 font-bold mb-4 flex items-center gap-2">
                 <span className="w-4 h-px bg-brand-500" />
-                포함 항목
+                {locale === "en" ? "Included items" : "포함 항목"}
               </div>
               <ul className="space-y-3">
                 {(pkg.includedItems ?? []).map((it, i) => (
@@ -118,7 +118,9 @@ export function PackageType({
                   </li>
                 ))}
                 {(pkg.includedItems ?? []).length === 0 && (
-                  <li className="text-[12px] text-ink-500">포함 항목이 없습니다.</li>
+                  <li className="text-[12px] text-ink-500">
+                    {locale === "en" ? "No included items." : "포함 항목이 없습니다."}
+                  </li>
                 )}
               </ul>
             </div>
@@ -167,7 +169,13 @@ export function PackageType({
                 ) : (
                   <Bookmark className="w-4 h-4" />
                 )}
-                {inCart ? "담김 · 빼기" : "담기"}
+                {locale === "en"
+                  ? inCart
+                    ? "Added · Remove"
+                    : "Add to cart"
+                  : inCart
+                    ? "담김 · 빼기"
+                    : "담기"}
               </button>
             </div>
           </div>
@@ -319,11 +327,13 @@ function BundledPerksCard({
   /** 현재 패키지 코드 — 적용 범위 필터링용 */
   packageCode: string;
 }) {
+  const locale = useLocale((s) => s.locale);
   const allPerks = settings?.bundledPerks ?? DEFAULT_BUNDLED_PERKS;
   const perks = filterPerksForContext(allPerks, packageCode);
   if (perks.length === 0) return null;
 
   const totalValue = calcPerksTotalValue(perks);
+  const isEn = locale === "en";
 
   return (
     <div className="bg-gradient-to-br from-brand-50 to-canvas border border-brand-100 rounded-card p-6 shadow-card">
@@ -331,18 +341,28 @@ function BundledPerksCard({
         <div>
           <div className="font-num text-[11px] uppercase tracking-[0.3em] text-brand-500 font-bold flex items-center gap-2">
             <Gift className="w-3.5 h-3.5" />
-            2026 리뉴얼 기념 추가 혜택
+            {isEn ? "2026 renewal bonus perks" : "2026 리뉴얼 기념 추가 혜택"}
           </div>
           <p className="text-[12px] text-ink-700 mt-1 leading-relaxed">
-            아래 매체들이 비용 없이 함께 제공됩니다 (일부 항목은 신청 시 택1).
+            {isEn
+              ? "The following items are included at no extra cost (some may require a pick-one at signup)."
+              : "아래 매체들이 비용 없이 함께 제공됩니다 (일부 항목은 신청 시 택1)."}
           </p>
         </div>
         {totalValue > 0 && (
           <div className="text-right shrink-0">
-            <div className="text-[10px] text-ink-500 font-semibold">총 상당 가치</div>
+            <div className="text-[10px] text-ink-500 font-semibold">
+              {isEn ? "Total value" : "총 상당 가치"}
+            </div>
             <div className="text-[20px] font-bold text-brand-700 font-num leading-tight">
-              {totalValue.toLocaleString()}
-              <span className="text-[12px] ml-0.5">원</span>
+              {isEn
+                ? `$${Math.round(totalValue / 1000).toLocaleString()}`
+                : (
+                    <>
+                      {totalValue.toLocaleString()}
+                      <span className="text-[12px] ml-0.5">원</span>
+                    </>
+                  )}
             </div>
           </div>
         )}
@@ -364,7 +384,9 @@ function BundledPerksCard({
                 )}
                 {perk.valueKRW && (
                   <span className="text-[11px] text-ink-500 font-num ml-auto">
-                    {perk.valueKRW.toLocaleString()}원 상당
+                    {isEn
+                      ? `~$${Math.round(perk.valueKRW / 1000).toLocaleString()} value`
+                      : `${perk.valueKRW.toLocaleString()}원 상당`}
                   </span>
                 )}
               </div>
@@ -400,6 +422,10 @@ function PackageConfirmModal({
   onAdd: () => void;
   onRemove: () => void;
 }) {
+  const locale = useLocale((s) => s.locale);
+  const isEn = locale === "en";
+  const price = getDisplayPackagePrice(pkg, locale);
+
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") onClose();
@@ -422,14 +448,20 @@ function PackageConfirmModal({
         <header className="px-5 py-4 border-b border-ink-100 flex items-start justify-between gap-3">
           <div className="min-w-0">
             <div className="text-[10px] uppercase tracking-[0.2em] text-brand-700 font-bold">
-              패키지 상세
+              {isEn ? "Package detail" : "패키지 상세"}
             </div>
             <div className="mt-1 flex items-baseline gap-2 flex-wrap">
               <h3 className="text-[18px] font-bold text-ink-900 leading-tight">
-                {pkg.name.ko}
+                {isEn ? (pkg.name.en?.trim() || pkg.name.ko) : pkg.name.ko}
               </h3>
               <span className="text-[10px] text-brand-700 font-bold">
-                {pkg.tier === "signature" ? "시그니처" : "스탠다드"}
+                {pkg.tier === "signature"
+                  ? isEn
+                    ? "Signature"
+                    : "시그니처"
+                  : isEn
+                    ? "Standard"
+                    : "스탠다드"}
               </span>
             </div>
             <span className="text-[10px] text-ink-500 font-mono mt-0.5 block">{pkg.code}</span>
@@ -438,7 +470,7 @@ function PackageConfirmModal({
             type="button"
             onClick={onClose}
             className="w-8 h-8 grid place-items-center rounded-btn hover:bg-ink-50 text-ink-500 shrink-0"
-            aria-label="닫기"
+            aria-label={isEn ? "Close" : "닫기"}
           >
             <X className="w-4 h-4" />
           </button>
@@ -447,7 +479,9 @@ function PackageConfirmModal({
         <div className="px-5 py-4 space-y-3">
           {(pkg.includedItems ?? []).length > 0 && (
             <div>
-              <div className="text-[11px] text-ink-500 mb-1.5">포함 항목</div>
+              <div className="text-[11px] text-ink-500 mb-1.5">
+                {isEn ? "Included items" : "포함 항목"}
+              </div>
               <ul className="space-y-1">
                 {(pkg.includedItems ?? []).map((it, i) => (
                   <li
@@ -462,11 +496,12 @@ function PackageConfirmModal({
             </div>
           )}
           <div className="pt-2 border-t border-ink-100">
-            <div className="text-[11px] text-ink-500 mb-0.5">가격</div>
+            <div className="text-[11px] text-ink-500 mb-0.5">
+              {isEn ? "Price" : "가격"}
+            </div>
             <div className="flex items-baseline gap-2">
               <span className="text-[24px] font-bold text-brand-700 font-mono">
-                {pkg.discountPrice.toLocaleString()}
-                <span className="text-[14px] ml-1">원</span>
+                {formatPrice(price.discount.value, price.discount.currency)}
               </span>
               {discount > 0 && (
                 <span className="text-[11px] font-bold text-brand-700 bg-brand-50 px-2 py-0.5 rounded">
@@ -474,13 +509,15 @@ function PackageConfirmModal({
                 </span>
               )}
             </div>
-            {pkg.originalPrice > pkg.discountPrice && (
+            {price.original.value > price.discount.value && (
               <div className="text-[11px] text-ink-500 line-through font-mono mt-0.5">
-                {pkg.originalPrice.toLocaleString()}원
+                {formatPrice(price.original.value, price.original.currency)}
               </div>
             )}
             <div className="text-[10.5px] text-ink-500 mt-1">
-              (정식 견적은 사무국 회신 시 안내드립니다)
+              {isEn
+                ? "(Final quote follows secretariat reply.)"
+                : "(정식 견적은 사무국 회신 시 안내드립니다)"}
             </div>
           </div>
         </div>
@@ -491,7 +528,7 @@ function PackageConfirmModal({
             onClick={onClose}
             className="px-4 py-2.5 rounded-btn border border-ink-100 text-[13px] font-semibold text-ink-700 hover:bg-ink-50"
           >
-            취소
+            {isEn ? "Cancel" : "취소"}
           </button>
           {inCart ? (
             <button
@@ -500,7 +537,7 @@ function PackageConfirmModal({
               className="px-4 py-2.5 rounded-btn bg-ink-900 text-brand-500 text-[13px] font-bold hover:bg-ink-700 flex items-center justify-center gap-1.5"
             >
               <BookmarkCheck className="w-4 h-4" />
-              빼기
+              {isEn ? "Remove" : "빼기"}
             </button>
           ) : (
             <button
@@ -509,7 +546,7 @@ function PackageConfirmModal({
               className="px-4 py-2.5 rounded-btn bg-brand-500 text-ink-900 text-[13px] font-bold hover:bg-brand-700 hover:text-white flex items-center justify-center gap-1.5"
             >
               <Bookmark className="w-4 h-4" />
-              담기
+              {isEn ? "Add" : "담기"}
             </button>
           )}
         </footer>

@@ -55,6 +55,11 @@ export const OPTIONAL_HEADERS = [
   "is_sold",
   "note",
   "tags",
+  // ─── 카테고리 레벨 텍스트 (사진만 어드민에서 추가하도록 엑셀에 흡수) ───
+  "short_desc",
+  "selector_id",
+  "timing",   // pre / onsite / post (콤마 구분)
+  "location", // hall_a / hall_b / hall_c / hall_d / outdoor / online (콤마 구분)
 ] as const;
 
 export const ALL_HEADERS = [...REQUIRED_HEADERS, ...OPTIONAL_HEADERS] as const;
@@ -99,6 +104,10 @@ export type ParsedRow = {
   isSold: boolean;
   note: string;
   tags: string[];
+  shortDesc: string;
+  selectorId: string;
+  timing: string[];
+  location: string[];
 };
 
 export type ParsedCategory = {
@@ -111,6 +120,10 @@ export type ParsedCategory = {
   fileFormat: string;
   deadline: Date | null;
   tags: string[];
+  shortDesc: string;
+  selectorId: string;
+  timing: string[];
+  location: string[];
 };
 
 export type ParsedSubcategory = {
@@ -245,6 +258,10 @@ const parsedRowSchema = z.object({
   isSold: z.boolean(),
   note: z.string(),
   tags: z.array(z.string()),
+  shortDesc: z.string(),
+  selectorId: z.string(),
+  timing: z.array(z.string()),
+  location: z.array(z.string()),
 });
 
 // ParsedRow 필드 → 엑셀 컬럼 매핑 (zod 에러 메시지 표시용)
@@ -267,7 +284,21 @@ const COLUMN_FROM_FIELD: Partial<Record<string, ExcelHeader>> = {
   isSold: "is_sold",
   note: "note",
   tags: "tags",
+  shortDesc: "short_desc",
+  selectorId: "selector_id",
+  timing: "timing",
+  location: "location",
 };
+
+const VALID_TIMINGS = ["pre", "onsite", "post"] as const;
+const VALID_LOCATIONS = [
+  "hall_a",
+  "hall_b",
+  "hall_c",
+  "hall_d",
+  "outdoor",
+  "online",
+] as const;
 
 // ============================================================================
 // Main
@@ -414,6 +445,34 @@ export function parseExcelBuffer(
       }
     }
 
+    // timing/location 정규화 — 모르는 값은 warning 으로 흘리고 버림
+    const rawTiming = parseTags(get("timing")).map((t) => t.toLowerCase());
+    const timing: string[] = [];
+    for (const t of rawTiming) {
+      if ((VALID_TIMINGS as readonly string[]).includes(t)) {
+        if (!timing.includes(t)) timing.push(t);
+      } else {
+        warnings.push({
+          rowIndex,
+          column: "timing",
+          reason: `timing 값 "${t}" 무시 (허용: ${VALID_TIMINGS.join(" / ")})`,
+        });
+      }
+    }
+    const rawLocation = parseTags(get("location")).map((l) => l.toLowerCase());
+    const location: string[] = [];
+    for (const l of rawLocation) {
+      if ((VALID_LOCATIONS as readonly string[]).includes(l)) {
+        if (!location.includes(l)) location.push(l);
+      } else {
+        warnings.push({
+          rowIndex,
+          column: "location",
+          reason: `location 값 "${l}" 무시 (허용: ${VALID_LOCATIONS.join(" / ")})`,
+        });
+      }
+    }
+
     // 후보 객체 (실패한 필드는 안전한 기본값 — zod도 통과시키되 rowErrors로 막힘)
     const candidate: ParsedRow = {
       rowIndex,
@@ -435,6 +494,10 @@ export function parseExcelBuffer(
       isSold: parseIsSold(get("is_sold")),
       note: s(get("note")),
       tags: parseTags(get("tags")),
+      shortDesc: s(get("short_desc")),
+      selectorId: s(get("selector_id")),
+      timing,
+      location,
     };
 
     // zod로 enum/포맷 검증
@@ -488,6 +551,10 @@ export function parseExcelBuffer(
         fileFormat: row.fileFormat,
         deadline: row.deadline,
         tags: [...row.tags],
+        shortDesc: row.shortDesc,
+        selectorId: row.selectorId,
+        timing: [...row.timing],
+        location: [...row.location],
       });
       continue;
     }

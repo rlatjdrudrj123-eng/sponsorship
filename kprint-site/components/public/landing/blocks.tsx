@@ -29,6 +29,7 @@ import type {
   VideoEmbedBlock,
 } from "@/lib/types";
 import { CanvasRenderer } from "@/components/public/canvas/CanvasRenderer";
+import { useLocale } from "@/lib/i18n/locale";
 
 /**
  * 블록 컴포넌트들 — 어드민이 자유 구성한 시퀀스를 렌더링.
@@ -598,6 +599,8 @@ export function CtaSection({
     secondaryHref,
     showContact,
   } = block.data;
+  const locale = useLocale((s) => s.locale);
+  const isEn = locale === "en";
   return (
     <SlideShell style={block.style} variant="brand">
       <Reveal>
@@ -620,14 +623,14 @@ export function CtaSection({
             href={primaryHref ?? `/${eventId}/sponsorships`}
             className="px-7 py-4 rounded-pill bg-white text-ink-900 hover:bg-ink-900 hover:text-white text-[15px] md:text-[16px] font-bold flex items-center gap-3 transition-colors"
           >
-            {primaryLabel ?? "스폰서십 둘러보기"}
+            {primaryLabel ?? (isEn ? "Browse sponsorships" : "스폰서십 둘러보기")}
             <ArrowRight className="w-4 h-4" />
           </Link>
           <Link
             href={secondaryHref ?? `/${eventId}/contact`}
             className="px-7 py-4 rounded-pill border-2 border-white hover:bg-white hover:text-brand-500 text-[15px] md:text-[16px] font-bold transition-colors"
           >
-            {secondaryLabel ?? "바로 문의하기"}
+            {secondaryLabel ?? (isEn ? "Contact us" : "바로 문의하기")}
           </Link>
         </div>
       </Reveal>
@@ -1246,12 +1249,20 @@ function PdfDownloadSection({
   block: PdfDownloadBlock;
   eventId: string;
 }) {
+  const locale = useLocale((s) => s.locale);
+  const isEn = locale === "en";
   const eyebrow = block.data.eyebrow || "Download";
-  const headline = block.data.headline || "전체 패키지를 한 장에";
+  const headline =
+    block.data.headline ||
+    (isEn ? "Every package, one page" : "전체 패키지를 한 장에");
   const description =
     block.data.description ||
-    "행사 소개와 모든 카테고리·패키지 상세를 한 PDF로 받아보세요. 인쇄 다이얼로그가 자동으로 열리며, [PDF로 저장]을 선택하면 됩니다.";
-  const buttonLabel = block.data.buttonLabel || "전체 패키지 PDF 다운로드";
+    (isEn
+      ? "Get the entire event overview and every category/package detail in a single PDF. The print dialog opens automatically — choose [Save as PDF]."
+      : "행사 소개와 모든 카테고리·패키지 상세를 한 PDF로 받아보세요. 인쇄 다이얼로그가 자동으로 열리며, [PDF로 저장]을 선택하면 됩니다.");
+  const buttonLabel =
+    block.data.buttonLabel ||
+    (isEn ? "Download full package PDF" : "전체 패키지 PDF 다운로드");
   const style = block.style;
 
   return (

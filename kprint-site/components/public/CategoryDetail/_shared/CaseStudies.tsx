@@ -1,6 +1,7 @@
 "use client";
 
 import { Quote } from "lucide-react";
+import { useLocale } from "@/lib/i18n/locale";
 
 type CaseStudy = {
   company: string;
@@ -10,6 +11,7 @@ type CaseStudy = {
 };
 
 export function CaseStudies({ items }: { items: CaseStudy[] }) {
+  const locale = useLocale((s) => s.locale);
   if (items.length === 0) return null;
 
   return (
@@ -19,7 +21,7 @@ export function CaseStudies({ items }: { items: CaseStudy[] }) {
         case study
       </div>
       <h3 className="text-[20px] md:text-[24px] font-bold text-ink-900 mb-6 tracking-tight">
-        이 자리를 선택한 회사들
+        {locale === "en" ? "Sponsors who chose this slot" : "이 자리를 선택한 회사들"}
       </h3>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
         {items.map((c, i) => (

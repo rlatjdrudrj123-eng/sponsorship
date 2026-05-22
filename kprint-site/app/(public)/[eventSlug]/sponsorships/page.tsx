@@ -44,6 +44,7 @@ import { LocaleSwitch } from "@/components/public/LocaleSwitch";
 import { SlotPicker } from "@/components/public/CategoryDetail/_shared/SlotPicker";
 import { PersonaRecommendation } from "@/components/public/PersonaRecommendation";
 import { ClosingSlide } from "@/components/public/landing/LandingRenderer";
+import { PackageType } from "@/components/public/CategoryDetail/PackageType";
 import { localized, useLocale, type Locale } from "@/lib/i18n/locale";
 import { t } from "@/lib/i18n/strings";
 import { getTypeLayout } from "@/lib/typeLayouts";
@@ -208,6 +209,8 @@ export default function SponsorshipsPage() {
     searchParams?.get("view") === "card" ? "card" : "slide"
   );
   const [aiChatOpen, setAiChatOpen] = useState(false);
+  // 패키지 카드 클릭 시 페이지 이동 대신 모달로 표시 (UX 일관성)
+  const [selectedPackageId, setSelectedPackageId] = useState<string | null>(null);
   // 첫 질문 Q1 (목적) 의 4가지 (룩업 매트릭스 Q1 값)
   const [aiChatInitial, setAiChatInitial] = useState<
     "launch" | "acquisition" | "retention" | "awareness" | null
@@ -428,6 +431,7 @@ export default function SponsorshipsPage() {
           hasActiveFilter={hasActiveFilter}
           eventId={eventId}
           onOpenDetail={setDetailModalSlug}
+          onOpenPackage={setSelectedPackageId}
           typeLayouts={settings?.typeLayouts}
           bundledPerks={settings?.bundledPerks}
         />
@@ -729,7 +733,11 @@ export default function SponsorshipsPage() {
             {packages.length > 0 && (
               <section className="border-t border-ink-100 bg-surface">
                 <div className="max-w-7xl mx-auto px-6 md:px-16 py-10">
-                  <PackageSection packages={packages} eventId={eventId} />
+                  <PackageSection
+                    packages={packages}
+                    eventId={eventId}
+                    onOpenPackage={setSelectedPackageId}
+                  />
                 </div>
               </section>
             )}
@@ -859,6 +867,20 @@ export default function SponsorshipsPage() {
           </span>
         </button>
       )}
+
+      {/* 패키지 상세 모달 — 페이지 이동 대신 같은 화면 위 오버레이로 */}
+      {selectedPackageId && (() => {
+        const pkg = packages.find((p) => p.id === selectedPackageId);
+        if (!pkg) return null;
+        return (
+          <PackageDetailModal
+            pkg={pkg}
+            categories={categories}
+            settings={settings}
+            onClose={() => setSelectedPackageId(null)}
+          />
+        );
+      })()}
 
       {/* 진단 챗봇 v2 — 4문항 룩업 매트릭스 기반. 우하단 FAB 클릭으로 진입. */}
       <SponsorshipDiagnosisChat
@@ -1431,7 +1453,15 @@ function BadgePill({ badge }: { badge: Badge }) {
 // Package section (상단 전용)
 // ============================================================================
 
-function PackageSection({ packages, eventId }: { packages: Package[]; eventId: string }) {
+function PackageSection({
+  packages,
+  eventId,
+  onOpenPackage,
+}: {
+  packages: Package[];
+  eventId: string;
+  onOpenPackage: (pkgId: string) => void;
+}) {
   const locale = useLocale((s) => s.locale);
   const signature = packages
     .filter((p) => p.tier === "signature")
@@ -1463,6 +1493,7 @@ function PackageSection({ packages, eventId }: { packages: Package[]; eventId: s
           eventId={eventId}
           locale={locale}
           accent
+          onOpenPackage={onOpenPackage}
         />
       )}
       {standard.length > 0 && (
@@ -1472,6 +1503,7 @@ function PackageSection({ packages, eventId }: { packages: Package[]; eventId: s
           items={standard}
           eventId={eventId}
           locale={locale}
+          onOpenPackage={onOpenPackage}
         />
       )}
 
@@ -1489,6 +1521,7 @@ function PackageGroup({
   eventId,
   locale,
   accent,
+  onOpenPackage,
 }: {
   label: string;
   sub: string;
@@ -1496,6 +1529,7 @@ function PackageGroup({
   eventId: string;
   locale: Locale;
   accent?: boolean;
+  onOpenPackage: (pkgId: string) => void;
 }) {
   return (
     <div>
@@ -1521,6 +1555,7 @@ function PackageGroup({
             eventId={eventId}
             locale={locale}
             accent={accent}
+            onOpenPackage={onOpenPackage}
           />
         ))}
       </div>
@@ -1530,14 +1565,15 @@ function PackageGroup({
 
 function PackageCard({
   pkg,
-  eventId,
   locale,
   accent,
+  onOpenPackage,
 }: {
   pkg: Package;
   eventId: string;
   locale: Locale;
   accent?: boolean;
+  onOpenPackage: (pkgId: string) => void;
 }) {
   const hasDiscount =
     pkg.originalPrice > 0 && pkg.originalPrice > pkg.discountPrice;
@@ -1549,10 +1585,11 @@ function PackageCard({
   const price = getDisplayPackagePrice(pkg, locale);
 
   return (
-    <Link
-      href={`/${eventId}/packages/${pkg.id}`}
+    <button
+      type="button"
+      onClick={() => onOpenPackage(pkg.id)}
       className={
-        "group bg-surface border rounded-card overflow-hidden grid grid-cols-[1fr_auto] transition-all " +
+        "group bg-surface border rounded-card overflow-hidden grid grid-cols-[1fr_auto] transition-all text-left w-full " +
         (accent
           ? "border-ink-100 hover:border-brand-500 hover:shadow-glow-sm"
           : "border-ink-100 hover:border-brand-500 hover:shadow-card")
@@ -1630,7 +1667,7 @@ function PackageCard({
           )}
         </div>
       </div>
-    </Link>
+    </button>
   );
 }
 
@@ -1873,6 +1910,7 @@ function SlideStream({
   hasActiveFilter,
   eventId,
   onOpenDetail,
+  onOpenPackage,
   typeLayouts,
   bundledPerks,
 }: {
@@ -1890,6 +1928,7 @@ function SlideStream({
   hasActiveFilter: boolean;
   eventId: string;
   onOpenDetail: (slug: string) => void;
+  onOpenPackage: (pkgId: string) => void;
   typeLayouts?: SiteSettings["typeLayouts"];
   bundledPerks?: SiteSettings["bundledPerks"];
 }) {
@@ -2046,7 +2085,10 @@ function SlideStream({
           />
           {/* 두 번째 — 패키지 광고 안내 (패키지 있을 때만). */}
           {packages.length > 0 && (
-            <PackageOverviewSlide packages={packages} eventId={eventId} />
+            <PackageOverviewSlide
+              packages={packages}
+              onOpenPackage={onOpenPackage}
+            />
           )}
           {/* 그 다음 — 단품 카테고리 슬라이드들. wrap div 에 data-focus-slug 부여 —
               ?focus=slug 점프 (진단 챗봇 자세히 보기) 가 정확한 슬라이드에 도착. */}
@@ -2300,10 +2342,10 @@ function AtAGlanceSlide({
 
 function PackageOverviewSlide({
   packages,
-  eventId,
+  onOpenPackage,
 }: {
   packages: Package[];
-  eventId: string;
+  onOpenPackage: (pkgId: string) => void;
 }) {
   const locale = useLocale((s) => s.locale);
   const signaturePkgs = useMemo(
@@ -2347,8 +2389,8 @@ function PackageOverviewSlide({
               }
               accentColor="text-brand-500"
               packages={signaturePkgs}
-              eventId={eventId}
               locale={locale}
+              onOpenPackage={onOpenPackage}
             />
           )}
           {/* STANDARD */}
@@ -2362,8 +2404,8 @@ function PackageOverviewSlide({
               }
               accentColor="text-brand-500"
               packages={standardPkgs}
-              eventId={eventId}
               locale={locale}
+              onOpenPackage={onOpenPackage}
             />
           )}
         </div>
@@ -2377,15 +2419,15 @@ function PackageTierGroup({
   tagline,
   accentColor,
   packages,
-  eventId,
   locale,
+  onOpenPackage,
 }: {
   label: string;
   tagline: string;
   accentColor: string;
   packages: Package[];
-  eventId: string;
   locale: "ko" | "en";
+  onOpenPackage: (pkgId: string) => void;
 }) {
   return (
     <div>
@@ -2407,8 +2449,8 @@ function PackageTierGroup({
           <PackageOverviewCard
             key={pkg.id}
             pkg={pkg}
-            eventId={eventId}
             locale={locale}
+            onOpenPackage={onOpenPackage}
           />
         ))}
       </div>
@@ -2418,12 +2460,12 @@ function PackageTierGroup({
 
 function PackageOverviewCard({
   pkg,
-  eventId,
   locale,
+  onOpenPackage,
 }: {
   pkg: Package;
-  eventId: string;
   locale: "ko" | "en";
+  onOpenPackage: (pkgId: string) => void;
 }) {
   const discount =
     pkg.originalPrice > 0
@@ -2433,9 +2475,10 @@ function PackageOverviewCard({
   const price = getDisplayPackagePrice(pkg, locale);
 
   return (
-    <Link
-      href={`/${eventId}/packages/${pkg.id}`}
-      className="group bg-surface border border-ink-100 rounded-card p-4 md:p-5 hover:border-brand-500 hover:shadow-card transition-all flex flex-col"
+    <button
+      type="button"
+      onClick={() => onOpenPackage(pkg.id)}
+      className="group bg-surface border border-ink-100 rounded-card p-4 md:p-5 hover:border-brand-500 hover:shadow-card transition-all flex flex-col text-left w-full"
     >
       <div className="grid grid-cols-[1.4fr_1fr] gap-3 items-start">
         <div className="min-w-0">
@@ -2480,7 +2523,7 @@ function PackageOverviewCard({
           </div>
         </div>
       </div>
-    </Link>
+    </button>
   );
 }
 
@@ -3904,5 +3947,61 @@ function AutoFitHeading({
         {text}
       </span>
     </h2>
+  );
+}
+
+// ============================================================================
+// PackageDetailModal — 패키지 카드 클릭 시 페이지 이동 대신 같은 화면 위 오버레이
+// ============================================================================
+
+function PackageDetailModal({
+  pkg,
+  categories,
+  settings,
+  onClose,
+}: {
+  pkg: Package;
+  categories: Category[];
+  settings: SiteSettings | null;
+  onClose: () => void;
+}) {
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
+    window.addEventListener("keydown", onKey);
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      window.removeEventListener("keydown", onKey);
+      document.body.style.overflow = prev;
+    };
+  }, [onClose]);
+
+  return (
+    <div
+      className="fixed inset-0 z-[60] bg-ink-900/50 backdrop-blur-sm flex items-start justify-center overflow-y-auto"
+      onClick={onClose}
+    >
+      <div
+        className="bg-canvas rounded-card max-w-6xl w-full mx-4 my-8 shadow-card relative"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <button
+          type="button"
+          onClick={onClose}
+          aria-label="닫기"
+          className="absolute top-3 right-3 z-10 w-9 h-9 rounded-full bg-ink-900/80 text-white flex items-center justify-center hover:bg-ink-900 transition-colors"
+        >
+          <X className="w-4 h-4" />
+        </button>
+        <PackageType
+          pkg={pkg}
+          categories={categories}
+          settings={settings}
+          inModal
+        />
+      </div>
+    </div>
   );
 }

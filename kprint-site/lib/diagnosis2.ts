@@ -136,50 +136,43 @@ export const DEFAULT_DIAG_V2_QUESTIONS_EN: Record<
 // 스펙 3.1 기준. selectorId 는 categories.selectorId / packages.selectorId 와 매칭.
 // 어드민 override 가능.
 
-// 단품 추천 풀에서 제외하는 매체들 — perks (200만 이상 구매 시 동봉 혜택) 로 흡수.
-// 등록대 스폰서 로고, 참가업체/전시품/통합 검색 배너, 세미나 페이지 배너, 도면 내 로고.
-// (selectorId 로 보존하되 매트릭스 셀에선 등장 X)
+// 2025 실판매 데이터 기반 매트릭스.
+// 단품 추천 풀 = 작년 검증된 매체 + 가치 명확한 매체만:
+//   visitor_lanyard, ceiling_banner, lighting_wall, guidebook_back
+// 패키지 4단 사다리:
+//   visitor_atoz_package (Signature 12M) · prime_spot_package (Signature 7.5M) ·
+//   onsite_package (Standard 4M) · seminar_package (Standard 3.2M) ·
+//   custom_seminar_package (Standard 맞춤형)
+// 안 팔린 매체 (등록대 로고·도면 로고·사전등록 배너·검색 배너·뉴스레터·
+//   초대장 삽지·플로어 스티커·인스타·인터뷰 등) 는 perks 로 동봉 — 단품 추천에서 제외.
 export const DEFAULT_RECOMMENDATION_MATRIX: RecommendationMatrix = {
   // Q1 = launch (신제품·신기술 런칭)
+  //  세미나 발표 채널 + 시각 임팩트 매체. 부스 크기 클수록 통합 패키지로.
   launch: {
-    small: ["instagram_card", "interview_sns", "category_wall"],
-    medium: ["seminar_package", "interview_sns", "distribution_stand"],
-    large: ["custom_seminar_package", "seminar_package", "guidebook_back"],
+    small: ["lighting_wall", "ceiling_banner", "seminar_package"],
+    medium: ["seminar_package", "visitor_atoz_package", "ceiling_banner"],
+    large: ["visitor_atoz_package", "custom_seminar_package", "visitor_lanyard"],
   },
   // Q1 = acquisition (신규 거래선·대리점 발굴)
+  //  부스로 끌어들이는 비주얼 + 부스 트래픽 패키지. 대형은 시그니처로 동선 풀커버.
   acquisition: {
-    small: ["category_wall", "distribution_stand", "instagram_card"],
-    medium: [
-      "prime_spot_package",
-      "floor_map_banner",
-      "pre_registration_banner",
-    ],
-    large: [
-      "prime_spot_package",
-      "floor_map_banner",
-      "pre_registration_banner",
-      "visitor_atoz_package",
-    ],
+    small: ["ceiling_banner", "lighting_wall", "seminar_package"],
+    medium: ["prime_spot_package", "ceiling_banner", "seminar_package"],
+    large: ["prime_spot_package", "visitor_atoz_package", "visitor_lanyard"],
   },
   // Q1 = retention (기존 고객·파트너 관계 강화)
+  //  기존 거래선은 부스 방문이 메인 — 부스 잘 보이는 매체 + 현장 패키지.
   retention: {
-    small: ["invitation_insert", "pre_registration_email", "instagram_card"],
-    medium: [
-      "pre_registration_banner",
-      "invitation_insert",
-      "newsletter_domestic",
-    ],
-    large: [
-      "invitation_insert",
-      "visitor_atoz_package",
-      "newsletter_domestic",
-    ],
+    small: ["lighting_wall", "ceiling_banner", "seminar_package"],
+    medium: ["onsite_package", "prime_spot_package", "seminar_package"],
+    large: ["visitor_atoz_package", "prime_spot_package", "visitor_lanyard"],
   },
   // Q1 = awareness (브랜드 인지도·점유율 확대)
+  //  대형 매체 + 전체 동선 패키지. 작은 부스도 천장/라이팅으로 점유 시각화.
   awareness: {
-    small: ["floor_sticker", "category_wall", "instagram_card"],
-    medium: ["onsite_package", "ceiling_banner", "lighting_wall"],
-    large: ["visitor_atoz_package", "ceiling_banner", "visitor_lanyard"],
+    small: ["lighting_wall", "ceiling_banner", "guidebook_back"],
+    medium: ["onsite_package", "ceiling_banner", "visitor_lanyard"],
+    large: ["visitor_atoz_package", "visitor_lanyard", "ceiling_banner"],
   },
 };
 
@@ -187,31 +180,40 @@ export const DEFAULT_RECOMMENDATION_MATRIX: RecommendationMatrix = {
 
 export const DEFAULT_REASON_TEMPLATES: ReasonTemplates = {
   launch: {
-    seminar: "신제품 발표는 세미나 채널이 가장 효율적입니다",
-    content: "발표 후 콘텐츠 자산화로 사후 마케팅까지 활용",
-    signature: "대규모 런칭은 통합 노출로 임팩트 극대화",
-    package: "런칭 동선 한 번에 — 패키지 통합 노출",
+    seminar: "신제품 발표 = 세미나 채널이 가장 짧은 경로 (현장에서 바로 데모·Q&A)",
+    content: "발표 영상·인터뷰는 사후 마케팅 자산으로 재활용",
+    signature: "대형 런칭은 전 동선 통합 노출로 첫인상 임팩트 극대화",
+    package: "런칭 동선 (사전→현장→사후) 한 번에 — 통합 패키지로 효율",
+    ceiling: "입장 즉시 시야에 들어오는 대형 매체 — 신제품 존재감",
+    lanyard: "전 참관객 행사 내내 휴대 — 런칭 인지 시간 최장",
     other: "신제품·신기술 런칭에 적합한 노출 채널",
   },
   acquisition: {
     search: "검색 상위 노출은 부스 도달의 가장 짧은 경로",
     floor_map: "도면 위 노출로 부스 방문 의사를 직접 자극",
-    package: "검색·도면 통합으로 거래선 발굴 동선 풀커버",
+    package: "부스 트래픽 통합 패키지 — 도면·검색·동선 한 번에",
+    signature: "대형 부스에 어울리는 통합 노출 — 거래선 발굴 동선 풀커버",
+    ceiling: "부스 위치를 멀리서도 알리는 시각 표식 — 방문 유도",
+    lanyard: "참관객 전원이 휴대 — 거래선·바이어 노출 최장",
+    seminar: "세미나에서 데모·발표로 거래선 발굴 시연",
     other: "신규 거래선 발굴에 효율적인 매체",
   },
   retention: {
     invitation: "기존 거래선·VIP 바이어에게 직접 도달",
     newsletter: "재참가 알림 + 부스 이벤트 안내",
-    signature: "관계자 전 동선에서 브랜드 존재감 확보",
-    package: "관계 강화 동선 통합 — 패키지로 효율 극대화",
+    signature: "관계자 전 동선에서 브랜드 존재감 확보 — 신뢰 강화",
+    package: "현장 노출 통합 — 기존 거래선에게 안정감 있는 존재감",
+    ceiling: "기존 거래선에게 \"여기 있다\" 시각 신호 — 부스 방문 유도",
+    lanyard: "기존 파트너가 행사 내내 휴대 — 자연스러운 재노출",
+    seminar: "기존 고객 대상 트렌드 발표·신제품 업데이트 채널",
     other: "기존 관계 강화에 적합한 매체",
   },
   awareness: {
-    ceiling: "입장 시 가장 먼저 보이는 대형 매체",
-    lanyard: "전 참관객 노출 시간 최장",
-    package: "전 동선 통합 노출로 점유율 시각화",
-    signature: "통합 노출로 행사 내 점유율 확보",
-    other: "브랜드 인지도 확대에 효과적인 매체",
+    ceiling: "입장 시 가장 먼저 보이는 대형 매체 — 점유율 시각화",
+    lanyard: "전 참관객이 행사 내내 휴대 — 노출 시간 압도적",
+    package: "전 동선 통합 노출 — 점유율 시각화의 가장 빠른 길",
+    signature: "통합 노출로 행사 내 점유율 1순위 확보",
+    other: "브랜드 인지도 확대에 효과적인 매체 (가이드북·현장 노출)",
   },
 };
 
@@ -244,10 +246,14 @@ export const SELECTOR_TO_REASON_KEY: Record<string, ReasonCategoryKey> = {
   newsletter_domestic: "newsletter",
   newsletter_overseas: "newsletter",
   pre_registration_email: "newsletter",
-  // 천장
+  // 천장 — 2025 검증된 단품
   ceiling_banner: "ceiling",
-  // 목걸이
+  // 목걸이 — 2025 검증된 단품
   visitor_lanyard: "lanyard",
+  // 라이팅월 — 2025 검증된 단품, 시각 임팩트 → 천장 reason 계열로 묶음
+  lighting_wall: "ceiling",
+  // 가이드북 후표지 — 가이드북 모든 참관객 휴대 → 인지도 reason 계열
+  guidebook_back: "other",
   // 분야별 홍보월 / 배포대 / 바닥 스티커 — other 폴백
   category_wall: "other",
   distribution_stand: "other",
@@ -309,8 +315,11 @@ export function getRecommendations(args: {
   data: DiagnosisData;
   matrix?: RecommendationMatrix;
   reasons?: ReasonTemplates;
+  /** 표시 라벨 로케일 — 기본 ko. en 이면 USD 자동 환산 (1USD=1000KRW; 카테고리/패키지 USD 가격 override 우선) */
+  locale?: "ko" | "en";
 }): RecommendedEntry[] {
   const { q1, q2, q3, data } = args;
+  const locale = args.locale ?? "ko";
   const matrix = mergeMatrix(args.matrix);
   const reasons = mergeReasons(args.reasons);
 
@@ -327,6 +336,22 @@ export function getRecommendations(args: {
     if (p.selectorId) pkgBySelector.set(p.selectorId, p);
   });
 
+  const krwLabel = (krw: number): string => {
+    if (locale === "en") {
+      const usd = Math.round(krw / 1000);
+      return `$${usd.toLocaleString()}`;
+    }
+    return `${krw.toLocaleString()}원`;
+  };
+  const pkgLabel = (pkg: Package): string => {
+    if (locale === "en") {
+      const usd = pkg.discountPriceUSD ?? Math.round(pkg.discountPrice / 1000);
+      return `$${usd.toLocaleString()}`;
+    }
+    return `${pkg.discountPrice.toLocaleString()}원`;
+  };
+  const negotiable = locale === "en" ? "Contact us" : "별도 문의";
+
   const results: RecommendedEntry[] = [];
 
   for (const id of baseIds) {
@@ -335,9 +360,7 @@ export function getRecommendations(args: {
 
     if (cat) {
       const minPrice = data.minPriceByCategoryId?.[cat.id] ?? 0;
-      const priceLabel =
-        minPrice === 0 ? "별도 문의" : `${minPrice.toLocaleString()}원`;
-      // 별도문의 (priceKRW===0) 는 가격 필터 통과
+      const priceLabel = minPrice === 0 ? negotiable : krwLabel(minPrice);
       if (minPrice > 0 && minPrice > ceiling) continue;
       results.push({
         selectorId: id,
@@ -357,12 +380,11 @@ export function getRecommendations(args: {
         nameKo: pkg.name.ko,
         nameEn: pkg.name.en,
         minPriceKRW: pkg.discountPrice,
-        priceLabel: `${pkg.discountPrice.toLocaleString()}원`,
+        priceLabel: pkgLabel(pkg),
         package: pkg,
         reason: pickReason(reasons, q1, id),
       });
     }
-    // 매핑 안 된 selectorId 는 조용히 무시 (어드민이 매트릭스에 오타 박았을 경우 등)
   }
 
   return results;

@@ -6,6 +6,7 @@ import type { Category, SiteSettings, Slot, Subcategory } from "@/lib/types";
 import { Scaffold } from "./_shared/Scaffold";
 import { SlotPicker } from "./_shared/SlotPicker";
 import { ImageCarousel } from "./_shared/ImageCarousel";
+import { useLocale } from "@/lib/i18n/locale";
 
 type Props = {
   category: Category;
@@ -25,6 +26,8 @@ export function DigitalBannerType({
   settings,
 }: Props) {
   const [device, setDevice] = useState<Device>("all");
+  const locale = useLocale((s) => s.locale);
+  const isEn = locale === "en";
 
   // 캡션에 'pc' / 'tablet' / 'mobile' / 'PC' 등이 들어 있는 이미지로 분기
   const all =
@@ -51,7 +54,7 @@ export function DigitalBannerType({
               active={device === "all"}
               onClick={() => setDevice("all")}
             >
-              전체
+              {isEn ? "All" : "전체"}
             </DeviceTab>
             <DeviceTab
               active={device === "pc"}
@@ -63,13 +66,13 @@ export function DigitalBannerType({
               active={device === "tablet"}
               onClick={() => setDevice("tablet")}
             >
-              <Tablet className="w-3.5 h-3.5" /> 태블릿
+              <Tablet className="w-3.5 h-3.5" /> {isEn ? "Tablet" : "태블릿"}
             </DeviceTab>
             <DeviceTab
               active={device === "mobile"}
               onClick={() => setDevice("mobile")}
             >
-              <Smartphone className="w-3.5 h-3.5" /> 모바일
+              <Smartphone className="w-3.5 h-3.5" /> {isEn ? "Mobile" : "모바일"}
             </DeviceTab>
           </div>
           <ImageCarousel

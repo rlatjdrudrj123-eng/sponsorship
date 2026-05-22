@@ -112,6 +112,7 @@ export function SponsorshipDiagnosisChat({
   const [answers, setAnswers] = useState<Answers>({});
   const sessionIdRef = useRef<string>("");
   const loggedFinalRef = useRef(false);
+  const locale = useLocale((s) => s.locale);
 
   // 모달 열릴 때 세션 ID 부여 + initialQ1 적용 / 닫힐 때 초기화
   useEffect(() => {
@@ -175,8 +176,9 @@ export function SponsorshipDiagnosisChat({
       data,
       matrix: diagnosisV2Config?.matrix,
       reasons: diagnosisV2Config?.reasons,
+      locale,
     });
-  }, [step, answers, data, diagnosisV2Config]);
+  }, [step, answers, data, diagnosisV2Config, locale]);
 
   const layout: ResultLayout = answers.q4
     ? getResultLayout(answers.q4)
@@ -227,7 +229,6 @@ export function SponsorshipDiagnosisChat({
     onClose();
   };
 
-  const locale = useLocale((s) => s.locale);
   if (!open) return null;
 
   return (

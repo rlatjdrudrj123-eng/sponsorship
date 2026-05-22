@@ -164,7 +164,7 @@ export default function CartPage() {
               <span className="w-6 h-px bg-brand-500" />
               cart
             </div>
-            <h1 className="text-[36px] md:text-[64px] font-bold tracking-tight leading-[1.05] text-ink-900 flex items-center gap-3">
+            <h1 className="text-[32px] md:text-[56px] font-bold tracking-tight leading-[1.15] text-ink-900 flex items-center gap-3 break-keep">
               <Bookmark className="w-8 h-8 md:w-10 md:h-10 text-brand-500" fill="currentColor" />
               {t("cart.title", locale)}
             </h1>
@@ -196,7 +196,7 @@ export default function CartPage() {
                 type="button"
                 onClick={() => setCleanedCount(0)}
                 className="p-1 rounded hover:bg-amber-100 text-amber-700"
-                aria-label="알림 닫기"
+                aria-label={locale === "en" ? "Dismiss notification" : "알림 닫기"}
               >
                 <X className="w-3.5 h-3.5" />
               </button>

@@ -5,6 +5,8 @@ import Link from "next/link";
 import { Check, Sparkles, ShoppingBag } from "lucide-react";
 import type { Category, Package, Persona, Slot, Subcategory } from "@/lib/types";
 import { useCartStore } from "@/lib/cart/cartStore";
+import { localized, useLocale } from "@/lib/i18n/locale";
+import { krwToUsd } from "@/lib/price";
 
 /**
  * 페르소나 선택 시 결과 영역 상단에 노출되는 추천 배너.
@@ -33,6 +35,8 @@ export function PersonaRecommendation({
   const addPackage = useCartStore((s) => s.addPackage);
   const hasSlot = useCartStore((s) => s.hasSlot);
   const hasPackage = useCartStore((s) => s.hasPackage);
+  const locale = useLocale((s) => s.locale);
+  const isEn = locale === "en";
 
   const [added, setAdded] = useState<string[]>([]);
 
@@ -97,8 +101,8 @@ export function PersonaRecommendation({
         subcategoryId: sub.id,
         slotId: slot.id,
         code: slot.code,
-        label: c.name.ko,
-        sublabel: sub.name.ko,
+        label: localized(c.name, locale),
+        sublabel: localized(sub.name, locale),
         price: sub.priceKRW,
         eventId: c.eventId,
       });
@@ -110,7 +114,7 @@ export function PersonaRecommendation({
         key: `pkg:${p.id}`,
         packageId: p.id,
         code: p.code,
-        label: p.name.ko,
+        label: localized(p.name, locale),
         sublabel: p.tier === "signature" ? "Signature" : "Standard",
         price: p.discountPrice || p.originalPrice,
         eventId,
@@ -121,7 +125,11 @@ export function PersonaRecommendation({
 
     return {
       auto,
-      headline: cfg.headline ?? "당신 같은 회사가 보통 이렇게 합니다",
+      headline:
+        cfg.headline ??
+        (isEn
+          ? "Companies like yours usually go with this"
+          : "당신 같은 회사가 보통 이렇게 합니다"),
       rationale: cfg.rationale,
       picks,
       total,
@@ -134,6 +142,8 @@ export function PersonaRecommendation({
     slots,
     packages,
     eventId,
+    locale,
+    isEn,
   ]);
 
   const addAll = () => {
@@ -185,10 +195,10 @@ export function PersonaRecommendation({
         <div>
           <div className="font-num text-[10.5px] uppercase tracking-[0.3em] text-white/80 font-bold flex items-center gap-1.5">
             <Sparkles className="w-3 h-3" />
-            {persona.title} · 추천 코스
+            {persona.title} · {isEn ? "Recommended" : "추천 코스"}
             {combo.auto && (
               <span className="ml-1.5 text-[9px] bg-white/20 px-1.5 py-0.5 rounded-full normal-case tracking-normal">
-                자동 생성
+                {isEn ? "auto" : "자동 생성"}
               </span>
             )}
           </div>
@@ -203,13 +213,21 @@ export function PersonaRecommendation({
         </div>
         <div className="text-right">
           <div className="font-num text-[10px] uppercase tracking-widest text-white/70 font-bold">
-            예상 합계
+            {isEn ? "Estimated total" : "예상 합계"}
           </div>
           <div className="font-num text-[20px] md:text-[24px] font-bold leading-none mt-1">
-            {(combo.expectedKRW ?? combo.total).toLocaleString()}
-            <span className="text-[12px] ml-1 font-semibold">원</span>
+            {isEn ? (
+              `$${krwToUsd(combo.expectedKRW ?? combo.total).toLocaleString()}`
+            ) : (
+              <>
+                {(combo.expectedKRW ?? combo.total).toLocaleString()}
+                <span className="text-[12px] ml-1 font-semibold">원</span>
+              </>
+            )}
           </div>
-          <div className="text-[10px] text-white/70 mt-0.5">부가세 별도</div>
+          <div className="text-[10px] text-white/70 mt-0.5">
+            {isEn ? "VAT excluded" : "부가세 별도"}
+          </div>
         </div>
       </div>
 
@@ -249,11 +267,13 @@ export function PersonaRecommendation({
                   </span>
                 </div>
                 <span className="font-num text-[12.5px] font-bold text-ink-900 shrink-0">
-                  {p.price.toLocaleString()}원
+                  {isEn
+                    ? `$${krwToUsd(p.price).toLocaleString()}`
+                    : `${p.price.toLocaleString()}원`}
                 </span>
                 {justAdded && (
                   <span className="text-[10px] text-brand-500 font-num font-bold animate-pulse">
-                    +담음
+                    {isEn ? "+added" : "+담음"}
                   </span>
                 )}
               </li>
@@ -268,7 +288,7 @@ export function PersonaRecommendation({
             )}`}
             className="text-[12px] text-ink-500 hover:text-ink-900 font-semibold underline-offset-2 hover:underline"
           >
-            나란히 비교해서 보기 →
+            {isEn ? "Compare side-by-side →" : "나란히 비교해서 보기 →"}
           </Link>
           <button
             type="button"
@@ -283,8 +303,12 @@ export function PersonaRecommendation({
           >
             <ShoppingBag className="w-3.5 h-3.5" />
             {allInCart
-              ? "모두 카트에 담겨있어요"
-              : `이 ${combo.picks.length}개 한 번에 카트 담기`}
+              ? isEn
+                ? "All in cart"
+                : "모두 카트에 담겨있어요"
+              : isEn
+                ? `Add all ${combo.picks.length} to cart`
+                : `이 ${combo.picks.length}개 한 번에 카트 담기`}
           </button>
         </div>
       </div>

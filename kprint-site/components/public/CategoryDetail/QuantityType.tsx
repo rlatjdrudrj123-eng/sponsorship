@@ -4,6 +4,7 @@ import type { Category, SiteSettings, Slot, Subcategory } from "@/lib/types";
 import { Scaffold } from "./_shared/Scaffold";
 import { SlotPicker } from "./_shared/SlotPicker";
 import { ImageCarousel } from "./_shared/ImageCarousel";
+import { useLocale } from "@/lib/i18n/locale";
 
 type Props = {
   category: Category;
@@ -20,6 +21,7 @@ export function QuantityType({
   allCategories,
   settings,
 }: Props) {
+  const locale = useLocale((s) => s.locale);
   return (
     <Scaffold
       category={category}
@@ -47,7 +49,7 @@ export function QuantityType({
       {category.detailImages && category.detailImages.images.length > 0 && (
         <div>
           <h3 className="text-[10px] uppercase tracking-[0.2em] text-brand-700 font-bold mb-3">
-            디테일
+            {locale === "en" ? "Detail" : "디테일"}
           </h3>
           <ImageCarousel slot={category.detailImages} aspectRatio="aspect-[16/9]" />
         </div>

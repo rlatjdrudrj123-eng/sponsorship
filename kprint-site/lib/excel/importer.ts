@@ -253,6 +253,8 @@ function buildCategory(
       [...LOCKABLE_CATEGORY_FIELDS];
 
   // overwrite 모드는 카테고리 레벨 텍스트 필드까지 보존. merge는 여기 안 옴 (별도 경로).
+  // shortDesc / selectorId / timingOverride / locationOverride 는 엑셀 우선,
+  // 비어있으면 기존(preserved) 값 유지.
   const cat: Category = {
     id: ctx.newCategoryId,
     eventId: preserved?.eventId ?? ctx.eventId,
@@ -261,8 +263,17 @@ function buildCategory(
     type: parsed.type,
     slug: ctx.slug,
     name: { ko: parsed.nameKo, en: parsed.nameEn },
-    shortDesc: undefined, // 엑셀에 없음 — 어드민이 별도 입력
+    shortDesc: nz(parsed.shortDesc) ?? preserved?.shortDesc,
     longDesc: isOverwriteMode ? preserved?.longDesc : undefined,
+    selectorId: nz(parsed.selectorId) ?? preserved?.selectorId,
+    timingOverride:
+      parsed.timing.length > 0
+        ? (parsed.timing as Category["timingOverride"])
+        : preserved?.timingOverride,
+    locationOverride:
+      parsed.location.length > 0
+        ? (parsed.location as Category["locationOverride"])
+        : preserved?.locationOverride,
 
     size: nz(parsed.size),
     fileFormat: nz(parsed.fileFormat),

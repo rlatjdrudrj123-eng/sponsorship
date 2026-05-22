@@ -28,8 +28,13 @@ import type {
 import { derivePurposes } from "@/lib/purposes";
 import { PURPOSE_META } from "@/lib/types";
 import { Footer } from "@/components/public/Footer";
-import { useLocale } from "@/lib/i18n/locale";
+import { localized, useLocale } from "@/lib/i18n/locale";
 import { t } from "@/lib/i18n/strings";
+import {
+  getDisplayPrice,
+  getDisplayPackagePrice,
+  formatPrice,
+} from "@/lib/price";
 
 /**
  * 비교 페이지 — 카트에 담은 후보(또는 URL에 인코딩된 ids)를 나란히 비교.
@@ -176,6 +181,24 @@ function CompareContent() {
   const columns = useMemo<Column[]>(() => {
     if (!loaded) return [];
     const cols: Column[] = [];
+    const isEn = locale === "en";
+    const unitDefault = isEn ? "per slot" : "구좌당";
+    const negotiable = isEn ? "Contact us" : "협의";
+    const labelSlot = (sub: Subcategory | undefined): string => {
+      if (!sub || !sub.priceKRW) return negotiable;
+      const dp = getDisplayPrice(sub, locale);
+      const unit = localized(sub.unit, locale) || unitDefault;
+      return `${formatPrice(dp.value, dp.currency)} / ${unit}`;
+    };
+    const labelPkg = (pkg: Package): string => {
+      const dp = getDisplayPackagePrice(pkg, locale);
+      const main = formatPrice(dp.discount.value, dp.discount.currency);
+      if (dp.original.value > dp.discount.value) {
+        const orig = formatPrice(dp.original.value, dp.original.currency);
+        return isEn ? `${main} (was ${orig})` : `${main} (정가 ${orig})`;
+      }
+      return main;
+    };
     for (const it of items) {
       if (it.kind === "slot") {
         const slot = slots.get(it.id);
@@ -186,15 +209,15 @@ function CompareContent() {
         const purps = derivePurposes(cat);
         cols.push({
           key: `slot:${slot.id}`,
-          title: cat.name.ko,
+          title: localized(cat.name, locale),
           code: slot.code,
           kind: "slot",
           imageUrl: cat.heroImages?.images?.[0]?.url,
           priceKRW: sub?.priceKRW ?? 0,
-          priceLabel: sub?.priceKRW
-            ? `${sub.priceKRW.toLocaleString()}원 / ${sub.unit?.ko ?? "구좌당"}`
-            : "협의",
-          purposeLabels: purps.map((p) => PURPOSE_META[p].ko),
+          priceLabel: labelSlot(sub),
+          purposeLabels: purps.map((p) =>
+            isEn ? PURPOSE_META[p].en ?? PURPOSE_META[p].ko : PURPOSE_META[p].ko
+          ),
           timing: cat.timingOverride ?? [],
           location: cat.locationOverride ?? [],
           href: `/${eventId}/sponsorships?view=card&detail=${cat.slug}`,
@@ -203,7 +226,6 @@ function CompareContent() {
       } else if (it.kind === "cat") {
         const cat = categories.get(it.id);
         if (!cat) continue;
-        // 가용한 슬롯 + 최저가 소분류 자동 선정
         const catSubs = Array.from(subcategories.values())
           .filter((s) => s.categoryId === cat.id)
           .sort((a, b) => a.priceKRW - b.priceKRW);
@@ -211,15 +233,15 @@ function CompareContent() {
         const purps = derivePurposes(cat);
         cols.push({
           key: `cat:${cat.id}`,
-          title: cat.name.ko,
+          title: localized(cat.name, locale),
           code: cat.code,
           kind: "slot",
           imageUrl: cat.heroImages?.images?.[0]?.url,
           priceKRW: sub?.priceKRW ?? 0,
-          priceLabel: sub?.priceKRW
-            ? `${sub.priceKRW.toLocaleString()}원 / ${sub.unit?.ko ?? "구좌당"}`
-            : "협의",
-          purposeLabels: purps.map((p) => PURPOSE_META[p].ko),
+          priceLabel: labelSlot(sub),
+          purposeLabels: purps.map((p) =>
+            isEn ? PURPOSE_META[p].en ?? PURPOSE_META[p].ko : PURPOSE_META[p].ko
+          ),
           timing: cat.timingOverride ?? [],
           location: cat.locationOverride ?? [],
           href: `/${eventId}/sponsorships?view=card&detail=${cat.slug}`,
@@ -230,16 +252,12 @@ function CompareContent() {
         if (!pkg) continue;
         cols.push({
           key: `pkg:${pkg.id}`,
-          title: pkg.name.ko,
+          title: localized(pkg.name, locale),
           code: pkg.code,
           kind: "pkg",
           imageUrl: pkg.heroImages?.images?.[0]?.url,
           priceKRW: pkg.discountPrice,
-          priceLabel: `${pkg.discountPrice.toLocaleString()}원${
-            pkg.originalPrice > pkg.discountPrice
-              ? ` (정가 ${pkg.originalPrice.toLocaleString()}원)`
-              : ""
-          }`,
+          priceLabel: labelPkg(pkg),
           purposeLabels: [pkg.tier === "signature" ? "Signature" : "Standard"],
           timing: [],
           location: [],
@@ -248,7 +266,7 @@ function CompareContent() {
       }
     }
     return cols;
-  }, [loaded, items, categories, subcategories, slots, packages, eventId]);
+  }, [loaded, items, categories, subcategories, slots, packages, eventId, locale]);
 
   const totalKRW = columns.reduce((sum, c) => sum + c.priceKRW, 0);
 
@@ -302,7 +320,7 @@ function CompareContent() {
               <span className="w-6 h-px bg-brand-500" />
               compare
             </div>
-            <h1 className="text-[36px] md:text-[56px] font-bold tracking-tight leading-[1.05] text-ink-900">
+            <h1 className="text-[32px] md:text-[48px] font-bold tracking-tight leading-[1.15] text-ink-900 break-keep">
               {locale === "en"
                 ? `Comparing ${columns.length} items`
                 : `${columns.length}개 항목 비교`}
@@ -380,10 +398,16 @@ function CompareContent() {
                     {locale === "en" ? "Budget total" : "예산 합계"}
                   </div>
                   <div className="font-num text-[28px] md:text-[36px] font-bold text-ink-900 leading-none">
-                    {totalKRW.toLocaleString()}
-                    <span className="text-[16px] ml-1 font-semibold">
-                      {t("common.won", locale)}
-                    </span>
+                    {locale === "en" ? (
+                      formatPrice(Math.round(totalKRW / 1000), "USD")
+                    ) : (
+                      <>
+                        {totalKRW.toLocaleString()}
+                        <span className="text-[16px] ml-1 font-semibold">
+                          {t("common.won", locale)}
+                        </span>
+                      </>
+                    )}
                   </div>
                 </div>
                 <div className="text-[11px] text-ink-500">

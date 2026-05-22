@@ -43,6 +43,10 @@ type CatDef = {
   fileFormat?: string;
   deadline?: string;
   tags?: string;
+  shortDesc?: string;
+  selectorId?: string;
+  timing?: string;   // 콤마 구분: pre, onsite, post
+  location?: string; // 콤마 구분: hall_a, hall_b, ...
   subs: SubDef[];
 };
 
@@ -134,6 +138,10 @@ const CAT_DEFS: CatDef[] = [
     fileFormat: "AI, EPS, PDF",
     deadline: DEFAULT_DEADLINE,
     tags: "온사이트, 브랜드_확산형",
+    shortDesc: "입장 시 가장 먼저 시야에 들어오는 대형 매체 — 점유율 시각화",
+    selectorId: "ceiling_banner",
+    timing: "onsite",
+    location: "hall_a",
     subs: [
       {
         ko: "Hall A",
@@ -319,6 +327,10 @@ const CAT_DEFS: CatDef[] = [
     fileFormat: "AI, EPS, PDF",
     deadline: DEFAULT_DEADLINE,
     tags: "온사이트, 브랜드_확산형",
+    shortDesc: "각 홀 입구에 자리한 대형 라이팅 매체 — 시각 임팩트 명확",
+    selectorId: "lighting_wall",
+    timing: "onsite",
+    location: "hall_a, hall_b, hall_c, hall_d",
     subs: [
       {
         ko: "라이팅월",
@@ -386,6 +398,10 @@ const CAT_DEFS: CatDef[] = [
     fileFormat: "AI, EPS",
     deadline: "2026-01-15",
     tags: "온사이트, 등록경로, 브랜드_확산형",
+    shortDesc: "전 참관객이 행사 내내 휴대 — 노출 시간 압도적, 작년 베스트셀러",
+    selectorId: "visitor_lanyard",
+    timing: "onsite",
+    location: "hall_a, hall_b, hall_c, hall_d",
     subs: [
       {
         ko: "기본 5,000매",
@@ -954,6 +970,10 @@ function expandRows(defs: CatDef[]): RowDict[] {
           is_sold: slot.sold ? "TRUE" : "FALSE",
           note: slot.note ?? "",
           tags: cat.tags ?? "",
+          short_desc: cat.shortDesc ?? "",
+          selector_id: cat.selectorId ?? "",
+          timing: cat.timing ?? "",
+          location: cat.location ?? "",
         });
       });
     });
@@ -994,6 +1014,10 @@ const COLUMN_GUIDES: ColumnGuide[] = [
   { key: "is_sold", required: false, desc: "마감 여부", example: "FALSE", note: "TRUE / FALSE / 마감 / 가능 / Y / N" },
   { key: "note", required: false, desc: "위치 메모 / 비고", example: "A1 출입구 좌측", note: "도면형은 핀 위치 메모로 사용" },
   { key: "tags", required: false, desc: "태그 (콤마 구분)", example: "온사이트, 브랜드_확산형", note: "분류·태그에서 정의" },
+  { key: "short_desc", required: false, desc: "카테고리 한 줄 설명", example: "행사 입장 시 가장 먼저 시야에 들어오는 대형 매체", note: "공개 사이트 hero 영역에 노출" },
+  { key: "selector_id", required: false, desc: "진단 챗봇 매칭 키", example: "ceiling_banner", note: "비워두면 진단 추천에서 제외" },
+  { key: "timing", required: false, desc: "노출 시점 (콤마 구분)", example: "onsite", note: "pre / onsite / post — 여러 개 가능" },
+  { key: "location", required: false, desc: "위치 태그 (콤마 구분)", example: "hall_a, hall_b", note: "hall_a / hall_b / hall_c / hall_d / outdoor / online" },
 ];
 
 const CATEGORY_TYPE_GUIDES: Array<[string, string, string]> = [
@@ -1030,6 +1054,10 @@ const COL_WIDTHS: Partial<Record<ExcelHeader, number>> = {
   is_sold: 10,
   note: 24,
   tags: 32,
+  short_desc: 42,
+  selector_id: 22,
+  timing: 16,
+  location: 24,
 };
 
 const CATEGORY_TYPE_KEYS = CATEGORY_TYPE_GUIDES.map((g) => g[0]);

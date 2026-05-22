@@ -263,16 +263,19 @@ export default function CategoryEditPage() {
         const v = form.getValues();
         setSaveStatus("saving");
         try {
+          // 빈 값은 deleteField — updateDoc 의 undefined 는 무시되므로 명시 삭제 필요
           await updateDoc(doc(getDb(), "categories", id), {
             name: { ko: v.nameKo, en: v.nameEn },
             code: v.code,
             channel: v.channel,
             type: v.type,
             slug: v.slug,
-            shortDesc: v.shortDesc || undefined,
-            size: v.size || undefined,
-            fileFormat: v.fileFormat || undefined,
-            deadline: v.deadline ? Timestamp.fromDate(new Date(v.deadline)) : undefined,
+            shortDesc: v.shortDesc ? v.shortDesc : deleteField(),
+            size: v.size ? v.size : deleteField(),
+            fileFormat: v.fileFormat ? v.fileFormat : deleteField(),
+            deadline: v.deadline
+              ? Timestamp.fromDate(new Date(v.deadline))
+              : deleteField(),
             updatedAt: Timestamp.fromDate(new Date()),
           });
           setSaveStatus("saved");
@@ -562,9 +565,12 @@ export default function CategoryEditPage() {
                   fileUrl={category.designGuideFileUrl}
                   filePath={category.designGuideFilePath}
                   onChange={async (next) => {
+                    // null = 제거 — 진짜 필드 삭제 (updateDoc 의 undefined 는 무시되므로 deleteField 사용)
                     await updateDoc(doc(getDb(), "categories", id), {
-                      designGuideFileUrl: next?.url ?? undefined,
-                      designGuideFilePath: next?.path ?? undefined,
+                      designGuideFileUrl: next ? next.url : deleteField(),
+                      designGuideFilePath: next?.path
+                        ? next.path
+                        : deleteField(),
                       updatedAt: Timestamp.fromDate(new Date()),
                     });
                   }}

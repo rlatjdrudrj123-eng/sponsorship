@@ -5,6 +5,7 @@ import type { Category, SiteSettings, Slot, Subcategory } from "@/lib/types";
 import { Scaffold } from "./_shared/Scaffold";
 import { SlotPicker } from "./_shared/SlotPicker";
 import { ImageCarousel } from "./_shared/ImageCarousel";
+import { useLocale } from "@/lib/i18n/locale";
 
 type Props = {
   category: Category;
@@ -22,6 +23,8 @@ export function MailingType({
   settings,
 }: Props) {
   const spec = category.mailingSpec;
+  const locale = useLocale((s) => s.locale);
+  const isEn = locale === "en";
 
   return (
     <Scaffold
@@ -38,17 +41,21 @@ export function MailingType({
           {spec && (
             <div className="bg-brand-50 border border-brand-100 rounded-card p-5">
               <h3 className="text-[10px] uppercase tracking-[0.2em] text-brand-700 font-bold mb-3">
-                발송 정보
+                {isEn ? "Mailing info" : "발송 정보"}
               </h3>
               <div className="grid grid-cols-2 gap-3">
                 {spec.audience > 0 && (
                   <div>
                     <div className="flex items-center gap-1.5 text-[11px] text-brand-700">
-                      <Users className="w-3 h-3" /> 발송 대상
+                      <Users className="w-3 h-3" />
+                      {" "}
+                      {isEn ? "Audience" : "발송 대상"}
                     </div>
                     <div className="text-[20px] font-bold text-ink-900 mt-1 font-mono">
                       {spec.audience.toLocaleString()}
-                      <span className="text-[12px] font-normal ml-1">명</span>
+                      <span className="text-[12px] font-normal ml-1">
+                        {isEn ? "people" : "명"}
+                      </span>
                     </div>
                     {spec.audienceLabel && (
                       <div className="text-[11px] text-ink-500 mt-0.5">
@@ -60,7 +67,9 @@ export function MailingType({
                 {spec.sendDates?.length > 0 && (
                   <div>
                     <div className="flex items-center gap-1.5 text-[11px] text-brand-700">
-                      <Mail className="w-3 h-3" /> 발송일
+                      <Mail className="w-3 h-3" />
+                      {" "}
+                      {isEn ? "Send dates" : "발송일"}
                     </div>
                     <ul className="text-[12px] font-mono text-ink-900 mt-1 space-y-0.5">
                       {spec.sendDates.slice(0, 6).map((d, i) => (

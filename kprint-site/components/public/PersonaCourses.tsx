@@ -3,6 +3,7 @@
 import { useMemo } from "react";
 import { ArrowRight, Users } from "lucide-react";
 import type { Category, Package, Persona } from "@/lib/types";
+import { useLocale } from "@/lib/i18n/locale";
 
 /**
  * 페르소나 추천 코스 — sponsorships 페이지 상단.
@@ -36,6 +37,8 @@ export function PersonaCourses({
   /** 메인 CTA가 따로 있을 때 작게 표시 — 칩 스타일 */
   compact?: boolean;
 }) {
+  const locale = useLocale((s) => s.locale);
+  const isEn = locale === "en";
   const counts = useMemo(() => {
     const result: Record<string, number> = {};
     personas.forEach((p) => {
@@ -59,7 +62,7 @@ export function PersonaCourses({
         <div className="max-w-7xl mx-auto px-6 md:px-16 py-6 md:py-7">
           <div className="flex items-center gap-3 mb-3">
             <span className="text-[11px] uppercase tracking-[0.25em] text-ink-500 font-bold">
-              빠르게 페르소나로 둘러보기
+              {isEn ? "Quick browse by profile" : "빠르게 페르소나로 둘러보기"}
             </span>
             {selectedPersonaId && (
               <button
@@ -67,7 +70,7 @@ export function PersonaCourses({
                 onClick={onClear}
                 className="ml-auto text-[11.5px] text-ink-500 hover:text-ink-900 font-semibold underline-offset-2 hover:underline"
               >
-                전체 다시 보기
+                {isEn ? "Show all" : "전체 다시 보기"}
               </button>
             )}
           </div>
@@ -115,14 +118,17 @@ export function PersonaCourses({
           <div>
             <div className="font-num text-[11px] uppercase tracking-[0.3em] text-brand-500 font-bold flex items-center gap-2">
               <span className="w-6 h-px bg-brand-500" />
-              어떤 회사세요?
+              {isEn ? "What kind of company?" : "어떤 회사세요?"}
             </div>
             <h2 className="text-[24px] md:text-[32px] font-bold text-ink-900 mt-2 tracking-tight">
-              상황에 맞는 스폰서십을 추려드릴게요
+              {isEn
+                ? "We'll narrow down sponsorships that fit your situation"
+                : "상황에 맞는 스폰서십을 추려드릴게요"}
             </h2>
             <p className="text-[13px] md:text-[14px] text-ink-500 mt-1.5 max-w-xl">
-              가장 가까운 카드를 고르면 사이드바 필터가 자동 적용되고, 그 페르소나가
-              작년 어떤 조합을 선택했는지 보여드려요. 그대로 카트에 담을 수도 있어요.
+              {isEn
+                ? "Pick the closest card — the sidebar filters auto-apply and you'll see what combos this kind of company picked last year, ready to add to cart."
+                : "가장 가까운 카드를 고르면 사이드바 필터가 자동 적용되고, 그 페르소나가 작년 어떤 조합을 선택했는지 보여드려요. 그대로 카트에 담을 수도 있어요."}
             </p>
           </div>
           {selectedPersonaId && (
@@ -131,7 +137,7 @@ export function PersonaCourses({
               onClick={onClear}
               className="text-[12px] text-ink-500 hover:text-ink-900 font-semibold underline-offset-2 hover:underline"
             >
-              전체 다시 보기
+              {isEn ? "Show all" : "전체 다시 보기"}
             </button>
           )}
         </div>
@@ -167,7 +173,9 @@ export function PersonaCourses({
                         (isActive ? "text-white/85" : "text-ink-300")
                       }
                     >
-                      {counts[p.id] ?? 0}개 매칭
+                      {isEn
+                        ? `${counts[p.id] ?? 0} matches`
+                        : `${counts[p.id] ?? 0}개 매칭`}
                     </span>
                   </div>
                   <div className="text-[15px] font-bold leading-tight tracking-tight mt-2">
@@ -225,10 +233,10 @@ export function PersonaCourses({
                     }
                   >
                     {isActive ? (
-                      <span>선택됨 ✓</span>
+                      <span>{isEn ? "Selected ✓" : "선택됨 ✓"}</span>
                     ) : (
                       <>
-                        이 페르소나로 보기
+                        {isEn ? "View this profile" : "이 페르소나로 보기"}
                         <ArrowRight className="w-3.5 h-3.5 ml-1 group-hover:translate-x-0.5 transition-transform" />
                       </>
                     )}
@@ -241,7 +249,9 @@ export function PersonaCourses({
         {/* 선택된 페르소나의 추천 콤보 — 결과 배너 (페이지 본체에서 별도 컴포넌트로 노출) */}
         {active && active.recommendedCombo && (
           <p className="mt-4 text-[11.5px] text-ink-500">
-            ↓ 결과 영역에서 이 페르소나의 추천 콤보를 확인하세요.
+            {isEn
+              ? "↓ See this profile's recommended combo in the results area."
+              : "↓ 결과 영역에서 이 페르소나의 추천 콤보를 확인하세요."}
           </p>
         )}
       </div>
