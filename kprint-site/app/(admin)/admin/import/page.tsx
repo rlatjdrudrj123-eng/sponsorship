@@ -7,6 +7,7 @@ import {
   ChevronRight,
   Download,
   FileSpreadsheet,
+  Upload,
 } from "lucide-react";
 import { onAuthChange } from "@/lib/firebase/auth";
 import { useEventFilter } from "@/lib/admin/useEventFilter";
@@ -16,6 +17,7 @@ import {
   type ExcelHeader,
 } from "@/lib/excel/parser";
 import { downloadTemplate } from "@/lib/excel/template";
+import { downloadExport } from "@/lib/excel/exporter";
 import {
   importParsedData,
   type ImportMode,
@@ -46,6 +48,7 @@ export default function ImportPage() {
   const [adminEmail, setAdminEmail] = useState<string>("");
   const [historyKey, setHistoryKey] = useState(0);
   const [downloadingTemplate, setDownloadingTemplate] = useState(false);
+  const [downloadingExport, setDownloadingExport] = useState(false);
   const { eventId } = useEventFilter();
 
   const handleDownloadTemplate = async () => {
@@ -57,6 +60,22 @@ export default function ImportPage() {
       alert(`엑셀 양식 생성 실패: ${e instanceof Error ? e.message : String(e)}`);
     } finally {
       setDownloadingTemplate(false);
+    }
+  };
+
+  const handleDownloadExport = async () => {
+    if (downloadingExport) return;
+    if (!eventId) {
+      alert("상단 셀렉터에서 행사를 먼저 선택하세요.");
+      return;
+    }
+    setDownloadingExport(true);
+    try {
+      await downloadExport(eventId);
+    } catch (e) {
+      alert(`엑셀 내보내기 실패: ${e instanceof Error ? e.message : String(e)}`);
+    } finally {
+      setDownloadingExport(false);
     }
   };
 
@@ -150,7 +169,7 @@ export default function ImportPage() {
 
   return (
     <div className="space-y-5">
-      <header className="flex items-start justify-between gap-4">
+      <header className="flex items-start justify-between gap-4 flex-wrap">
         <div>
           <h1 className="text-[22px] font-bold text-ink-900 leading-tight">
             엑셀 일괄 등록
@@ -159,15 +178,27 @@ export default function ImportPage() {
             기존 사무국 엑셀 양식 그대로 올리면 스폰서십 매체·구좌 분류·구좌가 한 번에 생성됩니다.
           </p>
         </div>
-        <button
-          type="button"
-          onClick={handleDownloadTemplate}
-          disabled={downloadingTemplate}
-          className="px-3.5 py-2 rounded-btn border border-ink-100 text-[13px] font-semibold text-ink-900 hover:bg-ink-50 flex items-center gap-1.5 shrink-0 disabled:opacity-50"
-        >
-          <Download className="w-4 h-4" />
-          {downloadingTemplate ? "생성 중…" : "엑셀 양식 다운로드"}
-        </button>
+        <div className="flex items-center gap-2 shrink-0">
+          <button
+            type="button"
+            onClick={handleDownloadExport}
+            disabled={downloadingExport || !eventId}
+            title={!eventId ? "행사를 먼저 선택하세요" : ""}
+            className="px-3.5 py-2 rounded-btn border border-ink-100 text-[13px] font-semibold text-ink-900 hover:bg-ink-50 flex items-center gap-1.5 disabled:opacity-50"
+          >
+            <Upload className="w-4 h-4 -rotate-90" />
+            {downloadingExport ? "내보내는 중…" : "현재 데이터 내보내기"}
+          </button>
+          <button
+            type="button"
+            onClick={handleDownloadTemplate}
+            disabled={downloadingTemplate}
+            className="px-3.5 py-2 rounded-btn border border-ink-100 text-[13px] font-semibold text-ink-900 hover:bg-ink-50 flex items-center gap-1.5 disabled:opacity-50"
+          >
+            <Download className="w-4 h-4" />
+            {downloadingTemplate ? "생성 중…" : "엑셀 양식 다운로드"}
+          </button>
+        </div>
       </header>
 
       <div className="grid grid-cols-[1fr_320px] gap-5 items-start">

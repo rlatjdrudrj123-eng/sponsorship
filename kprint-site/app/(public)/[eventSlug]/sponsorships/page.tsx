@@ -430,7 +430,6 @@ export default function SponsorshipsPage() {
           onResetFilters={resetFilters}
           hasActiveFilter={hasActiveFilter}
           eventId={eventId}
-          onOpenDetail={setDetailModalSlug}
           onOpenPackage={setSelectedPackageId}
           typeLayouts={settings?.typeLayouts}
           bundledPerks={settings?.bundledPerks}
@@ -928,7 +927,6 @@ export default function SponsorshipsPage() {
             onPrev={goPrev}
             onNext={goNext}
             onClose={() => setDetailModalSlug(null)}
-            onOpenDetail={setDetailModalSlug}
             typeLayouts={settings?.typeLayouts}
             bundledPerks={settings?.bundledPerks}
           />
@@ -947,7 +945,6 @@ function DetailSlideModal({
   onPrev,
   onNext,
   onClose,
-  onOpenDetail,
   typeLayouts,
   bundledPerks,
 }: {
@@ -959,7 +956,6 @@ function DetailSlideModal({
   onPrev?: () => void;
   onNext?: () => void;
   onClose: () => void;
-  onOpenDetail: (slug: string) => void;
   typeLayouts?: SiteSettings["typeLayouts"];
   bundledPerks?: SiteSettings["bundledPerks"];
 }) {
@@ -1067,9 +1063,7 @@ function DetailSlideModal({
             slots={slots}
             index={index}
             total={total}
-            onOpenDetail={onOpenDetail}
             inModal
-            hideDetailButton
             typeLayouts={typeLayouts}
             bundledPerks={bundledPerks}
           />
@@ -1909,7 +1903,6 @@ function SlideStream({
   onResetFilters,
   hasActiveFilter,
   eventId,
-  onOpenDetail,
   onOpenPackage,
   typeLayouts,
   bundledPerks,
@@ -1927,7 +1920,6 @@ function SlideStream({
   onResetFilters: () => void;
   hasActiveFilter: boolean;
   eventId: string;
-  onOpenDetail: (slug: string) => void;
   onOpenPackage: (pkgId: string) => void;
   typeLayouts?: SiteSettings["typeLayouts"];
   bundledPerks?: SiteSettings["bundledPerks"];
@@ -2107,10 +2099,8 @@ function SlideStream({
                   slots={catSlots}
                   index={i}
                   total={items.length}
-                  onOpenDetail={onOpenDetail}
                   typeLayouts={typeLayouts}
                   bundledPerks={bundledPerks}
-                  hideDetailButton
                 />
               </div>
             );
@@ -2533,9 +2523,7 @@ function SlideSection({
   slots,
   index,
   total,
-  onOpenDetail,
   inModal = false,
-  hideDetailButton = false,
   typeLayouts,
   bundledPerks,
 }: {
@@ -2544,11 +2532,8 @@ function SlideSection({
   slots: Slot[];
   index: number;
   total: number;
-  onOpenDetail: (slug: string) => void;
   /** 자연 height 모드. true 면 h-screen / snap-start / overflow-hidden 가 빠져, 부모 컨테이너(모달 또는 자유 스크롤 영역) 가 스크롤을 처리. */
   inModal?: boolean;
-  /** "자세히 보기" 버튼 숨김 — 모달 안 또는 슬라이드 페이지처럼 이미 자세한 화면일 때 */
-  hideDetailButton?: boolean;
   /** SiteSettings.typeLayouts — 유형별 스펙 행 순서/노출 override */
   typeLayouts?: SiteSettings["typeLayouts"];
   /** SiteSettings.bundledPerks — 스폰서십 신청 시 동봉되는 추가 혜택 */
@@ -2701,8 +2686,12 @@ function SlideSection({
             </div>
           </div>
 
-          {/* CTA — 도면 있으면 위치 보기, 없고 모달 외부면 자세히 보기 */}
-          <div className="mt-2.5 grid grid-cols-2 gap-2">
+          {/* CTA — 구좌 선택 (+ 도면 있으면 위치 보기). 자세히 보기 제거 — 슬라이드 자체가 상세 */}
+          <div
+            className={
+              "mt-2.5 grid gap-2 " + (hasFloorImages ? "grid-cols-2" : "grid-cols-1")
+            }
+          >
             <button
               type="button"
               onClick={() => setPickerOpen(true)}
@@ -2710,7 +2699,7 @@ function SlideSection({
             >
               {locale === "en" ? "Select slot" : "구좌 선택"}
             </button>
-            {hasFloorImages ? (
+            {hasFloorImages && (
               <button
                 type="button"
                 onClick={() => setFloorOpen(true)}
@@ -2718,15 +2707,7 @@ function SlideSection({
               >
                 {locale === "en" ? "View location" : "위치 보기"}
               </button>
-            ) : !hideDetailButton ? (
-              <button
-                type="button"
-                onClick={() => onOpenDetail(item.slug)}
-                className="h-10 rounded-btn border-2 border-ink-900 text-ink-900 font-bold text-[12.5px]"
-              >
-                {locale === "en" ? "Details" : "자세히 보기"}
-              </button>
-            ) : null}
+            )}
           </div>
 
           {/* 스펙 — 어드민 type-layout 의 specFields 따라 최대 3개, 각 행 한 줄 truncate */}
@@ -3317,7 +3298,8 @@ function SlideSection({
               </div>
             )}
 
-            {/* 버튼: 구좌 선택 / [위치 보기 (도면 있을 때만)] / [자세히 보기 — 모달 외부에서만] / 가이드 다운로드.
+            {/* 버튼: 구좌 선택 / [위치 보기 (도면 있을 때만)] / 가이드 다운로드.
+                자세히 보기 제거 — 카드 자체가 이미 상세 정보 노출.
                 모바일은 세로 스택, 데스크톱은 가로 */}
             <div className="mt-4 flex flex-col sm:flex-row gap-2 sm:gap-3">
               <button
@@ -3334,15 +3316,6 @@ function SlideSection({
                   className="flex-1 h-12 rounded-btn border-2 border-ink-900 text-ink-900 hover:bg-ink-900 hover:text-white font-bold text-[13.5px] transition-colors"
                 >
                   {locale === "en" ? "View location" : "위치 보기"}
-                </button>
-              )}
-              {!hideDetailButton && (
-                <button
-                  type="button"
-                  onClick={() => onOpenDetail(item.slug)}
-                  className="flex-1 h-12 rounded-btn border-2 border-ink-900 text-ink-900 hover:bg-ink-900 hover:text-white font-bold text-[13.5px] transition-colors"
-                >
-                  {locale === "en" ? "Details" : "자세히 보기"}
                 </button>
               )}
               {item.designGuideFileUrl && (
@@ -3427,10 +3400,6 @@ function SlideSection({
           subcategories={subcategories}
           slots={slots}
           onClose={() => setPickerOpen(false)}
-          onOpenDetail={(slug) => {
-            setPickerOpen(false);
-            onOpenDetail(slug);
-          }}
         />
       )}
 
@@ -3595,13 +3564,11 @@ function SlotPickerModal({
   subcategories,
   slots,
   onClose,
-  onOpenDetail,
 }: {
   item: EnrichedCategory;
   subcategories: Subcategory[];
   slots: Slot[];
   onClose: () => void;
-  onOpenDetail: (slug: string) => void;
 }) {
   const locale = useLocale((s) => s.locale);
   useEffect(() => {
@@ -3657,20 +3624,12 @@ function SlotPickerModal({
             slots={slots}
           />
         </div>
-        <footer className="px-6 py-4 border-t border-ink-100 flex items-center justify-between gap-3 flex-wrap shrink-0">
+        <footer className="px-6 py-4 border-t border-ink-100 shrink-0">
           <p className="text-[11.5px] text-ink-500">
             {locale === "en"
               ? "Click a slot to add to cart — check the top-right."
               : "구좌를 클릭하면 카트에 담기고, 우상단에서 확인할 수 있어요."}
           </p>
-          <button
-            type="button"
-            onClick={() => onOpenDetail(item.slug)}
-            className="text-[12.5px] font-num font-bold text-brand-500 hover:text-brand-700 flex items-center gap-1"
-          >
-            {locale === "en" ? "Details" : "자세히 보기"}
-            <ArrowRight className="w-3.5 h-3.5" />
-          </button>
         </footer>
       </div>
     </div>

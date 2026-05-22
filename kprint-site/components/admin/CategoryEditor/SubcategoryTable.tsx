@@ -81,7 +81,13 @@ function SubcategoryRow({
   return (
     <tr className="border-t border-ink-100 hover:bg-ink-50/40">
       <td className="px-3 py-2.5">
-        <div className="text-ink-900">{sub.name.ko || "(기본)"}</div>
+        <InlineEdit
+          subcategoryId={sub.id}
+          field="name.ko"
+          value={sub.name?.ko ?? ""}
+          placeholder="(기본)"
+          width="w-36"
+        />
       </td>
       <td className="px-3 py-2.5">
         <InlineEdit
@@ -147,7 +153,7 @@ function InlineEdit({
   align = "left",
 }: {
   subcategoryId: string;
-  field: "priceKRW" | "priceUSD" | "unit.ko";
+  field: "priceKRW" | "priceUSD" | "unit.ko" | "name.ko";
   value: number | string;
   numeric?: boolean;
   placeholder?: string;
@@ -186,9 +192,9 @@ function InlineEdit({
         } else {
           payload = { [field]: num };
         }
-      } else if (field === "unit.ko") {
+      } else if (field === "unit.ko" || field === "name.ko") {
         // nested field — dot notation 으로 부분 업데이트
-        payload = { "unit.ko": raw };
+        payload = { [field]: raw };
       } else {
         payload = { [field]: raw };
       }
