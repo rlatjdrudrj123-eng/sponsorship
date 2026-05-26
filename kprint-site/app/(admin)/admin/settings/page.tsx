@@ -157,7 +157,8 @@ export default function SettingsPage() {
     setPdfUploadError(null);
     setPdfUploadPct(0);
     try {
-      const path = `siteSettings/${eventId}/pdf/full-${Date.now()}.pdf`;
+      // storage.rules 에 이미 허용된 settings/ 경로 사용 (siteSettings/ 는 룰에 없어서 막힘)
+      const path = `settings/${eventId}/pdf/full-${Date.now()}.pdf`;
       const result = await uploadFile(file, path, (pct) => setPdfUploadPct(pct));
       const now = Timestamp.now();
       // 이전 파일 삭제 (있으면)
