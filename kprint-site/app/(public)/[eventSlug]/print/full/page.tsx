@@ -1025,6 +1025,12 @@ function CategorySlide({
     .filter((p) => p > 0);
   const minPriceUSD = usdPrices.length > 0 ? Math.min(...usdPrices) : 0;
 
+  // 가격이 subcategory 별로 다른지 — 다양하면 우하단에 리스트로 표시.
+  // 영업 데크라 가격 정보 누락 없어야 함.
+  const pricedSubs = subs.filter((s) => s.priceKRW > 0);
+  const uniqueKrwPrices = new Set(pricedSubs.map((s) => s.priceKRW));
+  const hasVariedPricing = uniqueKrwPrices.size >= 2;
+
   const hashTags: string[] = [
     CHANNEL_LABELS[category.channel][locale === "en" ? "en" : "ko"],
     ...(category.tags ?? []).slice(0, 2),
@@ -1230,28 +1236,72 @@ function CategorySlide({
             <hr className="border-ink-100 mb-5" />
             <div className="flex items-end justify-end">
               {(locale === "en" ? minPriceUSD : minPrice) > 0 ? (
-                <div className="text-right">
-                  <div className="font-num text-[32px] font-bold text-ink-900 leading-none tracking-tight">
-                    <span className="text-[16px] font-semibold mr-2">
-                      {locale === "en" ? "Per slot" : "1구좌당"}
-                    </span>
-                    {locale === "en" && (
-                      <span className="text-[22px] mr-0.5">$</span>
-                    )}
-                    {(locale === "en"
-                      ? minPriceUSD
-                      : minPrice
-                    ).toLocaleString()}
-                    {locale !== "en" && (
-                      <span className="text-[18px] ml-1 font-bold">원</span>
-                    )}
+                hasVariedPricing ? (
+                  // subcategory 별 가격 다양 — 모든 가격을 리스트로 노출
+                  <div className="text-right">
+                    <div className="space-y-1.5">
+                      {pricedSubs.map((s) => {
+                        const priceUsd =
+                          typeof s.priceUSD === "number" && s.priceUSD > 0
+                            ? s.priceUSD
+                            : Math.round(s.priceKRW / 1000);
+                        return (
+                          <div
+                            key={s.id}
+                            className="flex items-baseline justify-end gap-4"
+                          >
+                            <span className="text-[12px] text-ink-500 truncate max-w-[180px]">
+                              {localizedHelper(s.name, locale)}
+                            </span>
+                            <span className="font-num text-[20px] font-bold text-ink-900 leading-none tracking-tight">
+                              {locale === "en" && (
+                                <span className="text-[15px] mr-0.5">$</span>
+                              )}
+                              {(locale === "en"
+                                ? priceUsd
+                                : s.priceKRW
+                              ).toLocaleString()}
+                              {locale !== "en" && (
+                                <span className="text-[13px] ml-1 font-bold">
+                                  원
+                                </span>
+                              )}
+                            </span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                    <p className="text-[11px] text-ink-500 mt-3">
+                      {locale === "en"
+                        ? "(Production & install included, VAT excluded)"
+                        : "(제작설치비 포함, 부가세 별도)"}
+                    </p>
                   </div>
-                  <p className="text-[11px] text-ink-500 mt-2">
-                    {locale === "en"
-                      ? "(Production & install included, VAT excluded)"
-                      : "(제작설치비 포함, 부가세 별도)"}
-                  </p>
-                </div>
+                ) : (
+                  // 가격 단일 — 기존 큰 글씨 한 줄
+                  <div className="text-right">
+                    <div className="font-num text-[32px] font-bold text-ink-900 leading-none tracking-tight">
+                      <span className="text-[16px] font-semibold mr-2">
+                        {locale === "en" ? "Per slot" : "1구좌당"}
+                      </span>
+                      {locale === "en" && (
+                        <span className="text-[22px] mr-0.5">$</span>
+                      )}
+                      {(locale === "en"
+                        ? minPriceUSD
+                        : minPrice
+                      ).toLocaleString()}
+                      {locale !== "en" && (
+                        <span className="text-[18px] ml-1 font-bold">원</span>
+                      )}
+                    </div>
+                    <p className="text-[11px] text-ink-500 mt-2">
+                      {locale === "en"
+                        ? "(Production & install included, VAT excluded)"
+                        : "(제작설치비 포함, 부가세 별도)"}
+                    </p>
+                  </div>
+                )
               ) : (
                 <div className="text-[14px] text-ink-500 font-semibold">
                   {locale === "en" ? "Negotiable" : "가격 협의"}
