@@ -107,10 +107,10 @@ export default function LandingPrintPage() {
 
     const waitAllImages = async () => {
       // IO mock 의 microtask + Reveal 의 setState 가 다 흘러간 후 시작
-      await new Promise((r) => setTimeout(r, 600));
+      await new Promise((r) => setTimeout(r, 800));
       // 캔버스 스케일도 한 번 더 보정 — 마지막 페이지 layout 안 잡힌 케이스
       window.dispatchEvent(new Event("resize"));
-      await new Promise((r) => setTimeout(r, 200));
+      await new Promise((r) => setTimeout(r, 300));
 
       // lazy 이미지를 모두 eager 로 강제 변환 — PDF 인쇄 시점에 viewport 밖
       // 슬라이드 이미지가 아직 src 요청도 안 한 상태라 빈 칸으로 인쇄되는 이슈 회피.
@@ -142,8 +142,8 @@ export default function LandingPrintPage() {
             };
             img.addEventListener("load", done, { once: true });
             img.addEventListener("error", done, { once: true });
-            // 안전망 — 20초 안에 안 끝나면 그냥 진행 (35페이지 전부 다운로드 시간)
-            setTimeout(done, 20000);
+            // 안전망 — 40초 안에 안 끝나면 그냥 진행 (35페이지 전부 다운로드 시간)
+            setTimeout(done, 40000);
           });
         })
       );
@@ -155,7 +155,12 @@ export default function LandingPrintPage() {
           /* noop */
         }
       }
-      // 페인트 한 프레임 더 기다리고 print
+      // 이미지 로드 후 캔버스 스케일/레이아웃 한 번 더 재계산 — 이미지 natural dim 이
+      // 늦게 잡혀 layout 변동된 슬라이드 보정
+      window.dispatchEvent(new Event("resize"));
+      await new Promise((r) => setTimeout(r, 400));
+      // 페인트 2 프레임 — 캔버스 transform: scale 적용 + 렌더링 안정화
+      await new Promise((r) => requestAnimationFrame(() => r(null)));
       await new Promise((r) => requestAnimationFrame(() => r(null)));
       if (!cancelled) {
         setImgProgress((p) => ({ ...p, printing: true }));

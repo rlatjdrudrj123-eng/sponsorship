@@ -157,35 +157,52 @@ function CanvasDesktop({
  * - naturalScale = min(부모폭/캔버스폭, 부모높이/캔버스높이) — 비율 유지하며 부모 안에 들어가는 최대 크기
  * - scale = max(naturalScale, MIN_SCALE) — 단, MIN_SCALE 이하로는 떨어지지 않게 클램프
  *   클램프가 걸리면 캔버스가 부모보다 넓어지고, 부모의 overflow-x-auto 가 가로 스크롤 제공
+ *
+ * ResizeObserver 로 각 wrap 의 layout 변화를 자동 추적 — PDF 출력처럼 여러 wrap 이
+ * 동시에 마운트되어 일부가 첫 측정 시 0 으로 잡히는 케이스도 자동 재계산됨.
  */
 function CanvasScale() {
   useEffect(() => {
-    const update = () => {
-      document
-        .querySelectorAll<HTMLElement>(".canvas-page-wrap")
-        .forEach((wrap) => {
-          const pw = wrap.clientWidth;
-          const ph = wrap.clientHeight;
-          if (pw === 0 || ph === 0) return;
-          const naturalScale = Math.min(pw / CANVAS_W, ph / CANVAS_H);
-          // fitOnly=1 이면 MIN_SCALE 클램프 무시 — 모바일 viewport 에서도 캔버스를
-          // 통째로 contain (가로 스크롤 없이 중앙에 작게).
-          const minScale = wrap.dataset.fitOnly === "1" ? 0 : MIN_SCALE;
-          const scale = Math.max(naturalScale, minScale);
-          const dispW = CANVAS_W * scale;
-          const dispH = CANVAS_H * scale;
-          wrap.style.setProperty("--canvas-scale", String(scale));
-          wrap.style.setProperty("--canvas-disp-w", `${dispW}px`);
-          wrap.style.setProperty("--canvas-disp-h", `${dispH}px`);
-        });
+    const computeFor = (wrap: HTMLElement) => {
+      const pw = wrap.clientWidth;
+      const ph = wrap.clientHeight;
+      if (pw === 0 || ph === 0) return; // 아직 layout 안 잡힘 — RO 가 곧 다시 호출
+      const naturalScale = Math.min(pw / CANVAS_W, ph / CANVAS_H);
+      const minScale = wrap.dataset.fitOnly === "1" ? 0 : MIN_SCALE;
+      const scale = Math.max(naturalScale, minScale);
+      const dispW = CANVAS_W * scale;
+      const dispH = CANVAS_H * scale;
+      wrap.style.setProperty("--canvas-scale", String(scale));
+      wrap.style.setProperty("--canvas-disp-w", `${dispW}px`);
+      wrap.style.setProperty("--canvas-disp-h", `${dispH}px`);
     };
-    update();
-    window.addEventListener("resize", update);
-    // 폰트 로드·이미지 로드 등으로 레이아웃이 늦게 잡힐 때 한 번 더
-    const t = setTimeout(update, 200);
+
+    const wraps = Array.from(
+      document.querySelectorAll<HTMLElement>(".canvas-page-wrap")
+    );
+    wraps.forEach(computeFor);
+
+    // 각 wrap 마다 ResizeObserver — layout 변화 시 자동 재계산. PDF 출력처럼
+    // 여러 캔버스가 한꺼번에 마운트되어 일부가 첫 측정 시 0 으로 잡혀도, layout 이
+    // 잡히는 순간 RO 가 다시 트리거됨.
+    const ro = new ResizeObserver((entries) => {
+      entries.forEach((e) => computeFor(e.target as HTMLElement));
+    });
+    wraps.forEach((w) => ro.observe(w));
+
+    // resize 이벤트도 listen — 브라우저 인쇄 모드 진입 시 viewport 가 변화함
+    const onResize = () => wraps.forEach(computeFor);
+    window.addEventListener("resize", onResize);
+
+    // 폰트/이미지 늦게 로드되어도 한 번 더
+    const t1 = setTimeout(() => wraps.forEach(computeFor), 200);
+    const t2 = setTimeout(() => wraps.forEach(computeFor), 1500);
+
     return () => {
-      window.removeEventListener("resize", update);
-      clearTimeout(t);
+      ro.disconnect();
+      window.removeEventListener("resize", onResize);
+      clearTimeout(t1);
+      clearTimeout(t2);
     };
   }, []);
   return null;

@@ -237,9 +237,9 @@ function FullPrintContent() {
 
     const waitAllImages = async () => {
       // IO mock 의 microtask + Reveal/캔버스 마운트 완료 대기
-      await new Promise((r) => setTimeout(r, 600));
+      await new Promise((r) => setTimeout(r, 800));
       window.dispatchEvent(new Event("resize")); // 캔버스 스케일 재계산
-      await new Promise((r) => setTimeout(r, 200));
+      await new Promise((r) => setTimeout(r, 300));
 
       // lazy 이미지를 eager 로 강제 변환 — viewport 밖 슬라이드도 즉시 fetch 시작
       document.querySelectorAll<HTMLImageElement>("img").forEach((img) => {
@@ -268,7 +268,8 @@ function FullPrintContent() {
             };
             img.addEventListener("load", done, { once: true });
             img.addEventListener("error", done, { once: true });
-            setTimeout(done, 20000);
+            // 35페이지 PDF — 느린 네트워크 + 많은 이미지 고려해 40초로 확장
+            setTimeout(done, 40000);
           });
         })
       );
@@ -279,6 +280,11 @@ function FullPrintContent() {
           /* noop */
         }
       }
+      // 이미지 로드 후 캔버스 스케일/레이아웃 한 번 더 재계산 (이미지 dimension 변동분)
+      window.dispatchEvent(new Event("resize"));
+      await new Promise((r) => setTimeout(r, 400));
+      // 페인트 2 프레임 — 캔버스 transform: scale 적용 + 렌더링 안정화
+      await new Promise((r) => requestAnimationFrame(() => r(null)));
       await new Promise((r) => requestAnimationFrame(() => r(null)));
       if (!cancelled) {
         setImgProgress((p) => ({ ...p, printing: true }));
