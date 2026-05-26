@@ -8,8 +8,10 @@ import {
   doc,
   getDocs,
   onSnapshot,
+  query,
   Timestamp,
   updateDoc,
+  where,
 } from "firebase/firestore";
 import {
   AlertCircle,
@@ -60,14 +62,18 @@ export default function InquiryDetailPage() {
     return () => u();
   }, [id]);
 
-  // Load context for cart resolution
+  // Load context for cart resolution — inquiry.eventId 기준으로만 fetch.
+  // 다른 행사 카테고리·패키지가 cart 해석에 섞이지 않도록 행사 분리 보장.
   useEffect(() => {
+    const eventId = inquiry?.eventId;
+    if (!eventId) return;
     (async () => {
       try {
+        const db = getDb();
         const [c, s, p] = await Promise.all([
-          getDocs(collection(getDb(), "categories")),
-          getDocs(collection(getDb(), "subcategories")),
-          getDocs(collection(getDb(), "packages")),
+          getDocs(query(collection(db, "categories"), where("eventId", "==", eventId))),
+          getDocs(query(collection(db, "subcategories"), where("eventId", "==", eventId))),
+          getDocs(query(collection(db, "packages"), where("eventId", "==", eventId))),
         ]);
         setCategories(c.docs.map((d) => ({ ...(d.data() as Category), id: d.id })));
         setSubcategories(s.docs.map((d) => ({ ...(d.data() as Subcategory), id: d.id })));
@@ -76,7 +82,7 @@ export default function InquiryDetailPage() {
         // ignore
       }
     })();
-  }, []);
+  }, [inquiry?.eventId]);
 
   const catById = useMemo(() => new Map(categories.map((c) => [c.id, c])), [categories]);
   const subById = useMemo(() => new Map(subcategories.map((s) => [s.id, s])), [subcategories]);

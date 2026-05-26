@@ -15,9 +15,11 @@ import {
   setDoc,
   Timestamp,
   updateDoc,
+  where,
 } from "firebase/firestore";
 import { ArrowLeft } from "lucide-react";
 import { getDb } from "@/lib/firebase/firestore";
+import { useEventFilter } from "@/lib/admin/useEventFilter";
 import {
   EMPTY_FORM_VALUES,
   SponsorForm,
@@ -31,6 +33,9 @@ export default function NewSponsorPage() {
   const search = useSearchParams();
   const inquiryId = search.get("inquiryId");
   const presetEvent = search.get("event");
+  // 라이브러리 fetch 용 — preset query param 우선, 없으면 헤더 행사 셀렉터.
+  const headerEventId = useEventFilter().eventId;
+  const libraryEventId = presetEvent || headerEventId || "";
 
   const [events, setEvents] = useState<Event[]>([]);
   const [initial, setInitial] = useState<SponsorFormValues | null>(null);
@@ -48,15 +53,22 @@ export default function NewSponsorPage() {
     return () => u();
   }, []);
 
-  // 품목 라이브러리용 데이터 (카테고리/패키지/슬롯)
+  // 품목 라이브러리용 데이터 — libraryEventId (preset query 또는 헤더 행사 셀렉터)
+  // 의 카테고리/패키지/슬롯만. 다른 행사 품목이 sponsor 에 잘못 연결되는 사고 방지.
   useEffect(() => {
+    if (!libraryEventId) {
+      setCategories([]);
+      setPackages([]);
+      setSlots([]);
+      return;
+    }
     (async () => {
       try {
         const db = getDb();
         const [c, p, s] = await Promise.all([
-          getDocs(collection(db, "categories")),
-          getDocs(collection(db, "packages")),
-          getDocs(collection(db, "slots")),
+          getDocs(query(collection(db, "categories"), where("eventId", "==", libraryEventId))),
+          getDocs(query(collection(db, "packages"), where("eventId", "==", libraryEventId))),
+          getDocs(query(collection(db, "slots"), where("eventId", "==", libraryEventId))),
         ]);
         setCategories(c.docs.map((d) => ({ ...(d.data() as Category), id: d.id })));
         setPackages(p.docs.map((d) => ({ ...(d.data() as Package), id: d.id })));
@@ -65,7 +77,7 @@ export default function NewSponsorPage() {
         console.error("library load failed", e);
       }
     })();
-  }, []);
+  }, [libraryEventId]);
 
   const library = useMemo<SponsorItemLibraryEntry[]>(
     () => buildLibrary(categories, packages, slots),

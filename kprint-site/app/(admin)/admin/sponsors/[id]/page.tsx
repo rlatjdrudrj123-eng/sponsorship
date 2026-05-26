@@ -13,6 +13,7 @@ import {
   query,
   Timestamp,
   updateDoc,
+  where,
 } from "firebase/firestore";
 import { ArrowLeft, FileText, Mail } from "lucide-react";
 import { getDb } from "@/lib/firebase/firestore";
@@ -57,15 +58,18 @@ export default function SponsorDetailPage() {
     return () => u();
   }, []);
 
-  // 품목 라이브러리용 데이터
+  // 품목 라이브러리 — sponsor.eventId 의 카테고리/패키지/슬롯만.
+  // 다른 행사 품목 섞임 방지 (행사 분리 보장).
   useEffect(() => {
+    const eventId = sponsor?.eventId;
+    if (!eventId) return;
     (async () => {
       try {
         const db = getDb();
         const [c, p, s] = await Promise.all([
-          getDocs(collection(db, "categories")),
-          getDocs(collection(db, "packages")),
-          getDocs(collection(db, "slots")),
+          getDocs(query(collection(db, "categories"), where("eventId", "==", eventId))),
+          getDocs(query(collection(db, "packages"), where("eventId", "==", eventId))),
+          getDocs(query(collection(db, "slots"), where("eventId", "==", eventId))),
         ]);
         setCategories(c.docs.map((d) => ({ ...(d.data() as Category), id: d.id })));
         setPackages(p.docs.map((d) => ({ ...(d.data() as Package), id: d.id })));
@@ -74,7 +78,7 @@ export default function SponsorDetailPage() {
         console.error("library load failed", e);
       }
     })();
-  }, []);
+  }, [sponsor?.eventId]);
 
   const library = useMemo<SponsorItemLibraryEntry[]>(() => {
     const entries: SponsorItemLibraryEntry[] = [];
