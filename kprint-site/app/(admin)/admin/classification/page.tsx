@@ -21,13 +21,11 @@ import {
   Layers,
   Plus,
   Save,
-  Sparkles,
   Trash2,
   X,
 } from "lucide-react";
 import { getDb } from "@/lib/firebase/firestore";
 import { useEventFilter } from "@/lib/admin/useEventFilter";
-import { populateClassifications, seedDefaultPersonas } from "@/lib/admin/seedDemo";
 import { PersonaEditModal } from "@/components/admin/PersonaEditModal";
 import type { Category, CategoryType, Persona, Taxonomy } from "@/lib/types";
 
@@ -74,7 +72,6 @@ export default function ClassificationPage() {
   const [draggingCatId, setDraggingCatId] = useState<string | null>(null);
   const [editPersona, setEditPersona] = useState<Persona | null>(null);
   const [addingPersona, setAddingPersona] = useState(false);
-  const [populating, setPopulating] = useState(false);
   const [editingBuckets, setEditingBuckets] = useState(false);
 
   useEffect(() => {
@@ -174,37 +171,6 @@ export default function ClassificationPage() {
     }
   };
 
-  const seedPersonas = async () => {
-    if (!eventId) return;
-    if (!confirm("기본 페르소나 5개를 시드합니다. 같은 ID가 있으면 덮어씌워집니다.")) return;
-    try {
-      await seedDefaultPersonas(eventId);
-    } catch (e) {
-      alert(`시드 실패: ${e instanceof Error ? e.message : String(e)}`);
-    }
-  };
-
-  const populateCurrent = async () => {
-    if (!eventId) return;
-    if (
-      !confirm(
-        "기본 페르소나 5개를 시드하고, 현재 카테고리들의 태그·이름에 따라 페르소나·시점·위치를 일괄 자동 배정합니다. 기존 명시 지정이 덮어쓰여집니다. 진행할까요?"
-      )
-    )
-      return;
-    setPopulating(true);
-    try {
-      const r = await populateClassifications(eventId);
-      alert(
-        `완료\n· 페르소나 ${r.personasSeeded}개 시드\n· 카테고리 ${r.categoriesUpdated}개 갱신`
-      );
-    } catch (e) {
-      alert(`실행 실패: ${e instanceof Error ? e.message : String(e)}`);
-    } finally {
-      setPopulating(false);
-    }
-  };
-
   if (!ready || !eventId) {
     return (
       <div className="bg-white border border-ink-100 rounded-card p-8 text-center">
@@ -225,16 +191,6 @@ export default function ClassificationPage() {
             참가 상황·매체 유형·시점·위치를 그룹별로 보고 드래그로 스폰서십 매체를 이동하세요.
           </p>
         </div>
-        <button
-          type="button"
-          onClick={populateCurrent}
-          disabled={populating}
-          className="px-3.5 py-2 rounded-btn bg-brand-500 text-ink-900 text-[12.5px] font-bold hover:bg-brand-700 hover:text-white disabled:opacity-50 flex items-center gap-1.5"
-          title="현재 카테고리 태그·이름·type에 따라 페르소나·시점·위치를 한 번에 채워넣습니다"
-        >
-          <Sparkles className="w-3.5 h-3.5" />
-          {populating ? "채우는 중…" : "현재 설정대로 일괄 채우기"}
-        </button>
       </header>
 
       <div className="flex items-center gap-1 bg-white border border-ink-100 rounded-btn p-1 w-fit">
@@ -264,18 +220,11 @@ export default function ClassificationPage() {
       </div>
 
       {tab === "persona" && personas.length === 0 && (
-        <div className="bg-amber-50 border border-amber-200 rounded-card p-4 flex items-center justify-between gap-3">
-          <div className="flex items-center gap-2 text-amber-700">
-            <AlertCircle className="w-4 h-4" />
-            <span className="text-[13px] font-semibold">등록된 페르소나가 없습니다.</span>
-          </div>
-          <button
-            type="button"
-            onClick={seedPersonas}
-            className="px-3.5 py-2 rounded-btn bg-amber-700 text-white text-[12px] font-bold hover:bg-amber-800"
-          >
-            기본 5개 시드
-          </button>
+        <div className="bg-amber-50 border border-amber-200 rounded-card p-4 flex items-center gap-3">
+          <AlertCircle className="w-4 h-4 text-amber-700" />
+          <span className="text-[13px] text-amber-700 font-semibold">
+            등록된 페르소나가 없습니다 — /admin/classification 의 페르소나 탭에서 직접 추가하세요.
+          </span>
         </div>
       )}
 

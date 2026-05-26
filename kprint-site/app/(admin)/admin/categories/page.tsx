@@ -18,13 +18,10 @@ import {
   ChevronDown,
   ChevronUp,
   GripVertical,
-  Palette,
   Search,
   Upload,
-  X,
 } from "lucide-react";
 import { getDb } from "@/lib/firebase/firestore";
-import { seedSampleImages, type SeedResult } from "@/lib/admin/seedSamples";
 import { useEventFilter } from "@/lib/admin/useEventFilter";
 import type {
   Category,
@@ -72,8 +69,6 @@ export default function CategoriesListPage() {
   const [search, setSearch] = useState("");
   const [sortKey, setSortKey] = useState<SortKey>("order");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
-  const [seeding, setSeeding] = useState(false);
-  const [seedResult, setSeedResult] = useState<SeedResult | null>(null);
   const [draggingId, setDraggingId] = useState<string | null>(null);
   const [dragOverId, setDragOverId] = useState<string | null>(null);
 
@@ -143,25 +138,6 @@ export default function CategoriesListPage() {
       return (a.order - b.order) * dir;
     });
   }, [enriched, filterChannel, filterType, filterPublished, search, sortKey, sortDir]);
-
-  const handleSeed = async () => {
-    if (
-      !confirm(
-        "모든 카테고리에 샘플 이미지·텍스트를 주입합니다. 기존 이미지가 있으면 덮어씁니다. 계속?"
-      )
-    )
-      return;
-    setSeeding(true);
-    setSeedResult(null);
-    try {
-      const r = await seedSampleImages();
-      setSeedResult(r);
-    } catch (e) {
-      alert(`시드 실패: ${e instanceof Error ? e.message : String(e)}`);
-    } finally {
-      setSeeding(false);
-    }
-  };
 
   /** 드래그앤드롭으로 source 카테고리를 target 위치에 끼워넣고 모든 order 0..N 재할당. */
   const reorderTo = async (sourceId: string, targetId: string) => {
@@ -296,21 +272,6 @@ export default function CategoriesListPage() {
           </p>
         </div>
         <div className="flex items-end gap-3">
-          <div className="flex flex-col items-end gap-1">
-            <button
-              type="button"
-              onClick={handleSeed}
-              disabled={seeding}
-              className="px-3.5 py-2 rounded-btn border-2 border-red-300 bg-red-50 text-red-700 text-[13px] font-semibold hover:bg-red-100 disabled:opacity-50 flex items-center gap-1.5"
-              title="11개 카테고리에 Unsplash 샘플 이미지를 일괄 주입"
-            >
-              <Palette className="w-4 h-4" />
-              {seeding ? "주입 중…" : "🎨 샘플 이미지 시드"}
-            </button>
-            <span className="text-[9px] uppercase tracking-[0.15em] text-red-700 font-bold">
-              테스트용 — 운영 전 제거
-            </span>
-          </div>
           <Link
             href="/admin/import"
             className="px-3.5 py-2 rounded-btn border border-ink-100 text-[13px] font-semibold text-ink-900 hover:bg-ink-50 flex items-center gap-1.5"
@@ -320,45 +281,6 @@ export default function CategoriesListPage() {
           </Link>
         </div>
       </header>
-
-      {seedResult && (
-        <div className="bg-brand-50 border border-brand-100 rounded-card p-4 flex items-start gap-3">
-          <div className="flex-1 text-[13px]">
-            <div className="font-bold text-brand-700 mb-1">
-              샘플 이미지 시드 완료 — 처리 {seedResult.processed.length}개
-              {seedResult.skipped.length > 0 &&
-                ` · 스킵 ${seedResult.skipped.length}개`}
-              {seedResult.errors.length > 0 &&
-                ` · 오류 ${seedResult.errors.length}개`}
-            </div>
-            {seedResult.processed.length > 0 && (
-              <div className="text-ink-700 font-mono text-[11px]">
-                ✓ {seedResult.processed.join(", ")}
-              </div>
-            )}
-            {seedResult.skipped.length > 0 && (
-              <div className="text-ink-500 font-mono text-[11px] mt-1">
-                ⤳ 스킵 (카테고리 없음): {seedResult.skipped.join(", ")}
-              </div>
-            )}
-            {seedResult.errors.length > 0 && (
-              <div className="text-red-700 font-mono text-[11px] mt-1">
-                {seedResult.errors
-                  .map((e) => `✗ ${e.code}: ${e.reason}`)
-                  .join(" / ")}
-              </div>
-            )}
-          </div>
-          <button
-            type="button"
-            onClick={() => setSeedResult(null)}
-            className="w-7 h-7 grid place-items-center text-ink-500 hover:text-ink-900"
-            aria-label="닫기"
-          >
-            <X className="w-3.5 h-3.5" />
-          </button>
-        </div>
-      )}
 
       <div className="bg-white border border-ink-100 rounded-card p-4 flex items-center gap-3 flex-wrap">
         <div className="relative flex-1 min-w-[200px]">

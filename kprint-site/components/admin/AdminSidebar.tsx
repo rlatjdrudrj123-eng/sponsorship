@@ -6,7 +6,6 @@ import { useEffect, useState, type ComponentType, type SVGProps } from "react";
 import {
   Brain,
   CalendarDays,
-  Database,
   ExternalLink,
   FileDown,
   FileText,
@@ -149,7 +148,6 @@ export function AdminSidebar() {
       label: "도구",
       items: [
         { href: "/admin/import", label: "엑셀 일괄 등록", Icon: Upload },
-        { href: "/admin/seed", label: "샘플 데이터 채우기", Icon: Database },
       ],
     },
   ];

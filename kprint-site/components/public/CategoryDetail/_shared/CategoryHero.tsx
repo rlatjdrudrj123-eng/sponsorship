@@ -44,17 +44,14 @@ export function CategoryHero({
   const samePrice = minPrice === maxPrice;
   const isEn = locale === "en";
 
-  // USD price (overrideable per subcategory; fallback krw/1000)
+  // USD price — 다양 케이스는 subcategory 별로 직접 표시하므로 min 만 필요
   const minPriceUsd = Math.min(
     ...subcategories
       .map((s) => s.priceUSD ?? (s.priceKRW > 0 ? krwToUsd(s.priceKRW) : 0))
       .filter((p) => p > 0),
     Infinity
   );
-  const maxPriceUsd = Math.max(
-    ...subcategories.map((s) => s.priceUSD ?? (s.priceKRW > 0 ? krwToUsd(s.priceKRW) : 0)),
-    0
-  );
+  void maxPrice; // 사용처는 인라인 리스트로 대체됨 — 변수 보존만 (호환)
 
   return (
     <div className="border-b border-ink-100 bg-surface">
