@@ -1209,7 +1209,9 @@ export function BlockSection({
         />
       );
     case "pdfDownload":
-      return <PdfDownloadSection block={block} eventId={eventId} />;
+      return (
+        <PdfDownloadSection block={block} eventId={eventId} settings={settings} />
+      );
     default: {
       const _: never = block;
       void _;
@@ -1253,10 +1255,14 @@ function CanvasPageSection({
 function PdfDownloadSection({
   block,
   eventId,
+  settings,
 }: {
   block: PdfDownloadBlock;
   eventId: string;
+  settings: SiteSettings | null;
 }) {
+  const pdfHref = settings?.pdfFullUrl || `/${eventId}/print/full`;
+  const pdfDirect = Boolean(settings?.pdfFullUrl);
   const locale = useLocale((s) => s.locale);
   const isEn = locale === "en";
   const eyebrow = block.data.eyebrow || "Download";
@@ -1299,10 +1305,11 @@ function PdfDownloadSection({
           </p>
         )}
         <div className="mt-10">
-          <Link
-            href={`/${eventId}/print/full`}
+          <a
+            href={pdfHref}
             target="_blank"
             rel="noopener noreferrer"
+            {...(pdfDirect ? { download: "" } : {})}
             className="inline-flex items-center gap-2.5 px-7 py-4 rounded-pill font-bold text-[14px] md:text-[15px] transition-all hover:shadow-glow"
             style={{
               background: style?.accent ?? "var(--color-brand, #DB0711)",
@@ -1312,7 +1319,7 @@ function PdfDownloadSection({
             <Download className="w-4 h-4" />
             {buttonLabel}
             <ArrowRight className="w-4 h-4" />
-          </Link>
+          </a>
         </div>
       </div>
     </section>

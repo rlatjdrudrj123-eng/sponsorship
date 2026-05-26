@@ -345,6 +345,15 @@ export type SiteSettings = {
    *  공개 슬라이드 / PDF 에서 "추가 혜택" 섹션으로 노출. */
   bundledPerks?: BundledPerk[];
 
+  /** 어드민이 미리 만들어둔 전체 패키지 PDF 의 Storage URL.
+   *  값이 있으면 공개 "전체 PDF 다운로드" 버튼이 /print/full 인쇄 페이지 대신
+   *  이 URL 을 직접 다운로드 (=0 초). 어드민이 데이터 바뀌면 새로 업로드해야 함. */
+  pdfFullUrl?: string;
+  /** 어드민이 업로드한 PDF 파일의 Storage 경로 — 교체 시 이전 파일 삭제용. */
+  pdfFullStoragePath?: string;
+  /** PDF 업로드 시각 — 어드민에 "마지막 업로드: HH:MM" 표시용. */
+  pdfFullUploadedAt?: Timestamp;
+
   /** 진단 챗봇 (PersonaAiChat) 의 질문 텍스트·가중치 override. 없으면 코드 기본값. (v1 — 폐기 예정) */
   diagnosisConfig?: DiagnosisConfig;
   /** 진단 챗봇 v2 (4문항 룩업) 설정 — 신규 챗봇은 이걸 사용 */

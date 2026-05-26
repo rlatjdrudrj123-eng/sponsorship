@@ -617,16 +617,17 @@ export default function SponsorshipsPage() {
                   </span>
                 </span>
                 <span className="ml-auto" />
-                <Link
-                  href={`/${eventId}/print/full`}
+                <a
+                  href={settings?.pdfFullUrl || `/${eventId}/print/full`}
                   target="_blank"
                   rel="noopener noreferrer"
+                  {...(settings?.pdfFullUrl ? { download: "" } : {})}
                   className="hidden md:inline-flex px-2.5 py-1.5 rounded-btn border border-ink-100 hover:border-ink-900 text-[12px] font-semibold items-center gap-1"
                   title="전체 PDF 다운로드"
                 >
                   <Download className="w-3.5 h-3.5" />
                   {locale === "en" ? "PDF" : "전체 PDF"}
-                </Link>
+                </a>
                 <button
                   type="button"
                   onClick={() => setSheetOpen(true)}
@@ -1984,16 +1985,17 @@ function SlideStream({
           <span className="ml-auto" />
           {/* 데스크톱 전용 보조 — 로케일 / PDF */}
           {/* PDF — 데스크톱 보조 */}
-          <Link
-            href={`/${eventId}/print/full`}
+          <a
+            href={settings?.pdfFullUrl || `/${eventId}/print/full`}
             target="_blank"
             rel="noopener noreferrer"
+            {...(settings?.pdfFullUrl ? { download: "" } : {})}
             className="hidden md:inline-flex px-2.5 py-1.5 rounded-btn border border-ink-100 hover:border-ink-900 text-[12px] font-semibold items-center gap-1"
             title="전체 PDF 다운로드"
           >
             <Download className="w-3.5 h-3.5" />
             {locale === "en" ? "PDF" : "전체 PDF"}
-          </Link>
+          </a>
           {/* 필터 — 카드 모드 진입 후 모바일에서 sheet 호출. */}
           <button
             type="button"

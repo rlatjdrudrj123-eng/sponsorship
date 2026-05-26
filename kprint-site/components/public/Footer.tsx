@@ -118,15 +118,16 @@ export function Footer({ settings }: { settings: SiteSettings | null }) {
             </h4>
             <ul className="text-ink-300 space-y-2">
               <li>
-                <Link
-                  href={`${base}/print/full`}
+                <a
+                  href={settings?.pdfFullUrl || `${base}/print/full`}
                   target="_blank"
                   rel="noopener noreferrer"
+                  {...(settings?.pdfFullUrl ? { download: "" } : {})}
                   className="hover:text-brand-500 flex items-center gap-2"
                 >
                   <Download className="w-3.5 h-3.5 text-ink-500" />
                   {isEn ? "Full sponsorship PDF" : "전체 스폰서십 PDF"}
-                </Link>
+                </a>
               </li>
               <li>
                 <Link

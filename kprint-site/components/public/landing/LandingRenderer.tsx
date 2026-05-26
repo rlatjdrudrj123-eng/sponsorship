@@ -6,6 +6,7 @@ import Link from "next/link";
 import type { LandingBlock, SiteSettings } from "@/lib/types";
 import { BlockSection } from "./blocks";
 import { useLocale } from "@/lib/i18n/locale";
+import { getFullPdfHref, isDirectPdfHref } from "@/lib/pdf";
 
 /**
  * 캔버스로 디자인된 슬라이드 데크를 풀스크린 snap-scroll 로 렌더.
@@ -27,6 +28,8 @@ export function LandingRenderer({
 }) {
   const locale = useLocale((s) => s.locale);
   const mainRef = useRef<HTMLElement>(null);
+  const pdfHref = getFullPdfHref(eventId, settings);
+  const pdfDirect = isDirectPdfHref(settings);
 
   // 페이지 진입·blocks 로드 시 무조건 첫 슬라이드부터 시작 — 데이터 로드 직전 빈 main 위에
   // 마지막 슬라이드(ModeChoice) 만 잡혀 그 위치로 머무는 버그 방지.
@@ -40,20 +43,23 @@ export function LandingRenderer({
     <>
       {/* 우상단 영속 버튼 — 카탈로그·전체 PDF */}
       <div className="fixed top-6 right-6 md:top-8 md:right-8 z-50 flex items-center gap-2">
-        <Link
-          href={`/${eventId}/print/full`}
+        <a
+          href={pdfHref}
           target="_blank"
           rel="noopener noreferrer"
+          {...(pdfDirect ? { download: "" } : {})}
           className="px-4 py-2.5 rounded-pill bg-white/90 backdrop-blur border border-ink-100 hover:border-ink-900 text-ink-900 text-[12px] md:text-[13px] font-bold transition-colors flex items-center gap-1.5"
           title={
             locale === "en"
               ? "Full sponsorship PDF"
-              : "전체 패키지 PDF (인쇄·PDF 저장)"
+              : pdfDirect
+                ? "전체 패키지 PDF 다운로드"
+                : "전체 패키지 PDF (인쇄·PDF 저장)"
           }
         >
           <Download className="w-3.5 h-3.5" />
           {locale === "en" ? "Full PDF" : "전체 PDF"}
-        </Link>
+        </a>
         <Link
           href={`/${eventId}/sponsorships`}
           className="px-5 py-2.5 rounded-pill bg-brand-500 text-white hover:bg-brand-700 text-[12px] md:text-[13px] font-bold transition-colors flex items-center gap-1.5 shadow-glow-sm hover:shadow-glow"
@@ -106,6 +112,8 @@ export function ClosingSlide({
   const phone = settings?.contact?.phone || "02-551-0102";
   const email = settings?.contact?.email || "kprint@kprint.kr";
   const address = settings?.contact?.address;
+  const pdfHref = getFullPdfHref(eventId, settings);
+  const pdfDirect = isDirectPdfHref(settings);
   return (
     <section className="h-dvh snap-start snap-always relative overflow-hidden flex flex-col items-center justify-center bg-canvas text-ink-900 px-8 md:px-16 pt-14">
       <div className="max-w-3xl w-full text-center flex flex-col items-center break-keep">
@@ -142,15 +150,16 @@ export function ClosingSlide({
             {locale === "en" ? "Apply online" : "온라인 신청 바로가기"}
             <ArrowRight className="w-4 h-4" />
           </a>
-          <Link
-            href={`/${eventId}/print/full`}
+          <a
+            href={pdfHref}
             target="_blank"
             rel="noopener noreferrer"
+            {...(pdfDirect ? { download: "" } : {})}
             className="px-7 md:px-9 py-3.5 md:py-4 rounded-btn bg-ink-900 text-white hover:bg-ink-700 text-[14px] md:text-[15px] font-bold transition-colors inline-flex items-center justify-center gap-2"
           >
             <Download className="w-4 h-4" />
             {locale === "en" ? "Download PDF" : "PDF 다운로드"}
-          </Link>
+          </a>
         </div>
 
         {/* Contact — settings 비어도 기본값(KPRINT 사무국) 으로 항상 노출 */}
