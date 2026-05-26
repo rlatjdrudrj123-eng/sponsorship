@@ -93,16 +93,44 @@ export function CategoryHero({
             </span>
           </Meta>
           {Number.isFinite(minPrice) && minPrice > 0 && (
-            <Meta label={isEn ? "Unit price" : "단가"}>
-              <span className="font-num">
-                {isEn
-                  ? samePrice
+            <Meta
+              label={
+                samePrice
+                  ? isEn ? "Unit price" : "단가"
+                  : isEn ? "Pricing" : "구좌별 가격"
+              }
+            >
+              {samePrice ? (
+                <span className="font-num">
+                  {isEn
                     ? `$${minPriceUsd.toLocaleString()}`
-                    : `$${minPriceUsd.toLocaleString()} ~ $${maxPriceUsd.toLocaleString()}`
-                  : samePrice
-                    ? `${minPrice.toLocaleString()}원`
-                    : `${minPrice.toLocaleString()} ~ ${maxPrice.toLocaleString()}원`}
-              </span>
+                    : `${minPrice.toLocaleString()}원`}
+                </span>
+              ) : (
+                // 가격이 subcategory 별로 다양 — 모든 가격을 인라인 리스트로
+                <span className="font-num flex flex-wrap items-baseline gap-x-3 gap-y-1">
+                  {subcategories
+                    .filter((s) => s.priceKRW > 0)
+                    .map((s, i, arr) => {
+                      const priceUsd = s.priceUSD ?? krwToUsd(s.priceKRW);
+                      return (
+                        <span key={s.id} className="inline-flex items-baseline gap-1.5">
+                          <span className="text-ink-500 text-[12px]">
+                            {localized(s.name, locale)}
+                          </span>
+                          <span className="text-ink-900 font-bold">
+                            {isEn
+                              ? `$${priceUsd.toLocaleString()}`
+                              : `${s.priceKRW.toLocaleString()}원`}
+                          </span>
+                          {i < arr.length - 1 && (
+                            <span className="text-ink-300 ml-1">·</span>
+                          )}
+                        </span>
+                      );
+                    })}
+                </span>
+              )}
             </Meta>
           )}
           {category.deadline && (
