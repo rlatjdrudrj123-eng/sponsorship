@@ -30,6 +30,8 @@ export function PinOverlay({ floorImage, categoryId, eventId, subcategory, slots
         <img
           src={floorImage.url}
           alt={`${subcategory.name.ko} 도면`}
+          loading="lazy"
+          decoding="async"
           className="absolute inset-0 w-full h-full object-contain block select-none"
           draggable={false}
         />

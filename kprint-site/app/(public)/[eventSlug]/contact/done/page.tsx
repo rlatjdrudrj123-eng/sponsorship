@@ -6,6 +6,7 @@ import { useParams } from "next/navigation";
 import { Check } from "lucide-react";
 import { doc, getDoc } from "firebase/firestore";
 import { getDb } from "@/lib/firebase/firestore";
+import { cachedFetch } from "@/lib/firebase/cache";
 import type { SiteSettings } from "@/lib/types";
 import { Footer } from "@/components/public/Footer";
 import { useLocale } from "@/lib/i18n/locale";
@@ -21,8 +22,11 @@ export default function ContactDonePage() {
     if (!eventId) return;
     (async () => {
       try {
-        const snap = await getDoc(doc(getDb(), "siteSettings", eventId));
-        if (snap.exists()) setSettings(snap.data() as SiteSettings);
+        const data = await cachedFetch(`pub:settings:${eventId}`, async () => {
+          const snap = await getDoc(doc(getDb(), "siteSettings", eventId));
+          return snap.exists() ? (snap.data() as SiteSettings) : null;
+        });
+        if (data) setSettings(data);
       } catch {
         // ignore
       }

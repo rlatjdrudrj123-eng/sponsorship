@@ -34,6 +34,8 @@ export function CaseStudies({ items }: { items: CaseStudy[] }) {
               <img
                 src={c.logoUrl}
                 alt={c.company}
+                loading="lazy"
+                decoding="async"
                 className="w-12 h-12 rounded object-contain border border-ink-100 shrink-0 bg-white"
               />
             )}

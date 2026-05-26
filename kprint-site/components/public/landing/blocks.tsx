@@ -259,6 +259,8 @@ export function CoverSection({
           <img
             src={bgImageUrl}
             alt=""
+            fetchPriority="high"
+            decoding="async"
             className="absolute inset-0 w-full h-full object-cover opacity-30"
           />
           <div className="absolute inset-0 bg-gradient-to-b from-canvas/40 via-canvas/70 to-canvas" />
@@ -670,6 +672,8 @@ export function ImageSection({ block }: { block: ImageBlock }) {
         <img
           src={url}
           alt={alt ?? ""}
+          loading="lazy"
+          decoding="async"
           className={
             fullBleed
               ? "w-screen max-h-[100vh] object-cover"
@@ -745,6 +749,8 @@ function ColumnRenderer({ side }: { side: TwoColumnBlock["data"]["left"] }) {
       <img
         src={side.imageUrl}
         alt={side.imageAlt ?? ""}
+        loading="lazy"
+        decoding="async"
         className="w-full rounded-card object-cover max-h-[70vh] border border-ink-100 shadow-card"
       />
     ) : (
@@ -804,6 +810,8 @@ export function ImageGridSection({ block }: { block: ImageGridBlock }) {
               <img
                 src={img.url}
                 alt={img.alt ?? ""}
+                loading="lazy"
+                decoding="async"
                 className="absolute inset-0 w-full h-full object-cover"
               />
             ) : null}

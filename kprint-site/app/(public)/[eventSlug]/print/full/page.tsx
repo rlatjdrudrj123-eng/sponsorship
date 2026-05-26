@@ -10,15 +10,19 @@ import { CanvasRenderer } from "@/components/public/canvas/CanvasRenderer";
 import type {
   CanvasPageBlock,
   Category,
+  CategoryType,
   Channel,
   LandingBlock,
   Package,
   Persona,
   SiteSettings,
+  Slot,
   Subcategory,
+  TypeLayout,
 } from "@/lib/types";
 import { useLocale, localized as localizedHelper } from "@/lib/i18n/locale";
 import { getDisplayPackagePrice, formatPrice } from "@/lib/price";
+import { getTypeLayout } from "@/lib/typeLayouts";
 
 // 전체 패키지 PDF — 행사 랜딩 캔버스(표지/패키지 안내 등) + 모든 카테고리 +
 // 모든 패키지를 A4 가로 슬라이드로 출력하여 브라우저 인쇄(→PDF 저장) 으로
@@ -49,6 +53,7 @@ function FullPrintContent() {
 
   const [categories, setCategories] = useState<Category[]>([]);
   const [subcategories, setSubcategories] = useState<Subcategory[]>([]);
+  const [slots, setSlots] = useState<Slot[]>([]);
   const [packages, setPackages] = useState<Package[]>([]);
   const [personas, setPersonas] = useState<Persona[]>([]);
   const [settings, setSettings] = useState<SiteSettings | null>(null);
@@ -59,7 +64,7 @@ function FullPrintContent() {
     (async () => {
       try {
         const db = getDb();
-        const [c, s, p, pr, st] = await Promise.all([
+        const [c, s, sl, p, pr, st] = await Promise.all([
           cachedFetch(`pub:cat:${eventId}`, async () => {
             const r = await getDocs(
               query(
@@ -75,6 +80,12 @@ function FullPrintContent() {
               query(collection(db, "subcategories"), where("eventId", "==", eventId))
             );
             return r.docs.map((d) => ({ ...(d.data() as Subcategory), id: d.id }));
+          }),
+          cachedFetch(`pub:slot:${eventId}`, async () => {
+            const r = await getDocs(
+              query(collection(db, "slots"), where("eventId", "==", eventId))
+            );
+            return r.docs.map((d) => ({ ...(d.data() as Slot), id: d.id }));
           }),
           cachedFetch(`pub:pkg:${eventId}`, async () => {
             const r = await getDocs(
@@ -99,6 +110,7 @@ function FullPrintContent() {
         ]);
         setCategories(c);
         setSubcategories(s);
+        setSlots(sl);
         setPackages(p);
         setPersonas(pr);
         if (st) setSettings(st);
@@ -123,6 +135,16 @@ function FullPrintContent() {
   const sortedPackages = useMemo(() => {
     return [...packages].sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
   }, [packages]);
+
+  const slotsByCat = useMemo(() => {
+    const m = new Map<string, Slot[]>();
+    slots.forEach((s) => {
+      const arr = m.get(s.categoryId) ?? [];
+      arr.push(s);
+      m.set(s.categoryId, arr);
+    });
+    return m;
+  }, [slots]);
 
   const subByCat = useMemo(() => {
     const m = new Map<string, Subcategory[]>();
@@ -271,6 +293,8 @@ function FullPrintContent() {
             key={`c-${c.id}`}
             category={c}
             subs={subByCat.get(c.id) ?? []}
+            slots={slotsByCat.get(c.id) ?? []}
+            typeLayouts={settings?.typeLayouts}
             index={
               coverPagesCount +
               atGlancePageCount +
@@ -784,6 +808,8 @@ function CoverSlide({
 function CategorySlide({
   category,
   subs,
+  slots,
+  typeLayouts,
   index,
   total,
   eventName: _eventName,
@@ -791,12 +817,35 @@ function CategorySlide({
 }: {
   category: Category;
   subs: Subcategory[];
+  slots: Slot[];
+  typeLayouts?: Partial<Record<CategoryType, TypeLayout>>;
   index: number;
   total: number;
   eventName: string;
   locale: "ko" | "en";
 }) {
   void _eventName;
+  const layout = getTypeLayout(category.type, typeLayouts);
+
+  // 위치(소분류 이름 join) — sponsorships 페이지와 동일 패턴
+  const locationLabel = subs
+    .map((s) => localizedHelper(s.name, locale))
+    .filter(Boolean)
+    .join(", ");
+
+  // 세부사항 — subcategory 이름 + 슬롯 수 + 단위. 예: "표4 (국/영문) 1면, 표4 (국문) 1면, …"
+  const detailLabel = subs
+    .map((s) => {
+      const count = slots.filter((sl) => sl.subcategoryId === s.id).length;
+      if (count === 0) return null;
+      const unit = localizedHelper(s.unit, locale) || (locale === "en" ? "slot" : "구좌");
+      return `${localizedHelper(s.name, locale)} ${count}${unit}`;
+    })
+    .filter(Boolean)
+    .join(", ");
+
+  const slotTotal = slots.length;
+  const slotAvailable = slots.filter((sl) => sl.status === "available").length;
   const hero = category.heroImages?.images?.[0]?.url;
   const deadlineStr = category.deadline
     ? category.deadline.toDate().toLocaleDateString(
@@ -856,33 +905,172 @@ function CategorySlide({
 
           <hr className="border-ink-100 my-6" />
 
+          {/* 스펙 표 — 사이트 카테고리 상세 페이지와 동일하게
+              어드민의 typeLayouts (또는 기본 레이아웃) 기반 행 노출.
+              한 PDF 안에서 사이트 / PDF 정보 불일치 안 나게 한 곳에서 가공. */}
           <dl className="space-y-3">
-            {category.size && (
-              <SpecRow
-                label={locale === "en" ? "Size" : "규격"}
-                value={category.size}
-              />
-            )}
-            {category.fileFormat && (
-              <SpecRow
-                label={locale === "en" ? "File format" : "파일 형식"}
-                value={category.fileFormat}
-              />
-            )}
-            {deadlineStr && (
-              <SpecRow
-                label={locale === "en" ? "Deadline" : "제출 마감"}
-                value={deadlineStr}
-              />
-            )}
-            {subs.length > 0 && (
-              <SpecRow
-                label={locale === "en" ? "Composition" : "구성"}
-                value={subs
-                  .map((s) => localizedHelper(s.name, locale))
-                  .join(", ")}
-              />
-            )}
+            {(() => {
+              const rows: React.ReactNode[] = [];
+              for (const field of layout.specFields) {
+                switch (field) {
+                  case "location": {
+                    if (locationLabel)
+                      rows.push(
+                        <SpecRow
+                          key="location"
+                          label={locale === "en" ? "Location" : "게재 위치"}
+                          value={locationLabel}
+                        />
+                      );
+                    break;
+                  }
+                  case "size": {
+                    if (category.size)
+                      rows.push(
+                        <SpecRow
+                          key="size"
+                          label={locale === "en" ? "Size" : "규격"}
+                          value={category.size}
+                        />
+                      );
+                    break;
+                  }
+                  case "fileFormat": {
+                    if (category.fileFormat)
+                      rows.push(
+                        <SpecRow
+                          key="fileFormat"
+                          label={locale === "en" ? "File format" : "파일 형식"}
+                          value={category.fileFormat}
+                        />
+                      );
+                    break;
+                  }
+                  case "deadline": {
+                    if (deadlineStr)
+                      rows.push(
+                        <SpecRow
+                          key="deadline"
+                          label={locale === "en" ? "Deadline" : "제출 마감"}
+                          value={deadlineStr}
+                        />
+                      );
+                    break;
+                  }
+                  case "detail": {
+                    if (detailLabel)
+                      rows.push(
+                        <SpecRow
+                          key="detail"
+                          label={locale === "en" ? "Detail" : "세부사항"}
+                          value={
+                            slotTotal > 0
+                              ? `${detailLabel} (${
+                                  locale === "en" ? "remaining " : "잔여 "
+                                }${slotAvailable})`
+                              : detailLabel
+                          }
+                        />
+                      );
+                    break;
+                  }
+                  case "slots": {
+                    rows.push(
+                      <SpecRow
+                        key="slots"
+                        label={locale === "en" ? "Slots" : "구좌"}
+                        value={`${slotAvailable} / ${slotTotal} ${
+                          locale === "en" ? "available" : "가능"
+                        }`}
+                      />
+                    );
+                    break;
+                  }
+                  case "video": {
+                    const v = category.videoSpec;
+                    if (v && (v.duration || v.resolution || v.plays)) {
+                      const parts: string[] = [];
+                      if (v.duration)
+                        parts.push(
+                          locale === "en" ? `${v.duration}s` : `${v.duration}초`
+                        );
+                      if (v.resolution) parts.push(v.resolution);
+                      if (v.plays)
+                        parts.push(
+                          locale === "en"
+                            ? `${v.plays.toLocaleString()} plays`
+                            : `${v.plays.toLocaleString()}회 송출`
+                        );
+                      rows.push(
+                        <SpecRow
+                          key="video"
+                          label={locale === "en" ? "Video spec" : "영상 스펙"}
+                          value={parts.join(" · ")}
+                        />
+                      );
+                    }
+                    break;
+                  }
+                  case "mailing": {
+                    const m = category.mailingSpec;
+                    if (m && (m.audience || m.sendDates?.length)) {
+                      const parts: string[] = [];
+                      if (m.audience)
+                        parts.push(
+                          locale === "en"
+                            ? `${m.audience.toLocaleString()} recipients${
+                                m.audienceLabel ? ` (${m.audienceLabel})` : ""
+                              }`
+                            : `${m.audience.toLocaleString()}명${
+                                m.audienceLabel ? ` (${m.audienceLabel})` : ""
+                              }`
+                        );
+                      if (m.sendDates?.length)
+                        parts.push(
+                          locale === "en"
+                            ? `Send: ${m.sendDates.join(", ")}`
+                            : `발송: ${m.sendDates.join(", ")}`
+                        );
+                      rows.push(
+                        <SpecRow
+                          key="mailing"
+                          label={locale === "en" ? "Send spec" : "발송 스펙"}
+                          value={parts.join(" · ")}
+                        />
+                      );
+                    }
+                    break;
+                  }
+                  case "content": {
+                    const c = category.contentSpec;
+                    if (c && (c.channel || c.format)) {
+                      rows.push(
+                        <SpecRow
+                          key="content"
+                          label={locale === "en" ? "Content spec" : "콘텐츠 스펙"}
+                          value={[c.channel, c.format]
+                            .filter(Boolean)
+                            .join(" · ")}
+                        />
+                      );
+                    }
+                    break;
+                  }
+                }
+              }
+              // 어드민이 type-layout 에서 추가한 커스텀 행
+              (layout.customRows ?? []).forEach((c, ci) => {
+                if (!c.label.trim() && !c.value.trim()) return;
+                rows.push(
+                  <SpecRow
+                    key={`custom-${ci}`}
+                    label={c.label}
+                    value={c.value}
+                  />
+                );
+              });
+              return rows;
+            })()}
           </dl>
 
           <div className="mt-auto pt-6">

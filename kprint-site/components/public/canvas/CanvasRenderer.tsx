@@ -129,6 +129,8 @@ function CanvasDesktop({
             <img
               src={page.bgImageUrl}
               alt=""
+              loading="lazy"
+              decoding="async"
               className="absolute inset-0 w-full h-full object-cover pointer-events-none"
             />
           )}
@@ -253,6 +255,8 @@ function CanvasMobileStack({
         <img
           src={page.bgImageUrl}
           alt=""
+          loading="lazy"
+          decoding="async"
           className="absolute inset-0 w-full h-full object-cover pointer-events-none opacity-60"
         />
       )}
@@ -483,6 +487,8 @@ function ImageNodeView({
     <img
       src={url}
       alt={alt ?? ""}
+      loading="lazy"
+      decoding="async"
       style={{
         width: mobile ? "100%" : "100%",
         height: mobile ? "auto" : "100%",

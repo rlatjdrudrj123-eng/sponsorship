@@ -424,6 +424,9 @@ function PackageHeroAutoCarousel({
             key={i}
             src={s.url}
             alt={s.caption ?? s.categoryName ?? ""}
+            loading={i === 0 ? "eager" : "lazy"}
+            decoding="async"
+            fetchPriority={i === 0 ? "high" : "auto"}
             className={
               "absolute inset-0 w-full h-full object-cover transition-opacity duration-700 " +
               (i === idx ? "opacity-100" : "opacity-0")

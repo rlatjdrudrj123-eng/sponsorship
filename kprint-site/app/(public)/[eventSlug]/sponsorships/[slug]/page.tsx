@@ -12,6 +12,7 @@ import {
   where,
 } from "firebase/firestore";
 import { getDb } from "@/lib/firebase/firestore";
+import { cachedFetch } from "@/lib/firebase/cache";
 import type {
   Category,
   SiteSettings,
@@ -45,53 +46,56 @@ export default function CategoryDetailPage() {
     (async () => {
       try {
         const db = getDb();
-        const catSnap = await getDocs(
-          query(
-            collection(db, "categories"),
-            where("eventId", "==", eventId),
-            where("isPublished", "==", true),
-            where("slug", "==", slug)
-          )
-        );
-        if (catSnap.empty) {
+
+        // 전체 카테고리 / settings 는 같은 이벤트 안에서 카테고리 페이지마다 동일 →
+        // /sponsorships 등 다른 페이지와 같은 key 로 공유 캐싱.
+        const [allCatList, settingsData] = await Promise.all([
+          cachedFetch(`pub:cat:${eventId}`, async () => {
+            const s = await getDocs(
+              query(
+                collection(db, "categories"),
+                where("eventId", "==", eventId),
+                where("isPublished", "==", true)
+              )
+            );
+            return s.docs.map((d) => ({ ...(d.data() as Category), id: d.id }));
+          }),
+          cachedFetch(`pub:settings:${eventId}`, async () => {
+            const s = await getDoc(doc(db, "siteSettings", eventId));
+            return s.exists() ? (s.data() as SiteSettings) : null;
+          }),
+        ]);
+
+        const cat = allCatList.find((c) => c.slug === slug);
+        if (!cat) {
           setNotFound(true);
           setLoaded(true);
           return;
         }
-        const cat = {
-          ...(catSnap.docs[0].data() as Category),
-          id: catSnap.docs[0].id,
-        };
         setCategory(cat);
+        setAllCategories(allCatList);
+        if (settingsData) setSettings(settingsData);
 
-        const [allCatSnap, subSnap, slotSnap, settingsSnap] = await Promise.all([
-          getDocs(
-            query(
-              collection(db, "categories"),
-              where("eventId", "==", eventId),
-              where("isPublished", "==", true)
-            )
-          ),
-          getDocs(
-            query(
-              collection(db, "subcategories"),
-              where("categoryId", "==", cat.id)
-            )
-          ),
-          getDocs(
-            query(collection(db, "slots"), where("categoryId", "==", cat.id))
-          ),
-          getDoc(doc(db, "siteSettings", eventId)),
+        // 이 카테고리에 속한 sub/slot 은 카테고리별 별도 캐시.
+        const [subList, slotList] = await Promise.all([
+          cachedFetch(`pub:sub:cat:${cat.id}`, async () => {
+            const s = await getDocs(
+              query(
+                collection(db, "subcategories"),
+                where("categoryId", "==", cat.id)
+              )
+            );
+            return s.docs.map((d) => ({ ...(d.data() as Subcategory), id: d.id }));
+          }),
+          cachedFetch(`pub:slot:cat:${cat.id}`, async () => {
+            const s = await getDocs(
+              query(collection(db, "slots"), where("categoryId", "==", cat.id))
+            );
+            return s.docs.map((d) => ({ ...(d.data() as Slot), id: d.id }));
+          }),
         ]);
-        setAllCategories(
-          allCatSnap.docs.map((d) => ({ ...(d.data() as Category), id: d.id }))
-        );
-        setSubcategories(
-          subSnap.docs.map((d) => ({ ...(d.data() as Subcategory), id: d.id }))
-        );
-        setSlots(slotSnap.docs.map((d) => ({ ...(d.data() as Slot), id: d.id })));
-        if (settingsSnap.exists())
-          setSettings(settingsSnap.data() as SiteSettings);
+        setSubcategories(subList);
+        setSlots(slotList);
         setLoaded(true);
       } catch (e) {
         console.error(e);

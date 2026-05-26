@@ -37,6 +37,8 @@ export function ImageCarousel({ slot, className = "", aspectRatio = "aspect-[4/3
           <img
             src={img.url}
             alt={img.caption ?? ""}
+            decoding="async"
+            fetchPriority="high"
             className="w-full h-full object-cover"
           />
         </div>
@@ -55,6 +57,8 @@ export function ImageCarousel({ slot, className = "", aspectRatio = "aspect-[4/3
           <img
             src={images[idx].url}
             alt={images[idx].caption ?? ""}
+            decoding="async"
+            fetchPriority="high"
             className="w-full h-full object-cover"
           />
         </div>
@@ -72,7 +76,7 @@ export function ImageCarousel({ slot, className = "", aspectRatio = "aspect-[4/3
               }
             >
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={img.url} alt="" className="w-full h-full object-cover" />
+              <img src={img.url} alt="" loading="lazy" decoding="async" className="w-full h-full object-cover" />
             </button>
           ))}
         </div>
@@ -93,6 +97,8 @@ export function ImageCarousel({ slot, className = "", aspectRatio = "aspect-[4/3
         <img
           src={images[idx].url}
           alt={images[idx].caption ?? ""}
+          decoding="async"
+          fetchPriority="high"
           className="w-full h-full object-cover"
         />
       </div>
