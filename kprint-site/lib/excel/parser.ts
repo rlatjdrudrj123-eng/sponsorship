@@ -354,8 +354,11 @@ export function parseExcelBuffer(
     return makeEmptyResult(errors, warnings);
   }
 
-  // 4) 헤더 검증
-  const headerRow = (aoa[0] ?? []).map((h) => s(h));
+  // 4) 헤더 검증 — exporter/template 이 필수 컬럼에 "* " prefix 를 붙여 강조하므로
+  //    정규화로 prefix 를 제거한 후 비교 (다운로드한 그대로 재업로드 가능해야 함).
+  const headerRow = (aoa[0] ?? []).map((h) =>
+    s(h).replace(/^\*\s*/, "").trim()
+  );
   const missingRequired = REQUIRED_HEADERS.filter(
     (h) => !headerRow.includes(h)
   );
