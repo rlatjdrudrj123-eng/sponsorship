@@ -739,6 +739,7 @@ export default function CategoryEditPage() {
           <Section title={`소분류·구좌 (${subcategories.length}개)`}>
             <SubcategoryTable
               categoryId={id}
+              eventId={category?.eventId ?? ""}
               subcategories={subcategories}
               slots={slots}
             />
