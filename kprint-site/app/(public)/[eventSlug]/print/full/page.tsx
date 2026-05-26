@@ -6,6 +6,49 @@ import { collection, doc, getDoc, getDocs, query, where } from "firebase/firesto
 import { Printer } from "lucide-react";
 import { getDb } from "@/lib/firebase/firestore";
 import { cachedFetch } from "@/lib/firebase/cache";
+
+// Reveal/Lazy 이미지가 viewport 밖 슬라이드에서 발화 안 되는 이슈 회피 —
+// 이 파일을 import 한 클라이언트에서만 IntersectionObserver 를 즉시 발화 mock 으로 교체.
+if (typeof window !== "undefined") {
+  const w = window as unknown as { __ioPrintMocked?: boolean };
+  if (!w.__ioPrintMocked) {
+    w.__ioPrintMocked = true;
+    class ImmediateIO {
+      private cb: IntersectionObserverCallback;
+      constructor(cb: IntersectionObserverCallback) {
+        this.cb = cb;
+      }
+      observe(target: Element) {
+        Promise.resolve().then(() => {
+          this.cb(
+            [
+              {
+                isIntersecting: true,
+                target,
+                intersectionRatio: 1,
+                time: 0,
+                boundingClientRect: target.getBoundingClientRect(),
+                intersectionRect: target.getBoundingClientRect(),
+                rootBounds: null,
+              } as IntersectionObserverEntry,
+            ],
+            this as unknown as IntersectionObserver
+          );
+        });
+      }
+      unobserve() {}
+      disconnect() {}
+      takeRecords(): IntersectionObserverEntry[] {
+        return [];
+      }
+      root = null;
+      rootMargin = "";
+      thresholds: ReadonlyArray<number> = [];
+    }
+    (window as unknown as { IntersectionObserver: unknown }).IntersectionObserver =
+      ImmediateIO;
+  }
+}
 import { CanvasRenderer } from "@/components/public/canvas/CanvasRenderer";
 import type {
   CanvasPageBlock,
@@ -58,6 +101,11 @@ function FullPrintContent() {
   const [personas, setPersonas] = useState<Persona[]>([]);
   const [settings, setSettings] = useState<SiteSettings | null>(null);
   const [ready, setReady] = useState(false);
+  const [imgProgress, setImgProgress] = useState<{
+    loaded: number;
+    total: number;
+    printing: boolean;
+  }>({ loaded: 0, total: 0, printing: false });
 
   useEffect(() => {
     if (!eventId) return;
@@ -182,12 +230,95 @@ function FullPrintContent() {
     sortedCategories.length +
     1;
 
-  // 데이터 로드 완료 후 자동 인쇄 다이얼로그
+  // 데이터 로드 완료 후 — 모든 이미지가 받아진 다음에 자동 인쇄
   useEffect(() => {
     if (!ready) return;
-    const t = setTimeout(() => window.print(), 700);
-    return () => clearTimeout(t);
+    let cancelled = false;
+
+    const waitAllImages = async () => {
+      // IO mock 의 microtask + Reveal/캔버스 마운트 완료 대기
+      await new Promise((r) => setTimeout(r, 600));
+      window.dispatchEvent(new Event("resize")); // 캔버스 스케일 재계산
+      await new Promise((r) => setTimeout(r, 200));
+
+      // lazy 이미지를 eager 로 강제 변환 — viewport 밖 슬라이드도 즉시 fetch 시작
+      document.querySelectorAll<HTMLImageElement>("img").forEach((img) => {
+        if (img.loading === "lazy") img.loading = "eager";
+      });
+      await new Promise((r) => requestAnimationFrame(() => r(null)));
+
+      const imgs = Array.from(document.images);
+      let loaded = 0;
+      const total = imgs.length;
+      setImgProgress({ loaded: 0, total, printing: false });
+      await Promise.all(
+        imgs.map((img) => {
+          const tick = () => {
+            loaded++;
+            setImgProgress({ loaded, total, printing: false });
+          };
+          if (img.complete && img.naturalWidth > 0) {
+            tick();
+            return Promise.resolve();
+          }
+          return new Promise<void>((resolve) => {
+            const done = () => {
+              tick();
+              resolve();
+            };
+            img.addEventListener("load", done, { once: true });
+            img.addEventListener("error", done, { once: true });
+            setTimeout(done, 20000);
+          });
+        })
+      );
+      if (document.fonts?.ready) {
+        try {
+          await document.fonts.ready;
+        } catch {
+          /* noop */
+        }
+      }
+      await new Promise((r) => requestAnimationFrame(() => r(null)));
+      if (!cancelled) {
+        setImgProgress((p) => ({ ...p, printing: true }));
+        window.print();
+      }
+    };
+
+    void waitAllImages();
+    return () => {
+      cancelled = true;
+    };
   }, [ready]);
+
+  // print CSS — landing/print 와 동일 패턴.
+  // styled-jsx 가 @page at-rule 을 삼키는 이슈 회피용 직접 삽입.
+  useEffect(() => {
+    const style = document.createElement("style");
+    style.setAttribute("data-full-print", "1");
+    style.textContent = `
+      @page {
+        size: A4 landscape;
+        margin: 0;
+      }
+      @media print {
+        html, body {
+          background: white !important;
+          margin: 0 !important;
+          padding: 0 !important;
+        }
+        html, body, .a4-page, .a4-page * {
+          -webkit-print-color-adjust: exact !important;
+          print-color-adjust: exact !important;
+        }
+      }
+    `;
+    document.head.appendChild(style);
+    return () => {
+      style.remove();
+    };
+  }, []);
 
   const eventName =
     (locale === "en"
@@ -210,20 +341,42 @@ function FullPrintContent() {
   return (
     <div className="bg-ink-50 min-h-screen print:bg-white">
       {/* 인쇄 안내 */}
-      <div className="print:hidden bg-white border-b border-ink-100 px-6 py-3 flex items-center justify-between sticky top-0 z-20">
-        <p className="text-[13px] text-ink-700">
-          {locale === "en"
-            ? `Full sponsorship PDF preview — ${totalPages} pages total. The print dialog opens automatically. Choose "Save as PDF" to download.`
-            : `전체 패키지 PDF 미리보기 — 총 ${totalPages}페이지. 자동으로 인쇄 다이얼로그가 열립니다. PDF로 저장하려면 [PDF로 저장]을 선택하세요.`}
-        </p>
-        <button
-          type="button"
-          onClick={() => window.print()}
-          className="px-3.5 py-2 rounded-btn bg-ink-900 text-white text-[12px] font-semibold hover:bg-ink-700 flex items-center gap-1.5"
-        >
-          <Printer className="w-3.5 h-3.5" />
-          {locale === "en" ? "Print / PDF" : "인쇄 / PDF"}
-        </button>
+      <div className="print:hidden bg-white border-b border-ink-100 px-6 py-3 sticky top-0 z-20">
+        <div className="flex items-center justify-between gap-4">
+          <div className="flex-1 min-w-0">
+            <p className="text-[13px] text-ink-700">
+              {imgProgress.printing
+                ? locale === "en"
+                  ? "Print dialog opened — confirm [Orientation: Landscape] · [Background graphics: On] before saving."
+                  : "인쇄 다이얼로그가 열렸어요 — [방향: 가로]·[배경 그래픽: 켜기] 확인 후 저장하세요."
+                : imgProgress.total > 0 && imgProgress.loaded < imgProgress.total
+                  ? locale === "en"
+                    ? `Loading images ${imgProgress.loaded} / ${imgProgress.total}… (print dialog opens automatically once all images load)`
+                    : `이미지 ${imgProgress.loaded} / ${imgProgress.total}장 로딩 중… (전부 받은 후 자동으로 인쇄 다이얼로그가 열립니다)`
+                  : locale === "en"
+                    ? `Full sponsorship PDF preview — ${totalPages} pages total. The print dialog will open shortly.`
+                    : `전체 패키지 PDF 미리보기 — 총 ${totalPages}페이지. 곧 인쇄 다이얼로그가 자동으로 열립니다.`}
+            </p>
+            {imgProgress.total > 0 && imgProgress.loaded < imgProgress.total && (
+              <div className="mt-2 h-1 bg-ink-100 rounded overflow-hidden">
+                <div
+                  className="h-full bg-brand-500 transition-all"
+                  style={{
+                    width: `${(imgProgress.loaded / imgProgress.total) * 100}%`,
+                  }}
+                />
+              </div>
+            )}
+          </div>
+          <button
+            type="button"
+            onClick={() => window.print()}
+            className="px-3.5 py-2 rounded-btn bg-ink-900 text-white text-[12px] font-semibold hover:bg-ink-700 flex items-center gap-1.5 shrink-0"
+          >
+            <Printer className="w-3.5 h-3.5" />
+            {locale === "en" ? "Print now" : "지금 인쇄"}
+          </button>
+        </div>
       </div>
 
       <div className="print:m-0">
