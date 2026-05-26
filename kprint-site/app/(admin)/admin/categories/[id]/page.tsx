@@ -1,17 +1,20 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import {
   collection,
+  deleteDoc,
   deleteField,
   doc,
+  getDocs,
   onSnapshot,
   query,
   Timestamp,
   updateDoc,
   where,
+  writeBatch,
 } from "firebase/firestore";
 import { useForm } from "react-hook-form";
 import {
@@ -20,6 +23,7 @@ import {
   Lock,
   Unlock,
   AlertCircle,
+  Trash2,
 } from "lucide-react";
 import { getDb } from "@/lib/firebase/firestore";
 import type {
@@ -133,6 +137,7 @@ const CATEGORY_TYPE_OPTIONS: Array<{
 
 export default function CategoryEditPage() {
   const params = useParams<{ id: string }>();
+  const router = useRouter();
   const id = params.id;
 
   const [category, setCategory] = useState<Category | null>(null);
@@ -878,6 +883,14 @@ export default function CategoryEditPage() {
               </div>
             </div>
           </Section>
+
+          {/* 위험 영역 — 매체 통째 삭제 (소분류·슬롯 cascade) */}
+          <DangerZone
+            category={category}
+            subcategoriesCount={subcategories.length}
+            slotsCount={slots.length}
+            onDeleted={() => router.push("/admin/categories")}
+          />
         </div>
 
         <div className="space-y-4 sticky top-[72px]">
@@ -1314,5 +1327,152 @@ function ParticipantViewEditor({
         )}
       </div>
     </div>
+  );
+}
+
+// ============================================================================
+// 매체(카테고리) 삭제 — 위험 영역
+// ============================================================================
+// 카테고리 + 연결된 모든 소분류·슬롯을 영구 삭제. 패키지가 이 카테고리를 참조하고
+// 있어도 그 참조는 별도 — 패키지 includedItems 안의 categoryId/subcategoryId/slotId
+// 가 dangling 이 될 수 있음. 어드민에 알림.
+function DangerZone({
+  category,
+  subcategoriesCount,
+  slotsCount,
+  onDeleted,
+}: {
+  category: Category;
+  subcategoriesCount: number;
+  slotsCount: number;
+  onDeleted: () => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const [confirmText, setConfirmText] = useState("");
+  const [deleting, setDeleting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const canSubmit = confirmText.trim() === category.code && !deleting;
+
+  const handleDelete = async () => {
+    if (!canSubmit) return;
+    setDeleting(true);
+    setError(null);
+    try {
+      const db = getDb();
+      // slots → subcategories → category 순으로 cascade 삭제
+      const slotSnap = await getDocs(
+        query(collection(db, "slots"), where("categoryId", "==", category.id))
+      );
+      const subSnap = await getDocs(
+        query(
+          collection(db, "subcategories"),
+          where("categoryId", "==", category.id)
+        )
+      );
+
+      // batch 500 limit — chunking
+      const chunks: Array<Array<() => void>> = [];
+      let current: Array<() => void> = [];
+      const push = (fn: () => void) => {
+        if (current.length >= 400) {
+          chunks.push(current);
+          current = [];
+        }
+        current.push(fn);
+      };
+      slotSnap.docs.forEach((d) => push(() => d.ref));
+      subSnap.docs.forEach((d) => push(() => d.ref));
+      chunks.push(current);
+
+      for (const chunk of chunks) {
+        if (chunk.length === 0) continue;
+        const batch = writeBatch(db);
+        for (const refFn of chunk) {
+          batch.delete(refFn() as never);
+        }
+        await batch.commit();
+      }
+      await deleteDoc(doc(db, "categories", category.id));
+      onDeleted();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+      setDeleting(false);
+    }
+  };
+
+  return (
+    <section className="bg-red-50/40 border border-red-200 rounded-card p-5 mt-6">
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <h2 className="text-[14px] font-bold text-red-700 flex items-center gap-1.5">
+            <Trash2 className="w-3.5 h-3.5" />
+            매체 삭제 (위험)
+          </h2>
+          <p className="text-[12px] text-ink-700 mt-1 leading-relaxed">
+            이 매체와 안의 소분류 {subcategoriesCount}개 · 슬롯 {slotsCount}
+            개가 <strong>영구 삭제</strong>됩니다. 복구 불가.
+            <br />
+            패키지가 이 매체를 참조하고 있으면 그 참조는 빈 항목으로 남으니
+            확인 후 패키지에서 수동 정리하세요.
+          </p>
+        </div>
+        {!open && (
+          <button
+            type="button"
+            onClick={() => setOpen(true)}
+            className="px-3.5 py-2 rounded-btn border border-red-300 text-red-700 text-[12.5px] font-semibold hover:bg-red-50 shrink-0"
+          >
+            매체 삭제…
+          </button>
+        )}
+      </div>
+      {open && (
+        <div className="mt-4 space-y-3">
+          <div className="text-[12.5px] text-ink-900">
+            확인 — 매체 코드{" "}
+            <code className="font-mono bg-white border border-red-200 px-1.5 py-0.5 rounded">
+              {category.code}
+            </code>{" "}
+            를 입력하면 활성화:
+          </div>
+          <div className="flex items-center gap-2">
+            <input
+              type="text"
+              value={confirmText}
+              onChange={(e) => setConfirmText(e.target.value)}
+              placeholder={category.code}
+              autoFocus
+              className="px-3 py-2 text-[13px] border border-red-300 rounded-btn focus:outline-none focus:border-red-500 font-mono w-48"
+            />
+            <button
+              type="button"
+              onClick={handleDelete}
+              disabled={!canSubmit}
+              className="px-3.5 py-2 rounded-btn bg-red-600 text-white text-[12.5px] font-bold hover:bg-red-700 disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              {deleting ? "삭제 중…" : "영구 삭제"}
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setOpen(false);
+                setConfirmText("");
+                setError(null);
+              }}
+              disabled={deleting}
+              className="px-3.5 py-2 rounded-btn border border-ink-200 text-[12.5px] text-ink-700 hover:bg-white"
+            >
+              취소
+            </button>
+          </div>
+          {error && (
+            <div className="text-[12px] text-red-700 flex items-center gap-1.5">
+              <AlertCircle className="w-3.5 h-3.5" /> {error}
+            </div>
+          )}
+        </div>
+      )}
+    </section>
   );
 }
