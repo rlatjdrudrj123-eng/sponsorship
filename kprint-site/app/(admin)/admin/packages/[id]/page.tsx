@@ -7,9 +7,10 @@ import {
   collection,
   deleteDoc,
   doc,
-  getDocs,
   onSnapshot,
+  query,
   updateDoc,
+  where,
 } from "firebase/firestore";
 import { useForm, useFieldArray } from "react-hook-form";
 import {
@@ -127,27 +128,38 @@ export default function PackageEditPage() {
     return () => u();
   }, [id, form]);
 
-  // load categories / subcategories / slots once
+  // load categories / subcategories / slots — onSnapshot 으로 실시간 + eventId 필터.
+  // pkg.eventId 가 결정된 후에만 구독 (load 끝나기 전엔 skip). 어드민이 카테고리·
+  // 소분류를 추가/수정하면 새로고침 없이 셀렉트에 즉시 반영됨.
   useEffect(() => {
-    (async () => {
-      try {
-        const [c, s, sl] = await Promise.all([
-          getDocs(collection(getDb(), "categories")),
-          getDocs(collection(getDb(), "subcategories")),
-          getDocs(collection(getDb(), "slots")),
-        ]);
+    const eventId = pkg?.eventId;
+    if (!eventId) return;
+    const db = getDb();
+    const u1 = onSnapshot(
+      query(collection(db, "categories"), where("eventId", "==", eventId)),
+      (s) =>
         setAllCategories(
-          c.docs.map((d) => ({ ...(d.data() as Category), id: d.id }))
-        );
+          s.docs.map((d) => ({ ...(d.data() as Category), id: d.id }))
+        )
+    );
+    const u2 = onSnapshot(
+      query(collection(db, "subcategories"), where("eventId", "==", eventId)),
+      (s) =>
         setAllSubcategories(
           s.docs.map((d) => ({ ...(d.data() as Subcategory), id: d.id }))
-        );
-        setAllSlots(sl.docs.map((d) => ({ ...(d.data() as Slot), id: d.id })));
-      } catch {
-        // ignore
-      }
-    })();
-  }, []);
+        )
+    );
+    const u3 = onSnapshot(
+      query(collection(db, "slots"), where("eventId", "==", eventId)),
+      (s) =>
+        setAllSlots(s.docs.map((d) => ({ ...(d.data() as Slot), id: d.id })))
+    );
+    return () => {
+      u1();
+      u2();
+      u3();
+    };
+  }, [pkg?.eventId]);
 
   // 카테고리/소분류별 최저가 정리 (자동 가격 계산용)
   const subsByCategory = new Map<string, Subcategory[]>();
