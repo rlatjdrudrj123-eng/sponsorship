@@ -6,6 +6,7 @@ import { ArrowLeft, Download } from "lucide-react";
 import type { Category, Subcategory } from "@/lib/types";
 import { localized, useLocale } from "@/lib/i18n/locale";
 import { krwToUsd } from "@/lib/price";
+import { CATEGORY_TYPE_LABELS } from "@/lib/categoryTypeLabels";
 
 type Props = {
   category: Category;
@@ -14,17 +15,9 @@ type Props = {
   availableSlots: number;
 };
 
-const TYPE_LABELS: Record<Category["type"], { ko: string; en: string }> = {
-  floor_plan: { ko: "도면형", en: "Floor Plan" },
-  quantity: { ko: "수량형", en: "Quantity" },
-  media: { ko: "미디어", en: "Media" },
-  digital_banner: { ko: "디지털 배너", en: "Digital Banner" },
-  mailing: { ko: "발송형", en: "Mailing" },
-  print_page: { ko: "지면형", en: "Print Page" },
-  content: { ko: "콘텐츠형", en: "Content" },
-  xpace: { ko: "XPACE", en: "XPACE" },
-  package: { ko: "패키지", en: "Package" },
-};
+// 단일 진실원 — lib/categoryTypeLabels.ts 에서 import.
+// 어드민 매체분류 그룹과 동일한 이름 사용 (영업담당/사용자 일관성).
+const TYPE_LABELS = CATEGORY_TYPE_LABELS;
 
 export function CategoryHero({
   category,

@@ -28,6 +28,7 @@ import { getDb } from "@/lib/firebase/firestore";
 import { useEventFilter } from "@/lib/admin/useEventFilter";
 import { PersonaEditModal } from "@/components/admin/PersonaEditModal";
 import type { Category, CategoryType, Persona, Taxonomy } from "@/lib/types";
+import { CATEGORY_TYPE_LABELS } from "@/lib/categoryTypeLabels";
 
 type Tab = "persona" | "media" | "timing" | "location";
 
@@ -37,15 +38,19 @@ type Bucket = {
   description?: string;
 };
 
-const MEDIA_BUCKETS: Bucket[] = [
-  { id: "floor_plan", label: "전시장 내부 설치" },
-  { id: "xpace", label: "LED 영상 광고" },
-  { id: "digital_banner", label: "사이트·앱 배너" },
-  { id: "mailing", label: "뉴스레터·푸시" },
-  { id: "print_page", label: "쇼가이드 인쇄" },
-  { id: "content", label: "SNS 콘텐츠" },
-  { id: "quantity", label: "참관객 배포물" },
-];
+// 단일 진실원 — lib/categoryTypeLabels.ts 에서 import (사이트와 일관).
+// "media" / "package" 는 분류 그룹에 안 노출하므로 명시 7개만.
+const MEDIA_BUCKETS: Bucket[] = (
+  [
+    "floor_plan",
+    "xpace",
+    "digital_banner",
+    "mailing",
+    "print_page",
+    "content",
+    "quantity",
+  ] as const
+).map((id) => ({ id, label: CATEGORY_TYPE_LABELS[id].ko }));
 
 const TIMING_BUCKETS: Bucket[] = [
   { id: "pre", label: "사전 (행사 전)" },
