@@ -157,8 +157,12 @@ type ExistingState = {
   maxOrder: number;
 };
 
-async function fetchExistingCategories(): Promise<ExistingState> {
-  const snap = await getDocs(collection(getDb(), COL_CATEGORIES));
+async function fetchExistingCategories(eventId: string): Promise<ExistingState> {
+  // ⚠️ eventId 필터 필수 — 없으면 다른 행사의 같은 code 카테고리를 "preserved"
+  // 로 매칭해서 import 가 그 행사 데이터를 덮어쓰는 데이터 손실 버그 발생.
+  const snap = await getDocs(
+    query(collection(getDb(), COL_CATEGORIES), where("eventId", "==", eventId))
+  );
   const byCode = new Map<string, ExistingCategory>();
   const slugs = new Set<string>();
   let maxOrder = -1;
@@ -257,7 +261,10 @@ function buildCategory(
   // 비어있으면 기존(preserved) 값 유지.
   const cat: Category = {
     id: ctx.newCategoryId,
-    eventId: preserved?.eventId ?? ctx.eventId,
+    // ⚠️ 항상 ctx.eventId 사용 — preserved 는 같은 eventId 의 카테고리만 매칭되도록
+    // fetchExistingCategories(eventId) 에서 보장됨. fallback 패턴은 데이터 손실
+    // 버그의 원인이라 제거.
+    eventId: ctx.eventId,
     code: parsed.code,
     channel: parsed.channel,
     type: parsed.type,
@@ -1050,7 +1057,7 @@ export async function importParsedData(
   let knownTags: Set<string>;
   try {
     [state, knownTags] = await Promise.all([
-      fetchExistingCategories(),
+      fetchExistingCategories(eventId),
       fetchKnownTagIds(),
     ]);
   } catch (e) {

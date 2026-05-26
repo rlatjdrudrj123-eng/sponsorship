@@ -33,6 +33,10 @@ dist/
 # Firebase
 .firebase/
 firebase-debug.log
+# 서비스 계정 키 — 절대 commit 금지
+.gcp-key.json
+*-service-account*.json
+*-firebase-adminsdk-*.json
 
 # claude (if any)
 .claude/
