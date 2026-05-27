@@ -89,7 +89,7 @@ export default function PackageEditPage() {
 
   const fields = useFieldArray({ control: form.control, name: "includedItems" });
 
-  // subscribe
+  // subscribe — pkg state 만 set (form.reset 은 별도 useEffect 에서 처리)
   useEffect(() => {
     const u = onSnapshot(doc(getDb(), "packages", id), (s) => {
       if (!s.exists()) {
@@ -98,35 +98,42 @@ export default function PackageEditPage() {
       }
       const data = { ...(s.data() as Package), id: s.id };
       setPkg(data);
-      if (!initRef.current) {
-        form.reset({
-          nameKo: data.name.ko ?? "",
-          nameEn: data.name.en ?? "",
-          code: data.code ?? "",
-          tier: data.tier,
-          tagline: data.tagline ?? "",
-          discountPrice: data.discountPrice ?? 0,
-          originalPriceUSD: data.originalPriceUSD,
-          discountPriceUSD: data.discountPriceUSD,
-          unit: data.unit ?? "패키지",
-          priceNote: data.priceNote ?? "",
-          isPublished: data.isPublished,
-          order: data.order ?? 0,
-          // categoryId 가 있는 신규 형태만 가져옴. 옛 데이터(label only)는 비어있게 두고
-          // 어드민이 다시 카테고리 골라서 채움.
-          includedItems: (data.includedItems ?? [])
-            .filter((it) => it.categoryId)
-            .map((it) => ({
-              categoryId: it.categoryId!,
-              subcategoryId: it.subcategoryId ?? "all",
-              count: it.count ?? 1,
-            })),
-        });
-        initRef.current = true;
-      }
     });
     return () => u();
-  }, [id, form]);
+  }, [id]);
+
+  // form.reset 은 pkg + allCategories 둘 다 준비된 후에만 실행.
+  // 이유: react-hook-form 의 register 가 select 를 uncontrolled 로 동작해서,
+  // categoryId 가 set 되는 시점에 option list 가 비어있으면 selected value 가
+  // 영구 dropped 됨 (이후 option 채워져도 복구 안 됨). allCategories 가 채워진
+  // 후 reset 해야 select 가 정상 선택 표시.
+  useEffect(() => {
+    if (initRef.current) return;
+    if (!pkg) return;
+    if (allCategories.length === 0) return; // fetch 끝날 때까지 대기
+    form.reset({
+      nameKo: pkg.name.ko ?? "",
+      nameEn: pkg.name.en ?? "",
+      code: pkg.code ?? "",
+      tier: pkg.tier,
+      tagline: pkg.tagline ?? "",
+      discountPrice: pkg.discountPrice ?? 0,
+      originalPriceUSD: pkg.originalPriceUSD,
+      discountPriceUSD: pkg.discountPriceUSD,
+      unit: pkg.unit ?? "패키지",
+      priceNote: pkg.priceNote ?? "",
+      isPublished: pkg.isPublished,
+      order: pkg.order ?? 0,
+      includedItems: (pkg.includedItems ?? [])
+        .filter((it) => it.categoryId)
+        .map((it) => ({
+          categoryId: it.categoryId!,
+          subcategoryId: it.subcategoryId ?? "all",
+          count: it.count ?? 1,
+        })),
+    });
+    initRef.current = true;
+  }, [pkg, allCategories.length, form]);
 
   // load categories / subcategories / slots — onSnapshot 으로 실시간 + eventId 필터.
   // pkg.eventId 가 결정된 후에만 구독 (load 끝나기 전엔 skip). 어드민이 카테고리·
