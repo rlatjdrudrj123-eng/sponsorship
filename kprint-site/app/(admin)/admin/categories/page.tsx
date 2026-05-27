@@ -2,11 +2,13 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import {
   collection,
   doc,
   onSnapshot,
   query,
+  setDoc,
   Timestamp,
   updateDoc,
   where,
@@ -18,11 +20,14 @@ import {
   ChevronDown,
   ChevronUp,
   GripVertical,
+  Plus,
   Search,
   Upload,
+  X,
 } from "lucide-react";
 import { getDb } from "@/lib/firebase/firestore";
 import { useEventFilter } from "@/lib/admin/useEventFilter";
+import { CATEGORY_TYPE_LABELS } from "@/lib/categoryTypeLabels";
 import type {
   Category,
   CategoryType,
@@ -71,6 +76,7 @@ export default function CategoriesListPage() {
   const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
   const [draggingId, setDraggingId] = useState<string | null>(null);
   const [dragOverId, setDragOverId] = useState<string | null>(null);
+  const [showAdd, setShowAdd] = useState(false);
 
   const { eventId, ready } = useEventFilter();
 
@@ -272,6 +278,14 @@ export default function CategoriesListPage() {
           </p>
         </div>
         <div className="flex items-end gap-3">
+          <button
+            type="button"
+            onClick={() => setShowAdd(true)}
+            className="px-3.5 py-2 rounded-btn bg-brand-500 text-white text-[13px] font-bold hover:bg-brand-700 flex items-center gap-1.5"
+          >
+            <Plus className="w-4 h-4" />
+            새 매체
+          </button>
           <Link
             href="/admin/import"
             className="px-3.5 py-2 rounded-btn border border-ink-100 text-[13px] font-semibold text-ink-900 hover:bg-ink-50 flex items-center gap-1.5"
@@ -281,6 +295,15 @@ export default function CategoriesListPage() {
           </Link>
         </div>
       </header>
+
+      {showAdd && eventId && (
+        <AddCategoryModal
+          eventId={eventId}
+          existingCodes={new Set(categories.map((c) => c.code))}
+          nextOrder={(categories.reduce((m, c) => Math.max(m, c.order ?? 0), -1)) + 1}
+          onClose={() => setShowAdd(false)}
+        />
+      )}
 
       <div className="bg-white border border-ink-100 rounded-card p-4 flex items-center gap-3 flex-wrap">
         <div className="relative flex-1 min-w-[200px]">
@@ -499,5 +522,207 @@ function Switch({ checked, onChange }: { checked: boolean; onChange: () => void 
         }
       />
     </button>
+  );
+}
+
+// ============================================================================
+// 새 매체 추가 모달 — 엑셀 없이 어드민에서 직접
+// ============================================================================
+function AddCategoryModal({
+  eventId,
+  existingCodes,
+  nextOrder,
+  onClose,
+}: {
+  eventId: string;
+  existingCodes: Set<string>;
+  nextOrder: number;
+  onClose: () => void;
+}) {
+  const router = useRouter();
+  const [code, setCode] = useState("");
+  const [nameKo, setNameKo] = useState("");
+  const [nameEn, setNameEn] = useState("");
+  const [channel, setChannel] = useState<Channel>("offline");
+  const [type, setType] = useState<CategoryType>("floor_plan");
+  const [shortDesc, setShortDesc] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const submit = async () => {
+    setError(null);
+    if (!eventId) {
+      setError("상단에서 행사를 먼저 선택하세요.");
+      return;
+    }
+    const c = code.trim().toUpperCase();
+    const ko = nameKo.trim();
+    const en = nameEn.trim();
+    if (!c || !ko || !en) {
+      setError("코드 · 이름 (한글/영문) 모두 필수.");
+      return;
+    }
+    if (!/^[A-Z0-9_-]{2,12}$/.test(c)) {
+      setError("코드는 2-12자 대문자/숫자/_/- 만 가능 (예: RGA, BGE).");
+      return;
+    }
+    if (existingCodes.has(c)) {
+      setError(`이미 사용 중인 코드: ${c}`);
+      return;
+    }
+    setSaving(true);
+    try {
+      const db = getDb();
+      const slug = en
+        .toLowerCase()
+        .replace(/[^a-z0-9\s-]/g, "")
+        .replace(/\s+/g, "-")
+        .replace(/-+/g, "-")
+        .replace(/^-|-$/g, "")
+        .slice(0, 60) || c.toLowerCase();
+      const ref = doc(collection(db, "categories"));
+      const now = Timestamp.fromDate(new Date());
+      const cat: Category = {
+        id: ref.id,
+        eventId,
+        code: c,
+        channel,
+        type,
+        slug,
+        name: { ko, en },
+        shortDesc: shortDesc.trim() || undefined,
+        isPublished: false, // 신규는 비공개로 시작 — 상세 페이지에서 데이터 채운 후 게시 토글
+        order: nextOrder,
+        tags: [],
+        heroImages: { mode: "carousel", images: [] },
+        lockedFields: [], // 잠금 없는 상태로 시작 — 어드민에서 잠그고 싶은 필드 잠금 토글
+        createdAt: now,
+        updatedAt: now,
+      };
+      await setDoc(ref, cat as unknown as Record<string, unknown>);
+      router.push(`/admin/categories/${ref.id}`);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div
+      className="fixed inset-0 z-50 bg-ink-900/40 grid place-items-center p-4"
+      onClick={onClose}
+    >
+      <div
+        className="bg-white rounded-card w-full max-w-lg p-5 shadow-xl"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-[16px] font-bold text-ink-900">새 매체 추가</h2>
+          <button onClick={onClose} className="p-1 rounded hover:bg-ink-100" type="button">
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+        <p className="text-[12px] text-ink-500 mb-4 leading-relaxed">
+          기본 정보만 입력 → 저장 후 상세 페이지로 이동. 거기서 가격·이미지·
+          소분류·구좌 등을 채우세요. 신규 매체는 <strong>비공개</strong>로
+          저장되며, 상단의 [게시] 토글로 사이트에 노출.
+        </p>
+        <div className="space-y-3">
+          <div className="grid grid-cols-2 gap-3">
+            <Field label="코드 *">
+              <input
+                type="text"
+                value={code}
+                onChange={(e) => setCode(e.target.value.toUpperCase())}
+                placeholder="RGA"
+                className="w-full px-3 py-2 text-sm border border-ink-100 rounded-btn focus:outline-none focus:border-brand-500 font-mono uppercase"
+                autoFocus
+              />
+            </Field>
+            <Field label="채널 *">
+              <select
+                value={channel}
+                onChange={(e) => setChannel(e.target.value as Channel)}
+                className="w-full px-3 py-2 text-sm border border-ink-100 rounded-btn focus:outline-none focus:border-brand-500 bg-white"
+              >
+                <option value="offline">오프라인</option>
+                <option value="online">온라인</option>
+                <option value="package">패키지</option>
+              </select>
+            </Field>
+            <Field label="이름 (한글) *">
+              <input
+                type="text"
+                value={nameKo}
+                onChange={(e) => setNameKo(e.target.value)}
+                placeholder="등록 데스크"
+                className="w-full px-3 py-2 text-sm border border-ink-100 rounded-btn focus:outline-none focus:border-brand-500"
+              />
+            </Field>
+            <Field label="이름 (영문) *">
+              <input
+                type="text"
+                value={nameEn}
+                onChange={(e) => setNameEn(e.target.value)}
+                placeholder="Registration Desk"
+                className="w-full px-3 py-2 text-sm border border-ink-100 rounded-btn focus:outline-none focus:border-brand-500"
+              />
+            </Field>
+          </div>
+          <Field label="유형 *">
+            <select
+              value={type}
+              onChange={(e) => setType(e.target.value as CategoryType)}
+              className="w-full px-3 py-2 text-sm border border-ink-100 rounded-btn focus:outline-none focus:border-brand-500 bg-white"
+            >
+              {(Object.keys(CATEGORY_TYPE_LABELS) as CategoryType[]).map((t) => (
+                <option key={t} value={t}>
+                  {CATEGORY_TYPE_LABELS[t].ko}
+                </option>
+              ))}
+            </select>
+          </Field>
+          <Field label="한 줄 설명 (선택)">
+            <input
+              type="text"
+              value={shortDesc}
+              onChange={(e) => setShortDesc(e.target.value)}
+              placeholder="참관객 첫 동선에 노출되는 등록 데스크 광고"
+              className="w-full px-3 py-2 text-sm border border-ink-100 rounded-btn focus:outline-none focus:border-brand-500"
+            />
+          </Field>
+        </div>
+        {error && (
+          <div className="mt-3 text-[12px] text-red-700">{error}</div>
+        )}
+        <div className="mt-5 flex justify-end gap-2">
+          <button
+            type="button"
+            onClick={onClose}
+            disabled={saving}
+            className="px-3.5 py-2 rounded-btn border border-ink-100 text-[13px] font-semibold text-ink-700 hover:bg-ink-50"
+          >
+            취소
+          </button>
+          <button
+            type="button"
+            onClick={submit}
+            disabled={saving}
+            className="px-3.5 py-2 rounded-btn bg-brand-500 text-white text-[13px] font-bold hover:bg-brand-700 disabled:opacity-50"
+          >
+            {saving ? "생성 중…" : "생성 후 상세 편집"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function Field({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <label className="block">
+      <span className="text-[12px] text-ink-700 font-semibold mb-1 block">{label}</span>
+      {children}
+    </label>
   );
 }
