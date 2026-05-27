@@ -399,18 +399,31 @@ export default function PackageEditPage() {
                   <select
                     {...form.register(`includedItems.${i}.subcategoryId` as const)}
                     className={inputCls()}
-                    disabled={!cat || subs.length <= 1}
+                    disabled={!cat}
                   >
-                    <option value="all">
-                      {subs.length <= 1
-                        ? "—"
-                        : `최저가 (${[...subs].sort((a, b) => a.priceKRW - b.priceKRW)[0]?.priceKRW.toLocaleString()}원)`}
-                    </option>
-                    {subs.map((s) => (
-                      <option key={s.id} value={s.id}>
-                        {s.name?.ko} · {s.priceKRW.toLocaleString()}원
+                    {!cat ? (
+                      <option value="all">— 카테고리 먼저 선택 —</option>
+                    ) : subs.length === 0 ? (
+                      <option value="all">— 로딩 중… —</option>
+                    ) : subs.length === 1 ? (
+                      // 단일 sub — 옵션으로 명시해서 사용자가 가격 확인 가능
+                      <option value="all">
+                        {subs[0].name?.ko || "단독"} · {subs[0].priceKRW.toLocaleString()}원
                       </option>
-                    ))}
+                    ) : (
+                      <>
+                        <option value="all">
+                          최저가 (
+                          {[...subs].sort((a, b) => a.priceKRW - b.priceKRW)[0]?.priceKRW.toLocaleString()}
+                          원)
+                        </option>
+                        {subs.map((s) => (
+                          <option key={s.id} value={s.id}>
+                            {s.name?.ko} · {s.priceKRW.toLocaleString()}원
+                          </option>
+                        ))}
+                      </>
+                    )}
                   </select>
                   <input
                     type="number"
