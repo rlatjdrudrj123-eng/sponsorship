@@ -2,7 +2,6 @@
 
 import { useParams } from "next/navigation";
 import { HomePage } from "@/components/public/HomePage";
-import { LocaleSetter } from "@/components/public/LocaleSetter";
 
 /**
  * 영문 메인 페이지 (/[eventSlug]/en).
@@ -25,10 +24,5 @@ export default function EventHomePageEn() {
     );
   }
 
-  return (
-    <>
-      <LocaleSetter locale="en" />
-      <HomePage eventId={eventId} />
-    </>
-  );
+  return <HomePage eventId={eventId} />;
 }

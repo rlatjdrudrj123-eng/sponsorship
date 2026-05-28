@@ -2,7 +2,6 @@
 
 import { useParams } from "next/navigation";
 import { HomePage } from "@/components/public/HomePage";
-import { LocaleSetter } from "@/components/public/LocaleSetter";
 
 /**
  * 이벤트 홈 (한국어 기본) — 캔버스로 디자인된 데크가 메인 화면.
@@ -22,10 +21,5 @@ export default function EventHomePage() {
     );
   }
 
-  return (
-    <>
-      <LocaleSetter locale="ko" />
-      <HomePage eventId={eventId} />
-    </>
-  );
+  return <HomePage eventId={eventId} />;
 }
