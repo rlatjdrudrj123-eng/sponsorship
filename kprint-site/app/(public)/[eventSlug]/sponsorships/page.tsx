@@ -618,7 +618,6 @@ export default function SponsorshipsPage() {
                   </span>
                 </span>
                 <span className="ml-auto" />
-                <LocaleToggle className="hidden md:inline-flex" />
                 <a
                   href={settings?.pdfFullUrl || `/${eventId}/print/full`}
                   target="_blank"
