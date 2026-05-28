@@ -66,6 +66,7 @@ type FormValues = {
   type: Category["type"];
   slug: string;
   shortDesc: string;
+  shortDescEn: string;
   size: string;
   fileFormat: string;
   deadline: string;
@@ -165,6 +166,7 @@ export default function CategoryEditPage() {
       type: "floor_plan",
       slug: "",
       shortDesc: "",
+      shortDescEn: "",
       size: "",
       fileFormat: "",
       deadline: "",
@@ -189,6 +191,7 @@ export default function CategoryEditPage() {
           type: data.type,
           slug: data.slug ?? "",
           shortDesc: data.shortDesc ?? "",
+          shortDescEn: data.shortDescEn ?? "",
           size: data.size ?? "",
           fileFormat: data.fileFormat ?? "",
           deadline: data.deadline ? data.deadline.toDate().toISOString().slice(0, 10) : "",
@@ -276,6 +279,7 @@ export default function CategoryEditPage() {
             type: v.type,
             slug: v.slug,
             shortDesc: v.shortDesc ? v.shortDesc : deleteField(),
+            shortDescEn: v.shortDescEn ? v.shortDescEn : deleteField(),
             size: v.size ? v.size : deleteField(),
             fileFormat: v.fileFormat ? v.fileFormat : deleteField(),
             deadline: v.deadline
@@ -500,7 +504,7 @@ export default function CategoryEditPage() {
                 })()}
               </Field>
               <Field
-                label="한 줄 설명"
+                label="한 줄 설명 (한글)"
                 full
                 where={["slide-desc", "card", "modal", "pdf"]}
                 hint="제목 바로 아래 한 줄. 카드·모달·PDF 에도 동일하게 노출."
@@ -509,6 +513,17 @@ export default function CategoryEditPage() {
                   {...form.register("shortDesc")}
                   className={inputCls(false)}
                   placeholder="예: Hall A 등록데스크 — 모든 참관객이 거치는 첫 접점."
+                />
+              </Field>
+              <Field
+                label="한 줄 설명 (영문) — /en 사이트 노출"
+                full
+                hint="영문 사이트(/[eventSlug]/en) 에 보일 한 줄 설명. 비워두면 한글 그대로 노출."
+              >
+                <input
+                  {...form.register("shortDescEn")}
+                  className={inputCls(false)}
+                  placeholder="e.g. Hall A registration desk — first touchpoint for every visitor."
                 />
               </Field>
             </div>

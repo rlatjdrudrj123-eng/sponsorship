@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import { ArrowLeft, Download } from "lucide-react";
 import type { Category, Subcategory } from "@/lib/types";
-import { localized, useLocale } from "@/lib/i18n/locale";
+import { localized, localizedField, useLocale } from "@/lib/i18n/locale";
 import { krwToUsd } from "@/lib/price";
 import { CATEGORY_TYPE_LABELS } from "@/lib/categoryTypeLabels";
 
@@ -66,11 +66,14 @@ export function CategoryHero({
         <h1 className="text-[32px] md:text-[56px] font-bold tracking-tight leading-[1.15] text-ink-900 break-keep">
           {localized(category.name, locale)}
         </h1>
-        {category.shortDesc && (
-          <p className="text-[14px] md:text-[16px] text-ink-500 mt-4 max-w-3xl leading-relaxed">
-            {category.shortDesc}
-          </p>
-        )}
+        {(() => {
+          const desc = localizedField(category.shortDesc, category.shortDescEn, locale);
+          return desc ? (
+            <p className="text-[14px] md:text-[16px] text-ink-500 mt-4 max-w-3xl leading-relaxed">
+              {desc}
+            </p>
+          ) : null;
+        })()}
 
         <div className="mt-8 flex items-center gap-x-8 gap-y-3 flex-wrap text-[13px]">
           <Meta label={isEn ? "Slots" : "구좌"}>

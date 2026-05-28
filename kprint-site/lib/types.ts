@@ -103,13 +103,19 @@ export type Category = {
 
   name: { ko: string; en: string };
   shortDesc?: string;
+  /** 영문 사이트(/[eventSlug]/en) 용 한 줄 설명. 비어있으면 shortDesc(한국어) 폴백. */
+  shortDescEn?: string;
   longDesc?: string;
+  /** 영문 사이트용 긴 설명. 비어있으면 longDesc 폴백. */
+  longDescEn?: string;
 
   // 공통 스펙 (소분류별로 다르면 비워두고 subcategory에서)
   size?: string;
   fileFormat?: string;
   deadline?: Timestamp;
   designGuideText?: string;
+  /** 영문 사이트용 디자인 가이드 텍스트. 비어있으면 designGuideText 폴백. */
+  designGuideTextEn?: string;
   designGuideFileUrl?: string;
   designGuideFilePath?: string;
 
@@ -192,6 +198,8 @@ export type Subcategory = {
   priceUSD?: number;
   unit: { ko: string; en: string };
   priceNote?: string;
+  /** 영문 사이트용 가격 주석. 비어있으면 priceNote 폴백. */
+  priceNoteEn?: string;
 
   size?: string;
 
@@ -226,9 +234,13 @@ export type Package = {
   name: { ko: string; en: string };
   tier: "signature" | "standard";
   tagline?: string;
+  /** 영문 사이트용 태그라인. 비어있으면 tagline 폴백. */
+  taglineEn?: string;
 
   includedItems: Array<{
     label: string;
+    /** 영문 사이트용 항목 라벨. 비어있으면 label 폴백. resolveItems 가 자동 채움. */
+    labelEn?: string;
     referencedSlotIds?: string[];
     /**
      * 자동 구성용 — 카테고리/소분류 단위 선택 시 자동 채워짐.
@@ -247,6 +259,8 @@ export type Package = {
   discountPriceUSD?: number;
   unit?: string;
   priceNote?: string;
+  /** 영문 사이트용 가격 주석. 비어있으면 priceNote 폴백. */
+  priceNoteEn?: string;
 
   heroImages?: ImageSlot;
 
@@ -481,12 +495,18 @@ export type DiagnosticLog = {
 export type BundledPerk = {
   /** 표시 라벨 (예: "등록대 스폰서 로고") */
   label: string;
+  /** 영문 사이트용 라벨. 비어있으면 label 폴백. */
+  labelEn?: string;
   /** 한 줄 설명 (예: "전시장 입구 등록대 전체에 로고 노출") */
   description?: string;
+  /** 영문 사이트용 설명. 비어있으면 description 폴백. */
+  descriptionEn?: string;
   /** 상당 가치 (KRW) — 영업 시 "총 X만원 상당" 계산용. 0/없음이면 비표시 */
   valueKRW?: number;
   /** 조건부 혜택 (예: 큰 회사만 등) — 표시는 하되 가치 합산에서 제외 */
   condition?: string;
+  /** 영문 사이트용 조건 텍스트. 비어있으면 condition 폴백. */
+  conditionEn?: string;
   /**
    * 적용 범위 — 비어있으면 "모든 곳" (전 패키지 + 전 단품 카테고리에 노출).
    * 채워지면 해당 카테고리 코드 (예: "CB") 또는 패키지 코드 (예: "PKG-AZ") 에만 노출.
