@@ -1254,13 +1254,16 @@ function FilterPanel({
                   )}
                   <div className="min-w-0 flex-1">
                     <div className="text-[12.5px] font-bold text-ink-900 leading-tight">
-                      {p.title}
+                      {localizedField(p.title, p.titleEn, locale)}
                     </div>
-                    {p.description && (
-                      <div className="text-[10.5px] text-ink-500 mt-0.5 leading-snug line-clamp-2">
-                        {p.description}
-                      </div>
-                    )}
+                    {(() => {
+                      const pd = localizedField(p.description, p.descriptionEn, locale);
+                      return pd ? (
+                        <div className="text-[10.5px] text-ink-500 mt-0.5 leading-snug line-clamp-2">
+                          {pd}
+                        </div>
+                      ) : null;
+                    })()}
                   </div>
                 </div>
               </button>
@@ -1605,11 +1608,14 @@ function PackageCard({
     >
       {/* 좌측 — 카피·포함 항목 */}
       <div className="px-6 py-6 min-w-0">
-        {pkg.tagline && (
-          <div className="text-[11.5px] text-brand-500 font-semibold mb-1 leading-snug line-clamp-2">
-            {pkg.tagline}
-          </div>
-        )}
+        {(() => {
+          const tg = localizedField(pkg.tagline, pkg.taglineEn, locale);
+          return tg ? (
+            <div className="text-[11.5px] text-brand-500 font-semibold mb-1 leading-snug line-clamp-2">
+              {tg}
+            </div>
+          ) : null;
+        })()}
         <div className="text-[22px] md:text-[26px] font-bold text-ink-900 group-hover:text-brand-500 tracking-tight leading-tight">
           {localized(pkg.name, locale)}
         </div>
@@ -1627,17 +1633,20 @@ function PackageCard({
                     (accent ? "bg-brand-500" : "bg-ink-400")
                   }
                 />
-                <span>{it.label}</span>
+                <span>{localizedField(it.label, it.labelEn, locale)}</span>
               </li>
             ))}
           </ul>
         )}
 
-        {pkg.priceNote && (
-          <p className="text-[11px] text-ink-500 mt-3 leading-snug">
-            {pkg.priceNote}
-          </p>
-        )}
+        {(() => {
+          const pn = localizedField(pkg.priceNote, pkg.priceNoteEn, locale);
+          return pn ? (
+            <p className="text-[11px] text-ink-500 mt-3 leading-snug">
+              {pn}
+            </p>
+          ) : null;
+        })()}
       </div>
 
       {/* 우측 — 가격 column (세로 구분선) */}
@@ -1794,11 +1803,14 @@ function CardGrid({
               <div className="font-bold text-[16px] text-ink-900 group-hover:text-brand-500 leading-tight tracking-tight transition-colors">
                 {localized(c.name, locale)}
               </div>
-              {c.shortDesc && (
-                <p className="text-[12.5px] text-ink-500 mt-2 line-clamp-2 leading-snug">
-                  {c.shortDesc}
-                </p>
-              )}
+              {(() => {
+                const sd = localizedField(c.shortDesc, c.shortDescEn, locale);
+                return sd ? (
+                  <p className="text-[12.5px] text-ink-500 mt-2 line-clamp-2 leading-snug">
+                    {sd}
+                  </p>
+                ) : null;
+              })()}
 
               {/* 참가 상황 칩 — 카테고리.personas 매핑된 페르소나 라벨 (최대 2개) */}
               {(() => {
@@ -2659,11 +2671,14 @@ function SlideSection({
           <h2 className="text-[18px] font-bold text-ink-900 leading-[1.2] tracking-tight">
             {localized(item.name, locale)}
           </h2>
-          {item.shortDesc && (
-            <p className="text-[13px] text-ink-700 mt-1.5 leading-snug line-clamp-2">
-              {item.shortDesc}
-            </p>
-          )}
+          {(() => {
+            const sd = localizedField(item.shortDesc, item.shortDescEn, locale);
+            return sd ? (
+              <p className="text-[13px] text-ink-700 mt-1.5 leading-snug line-clamp-2">
+                {sd}
+              </p>
+            ) : null;
+          })()}
 
           {/* 가격 — 설명 바로 아래로 끌어올림 (FAB 와 시각 충돌 해소) */}
           <div className="mt-3 pt-3 border-t border-ink-100">
@@ -2907,11 +2922,14 @@ function SlideSection({
             </div>
 
             {/* 한 줄 설명 — 제목 축소에 맞춰 상대적으로 키워 균형 */}
-            {item.shortDesc && (
-              <p className="text-[15px] md:text-[17px] text-ink-700 mt-3 leading-relaxed max-w-xl">
-                {item.shortDesc}
-              </p>
-            )}
+            {(() => {
+              const sd = localizedField(item.shortDesc, item.shortDescEn, locale);
+              return sd ? (
+                <p className="text-[15px] md:text-[17px] text-ink-700 mt-3 leading-relaxed max-w-xl">
+                  {sd}
+                </p>
+              ) : null;
+            })()}
 
             <hr className="border-ink-100 my-4" />
 
@@ -3186,13 +3204,16 @@ function SlideSection({
                           <div className="flex-1 min-w-0">
                             <div className="flex items-baseline gap-1.5 flex-wrap">
                               <span className="font-bold text-ink-900">
-                                {p.label}
+                                {localizedField(p.label, p.labelEn, locale)}
                               </span>
-                              {p.condition && (
-                                <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-ink-100 text-ink-500">
-                                  {p.condition}
-                                </span>
-                              )}
+                              {(() => {
+                                const cn = localizedField(p.condition, p.conditionEn, locale);
+                                return cn ? (
+                                  <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-ink-100 text-ink-500">
+                                    {cn}
+                                  </span>
+                                ) : null;
+                              })()}
                               {p.valueKRW && (
                                 <span className="text-[10.5px] font-num font-bold text-brand-700">
                                   {locale === "en"
@@ -3201,11 +3222,14 @@ function SlideSection({
                                 </span>
                               )}
                             </div>
-                            {p.description && (
-                              <p className="text-ink-500 mt-0.5">
-                                {p.description}
-                              </p>
-                            )}
+                            {(() => {
+                              const pd = localizedField(p.description, p.descriptionEn, locale);
+                              return pd ? (
+                                <p className="text-ink-500 mt-0.5">
+                                  {pd}
+                                </p>
+                              ) : null;
+                            })()}
                           </div>
                         </li>
                       ))}

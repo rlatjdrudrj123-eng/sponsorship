@@ -3,7 +3,7 @@
 import { useMemo } from "react";
 import { ArrowRight, Users } from "lucide-react";
 import type { Category, Package, Persona } from "@/lib/types";
-import { useLocale } from "@/lib/i18n/locale";
+import { localizedField, useLocale } from "@/lib/i18n/locale";
 
 /**
  * 페르소나 추천 코스 — sponsorships 페이지 상단.
@@ -179,7 +179,7 @@ export function PersonaCourses({
                     </span>
                   </div>
                   <div className="text-[15px] font-bold leading-tight tracking-tight mt-2">
-                    {p.title}
+                    {localizedField(p.title, p.titleEn, locale)}
                   </div>
                   <p
                     className={
@@ -187,7 +187,7 @@ export function PersonaCourses({
                       (isActive ? "text-white/85" : "text-ink-500")
                     }
                   >
-                    {p.description}
+                    {localizedField(p.description, p.descriptionEn, locale)}
                   </p>
 
                   {(p.socialProofNote || p.budgetNote) && (

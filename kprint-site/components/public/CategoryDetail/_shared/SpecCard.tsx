@@ -2,7 +2,7 @@
 
 import { Download } from "lucide-react";
 import type { Category } from "@/lib/types";
-import { useLocale } from "@/lib/i18n/locale";
+import { localizedField, useLocale } from "@/lib/i18n/locale";
 
 export function SpecCard({ category }: { category: Category }) {
   const locale = useLocale((s) => s.locale);
@@ -102,11 +102,14 @@ export function SpecCard({ category }: { category: Category }) {
           ))}
         </dl>
       )}
-      {category.designGuideText && (
-        <div className="text-[13px] text-ink-700 mt-4 leading-relaxed bg-canvas border border-ink-100 rounded-btn p-4 whitespace-pre-wrap">
-          {category.designGuideText}
-        </div>
-      )}
+      {(() => {
+        const dg = localizedField(category.designGuideText, category.designGuideTextEn, locale);
+        return dg ? (
+          <div className="text-[13px] text-ink-700 mt-4 leading-relaxed bg-canvas border border-ink-100 rounded-btn p-4 whitespace-pre-wrap">
+            {dg}
+          </div>
+        ) : null;
+      })()}
       {category.designGuideFileUrl && (
         <a
           href={category.designGuideFileUrl}

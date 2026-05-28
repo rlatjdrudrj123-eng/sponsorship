@@ -15,7 +15,7 @@ import { ArrowLeft } from "lucide-react";
 import { getDb } from "@/lib/firebase/firestore";
 import type { Package, SiteSettings } from "@/lib/types";
 import { Footer } from "@/components/public/Footer";
-import { useLocale, localized as localizedHelper } from "@/lib/i18n/locale";
+import { useLocale, localized as localizedHelper, localizedField } from "@/lib/i18n/locale";
 import { t } from "@/lib/i18n/strings";
 
 type Tab = "all" | "signature" | "standard";
@@ -165,11 +165,14 @@ export default function PackagesListPage() {
                       <div className="font-bold text-[18px] text-ink-900 group-hover:text-brand-700 leading-tight">
                         {localizedHelper(pkg.name, locale)}
                       </div>
-                      {pkg.tagline && (
-                        <p className="text-[12px] text-ink-500 mt-2 leading-relaxed line-clamp-2">
-                          {pkg.tagline}
-                        </p>
-                      )}
+                      {(() => {
+                        const tg = localizedField(pkg.tagline, pkg.taglineEn, locale);
+                        return tg ? (
+                          <p className="text-[12px] text-ink-500 mt-2 leading-relaxed line-clamp-2">
+                            {tg}
+                          </p>
+                        ) : null;
+                      })()}
                       <div className="mt-auto pt-4 flex items-baseline gap-2">
                         <span className="text-[20px] font-bold text-brand-700">
                           {locale === "en" ? "₩" : ""}

@@ -135,11 +135,14 @@ export function CategoryHero({
               </span>
             </Meta>
           )}
-          {category.fileFormat && (
-            <Meta label={isEn ? "File format" : "파일 형식"}>
-              <span>{category.fileFormat}</span>
-            </Meta>
-          )}
+          {(() => {
+            const ff = localizedField(category.fileFormat, category.fileFormatEn, locale);
+            return ff ? (
+              <Meta label={isEn ? "File format" : "파일 형식"}>
+                <span>{ff}</span>
+              </Meta>
+            ) : null;
+          })()}
           {category.designGuideFileUrl && (
             <a
               href={category.designGuideFileUrl}

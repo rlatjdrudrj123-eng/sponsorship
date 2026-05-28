@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { Bookmark, BookmarkCheck, Check, MapPin, X } from "lucide-react";
 import { useCartStore } from "@/lib/cart/cartStore";
 import type { Slot, Subcategory } from "@/lib/types";
-import { localized, useLocale } from "@/lib/i18n/locale";
+import { localized, localizedField, useLocale } from "@/lib/i18n/locale";
 import { getDisplayPrice, formatPrice } from "@/lib/price";
 
 type Props = {
@@ -64,11 +64,14 @@ export function SlotPicker({ categoryId, eventId, subcategories, slots }: Props)
                   );
                 })()}
               </div>
-              {sub.priceNote && (
-                <div className="text-[11.5px] text-ink-500 mb-3 italic">
-                  {sub.priceNote}
-                </div>
-              )}
+              {(() => {
+                const pn = localizedField(sub.priceNote, sub.priceNoteEn, locale);
+                return pn ? (
+                  <div className="text-[11.5px] text-ink-500 mb-3 italic">
+                    {pn}
+                  </div>
+                ) : null;
+              })()}
               <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-2">
                 {subSlots.map((slot) => {
                   const isSold = slot.status !== "available";
