@@ -7,7 +7,7 @@ import type { LandingBlock, SiteSettings } from "@/lib/types";
 import { BlockSection } from "./blocks";
 import { useLocale } from "@/lib/i18n/locale";
 import { getFullPdfHref, isDirectPdfHref } from "@/lib/pdf";
-import { LocaleToggle } from "@/components/public/LocaleToggle";
+import { LocaleSwitch } from "@/components/public/LocaleSwitch";
 
 /**
  * 캔버스로 디자인된 슬라이드 데크를 풀스크린 snap-scroll 로 렌더.
@@ -44,7 +44,7 @@ export function LandingRenderer({
     <>
       {/* 우상단 영속 버튼 — 카탈로그·전체 PDF·언어 토글 */}
       <div className="fixed top-6 right-6 md:top-8 md:right-8 z-50 flex items-center gap-2">
-        <LocaleToggle />
+        <LocaleSwitch size="sm" />
         <a
           href={pdfHref}
           target="_blank"

@@ -235,6 +235,8 @@ export function CoverSection({
   const { eyebrow, title, subtitle, bgImageUrl } = block.data;
   const style = block.style;
   const accent = style?.accent;
+  const locale = useLocale((s) => s.locale);
+  const isEn = locale === "en";
   return (
     <section
       className={
@@ -301,17 +303,17 @@ export function CoverSection({
         <Reveal delay={700}>
           <div className="mt-16 md:mt-20 flex items-center gap-4 flex-wrap">
             <Link
-              href={`/${eventId}/sponsorships`}
+              href={isEn ? `/${eventId}/en/sponsorships` : `/${eventId}/sponsorships`}
               className="px-7 py-4 rounded-pill bg-brand-500 text-white font-bold hover:bg-brand-700 hover:shadow-glow-sm transition-all flex items-center gap-2"
             >
-              스폰서십 둘러보기
+              {isEn ? "Browse sponsorships" : "스폰서십 둘러보기"}
               <ArrowRight className="w-4 h-4" />
             </Link>
             <Link
-              href={`/${eventId}/contact`}
+              href={isEn ? `/${eventId}/en/contact` : `/${eventId}/contact`}
               className="px-7 py-4 rounded-pill border-2 border-ink-900 text-ink-900 font-bold hover:bg-ink-900 hover:text-white transition-colors"
             >
-              바로 문의하기
+              {isEn ? "Contact us" : "바로 문의하기"}
             </Link>
           </div>
         </Reveal>
@@ -660,6 +662,7 @@ export function CtaSection({
 // ============================================================================
 
 export function ImageSection({ block }: { block: ImageBlock }) {
+  const locale = useLocale((s) => s.locale);
   const { url, alt, caption, fullBleed } = block.data;
   const styleMerged: BlockStyle = {
     ...block.style,
@@ -681,7 +684,9 @@ export function ImageSection({ block }: { block: ImageBlock }) {
           }
         />
       ) : (
-        <div className="text-ink-300 text-sm">이미지 URL이 비어있습니다</div>
+        <div className="text-ink-300 text-sm">
+          {locale === "en" ? "Image URL is empty" : "이미지 URL이 비어있습니다"}
+        </div>
       )}
       {caption && (
         <div className="text-[12px] text-ink-500 font-num">{caption}</div>

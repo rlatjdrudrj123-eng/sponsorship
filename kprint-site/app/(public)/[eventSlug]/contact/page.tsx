@@ -253,7 +253,11 @@ function ContactPageInner() {
       router.push(`/${eventId}/contact/done`);
     } catch (e) {
       setSubmitError(
-        e instanceof Error ? e.message : "문의 전송에 실패했습니다."
+        e instanceof Error
+          ? e.message
+          : locale === "en"
+            ? "Failed to send inquiry."
+            : "문의 전송에 실패했습니다."
       );
     }
   };

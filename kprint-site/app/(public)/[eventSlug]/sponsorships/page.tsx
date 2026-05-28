@@ -40,7 +40,6 @@ import type {
   Subcategory,
 } from "@/lib/types";
 import { Footer } from "@/components/public/Footer";
-import { LocaleToggle } from "@/components/public/LocaleToggle";
 import { LocaleSwitch } from "@/components/public/LocaleSwitch";
 import { SlotPicker } from "@/components/public/CategoryDetail/_shared/SlotPicker";
 import { PersonaRecommendation } from "@/components/public/PersonaRecommendation";
@@ -800,14 +799,16 @@ export default function SponsorshipsPage() {
                 onClick={resetFilters}
                 className="px-4 py-2.5 rounded-btn border border-ink-100 text-[13px] font-semibold"
               >
-                초기화
+                {locale === "en" ? "Reset" : "초기화"}
               </button>
               <button
                 type="button"
                 onClick={() => setSheetOpen(false)}
                 className="px-4 py-2.5 rounded-btn bg-brand-500 text-ink-900 hover:bg-brand-700 hover:text-white text-[13px] font-semibold"
               >
-                {filtered.length}개 결과 보기
+                {locale === "en"
+                  ? `View ${filtered.length} result${filtered.length === 1 ? "" : "s"}`
+                  : `${filtered.length}개 결과 보기`}
               </button>
             </footer>
           </aside>
@@ -961,6 +962,8 @@ function DetailSlideModal({
   typeLayouts?: SiteSettings["typeLayouts"];
   bundledPerks?: SiteSettings["bundledPerks"];
 }) {
+  const locale = useLocale((s) => s.locale);
+  const isEn = locale === "en";
   // 콜백 최신값을 ref 로 유지 — 매 키 이벤트마다 최신 prev/next 가 호출되되,
   // useEffect 본체는 onPrev/onNext 변경에 재실행되지 않음.
   // (이전 구현: deps 에 onPrev/onNext/onClose 가 들어가 prev/next 누를 때마다
@@ -1019,7 +1022,7 @@ function DetailSlideModal({
         <header className="px-5 py-3 border-b border-ink-100 bg-white flex items-center justify-between shrink-0">
           <div className="flex items-center gap-3">
             <span className="font-num text-[11px] uppercase tracking-[0.3em] text-brand-500 font-bold">
-              스폰서십 상세
+              {isEn ? "Sponsorship details" : "스폰서십 상세"}
             </span>
             <span className="text-[12px] text-ink-500 font-num">
               {String(index + 1).padStart(2, "0")} / {String(total).padStart(2, "0")}
@@ -1031,19 +1034,19 @@ function DetailSlideModal({
               onClick={onPrev}
               disabled={!onPrev}
               className="px-3 py-1.5 rounded-btn border border-ink-100 hover:border-ink-900 text-[12px] font-semibold flex items-center gap-1 disabled:opacity-30 disabled:cursor-not-allowed"
-              title="이전 (←)"
+              title={isEn ? "Previous (←)" : "이전 (←)"}
             >
               <ArrowLeft className="w-3.5 h-3.5" />
-              이전
+              {isEn ? "Prev" : "이전"}
             </button>
             <button
               type="button"
               onClick={onNext}
               disabled={!onNext}
               className="px-3 py-1.5 rounded-btn border border-ink-100 hover:border-ink-900 text-[12px] font-semibold flex items-center gap-1 disabled:opacity-30 disabled:cursor-not-allowed"
-              title="다음 (→)"
+              title={isEn ? "Next (→)" : "다음 (→)"}
             >
-              다음
+              {isEn ? "Next" : "다음"}
               <ArrowRight className="w-3.5 h-3.5" />
             </button>
             <span className="w-px h-5 bg-ink-100 mx-1" />
@@ -1051,10 +1054,10 @@ function DetailSlideModal({
               type="button"
               onClick={onClose}
               className="px-3 py-1.5 rounded-btn border border-ink-100 hover:border-ink-900 text-[12px] font-semibold flex items-center gap-1"
-              title="닫기 (Esc)"
+              title={isEn ? "Close (Esc)" : "닫기 (Esc)"}
             >
               <X className="w-3.5 h-3.5" />
-              닫기
+              {isEn ? "Close" : "닫기"}
             </button>
           </div>
         </header>
@@ -1346,6 +1349,7 @@ function ViewModeToggle({
   viewMode: "card" | "slide";
   setViewMode: (m: "card" | "slide") => void;
 }) {
+  const locale = useLocale((s) => s.locale);
   return (
     <div className="inline-flex items-center bg-ink-50 rounded-btn p-0.5 border border-ink-100">
       <button
@@ -1357,10 +1361,14 @@ function ViewModeToggle({
             ? "bg-white shadow-sm text-ink-900"
             : "text-ink-500 hover:text-ink-900")
         }
-        title="슬라이드형 보기 (기본·피트페이퍼 스타일)"
+        title={
+          locale === "en"
+            ? "Slide view (default · presentation style)"
+            : "슬라이드형 보기 (기본·피트페이퍼 스타일)"
+        }
       >
         <Maximize2 className="w-3.5 h-3.5" />
-        슬라이드
+        {locale === "en" ? "Slides" : "슬라이드"}
       </button>
       <button
         type="button"
@@ -1371,10 +1379,14 @@ function ViewModeToggle({
             ? "bg-white shadow-sm text-ink-900"
             : "text-ink-500 hover:text-ink-900")
         }
-        title="필터로 보기 (BETA · 카드 그리드 + 필터·검색)"
+        title={
+          locale === "en"
+            ? "Filter view (BETA · card grid + filters & search)"
+            : "필터로 보기 (BETA · 카드 그리드 + 필터·검색)"
+        }
       >
         <LayoutGrid className="w-3.5 h-3.5" />
-        필터로 보기
+        {locale === "en" ? "Filter view" : "필터로 보기"}
         <span className="ml-0.5 text-[9px] font-mono font-bold px-1 py-0.5 rounded bg-brand-500 text-ink-900 leading-none">
           BETA
         </span>
@@ -1984,9 +1996,7 @@ function SlideStream({
             </span>
           </span>
           <span className="ml-auto" />
-          {/* 데스크톱 전용 보조 — 로케일 / PDF */}
-          <LocaleToggle className="hidden md:inline-flex" />
-          {/* PDF — 데스크톱 보조 */}
+          {/* 데스크톱 전용 보조 — PDF */}
           <a
             href={settings?.pdfFullUrl || `/${eventId}/print/full`}
             target="_blank"
