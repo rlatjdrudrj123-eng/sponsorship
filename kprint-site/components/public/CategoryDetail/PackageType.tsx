@@ -7,7 +7,7 @@ import { ArrowLeft, Bookmark, BookmarkCheck, Check, Gift, X } from "lucide-react
 import type { Category, Package, SiteSettings, Slot } from "@/lib/types";
 import { useCartStore } from "@/lib/cart/cartStore";
 import { Footer } from "@/components/public/Footer";
-import { useLocale } from "@/lib/i18n/locale";
+import { useLocale, localizedField } from "@/lib/i18n/locale";
 import { getDisplayPackagePrice, formatPrice } from "@/lib/price";
 import {
   DEFAULT_BUNDLED_PERKS,
@@ -78,11 +78,14 @@ export function PackageType({
                     ? pkg.name.en?.trim() || pkg.name.ko
                     : pkg.name.ko}
                 </h1>
-                {pkg.tagline && (
-                  <p className="text-[12.5px] text-ink-500 mt-2 leading-relaxed">
-                    {pkg.tagline}
-                  </p>
-                )}
+                {(() => {
+                  const tg = localizedField(pkg.tagline, pkg.taglineEn, locale);
+                  return tg ? (
+                    <p className="text-[12.5px] text-ink-500 mt-2 leading-relaxed">
+                      {tg}
+                    </p>
+                  ) : null;
+                })()}
               </div>
 
               {/* 포함 항목 — 컴팩트 리스트 (카드 외곽 없이) */}
@@ -98,7 +101,7 @@ export function PackageType({
                       className="flex gap-2 text-[13px] text-ink-900 leading-snug"
                     >
                       <Check className="w-3.5 h-3.5 text-brand-500 shrink-0 mt-1" />
-                      <span className="flex-1">{it.label}</span>
+                      <span className="flex-1">{localizedField(it.label, it.labelEn, locale)}</span>
                     </li>
                   ))}
                   {(pkg.includedItems ?? []).length === 0 && (
@@ -218,11 +221,14 @@ export function PackageType({
             <h1 className="text-[32px] md:text-[56px] font-bold tracking-tight leading-[1.15] text-ink-900 break-keep">
               {locale === "en" ? (pkg.name.en?.trim() || pkg.name.ko) : pkg.name.ko}
             </h1>
-            {pkg.tagline && (
-              <p className="text-[14px] md:text-[16px] text-ink-500 mt-4 max-w-3xl leading-relaxed">
-                {pkg.tagline}
-              </p>
-            )}
+            {(() => {
+              const tg = localizedField(pkg.tagline, pkg.taglineEn, locale);
+              return tg ? (
+                <p className="text-[14px] md:text-[16px] text-ink-500 mt-4 max-w-3xl leading-relaxed">
+                  {tg}
+                </p>
+              ) : null;
+            })()}
           </div>
         </div>
 
@@ -243,7 +249,7 @@ export function PackageType({
                   <li key={i} className="flex gap-3 text-[14px] text-ink-900">
                     <Check className="w-4 h-4 text-brand-500 shrink-0 mt-1" />
                     <div className="flex-1">
-                      <div className="font-semibold">{it.label}</div>
+                      <div className="font-semibold">{localizedField(it.label, it.labelEn, locale)}</div>
                       {resolvedSlots &&
                         it.referencedSlotIds &&
                         it.referencedSlotIds.length > 0 && (
@@ -284,11 +290,14 @@ export function PackageType({
                   {formatPrice(price.original.value, price.original.currency)}
                 </div>
               )}
-              {pkg.priceNote && (
-                <p className="text-[12px] text-ink-500 mt-3 leading-relaxed">
-                  {pkg.priceNote}
-                </p>
-              )}
+              {(() => {
+                const pn = localizedField(pkg.priceNote, pkg.priceNoteEn, locale);
+                return pn ? (
+                  <p className="text-[12px] text-ink-500 mt-3 leading-relaxed">
+                    {pn}
+                  </p>
+                ) : null;
+              })()}
               <button
                 type="button"
                 aria-pressed={inCart}
@@ -669,7 +678,7 @@ function PackageConfirmModal({
                     className="flex gap-2 text-[13px] text-ink-900 leading-snug"
                   >
                     <Check className="w-3.5 h-3.5 text-brand-500 shrink-0 mt-0.5" />
-                    <span>{it.label}</span>
+                    <span>{localizedField(it.label, it.labelEn, locale)}</span>
                   </li>
                 ))}
               </ul>
