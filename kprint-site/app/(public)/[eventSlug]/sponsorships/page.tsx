@@ -40,6 +40,7 @@ import type {
   Subcategory,
 } from "@/lib/types";
 import { Footer } from "@/components/public/Footer";
+import { LocaleToggle } from "@/components/public/LocaleToggle";
 import { LocaleSwitch } from "@/components/public/LocaleSwitch";
 import { SlotPicker } from "@/components/public/CategoryDetail/_shared/SlotPicker";
 import { PersonaRecommendation } from "@/components/public/PersonaRecommendation";
@@ -617,6 +618,7 @@ export default function SponsorshipsPage() {
                   </span>
                 </span>
                 <span className="ml-auto" />
+                <LocaleToggle className="hidden md:inline-flex" />
                 <a
                   href={settings?.pdfFullUrl || `/${eventId}/print/full`}
                   target="_blank"
@@ -1984,6 +1986,7 @@ function SlideStream({
           </span>
           <span className="ml-auto" />
           {/* 데스크톱 전용 보조 — 로케일 / PDF */}
+          <LocaleToggle className="hidden md:inline-flex" />
           {/* PDF — 데스크톱 보조 */}
           <a
             href={settings?.pdfFullUrl || `/${eventId}/print/full`}

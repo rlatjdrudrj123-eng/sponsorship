@@ -1037,9 +1037,10 @@ function CategorySlide({
   const uniqueKrwPrices = new Set(pricedSubs.map((s) => s.priceKRW));
   const hasVariedPricing = uniqueKrwPrices.size >= 2;
 
+  // 사이트 카테고리 상세 페이지와 동일하게 channel 만 표시 (해시태그 통일).
+  // 카테고리 자체 tags 는 PDF 슬라이드 헤더에서 제거 (정보 과잉 + 사이트와 다름).
   const hashTags: string[] = [
     CHANNEL_LABELS[category.channel][locale === "en" ? "en" : "ko"],
-    ...(category.tags ?? []).slice(0, 2),
   ];
 
   return (
