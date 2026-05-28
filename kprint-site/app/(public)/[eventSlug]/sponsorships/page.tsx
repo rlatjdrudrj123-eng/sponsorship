@@ -46,7 +46,7 @@ import { SlotPicker } from "@/components/public/CategoryDetail/_shared/SlotPicke
 import { PersonaRecommendation } from "@/components/public/PersonaRecommendation";
 import { ClosingSlide } from "@/components/public/landing/LandingRenderer";
 import { PackageType } from "@/components/public/CategoryDetail/PackageType";
-import { localized, useLocale, type Locale } from "@/lib/i18n/locale";
+import { localized, localizedField, useLocale, type Locale } from "@/lib/i18n/locale";
 import { t } from "@/lib/i18n/strings";
 import { getTypeLayout } from "@/lib/typeLayouts";
 import {
@@ -2476,11 +2476,14 @@ function PackageOverviewCard({
     >
       <div className="grid grid-cols-[1.4fr_1fr] gap-3 items-start">
         <div className="min-w-0">
-          {pkg.tagline && (
-            <p className="text-[11px] md:text-[12px] text-brand-500 font-semibold leading-snug mb-1.5 line-clamp-1">
-              {pkg.tagline}
-            </p>
-          )}
+          {(() => {
+            const tg = localizedField(pkg.tagline, pkg.taglineEn, locale);
+            return tg ? (
+              <p className="text-[11px] md:text-[12px] text-brand-500 font-semibold leading-snug mb-1.5 line-clamp-1">
+                {tg}
+              </p>
+            ) : null;
+          })()}
           <div className="text-[18px] md:text-[22px] font-bold text-ink-900 group-hover:text-brand-500 transition-colors leading-tight mb-3">
             {localized(pkg.name, locale)}
           </div>
@@ -2489,7 +2492,7 @@ function PackageOverviewCard({
               {items.map((it, i) => (
                 <li key={i} className="flex items-start gap-1.5">
                   <span className="text-brand-500 shrink-0 mt-0.5">•</span>
-                  <span className="line-clamp-1">{it.label}</span>
+                  <span className="line-clamp-1">{localizedField(it.label, it.labelEn, locale)}</span>
                 </li>
               ))}
             </ul>
