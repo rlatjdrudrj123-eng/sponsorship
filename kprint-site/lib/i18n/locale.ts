@@ -1,13 +1,14 @@
 "use client";
 
 import { create } from "zustand";
-import { persist } from "zustand/middleware";
 
 /**
  * 공개 사이트 언어. 어드민은 항상 한글.
  *
- * 데이터의 `name.ko`/`name.en` 같은 양국어 필드를 동적으로 선택해주는 helper와
- * 하드코딩된 UI 문구를 위한 t() 매핑이 같이 들어있다.
+ * URL 이 단일 진실원 — /[eventSlug]/en/... = en, 그 외 = ko.
+ * LocaleSetter 가 페이지 마운트 시 setLocale 로 store 를 URL 에 맞춤.
+ * 옛 persist 는 EN→KO 페이지 이동 시에도 store 에 옛 'en' 이 남아
+ * 첫 렌더에서 영어가 잠깐 보이는 깜빡임 이슈로 제거.
  */
 
 export type Locale = "ko" | "en";
@@ -18,21 +19,11 @@ type LocaleStore = {
   hasHydrated: boolean;
 };
 
-export const useLocale = create<LocaleStore>()(
-  persist(
-    (set) => ({
-      locale: "ko",
-      hasHydrated: false,
-      setLocale: (l) => set({ locale: l }),
-    }),
-    {
-      name: "public-locale",
-      onRehydrateStorage: () => (state) => {
-        if (state) state.hasHydrated = true;
-      },
-    }
-  )
-);
+export const useLocale = create<LocaleStore>()((set) => ({
+  locale: "ko",
+  hasHydrated: true, // persist 없으므로 항상 hydrated
+  setLocale: (l) => set({ locale: l }),
+}));
 
 /** name.ko/name.en 패턴에서 현재 locale 에 맞는 값 (en 비어있으면 ko 폴백) */
 export function localized(
