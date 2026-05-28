@@ -2,12 +2,13 @@
 
 import { useParams } from "next/navigation";
 import { HomePage } from "@/components/public/HomePage";
+import { LocaleSetter } from "@/components/public/LocaleSetter";
 
 /**
- * 이벤트 홈 — 캔버스로 디자인된 데크가 메인 화면.
+ * 이벤트 홈 (한국어 기본) — 캔버스로 디자인된 데크가 메인 화면.
  * 어드민이 [랜딩 빌더]에서 만든 슬라이드들을 풀스크린 snap 으로 렌더.
  *
- * "필터로 보기 (카탈로그)" 는 /sponsorships 별도 라우트에서.
+ * 영문 페이지는 /[eventSlug]/en 에서. "필터로 보기" 는 /sponsorships 라우트.
  */
 export default function EventHomePage() {
   const params = useParams<{ eventSlug: string }>();
@@ -21,5 +22,10 @@ export default function EventHomePage() {
     );
   }
 
-  return <HomePage eventId={eventId} />;
+  return (
+    <>
+      <LocaleSetter locale="ko" />
+      <HomePage eventId={eventId} />
+    </>
+  );
 }

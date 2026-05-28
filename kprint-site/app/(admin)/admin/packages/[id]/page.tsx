@@ -110,7 +110,12 @@ export default function PackageEditPage() {
   useEffect(() => {
     if (initRef.current) return;
     if (!pkg) return;
-    if (allCategories.length === 0) return; // fetch 끝날 때까지 대기
+    // allCategories 와 allSubcategories 둘 다 fetch 된 후에만 reset.
+    // register 가 select 를 uncontrolled 로 동작해서, option list 가 비어있는
+    // 시점에 form.reset 으로 categoryId/subcategoryId set 하면 selected 가
+    // 영구 dropped (이후 list 채워져도 DOM select.value 복구 안 됨).
+    if (allCategories.length === 0) return;
+    if (allSubcategories.length === 0) return;
     form.reset({
       nameKo: pkg.name.ko ?? "",
       nameEn: pkg.name.en ?? "",
@@ -133,7 +138,7 @@ export default function PackageEditPage() {
         })),
     });
     initRef.current = true;
-  }, [pkg, allCategories.length, form]);
+  }, [pkg, allCategories.length, allSubcategories.length, form]);
 
   // load categories / subcategories / slots — onSnapshot 으로 실시간 + eventId 필터.
   // pkg.eventId 가 결정된 후에만 구독 (load 끝나기 전엔 skip). 어드민이 카테고리·

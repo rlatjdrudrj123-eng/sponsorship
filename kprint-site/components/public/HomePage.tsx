@@ -38,7 +38,16 @@ export function HomePage({ eventId }: { eventId: string }) {
     })();
   }, [eventId]);
 
-  const blocks = useMemo(() => settings?.landing ?? [], [settings?.landing]);
+  // 영문 페이지 (/en) 진입 시 settings.landingEn 우선, 비어있으면 ko landing 폴백.
+  // 한국어 진입 시 항상 settings.landing.
+  const locale = useLocale((s) => s.locale);
+  const blocks = useMemo(() => {
+    if (locale === "en") {
+      const en = settings?.landingEn;
+      if (en && en.length > 0) return en;
+    }
+    return settings?.landing ?? [];
+  }, [settings?.landing, settings?.landingEn, locale]);
 
   // settings 로딩 중 — LandingRenderer 가 빈 blocks 로 그려져 ModeChoice 만 보이는
   // 버그 방지. 로딩 끝난 후 데이터로 한 번에 그려야 main snap-scroll 이 첫 슬라이드부터.
