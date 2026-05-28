@@ -111,7 +111,11 @@ export type Category = {
 
   // 공통 스펙 (소분류별로 다르면 비워두고 subcategory에서)
   size?: string;
+  /** 영문 사이트용 규격. 비어있으면 size 폴백. */
+  sizeEn?: string;
   fileFormat?: string;
+  /** 영문 사이트용 파일 형식. 비어있으면 fileFormat 폴백. */
+  fileFormatEn?: string;
   deadline?: Timestamp;
   designGuideText?: string;
   /** 영문 사이트용 디자인 가이드 텍스트. 비어있으면 designGuideText 폴백. */
@@ -344,9 +348,17 @@ export type SiteSettings = {
     phone: string;
     email: string;
     address: string;
+    /** 영문 사이트용 주소. 비어있으면 한국어 address 폴백. */
+    addressEn?: string;
   };
 
-  applicationSteps: Array<{ title: string; desc?: string }>;
+  applicationSteps: Array<{
+    title: string;
+    desc?: string;
+    /** 영문 사이트용. 비어있으면 한국어 폴백. */
+    titleEn?: string;
+    descEn?: string;
+  }>;
 
   /** 메인 랜딩(/[eventSlug]) 페이지의 블록 시퀀스 (한국어). 비어있으면 빈 상태 안내. */
   landing?: LandingBlock[];
@@ -1157,7 +1169,11 @@ export type Persona = {
   eventId: string;       // 행사별 분리
   emoji: string;
   title: string;
+  /** 영문 사이트용 타이틀. 비어있으면 title 폴백. */
+  titleEn?: string;
   description: string;
+  /** 영문 사이트용 설명. 비어있으면 description 폴백. */
+  descriptionEn?: string;
   targetTags?: string[];   // 카테고리 자동 추천용 (옵션 — 명시적 personas 필드가 우선)
   purposes?: Purpose[];    // 이 페르소나가 강조하는 광고 목적 — 사이드바 필터와 단일 진실원 공유
   budgetMin?: number;

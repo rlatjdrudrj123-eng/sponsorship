@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import { Download, FileText, Layers, Mail, MapPin, Phone } from "lucide-react";
 import type { SiteSettings } from "@/lib/types";
-import { useLocale } from "@/lib/i18n/locale";
+import { useLocale, localizedField } from "@/lib/i18n/locale";
 
 export function Footer({ settings }: { settings: SiteSettings | null }) {
   const params = useParams<{ eventSlug?: string }>();
@@ -75,12 +75,19 @@ export function Footer({ settings }: { settings: SiteSettings | null }) {
                   </a>
                 </li>
               )}
-              {settings?.contact.address && (
-                <li className="flex items-start gap-2 text-[12px] text-ink-500">
-                  <MapPin className="w-3.5 h-3.5 mt-0.5 shrink-0" />
-                  <span>{settings.contact.address}</span>
-                </li>
-              )}
+              {(() => {
+                const addr = localizedField(
+                  settings?.contact.address,
+                  settings?.contact.addressEn,
+                  locale
+                );
+                return addr ? (
+                  <li className="flex items-start gap-2 text-[12px] text-ink-500">
+                    <MapPin className="w-3.5 h-3.5 mt-0.5 shrink-0" />
+                    <span>{addr}</span>
+                  </li>
+                ) : null;
+              })()}
             </ul>
           </div>
 

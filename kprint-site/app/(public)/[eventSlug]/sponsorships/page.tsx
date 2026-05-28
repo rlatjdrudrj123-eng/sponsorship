@@ -2240,7 +2240,7 @@ function AtAGlanceSlide({
                   }
                 >
                   {p.emoji && <span className="mr-1.5">{p.emoji}</span>}
-                  {p.title}
+                  {localizedField(p.title, p.titleEn, locale)}
                 </button>
               );
             })}
@@ -2728,12 +2728,28 @@ function SlideSection({
                     rows.push({ label: "위치", value: locationLabel });
                   break;
                 case "size":
-                  if (item.size)
-                    rows.push({ label: "규격", value: item.size });
+                  {
+                    const sz = localizedField(item.size, item.sizeEn, locale);
+                    if (sz)
+                      rows.push({
+                        label: locale === "en" ? "Size" : "규격",
+                        value: sz,
+                      });
+                  }
                   break;
                 case "fileFormat":
-                  if (item.fileFormat)
-                    rows.push({ label: "파일", value: item.fileFormat });
+                  {
+                    const ff = localizedField(
+                      item.fileFormat,
+                      item.fileFormatEn,
+                      locale
+                    );
+                    if (ff)
+                      rows.push({
+                        label: locale === "en" ? "File" : "파일",
+                        value: ff,
+                      });
+                  }
                   break;
                 case "deadline":
                   if (deadlineStr)
@@ -2909,23 +2925,29 @@ function SlideSection({
                       break;
                     }
                     case "size": {
-                      if (item.size)
+                      const sz = localizedField(item.size, item.sizeEn, locale);
+                      if (sz)
                         rows.push(
                           <SpecRow
                             key="size"
                             label={t("spons.size", locale)}
-                            value={item.size}
+                            value={sz}
                           />
                         );
                       break;
                     }
                     case "fileFormat": {
-                      if (item.fileFormat)
+                      const ff = localizedField(
+                        item.fileFormat,
+                        item.fileFormatEn,
+                        locale
+                      );
+                      if (ff)
                         rows.push(
                           <SpecRow
                             key="fileFormat"
                             label={t("spons.fileFormat", locale)}
-                            value={item.fileFormat}
+                            value={ff}
                           />
                         );
                       break;

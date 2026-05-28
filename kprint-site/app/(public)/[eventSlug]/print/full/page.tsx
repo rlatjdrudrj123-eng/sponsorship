@@ -1091,23 +1091,31 @@ function CategorySlide({
                     break;
                   }
                   case "size": {
-                    if (category.size)
+                    const sz = localizedHelper(
+                      { ko: category.size, en: category.sizeEn },
+                      locale
+                    );
+                    if (sz)
                       rows.push(
                         <SpecRow
                           key="size"
                           label={locale === "en" ? "Size" : "규격"}
-                          value={category.size}
+                          value={sz}
                         />
                       );
                     break;
                   }
                   case "fileFormat": {
-                    if (category.fileFormat)
+                    const ff = localizedHelper(
+                      { ko: category.fileFormat, en: category.fileFormatEn },
+                      locale
+                    );
+                    if (ff)
                       rows.push(
                         <SpecRow
                           key="fileFormat"
                           label={locale === "en" ? "File format" : "파일 형식"}
-                          value={category.fileFormat}
+                          value={ff}
                         />
                       );
                     break;
