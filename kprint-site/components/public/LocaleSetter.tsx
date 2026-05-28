@@ -1,21 +1,29 @@
 "use client";
 
 import { useLayoutEffect, useEffect } from "react";
+import { usePathname } from "next/navigation";
 import { useLocale, type Locale } from "@/lib/i18n/locale";
 
 // SSR 에서 useLayoutEffect 경고 회피 — 서버는 useEffect, 클라는 useLayoutEffect.
-// 클라이언트 첫 페인트 전에 setLocale 호출되어 깜빡임(KO 페이지인데 잠깐 EN
-// 텍스트 보이는 현상) 방지.
 const useIsoLayoutEffect =
   typeof window !== "undefined" ? useLayoutEffect : useEffect;
 
 /**
- * URL 기반 locale 설정.
+ * URL 기반 locale 자동 동기화.
  *
- * /[eventSlug]/en/* 진입 시 layout 에서 <LocaleSetter locale="en" /> 렌더 →
- * 첫 페인트 전에 useLocale store 를 그 locale 로 set. URL 이 단일 진실원.
+ * pathname 직접 읽어서 매 변경마다 setLocale. 클라이언트 네비게이션 (Link
+ * 클릭) 으로 URL 만 바뀌고 컴포넌트 트리는 유지되는 경우에도 자동 감지.
+ *
+ * prop 으로 locale 받던 옛 패턴 (각 페이지에서 명시 전달) 은 KO/EN URL 토글
+ * 시 prop 안 바뀌면 동기화 안 되는 버그가 있어 폐기. 이제 prop 없이 호출.
  */
-export function LocaleSetter({ locale }: { locale: Locale }) {
+export function LocaleSetter({ locale: _legacyProp }: { locale?: Locale } = {}) {
+  void _legacyProp;
+  const pathname = usePathname() || "";
+  const segments = pathname.split("/").filter(Boolean);
+  const isEn = segments[1] === "en";
+  const locale: Locale = isEn ? "en" : "ko";
+
   const setLocale = useLocale((s) => s.setLocale);
   useIsoLayoutEffect(() => {
     setLocale(locale);
