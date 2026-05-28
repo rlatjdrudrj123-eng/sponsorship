@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import {
   ArrowDown,
@@ -43,41 +43,48 @@ export default function LandingBuilderPage() {
   const [adderOpen, setAdderOpen] = useState(false);
   const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
   const [viewMode, setViewMode] = useState<"blocks" | "artboard">("blocks");
-  const initRef = useRef(false);
+  // ko/en 탭 — 한국어 페이지(/[eventSlug]) vs 영문 페이지(/[eventSlug]/en) 각각 별도 편집
+  const [editingLocale, setEditingLocale] = useState<"ko" | "en">("ko");
 
+  // settings 만 onSnapshot 으로 받고, 표시될 blocks 는 editingLocale 에 따라 분기.
+  // locale 탭 전환 시 즉시 새 데이터로 갱신.
   useEffect(() => {
     if (!ready || !eventId) return;
-    initRef.current = false;
     setLoaded(false);
     const unsub = onSnapshot(
       doc(getDb(), "siteSettings", eventId),
       (snap) => {
         setLoaded(true);
-        if (initRef.current) return;
-        if (snap.exists()) {
-          const data = snap.data() as SiteSettings;
-          setSettings(data);
-          setBlocks(data.landing ?? []);
-        } else {
-          setSettings(null);
-          setBlocks([]);
-        }
-        initRef.current = true;
+        if (snap.exists()) setSettings(snap.data() as SiteSettings);
+        else setSettings(null);
       },
       () => setLoaded(true)
     );
     return unsub;
   }, [ready, eventId]);
 
+  // settings 변경 / locale 탭 전환 시 blocks 재동기화. setBlocks 후 사용자 편집은
+  // 즉시 persist 로 Firestore 에 반영되므로 외부 변경 충돌 우려 없음.
+  useEffect(() => {
+    if (!settings) {
+      setBlocks([]);
+      return;
+    }
+    const src = editingLocale === "en" ? settings.landingEn : settings.landing;
+    setBlocks(src ?? []);
+    setSelectedIndex(null);
+  }, [settings, editingLocale]);
+
   const persist = async (next: LandingBlock[]) => {
     if (!eventId) return;
     setSaveStatus("saving");
     try {
+      const fieldName = editingLocale === "en" ? "landingEn" : "landing";
       await setDoc(
         doc(getDb(), "siteSettings", eventId),
         {
           eventId,
-          landing: next,
+          [fieldName]: next,
           updatedAt: Timestamp.fromDate(new Date()),
         },
         { merge: true }
@@ -182,6 +189,35 @@ export default function LandingBuilderPage() {
         </div>
         <div className="flex items-center gap-2 flex-wrap">
           <SaveBadge status={saveStatus} />
+          {/* 언어 탭 — 한국어 / 영문 페이지 각각 별도 디자인 */}
+          <div className="flex items-center bg-ink-100 rounded-btn p-0.5">
+            <button
+              type="button"
+              onClick={() => setEditingLocale("ko")}
+              className={
+                "px-3 py-1.5 rounded text-[12.5px] font-semibold transition-colors " +
+                (editingLocale === "ko"
+                  ? "bg-white text-ink-900 shadow-sm"
+                  : "text-ink-500 hover:text-ink-900")
+              }
+              title="/[eventSlug] 한국어 페이지"
+            >
+              🇰🇷 한국어
+            </button>
+            <button
+              type="button"
+              onClick={() => setEditingLocale("en")}
+              className={
+                "px-3 py-1.5 rounded text-[12.5px] font-semibold transition-colors " +
+                (editingLocale === "en"
+                  ? "bg-white text-ink-900 shadow-sm"
+                  : "text-ink-500 hover:text-ink-900")
+              }
+              title="/[eventSlug]/en 영문 페이지"
+            >
+              🇬🇧 영문
+            </button>
+          </div>
           {/* 보기 모드 토글 — 블록 / 대지 */}
           <div className="flex items-center bg-ink-100 rounded-btn p-0.5">
             <button
@@ -210,7 +246,7 @@ export default function LandingBuilderPage() {
             </button>
           </div>
           <Link
-            href={`/${eventId}`}
+            href={`/${eventId}${editingLocale === "en" ? "/en" : ""}`}
             target="_blank"
             className="px-3.5 py-2 rounded-btn border border-ink-100 text-[12.5px] font-semibold text-ink-900 hover:bg-ink-50 flex items-center gap-1.5"
           >

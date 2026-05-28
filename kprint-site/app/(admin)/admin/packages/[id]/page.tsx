@@ -200,7 +200,11 @@ export default function PackageEditPage() {
       originalPrice += unitPrice * count;
 
       const unitLabel = sub?.unit?.ko ?? "구좌";
-      const subLabel = sub && sub.id !== subs[0]?.id ? ` (${sub.name?.ko})` : "";
+      // 다중 sub 카테고리는 항상 sub 이름을 라벨에 포함. 기존: subs[0] 와 같으면
+      // 생략 — 그런데 subs[0] 는 Firestore fetch 순서라 불확정. 사용자가 우연히
+      // 첫 번째 sub 를 선택하면 라벨에 sub 이름이 누락되어 사이트에 잘못 표시됨
+      // (예: DNL "8월 발송" 선택 → 라벨 "국내 뉴스레터 1회" 로 표시되는 버그).
+      const subLabel = subs.length > 1 && sub?.name?.ko ? ` (${sub.name.ko})` : "";
       const label = `${cat.name.ko}${subLabel} ${count}${unitLabel}`;
 
       // referencedSlotIds — 같은 소분류의 가용 슬롯 앞 N 개
