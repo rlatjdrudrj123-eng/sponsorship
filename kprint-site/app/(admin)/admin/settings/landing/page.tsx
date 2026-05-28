@@ -144,6 +144,36 @@ export default function LandingBuilderPage() {
     await persist(next);
   };
 
+  // 한국어 → 영문 (또는 영문 → 한국어) 시퀀스 깊은 복사.
+  // 두 언어 페이지가 동일 레이아웃을 공유할 때 유용. 복사 후 어드민이 텍스트만
+  // 영문(또는 한글) 으로 바꿔 편집. 기존 시퀀스가 있으면 덮어쓰기 confirm.
+  const copyFromOtherLocale = async () => {
+    const sourceLocale = editingLocale === "en" ? "ko" : "en";
+    const source =
+      sourceLocale === "ko" ? settings?.landing : settings?.landingEn;
+    if (!source || source.length === 0) {
+      alert(
+        `${sourceLocale === "ko" ? "한국어" : "영문"} 시퀀스가 비어있어 복사할 게 없어요.`
+      );
+      return;
+    }
+    if (
+      blocks.length > 0 &&
+      !confirm(
+        `현재 ${
+          editingLocale === "en" ? "영문" : "한국어"
+        } 시퀀스(${blocks.length}개 블록)를 모두 지우고 ${
+          sourceLocale === "ko" ? "한국어" : "영문"
+        }(${source.length}개 블록)을 그대로 복사할까요?`
+      )
+    )
+      return;
+    // JSON 깊은 복사 — Date/Timestamp 가 블록 데이터에 없다고 가정 (LandingBlock 은 직렬화 가능)
+    const next = JSON.parse(JSON.stringify(source)) as LandingBlock[];
+    setBlocks(next);
+    await persist(next);
+  };
+
   if (!ready) {
     return (
       <div className="text-sm text-ink-500 text-center py-16">
@@ -262,6 +292,18 @@ export default function LandingBuilderPage() {
             <FileDown className="w-3.5 h-3.5" />
             PDF 출력
           </Link>
+          <button
+            type="button"
+            onClick={copyFromOtherLocale}
+            className="px-3.5 py-2 rounded-btn border border-ink-200 bg-white text-[12.5px] font-semibold text-ink-900 hover:bg-ink-50 flex items-center gap-1.5"
+            title={
+              editingLocale === "en"
+                ? "한국어 시퀀스를 영문으로 그대로 복사 (디자인 동일, 텍스트만 영문으로 수정)"
+                : "영문 시퀀스를 한국어로 그대로 복사"
+            }
+          >
+            {editingLocale === "en" ? "🇰🇷 → 🇬🇧" : "🇬🇧 → 🇰🇷"} 불러오기
+          </button>
           <button
             type="button"
             onClick={seedDefault}
