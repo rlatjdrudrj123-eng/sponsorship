@@ -614,12 +614,15 @@ function PackageConfirmModal({
   return (
     <div
       className="fixed inset-0 z-50 bg-ink-900/40 backdrop-blur-[1px] flex items-end sm:items-center justify-center p-0 sm:p-4"
-      onClick={onClose}
+      onMouseDown={(e) => {
+        // backdrop 자체 mouseDown 일 때만 닫기 — input 드래그가 backdrop 에서
+        // mouseUp 되어도 close 발화 안 함
+        if (e.target === e.currentTarget) onClose();
+      }}
     >
       <div
         role="dialog"
         aria-modal="true"
-        onClick={(e) => e.stopPropagation()}
         className="bg-white w-full sm:max-w-md rounded-t-card sm:rounded-card shadow-2xl overflow-hidden"
       >
         <header className="px-5 py-4 border-b border-ink-100 flex items-start justify-between gap-3">

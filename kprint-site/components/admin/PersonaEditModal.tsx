@@ -164,12 +164,15 @@ export function PersonaEditModal({
   return (
     <div
       className="fixed inset-0 z-50 bg-ink-900/40 backdrop-blur-[1px] flex items-center justify-center p-4"
-      onClick={onClose}
+      onMouseDown={(e) => {
+        // backdrop 자체 mouseDown 일 때만 닫기 — input 드래그가 backdrop 에서
+        // mouseUp 되어도 close 발화 안 함
+        if (e.target === e.currentTarget) onClose();
+      }}
     >
       <div
         role="dialog"
         aria-modal="true"
-        onClick={(e) => e.stopPropagation()}
         className="bg-white w-full max-w-2xl max-h-[92vh] rounded-card shadow-2xl overflow-hidden flex flex-col"
       >
         <header className="px-5 py-4 border-b border-ink-100 flex items-center justify-between shrink-0">

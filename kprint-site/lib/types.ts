@@ -334,8 +334,12 @@ export type SiteSettings = {
 
   applicationSteps: Array<{ title: string; desc?: string }>;
 
-  /** 메인 랜딩(/[eventSlug]) 페이지의 블록 시퀀스. 비어있으면 자동 생성된 기본 랜딩 사용 */
+  /** 메인 랜딩(/[eventSlug]) 페이지의 블록 시퀀스 (한국어). 비어있으면 빈 상태 안내. */
   landing?: LandingBlock[];
+
+  /** 영문 랜딩(/[eventSlug]/en) 페이지의 블록 시퀀스. 비어있으면 ko landing 으로 폴백.
+   *  어드민에서 ko/en 탭으로 별도 편집. */
+  landingEn?: LandingBlock[];
 
   /** 카테고리 유형별 슬라이드 레이아웃 — 어떤 스펙 행을 어떤 순서로 보일지.
    *  값이 없으면 기본 레이아웃(getDefaultTypeLayout) 사용. */

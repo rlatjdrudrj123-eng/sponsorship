@@ -610,12 +610,13 @@ function AddCategoryModal({
   return (
     <div
       className="fixed inset-0 z-50 bg-ink-900/40 grid place-items-center p-4"
-      onClick={onClose}
+      onMouseDown={(e) => {
+        // backdrop 자체 mouseDown 일 때만 닫기 — input 드래그가 backdrop 에서
+        // mouseUp 되어도 close 발화 안 함
+        if (e.target === e.currentTarget) onClose();
+      }}
     >
-      <div
-        className="bg-white rounded-card w-full max-w-lg p-5 shadow-xl"
-        onClick={(e) => e.stopPropagation()}
-      >
+      <div className="bg-white rounded-card w-full max-w-lg p-5 shadow-xl">
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-[16px] font-bold text-ink-900">새 매체 추가</h2>
           <button onClick={onClose} className="p-1 rounded hover:bg-ink-100" type="button">
