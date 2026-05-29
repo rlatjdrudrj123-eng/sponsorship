@@ -384,6 +384,12 @@ export type SiteSettings = {
   /** PDF 업로드 시각 — 어드민에 "마지막 업로드: HH:MM" 표시용. */
   pdfFullUploadedAt?: Timestamp;
 
+  /** 영문 사이트 (/[eventSlug]/en) 에서 사용할 별도 영문 PDF Storage URL.
+   *  비어있으면 한국어 PDF (pdfFullUrl) 로 폴백. */
+  pdfFullUrlEn?: string;
+  pdfFullStoragePathEn?: string;
+  pdfFullUploadedAtEn?: Timestamp;
+
   /** 진단 챗봇 (PersonaAiChat) 의 질문 텍스트·가중치 override. 없으면 코드 기본값. (v1 — 폐기 예정) */
   diagnosisConfig?: DiagnosisConfig;
   /** 진단 챗봇 v2 (4문항 룩업) 설정 — 신규 챗봇은 이걸 사용 */

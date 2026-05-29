@@ -58,13 +58,13 @@ export default function SettingsPage() {
   const initRef = useRef(false);
 
   // PDF 업로드는 form 과 별도 — 파일 선택 즉시 Storage 업로드 + Firestore write 흐름.
-  const [pdfFull, setPdfFull] = useState<{
-    url?: string;
-    storagePath?: string;
-    uploadedAt?: Timestamp;
-  }>({});
+  type PdfMeta = { url?: string; storagePath?: string; uploadedAt?: Timestamp };
+  const [pdfFull, setPdfFull] = useState<PdfMeta>({});
+  const [pdfFullEn, setPdfFullEn] = useState<PdfMeta>({});
   const [pdfUploadPct, setPdfUploadPct] = useState<number | null>(null);
+  const [pdfUploadPctEn, setPdfUploadPctEn] = useState<number | null>(null);
   const [pdfUploadError, setPdfUploadError] = useState<string | null>(null);
+  const [pdfUploadErrorEn, setPdfUploadErrorEn] = useState<string | null>(null);
 
   const form = useForm<FormValues>({
     defaultValues: {
@@ -98,6 +98,11 @@ export default function SettingsPage() {
         url: data.pdfFullUrl,
         storagePath: data.pdfFullStoragePath,
         uploadedAt: data.pdfFullUploadedAt,
+      });
+      setPdfFullEn({
+        url: data.pdfFullUrlEn,
+        storagePath: data.pdfFullStoragePathEn,
+        uploadedAt: data.pdfFullUploadedAtEn,
       });
       if (initRef.current) return; // 폼 reset 은 첫 회만
       form.reset({
@@ -147,62 +152,69 @@ export default function SettingsPage() {
     return () => u();
   }, [form, ready, eventId]);
 
-  // PDF 업로드 / 삭제 핸들러
-  const handlePdfUpload = async (file: File) => {
+  // PDF 업로드 / 삭제 핸들러 — 한·영 공통, lang 파라미터로 분기.
+  const handlePdfUpload = async (file: File, lang: "ko" | "en" = "ko") => {
     if (!eventId) return;
     if (file.type !== "application/pdf") {
-      setPdfUploadError("PDF 파일만 업로드 가능합니다.");
+      (lang === "en" ? setPdfUploadErrorEn : setPdfUploadError)("PDF 파일만 업로드 가능합니다.");
       return;
     }
-    setPdfUploadError(null);
-    setPdfUploadPct(0);
+    const setError = lang === "en" ? setPdfUploadErrorEn : setPdfUploadError;
+    const setPct = lang === "en" ? setPdfUploadPctEn : setPdfUploadPct;
+    const prev = lang === "en" ? pdfFullEn : pdfFull;
+    setError(null);
+    setPct(0);
     try {
-      // storage.rules 에 이미 허용된 settings/ 경로 사용 (siteSettings/ 는 룰에 없어서 막힘)
-      const path = `settings/${eventId}/pdf/full-${Date.now()}.pdf`;
-      const result = await uploadFile(file, path, (pct) => setPdfUploadPct(pct));
+      const suffix = lang === "en" ? "full-en" : "full";
+      const path = `settings/${eventId}/pdf/${suffix}-${Date.now()}.pdf`;
+      const result = await uploadFile(file, path, (pct) => setPct(pct));
       const now = Timestamp.now();
-      // 이전 파일 삭제 (있으면)
-      const oldPath = pdfFull.storagePath;
-      await setDoc(
-        doc(getDb(), "siteSettings", eventId),
-        {
-          eventId,
-          pdfFullUrl: result.url,
-          pdfFullStoragePath: result.storagePath,
-          pdfFullUploadedAt: now,
-        },
-        { merge: true }
-      );
+      const oldPath = prev.storagePath;
+      const update = lang === "en"
+        ? {
+            eventId,
+            pdfFullUrlEn: result.url,
+            pdfFullStoragePathEn: result.storagePath,
+            pdfFullUploadedAtEn: now,
+          }
+        : {
+            eventId,
+            pdfFullUrl: result.url,
+            pdfFullStoragePath: result.storagePath,
+            pdfFullUploadedAt: now,
+          };
+      await setDoc(doc(getDb(), "siteSettings", eventId), update, { merge: true });
       if (oldPath && oldPath !== result.storagePath) {
-        await deleteFile(oldPath).catch(() => {
-          /* 이전 파일 없으면 무시 */
-        });
+        await deleteFile(oldPath).catch(() => {});
       }
-      setPdfUploadPct(null);
+      setPct(null);
     } catch (e) {
-      setPdfUploadError(e instanceof Error ? e.message : String(e));
-      setPdfUploadPct(null);
+      setError(e instanceof Error ? e.message : String(e));
+      setPct(null);
     }
   };
 
-  const handlePdfDelete = async () => {
+  const handlePdfDelete = async (lang: "ko" | "en" = "ko") => {
     if (!eventId) return;
-    if (!confirm("업로드된 PDF 를 삭제할까요? 사용자는 다시 인쇄 페이지에서 PDF 를 받아야 합니다.")) return;
-    const oldPath = pdfFull.storagePath;
-    await setDoc(
-      doc(getDb(), "siteSettings", eventId),
-      {
-        eventId,
-        pdfFullUrl: null,
-        pdfFullStoragePath: null,
-        pdfFullUploadedAt: null,
-      },
-      { merge: true }
-    );
+    if (!confirm("업로드된 PDF 를 삭제할까요?")) return;
+    const prev = lang === "en" ? pdfFullEn : pdfFull;
+    const oldPath = prev.storagePath;
+    const update = lang === "en"
+      ? {
+          eventId,
+          pdfFullUrlEn: null,
+          pdfFullStoragePathEn: null,
+          pdfFullUploadedAtEn: null,
+        }
+      : {
+          eventId,
+          pdfFullUrl: null,
+          pdfFullStoragePath: null,
+          pdfFullUploadedAt: null,
+        };
+    await setDoc(doc(getDb(), "siteSettings", eventId), update, { merge: true });
     if (oldPath) {
-      await deleteFile(oldPath).catch(() => {
-        /* 이미 없음 */
-      });
+      await deleteFile(oldPath).catch(() => {});
     }
   };
 
@@ -397,7 +409,7 @@ export default function SettingsPage() {
       </Section>
 
       <Section title="전체 패키지 PDF" id="sec-pdf" num="04">
-        <div className="space-y-4">
+        <div className="space-y-6">
           <p className="text-[12px] text-ink-500 leading-relaxed">
             사용자가 클릭 즉시 다운로드되는 PDF 파일.
             <br />
@@ -414,74 +426,26 @@ export default function SettingsPage() {
             </a>{" "}
             페이지를 열어 브라우저에서 [PDF로 저장] → 저장된 .pdf 파일을 아래
             업로드. 데이터가 바뀌면 다시 업로드해야 사용자에게 최신본이 나갑니다.
+            영문 사이트는 영문 PDF 가 별도 업로드되어 있으면 그것이, 없으면 한국어 PDF 가 나갑니다.
           </p>
 
-          {pdfFull.url ? (
-            <div className="rounded-card border border-brand-500/40 bg-brand-50/30 p-4 flex items-center gap-3">
-              <FileDown className="w-6 h-6 text-brand-500 shrink-0" />
-              <div className="flex-1 min-w-0">
-                <div className="text-[13px] font-bold text-ink-900">
-                  업로드됨
-                </div>
-                <div className="text-[11.5px] text-ink-500 mt-0.5">
-                  마지막 업로드:{" "}
-                  {pdfFull.uploadedAt
-                    ? pdfFull.uploadedAt.toDate().toLocaleString("ko-KR")
-                    : "—"}
-                </div>
-                <a
-                  href={pdfFull.url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-[11.5px] text-brand-500 underline underline-offset-2 mt-1 inline-block"
-                >
-                  미리보기 / 다운로드 확인
-                </a>
-              </div>
-              <button
-                type="button"
-                onClick={handlePdfDelete}
-                className="px-3 py-2 rounded-btn border border-ink-300 text-ink-700 text-[11.5px] font-semibold hover:bg-white flex items-center gap-1.5 shrink-0"
-              >
-                <Trash2 className="w-3.5 h-3.5" />
-                삭제
-              </button>
-            </div>
-          ) : (
-            <div className="rounded-card border border-dashed border-ink-300 bg-white p-4 text-[12.5px] text-ink-500">
-              아직 업로드된 PDF 가 없습니다 — 사용자는 인쇄 페이지를 거쳐 받게
-              됩니다 (느리고 이미지가 빠질 위험).
-            </div>
-          )}
+          <PdfUploadBlock
+            heading="한국어 PDF (/[eventSlug])"
+            meta={pdfFull}
+            uploadPct={pdfUploadPct}
+            uploadError={pdfUploadError}
+            onUpload={(f) => void handlePdfUpload(f, "ko")}
+            onDelete={() => void handlePdfDelete("ko")}
+          />
 
-          <label className="flex items-center gap-3 cursor-pointer">
-            <span className="px-4 py-2.5 rounded-btn bg-ink-900 text-white text-[12.5px] font-bold hover:bg-brand-500 flex items-center gap-2">
-              <Upload className="w-3.5 h-3.5" />
-              {pdfFull.url ? "PDF 교체" : "PDF 업로드"}
-            </span>
-            <input
-              type="file"
-              accept="application/pdf,.pdf"
-              className="hidden"
-              onChange={(e) => {
-                const f = e.target.files?.[0];
-                if (f) void handlePdfUpload(f);
-                e.target.value = ""; // 같은 파일 재선택 가능
-              }}
-              disabled={pdfUploadPct !== null}
-            />
-            {pdfUploadPct !== null && (
-              <span className="text-[12px] text-ink-700">
-                업로드 중… {pdfUploadPct}%
-              </span>
-            )}
-          </label>
-          {pdfUploadError && (
-            <div className="text-[12px] text-red-600 flex items-center gap-1.5">
-              <AlertCircle className="w-3.5 h-3.5" />
-              {pdfUploadError}
-            </div>
-          )}
+          <PdfUploadBlock
+            heading="영문 PDF (/[eventSlug]/en)"
+            meta={pdfFullEn}
+            uploadPct={pdfUploadPctEn}
+            uploadError={pdfUploadErrorEn}
+            onUpload={(f) => void handlePdfUpload(f, "en")}
+            onDelete={() => void handlePdfDelete("en")}
+          />
         </div>
       </Section>
         </div>
@@ -492,6 +456,89 @@ export default function SettingsPage() {
 
 function inputCls(): string {
   return "w-full px-3 py-2 text-sm border border-ink-100 rounded-btn focus:outline-none focus:border-brand-500 bg-white";
+}
+
+function PdfUploadBlock({
+  heading,
+  meta,
+  uploadPct,
+  uploadError,
+  onUpload,
+  onDelete,
+}: {
+  heading: string;
+  meta: { url?: string; storagePath?: string; uploadedAt?: Timestamp };
+  uploadPct: number | null;
+  uploadError: string | null;
+  onUpload: (f: File) => void;
+  onDelete: () => void;
+}) {
+  return (
+    <div className="space-y-3">
+      <h3 className="text-[12.5px] font-bold text-ink-900">{heading}</h3>
+      {meta.url ? (
+        <div className="rounded-card border border-brand-500/40 bg-brand-50/30 p-4 flex items-center gap-3">
+          <FileDown className="w-6 h-6 text-brand-500 shrink-0" />
+          <div className="flex-1 min-w-0">
+            <div className="text-[13px] font-bold text-ink-900">업로드됨</div>
+            <div className="text-[11.5px] text-ink-500 mt-0.5">
+              마지막 업로드:{" "}
+              {meta.uploadedAt
+                ? meta.uploadedAt.toDate().toLocaleString("ko-KR")
+                : "—"}
+            </div>
+            <a
+              href={meta.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-[11.5px] text-brand-500 underline underline-offset-2 mt-1 inline-block"
+            >
+              미리보기 / 다운로드 확인
+            </a>
+          </div>
+          <button
+            type="button"
+            onClick={onDelete}
+            className="px-3 py-2 rounded-btn border border-ink-300 text-ink-700 text-[11.5px] font-semibold hover:bg-white flex items-center gap-1.5 shrink-0"
+          >
+            <Trash2 className="w-3.5 h-3.5" />
+            삭제
+          </button>
+        </div>
+      ) : (
+        <div className="rounded-card border border-dashed border-ink-300 bg-white p-4 text-[12.5px] text-ink-500">
+          업로드된 PDF 가 없습니다.
+        </div>
+      )}
+
+      <label className="flex items-center gap-3 cursor-pointer">
+        <span className="px-4 py-2.5 rounded-btn bg-ink-900 text-white text-[12.5px] font-bold hover:bg-brand-500 flex items-center gap-2">
+          <Upload className="w-3.5 h-3.5" />
+          {meta.url ? "PDF 교체" : "PDF 업로드"}
+        </span>
+        <input
+          type="file"
+          accept="application/pdf,.pdf"
+          className="hidden"
+          onChange={(e) => {
+            const f = e.target.files?.[0];
+            if (f) onUpload(f);
+            e.target.value = "";
+          }}
+          disabled={uploadPct !== null}
+        />
+        {uploadPct !== null && (
+          <span className="text-[12px] text-ink-700">업로드 중… {uploadPct}%</span>
+        )}
+      </label>
+      {uploadError && (
+        <div className="text-[12px] text-red-600 flex items-center gap-1.5">
+          <AlertCircle className="w-3.5 h-3.5" />
+          {uploadError}
+        </div>
+      )}
+    </div>
+  );
 }
 
 function Section({

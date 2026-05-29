@@ -1,13 +1,14 @@
 "use client";
 
 import Link from "next/link";
-import { useParams } from "next/navigation";
+import { useParams, usePathname } from "next/navigation";
 import { Bookmark } from "lucide-react";
 import { useCartStore } from "@/lib/cart/cartStore";
 import { useLocale } from "@/lib/i18n/locale";
 
 export function CartFloating() {
   const params = useParams<{ eventSlug?: string }>();
+  const pathname = usePathname() || "";
   const eventId = params?.eventSlug ?? "";
   const allItems = useCartStore((s) => s.items);
   const hydrated = useCartStore((s) => s.hasHydrated);
@@ -18,11 +19,19 @@ export function CartFloating() {
     ? allItems.filter((it) => it.eventId === eventId)
     : allItems;
 
+  // 현재 영문 URL 인지 — 영문 사이트에서 cart 클릭 시 영문 카트로 가도록.
+  const isEn = pathname.split("/").filter(Boolean)[1] === "en";
+  const cartHref = eventId
+    ? isEn
+      ? `/${eventId}/en/cart`
+      : `/${eventId}/cart`
+    : "/cart";
+
   if (!hydrated || items.length === 0) return null;
 
   return (
     <Link
-      href={eventId ? `/${eventId}/cart` : "/cart"}
+      href={cartHref}
       // 진단 FAB(z-50, bottom-5/7) 위에 stack — bottom 을 더 위로(20/24).
       className="fixed bottom-20 right-5 md:bottom-24 md:right-7 z-40 bg-brand-500 text-ink-900 hover:bg-brand-700 hover:text-white px-4 py-3 rounded-full shadow-2xl flex items-center gap-2.5 font-semibold transition-colors"
     >

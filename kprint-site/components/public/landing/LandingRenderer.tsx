@@ -29,8 +29,8 @@ export function LandingRenderer({
 }) {
   const locale = useLocale((s) => s.locale);
   const mainRef = useRef<HTMLElement>(null);
-  const pdfHref = getFullPdfHref(eventId, settings);
-  const pdfDirect = isDirectPdfHref(settings);
+  const pdfHref = getFullPdfHref(eventId, settings, locale);
+  const pdfDirect = isDirectPdfHref(settings, locale);
 
   // 페이지 진입·blocks 로드 시 무조건 첫 슬라이드부터 시작 — 데이터 로드 직전 빈 main 위에
   // 마지막 슬라이드(ModeChoice) 만 잡혀 그 위치로 머무는 버그 방지.
@@ -114,8 +114,8 @@ export function ClosingSlide({
   const phone = settings?.contact?.phone || "02-551-0102";
   const email = settings?.contact?.email || "kprint@kprint.kr";
   const address = settings?.contact?.address;
-  const pdfHref = getFullPdfHref(eventId, settings);
-  const pdfDirect = isDirectPdfHref(settings);
+  const pdfHref = getFullPdfHref(eventId, settings, locale);
+  const pdfDirect = isDirectPdfHref(settings, locale);
   return (
     <section className="h-dvh snap-start snap-always relative overflow-hidden flex flex-col items-center justify-center bg-canvas text-ink-900 px-8 md:px-16 pt-14">
       <div className="max-w-3xl w-full text-center flex flex-col items-center break-keep">
