@@ -2,14 +2,26 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { ChevronDown, Library, Plus, Trash2 } from "lucide-react";
+import { doc, getDoc } from "firebase/firestore";
+import { getDb } from "@/lib/firebase/firestore";
 import type {
   DesignItem,
   Event,
+  QuoteSettings,
   Sponsor,
   SponsorContact,
   SponsorItem,
   SponsorStatus,
 } from "@/lib/types";
+
+// 행사별 견적서 설정의 defaultBenefitItems 에서 혜택 라벨을 가져옴 — 어드민이
+// 견적서 설정을 바꾸면 스폰서 폼의 혜택 라벨도 자동 반영. 비어있는 슬롯은
+// 기본 라벨로 폴백.
+const FALLBACK_BENEFIT_LABELS = [
+  { label: "혜택 1 — 상위 고정", hint: "참가업체 검색 페이지 내 상위 노출" },
+  { label: "혜택 2 — 뱃지 표기", hint: "주요 참가기업 뱃지" },
+  { label: "혜택 3 — 로고/배너", hint: "도면 내 로고/배너 표시" },
+] as const;
 
 // 품목 라이브러리 항목 (카테고리/패키지/슬롯에서 선택해서 채울 수 있도록)
 export type SponsorItemLibraryEntry = {
@@ -94,6 +106,35 @@ export function SponsorForm({
 }) {
   const [v, setV] = useState<SponsorFormValues>(initial);
   const [saving, setSaving] = useState(false);
+
+  // 행사별 혜택 라벨 — 견적서 설정에서 가져옴. 행사 바뀌면 다시 로드.
+  const [benefitLabels, setBenefitLabels] = useState<
+    Array<{ label: string; hint?: string }>
+  >([...FALLBACK_BENEFIT_LABELS]);
+
+  useEffect(() => {
+    if (!v.eventId) return;
+    (async () => {
+      try {
+        const snap = await getDoc(doc(getDb(), "quoteSettings", v.eventId));
+        if (!snap.exists()) {
+          setBenefitLabels([...FALLBACK_BENEFIT_LABELS]);
+          return;
+        }
+        const qs = snap.data() as QuoteSettings;
+        const items = qs.defaultBenefitItems ?? [];
+        // 앞 3 개만 사용 — 데이터 모델의 topPin/badge/logoBanner 3 boolean 에 대응.
+        setBenefitLabels([0, 1, 2].map((i) => ({
+          label: items[i]?.label
+            ? `혜택 ${i + 1} — ${items[i].label}`
+            : FALLBACK_BENEFIT_LABELS[i].label,
+          hint: items[i]?.note ?? FALLBACK_BENEFIT_LABELS[i].hint,
+        })));
+      } catch {
+        setBenefitLabels([...FALLBACK_BENEFIT_LABELS]);
+      }
+    })();
+  }, [v.eventId]);
 
   const update = <K extends keyof SponsorFormValues>(key: K, val: SponsorFormValues[K]) => {
     setV((prev) => ({ ...prev, [key]: val }));
@@ -373,20 +414,20 @@ export function SponsorForm({
               onChange={(b) => updateBenefit("eventNotice", b)}
             />
             <BenefitToggle
-              label="혜택 1 — 상위 고정"
-              hint="참가업체 검색 페이지 내 상위 노출"
+              label={benefitLabels[0].label}
+              hint={benefitLabels[0].hint}
               checked={v.benefits.topPin}
               onChange={(b) => updateBenefit("topPin", b)}
             />
             <BenefitToggle
-              label="혜택 2 — 뱃지 표기"
-              hint="주요 참가기업 뱃지"
+              label={benefitLabels[1].label}
+              hint={benefitLabels[1].hint}
               checked={v.benefits.badge}
               onChange={(b) => updateBenefit("badge", b)}
             />
             <BenefitToggle
-              label="혜택 3 — 로고/배너"
-              hint="도면 내 로고/배너 표시"
+              label={benefitLabels[2].label}
+              hint={benefitLabels[2].hint}
               checked={v.benefits.logoBanner}
               onChange={(b) => updateBenefit("logoBanner", b)}
             />
