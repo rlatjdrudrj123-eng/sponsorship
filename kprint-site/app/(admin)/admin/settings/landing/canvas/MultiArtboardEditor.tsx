@@ -20,7 +20,7 @@ import type {
   CanvasShapeNode,
   CanvasTextNode,
 } from "@/lib/types";
-import { NodePreview, resolveBg } from "./CanvasEditor";
+import { CanvasEditor, NodePreview, resolveBg } from "./CanvasEditor";
 import { buildStoragePath, uploadFile } from "@/lib/firebase/storage";
 
 /**
@@ -70,6 +70,9 @@ export function MultiArtboardEditor({
   const [pan, setPan] = useState({ x: 280, y: 80 });
   const [selections, setSelections] = useState<Selection[]>([]);
   const [tool, setTool] = useState<Tool>("select");
+  // 고급 편집 모달 — 단일 페이지 CanvasEditor 로 파일 업로드 / 컴포넌트 / 차트 등
+  // 전체 기능 노출. null = 닫힘.
+  const [deepEditIdx, setDeepEditIdx] = useState<number | null>(null);
   const [layersOpen, setLayersOpen] = useState(true);
   const [expandedPages, setExpandedPages] = useState<Set<number>>(new Set());
   const [editing, setEditing] = useState<Selection | null>(null);
@@ -1129,6 +1132,23 @@ export function MultiArtboardEditor({
                       {page.name || `슬라이드 ${idx + 1}`}
                     </span>
                     <div style={{ display: "flex", gap: 8 }}>
+                      <button
+                        type="button"
+                        onPointerDown={(e) => e.stopPropagation()}
+                        onClick={() => setDeepEditIdx(idx)}
+                        style={{
+                          color: "rgba(255,255,255,0.85)",
+                          fontSize: 18,
+                          padding: "4px 14px",
+                          background: "rgba(13,153,255,0.18)",
+                          border: "1px solid rgba(13,153,255,0.5)",
+                          borderRadius: 6,
+                        }}
+                        className="hover:!bg-[rgba(13,153,255,0.32)]"
+                        title="이 슬라이드의 단일 캔버스 편집기 — 파일 업로드 · 컴포넌트 · 그라데이션 등 전체 기능"
+                      >
+                        ✎ 고급 편집
+                      </button>
                       {onMovePage && idx > 0 && (
                         <button
                           type="button"
@@ -1524,6 +1544,46 @@ export function MultiArtboardEditor({
           )}
         </div>
       </aside>
+
+      {/* ═══ 고급 편집 모달 — 단일 페이지 CanvasEditor (파일 업로드 · 컴포넌트 · 그라데이션 등) ═══ */}
+      {deepEditIdx !== null &&
+        deepEditIdx >= 0 &&
+        deepEditIdx < pages.length && (
+          <div
+            className="fixed inset-0 z-50 bg-black/70 flex items-stretch"
+            onClick={() => setDeepEditIdx(null)}
+          >
+            <div
+              onClick={(e) => e.stopPropagation()}
+              className="bg-white text-ink-900 w-full h-full flex flex-col"
+            >
+              <header className="px-5 py-3 border-b border-ink-100 flex items-center justify-between shrink-0">
+                <div>
+                  <div className="text-[10.5px] uppercase tracking-wider text-ink-500 font-mono">
+                    슬라이드 {deepEditIdx + 1} / {pages.length} · 고급 편집
+                  </div>
+                  <h2 className="text-[15px] font-bold text-ink-900 mt-0.5">
+                    {pages[deepEditIdx].page.name ||
+                      `슬라이드 ${deepEditIdx + 1}`}
+                  </h2>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setDeepEditIdx(null)}
+                  className="px-4 py-2 rounded-btn bg-ink-900 text-white text-[12.5px] font-bold hover:bg-brand-500 flex items-center gap-1.5"
+                >
+                  대지로 돌아가기 →
+                </button>
+              </header>
+              <div className="flex-1 overflow-hidden">
+                <CanvasEditor
+                  page={pages[deepEditIdx].page}
+                  onChange={(p) => onUpdatePage(deepEditIdx, p)}
+                />
+              </div>
+            </div>
+          </div>
+        )}
     </div>
   );
 }
