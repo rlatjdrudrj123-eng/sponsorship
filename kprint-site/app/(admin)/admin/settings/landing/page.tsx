@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import {
   ArrowDown,
@@ -8,6 +8,7 @@ import {
   ArrowUp,
   Eye,
   FileDown,
+  Pencil,
   Plus,
   Sparkles,
   Trash2,
@@ -41,8 +42,10 @@ export default function LandingBuilderPage() {
     "idle" | "saving" | "saved" | "error"
   >("idle");
   const [adderOpen, setAdderOpen] = useState(false);
-  const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
-  const [viewMode, setViewMode] = useState<"blocks" | "artboard">("blocks");
+  // 비-캔버스 블록 추가 시 BlockAdderModal 의 필터 — true 면 캔버스 제외
+  const [adderNonCanvasOnly, setAdderNonCanvasOnly] = useState(false);
+  // 비-캔버스 블록 편집 모달 — null 이면 닫힘
+  const [editingBlockIdx, setEditingBlockIdx] = useState<number | null>(null);
   // ko/en 탭 — 한국어 페이지(/[eventSlug]) vs 영문 페이지(/[eventSlug]/en) 각각 별도 편집
   const [editingLocale, setEditingLocale] = useState<"ko" | "en">("ko");
 
@@ -72,7 +75,7 @@ export default function LandingBuilderPage() {
     }
     const src = editingLocale === "en" ? settings.landingEn : settings.landing;
     setBlocks(src ?? []);
-    setSelectedIndex(null);
+    setEditingBlockIdx(null);
   }, [settings, editingLocale]);
 
   const persist = async (next: LandingBlock[]) => {
@@ -102,7 +105,11 @@ export default function LandingBuilderPage() {
     const next = [...blocks, b];
     setBlocks(next);
     setAdderOpen(false);
-    setSelectedIndex(next.length - 1);
+    // 캔버스 블록은 대지에서 즉시 보이므로 자동 편집 모달 안 띄움.
+    // 비-캔버스(데이터) 블록은 편집 모달 자동 오픈.
+    if (type !== "canvasPage") {
+      setEditingBlockIdx(next.length - 1);
+    }
     await persist(next);
   };
 
@@ -116,7 +123,7 @@ export default function LandingBuilderPage() {
     if (!confirm("이 블록을 삭제할까요?")) return;
     const next = blocks.filter((_, i) => i !== idx);
     setBlocks(next);
-    if (selectedIndex === idx) setSelectedIndex(null);
+    if (editingBlockIdx === idx) setEditingBlockIdx(null);
     await persist(next);
   };
 
@@ -127,7 +134,7 @@ export default function LandingBuilderPage() {
     const [item] = next.splice(idx, 1);
     next.splice(target, 0, item);
     setBlocks(next);
-    if (selectedIndex === idx) setSelectedIndex(target);
+    if (editingBlockIdx === idx) setEditingBlockIdx(target);
     await persist(next);
   };
 
@@ -248,33 +255,6 @@ export default function LandingBuilderPage() {
               🇬🇧 영문
             </button>
           </div>
-          {/* 보기 모드 토글 — 블록 / 대지 */}
-          <div className="flex items-center bg-ink-100 rounded-btn p-0.5">
-            <button
-              type="button"
-              onClick={() => setViewMode("blocks")}
-              className={
-                "px-3 py-1.5 rounded text-[12.5px] font-semibold transition-colors " +
-                (viewMode === "blocks"
-                  ? "bg-white text-ink-900 shadow-sm"
-                  : "text-ink-500 hover:text-ink-900")
-              }
-            >
-              블록 리스트
-            </button>
-            <button
-              type="button"
-              onClick={() => setViewMode("artboard")}
-              className={
-                "px-3 py-1.5 rounded text-[12.5px] font-semibold transition-colors " +
-                (viewMode === "artboard"
-                  ? "bg-white text-ink-900 shadow-sm"
-                  : "text-ink-500 hover:text-ink-900")
-              }
-            >
-              대지 (모든 슬라이드)
-            </button>
-          </div>
           <Link
             href={`/${eventId}${editingLocale === "en" ? "/en" : ""}`}
             target="_blank"
@@ -320,193 +300,125 @@ export default function LandingBuilderPage() {
         </div>
       </header>
 
-      {viewMode === "artboard" ? (
-        <div className="bg-white border border-ink-100 rounded-card overflow-hidden h-[calc(100vh-180px)] min-h-[640px]">
-          <MultiArtboardEditor
-            pages={blocks
-              .map((b, blockIdx) =>
-                b.type === "canvasPage"
-                  ? { blockId: b.id, page: b.data.page, blockIdx }
-                  : null
-              )
-              .filter(
-                (
-                  x
-                ): x is {
-                  blockId: string;
-                  page: import("@/lib/types").CanvasPage;
-                  blockIdx: number;
-                } => x !== null
-              )}
-            onUpdatePage={(idx, page) => {
-              const canvasIndices = blocks
-                .map((b, i) => (b.type === "canvasPage" ? i : -1))
-                .filter((i) => i >= 0);
-              const blockIdx = canvasIndices[idx];
-              const b = blocks[blockIdx];
-              if (b?.type !== "canvasPage") return;
-              void updateBlock(blockIdx, { ...b, data: { page } });
-            }}
-            onAddPage={() => {
-              const b = emptyBlock("canvasPage");
-              const next = [...blocks, b];
-              setBlocks(next);
-              void persist(next);
-            }}
-            onRemovePage={(idx) => {
-              const canvasIndices = blocks
-                .map((b, i) => (b.type === "canvasPage" ? i : -1))
-                .filter((i) => i >= 0);
-              const blockIdx = canvasIndices[idx];
-              if (blockIdx < 0) return;
-              if (!confirm("이 아트보드를 삭제할까요?")) return;
-              const next = blocks.filter((_, i) => i !== blockIdx);
-              setBlocks(next);
-              void persist(next);
-            }}
-            onMovePage={(from, to) => {
-              const canvasIndices = blocks
-                .map((b, i) => (b.type === "canvasPage" ? i : -1))
-                .filter((i) => i >= 0);
-              const fromBlockIdx = canvasIndices[from];
-              const toBlockIdx = canvasIndices[to];
-              if (fromBlockIdx < 0 || toBlockIdx < 0) return;
-              const next = [...blocks];
-              const [moved] = next.splice(fromBlockIdx, 1);
-              next.splice(toBlockIdx, 0, moved);
-              setBlocks(next);
-              void persist(next);
-            }}
-          />
-        </div>
-      ) : (
-      <div className="grid grid-cols-1 lg:grid-cols-[280px_1fr] gap-5">
-        {/* 좌측 — 블록 리스트 */}
-        <aside className="space-y-2">
-          <div className="bg-white border border-ink-100 rounded-card overflow-hidden">
-            <div className="px-3.5 py-2.5 border-b border-ink-100 text-[11px] uppercase tracking-wide font-bold text-ink-700 flex items-center justify-between">
-              <span>블록 {blocks.length}개</span>
-            </div>
-            {blocks.length === 0 ? (
-              <div className="px-3.5 py-8 text-center">
-                <p className="text-[12.5px] text-ink-500 mb-3">
-                  아직 블록이 없습니다.
-                </p>
+      {/* 비-캔버스(데이터) 블록 strip — 캔버스 슬라이드와 같은 시퀀스의 일부지만
+          시각적 캔버스가 없어 대지에는 표시 안 됨. 따로 카드로 노출. */}
+      <NonCanvasBlockStrip
+        blocks={blocks}
+        onEditAt={(i) => setEditingBlockIdx(i)}
+        onMove={(i, dir) => void moveBlock(i, dir)}
+        onRemove={(i) => void removeBlock(i)}
+        onAdd={() => {
+          setAdderNonCanvasOnly(true);
+          setAdderOpen(true);
+        }}
+      />
+
+      {/* 대지 — 캔버스 슬라이드. + 새 아트보드 = 캔버스 페이지 추가. */}
+      <div className="bg-white border border-ink-100 rounded-card overflow-hidden h-[calc(100vh-260px)] min-h-[560px]">
+        <MultiArtboardEditor
+          pages={blocks
+            .map((b, blockIdx) =>
+              b.type === "canvasPage"
+                ? { blockId: b.id, page: b.data.page, blockIdx }
+                : null
+            )
+            .filter(
+              (
+                x
+              ): x is {
+                blockId: string;
+                page: import("@/lib/types").CanvasPage;
+                blockIdx: number;
+              } => x !== null
+            )}
+          onUpdatePage={(idx, page) => {
+            const canvasIndices = blocks
+              .map((b, i) => (b.type === "canvasPage" ? i : -1))
+              .filter((i) => i >= 0);
+            const blockIdx = canvasIndices[idx];
+            const b = blocks[blockIdx];
+            if (b?.type !== "canvasPage") return;
+            void updateBlock(blockIdx, { ...b, data: { page } });
+          }}
+          onAddPage={() => {
+            const b = emptyBlock("canvasPage");
+            const next = [...blocks, b];
+            setBlocks(next);
+            void persist(next);
+          }}
+          onRemovePage={(idx) => {
+            const canvasIndices = blocks
+              .map((b, i) => (b.type === "canvasPage" ? i : -1))
+              .filter((i) => i >= 0);
+            const blockIdx = canvasIndices[idx];
+            if (blockIdx < 0) return;
+            if (!confirm("이 아트보드를 삭제할까요?")) return;
+            const next = blocks.filter((_, i) => i !== blockIdx);
+            setBlocks(next);
+            void persist(next);
+          }}
+          onMovePage={(from, to) => {
+            const canvasIndices = blocks
+              .map((b, i) => (b.type === "canvasPage" ? i : -1))
+              .filter((i) => i >= 0);
+            const fromBlockIdx = canvasIndices[from];
+            const toBlockIdx = canvasIndices[to];
+            if (fromBlockIdx < 0 || toBlockIdx < 0) return;
+            const next = [...blocks];
+            const [moved] = next.splice(fromBlockIdx, 1);
+            next.splice(toBlockIdx, 0, moved);
+            setBlocks(next);
+            void persist(next);
+          }}
+        />
+      </div>
+
+      {/* 비-캔버스 블록 편집 모달 */}
+      {editingBlockIdx !== null &&
+        editingBlockIdx >= 0 &&
+        editingBlockIdx < blocks.length &&
+        blocks[editingBlockIdx].type !== "canvasPage" && (
+          <div
+            className="fixed inset-0 z-50 bg-ink-900/40 backdrop-blur-[1px] flex items-start justify-center p-4 overflow-y-auto"
+            onClick={() => setEditingBlockIdx(null)}
+          >
+            <div
+              onClick={(e) => e.stopPropagation()}
+              className="w-full max-w-3xl mt-10 mb-10"
+            >
+              <BlockEditor
+                block={blocks[editingBlockIdx]}
+                onChange={(b) => updateBlock(editingBlockIdx, b)}
+                onRemove={() => {
+                  removeBlock(editingBlockIdx);
+                  setEditingBlockIdx(null);
+                }}
+                indexLabel={`${editingBlockIdx + 1} / ${blocks.length}`}
+              />
+              <div className="mt-3 flex justify-end">
                 <button
                   type="button"
-                  onClick={() => setAdderOpen(true)}
-                  className="text-[12.5px] text-mint-700 font-semibold hover:underline"
-                  style={{ color: "#AA0008" }}
+                  onClick={() => setEditingBlockIdx(null)}
+                  className="px-4 py-2 rounded-btn bg-ink-900 text-white text-[12.5px] font-bold hover:bg-brand-500"
                 >
-                  첫 블록 추가하기 →
+                  닫기
                 </button>
               </div>
-            ) : (
-              <ul>
-                {blocks.map((b, i) => {
-                  const meta = BLOCK_TYPE_META[b.type];
-                  const active = selectedIndex === i;
-                  return (
-                    <li
-                      key={b.id}
-                      className={
-                        "border-b border-ink-100 last:border-b-0 " +
-                        (active ? "bg-mint-50" : "")
-                      }
-                      style={active ? { background: "#FEE9EA" } : undefined}
-                    >
-                      <button
-                        type="button"
-                        onClick={() => setSelectedIndex(i)}
-                        className="w-full text-left px-3.5 py-2.5 hover:bg-ink-50 flex items-start gap-2"
-                      >
-                        <span className="text-[10px] font-mono text-ink-500 w-5 shrink-0 mt-0.5 text-right">
-                          {String(i + 1).padStart(2, "0")}
-                        </span>
-                        <span className="flex-1 min-w-0">
-                          <span className="block text-[13px] font-semibold text-ink-900 truncate">
-                            {meta.label}
-                          </span>
-                          <span className="block text-[11px] text-ink-500 truncate">
-                            {blockPreview(b)}
-                          </span>
-                        </span>
-                      </button>
-                      <div className="px-2 pb-2 flex items-center gap-1">
-                        <button
-                          type="button"
-                          onClick={() => moveBlock(i, -1)}
-                          disabled={i === 0}
-                          className="w-7 h-6 grid place-items-center rounded text-ink-500 hover:text-ink-900 hover:bg-ink-100 disabled:opacity-30"
-                          title="위로"
-                        >
-                          <ArrowUp className="w-3 h-3" />
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => moveBlock(i, 1)}
-                          disabled={i === blocks.length - 1}
-                          className="w-7 h-6 grid place-items-center rounded text-ink-500 hover:text-ink-900 hover:bg-ink-100 disabled:opacity-30"
-                          title="아래로"
-                        >
-                          <ArrowDown className="w-3 h-3" />
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => removeBlock(i)}
-                          className="ml-auto w-7 h-6 grid place-items-center rounded text-ink-500 hover:text-red-700 hover:bg-red-50"
-                          title="삭제"
-                        >
-                          <Trash2 className="w-3 h-3" />
-                        </button>
-                      </div>
-                    </li>
-                  );
-                })}
-              </ul>
-            )}
-            <div className="p-2 border-t border-ink-100">
-              <button
-                type="button"
-                onClick={() => setAdderOpen(true)}
-                className="w-full py-2 rounded-btn border-[1.5px] border-dashed border-ink-300 text-[12.5px] text-ink-500 hover:border-ink-900 hover:text-ink-900 flex items-center justify-center gap-1.5"
-              >
-                <Plus className="w-3.5 h-3.5" />
-                블록 추가
-              </button>
             </div>
           </div>
-        </aside>
-
-        {/* 우측 — 편집 패널 */}
-        <section>
-          {selectedIndex === null ||
-          selectedIndex < 0 ||
-          selectedIndex >= blocks.length ? (
-            <div className="bg-white border border-ink-100 rounded-card py-20 text-center">
-              <p className="text-[14px] text-ink-700 font-semibold">
-                왼쪽에서 블록을 선택하세요.
-              </p>
-              <p className="text-[12px] text-ink-500 mt-2">
-                또는 [블록 추가]로 새 블록을 만들 수 있어요.
-              </p>
-            </div>
-          ) : (
-            <BlockEditor
-              block={blocks[selectedIndex]}
-              onChange={(b) => updateBlock(selectedIndex, b)}
-              onRemove={() => removeBlock(selectedIndex)}
-              indexLabel={`${selectedIndex + 1} / ${blocks.length}`}
-            />
-          )}
-        </section>
-      </div>
-      )}
+        )}
 
       {adderOpen && (
         <BlockAdderModal
-          onClose={() => setAdderOpen(false)}
-          onPick={addBlock}
+          nonCanvasOnly={adderNonCanvasOnly}
+          onClose={() => {
+            setAdderOpen(false);
+            setAdderNonCanvasOnly(false);
+          }}
+          onPick={(t) => {
+            void addBlock(t);
+            setAdderNonCanvasOnly(false);
+          }}
         />
       )}
     </div>
@@ -561,9 +473,11 @@ function blockPreview(b: LandingBlock): string {
 function BlockAdderModal({
   onClose,
   onPick,
+  nonCanvasOnly = false,
 }: {
   onClose: () => void;
   onPick: (t: LandingBlockType) => void;
+  nonCanvasOnly?: boolean;
 }) {
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -585,7 +499,9 @@ function BlockAdderModal({
         className="bg-white w-full max-w-2xl rounded-card shadow-2xl overflow-hidden"
       >
         <header className="px-5 py-4 border-b border-ink-100 flex items-center justify-between">
-          <h2 className="text-[16px] font-bold text-ink-900">블록 추가</h2>
+          <h2 className="text-[16px] font-bold text-ink-900">
+            {nonCanvasOnly ? "데이터 블록 추가" : "블록 추가"}
+          </h2>
           <button
             type="button"
             onClick={onClose}
@@ -598,6 +514,7 @@ function BlockAdderModal({
         <div className="px-5 py-4 grid grid-cols-1 sm:grid-cols-2 gap-2">
           {(Object.keys(BLOCK_TYPE_META) as LandingBlockType[])
             .filter((t) => !BLOCK_TYPE_META[t].hidden)
+            .filter((t) => (nonCanvasOnly ? t !== "canvasPage" : true))
             .map((t) => {
               const meta = BLOCK_TYPE_META[t];
               return (
@@ -621,6 +538,124 @@ function BlockAdderModal({
           💡 모든 콘텐츠는 캔버스 페이지 안에서 자유 배치합니다. 이전 버전의 단일
           블록(Cover, 통계, 혜택 등)은 캔버스 안에서 <strong>컴포넌트</strong>로 추가하세요.
         </div>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * 비-캔버스 (데이터) 블록 strip — cover/stats/benefits/PDF 다운로드 등 시각 캔버스가
+ * 없는 블록들. 대지 뷰에는 안 나오지만 시퀀스의 일부. 카드로 노출 + 편집·이동·삭제.
+ */
+function NonCanvasBlockStrip({
+  blocks,
+  onEditAt,
+  onMove,
+  onRemove,
+  onAdd,
+}: {
+  blocks: LandingBlock[];
+  onEditAt: (i: number) => void;
+  onMove: (i: number, dir: -1 | 1) => void;
+  onRemove: (i: number) => void;
+  onAdd: () => void;
+}) {
+  const dataBlocks = useMemo(
+    () =>
+      blocks
+        .map((b, i) => ({ block: b, blockIdx: i }))
+        .filter(({ block }) => block.type !== "canvasPage"),
+    [blocks]
+  );
+
+  if (dataBlocks.length === 0) {
+    return (
+      <div className="bg-white border border-dashed border-ink-200 rounded-card px-4 py-2.5 flex items-center justify-between">
+        <span className="text-[11.5px] text-ink-500">
+          데이터 블록(통계·혜택·PDF 다운로드 등) 이 없습니다. 캔버스 슬라이드 외에
+          추가할 수 있어요.
+        </span>
+        <button
+          type="button"
+          onClick={onAdd}
+          className="px-3 py-1.5 rounded-btn text-[12px] font-bold text-brand-700 hover:bg-brand-50 flex items-center gap-1.5"
+        >
+          <Plus className="w-3.5 h-3.5" /> 데이터 블록 추가
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="bg-white border border-ink-100 rounded-card p-3">
+      <div className="flex items-center justify-between mb-2 px-1">
+        <span className="text-[10.5px] uppercase tracking-wider font-bold text-ink-700">
+          데이터 블록 ({dataBlocks.length})
+        </span>
+        <button
+          type="button"
+          onClick={onAdd}
+          className="text-[11.5px] font-bold text-brand-700 hover:underline flex items-center gap-1"
+        >
+          <Plus className="w-3 h-3" /> 추가
+        </button>
+      </div>
+      <div className="flex gap-2 overflow-x-auto pb-1">
+        {dataBlocks.map(({ block, blockIdx }, listIdx) => {
+          const meta = BLOCK_TYPE_META[block.type];
+          return (
+            <div
+              key={block.id}
+              className="shrink-0 w-[200px] bg-canvas border border-ink-100 rounded-btn p-2.5 flex flex-col gap-1.5"
+            >
+              <div className="flex items-start justify-between gap-1">
+                <div className="min-w-0 flex-1">
+                  <div className="text-[10px] font-mono text-ink-500">
+                    {String(blockIdx + 1).padStart(2, "0")} · {meta.label}
+                  </div>
+                  <div className="text-[12px] font-semibold text-ink-900 truncate mt-0.5">
+                    {blockPreview(block)}
+                  </div>
+                </div>
+              </div>
+              <div className="flex items-center gap-0.5">
+                <button
+                  type="button"
+                  onClick={() => onEditAt(blockIdx)}
+                  className="px-2 py-1 rounded text-[10.5px] font-bold text-brand-700 hover:bg-brand-50 flex items-center gap-1"
+                >
+                  <Pencil className="w-3 h-3" /> 편집
+                </button>
+                <button
+                  type="button"
+                  onClick={() => onMove(blockIdx, -1)}
+                  disabled={listIdx === 0}
+                  className="w-6 h-6 grid place-items-center rounded text-ink-500 hover:text-ink-900 hover:bg-ink-100 disabled:opacity-30"
+                  title="앞으로"
+                >
+                  <ArrowUp className="w-3 h-3" />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => onMove(blockIdx, 1)}
+                  disabled={listIdx === dataBlocks.length - 1}
+                  className="w-6 h-6 grid place-items-center rounded text-ink-500 hover:text-ink-900 hover:bg-ink-100 disabled:opacity-30"
+                  title="뒤로"
+                >
+                  <ArrowDown className="w-3 h-3" />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => onRemove(blockIdx)}
+                  className="ml-auto w-6 h-6 grid place-items-center rounded text-ink-500 hover:text-red-700 hover:bg-red-50"
+                  title="삭제"
+                >
+                  <Trash2 className="w-3 h-3" />
+                </button>
+              </div>
+            </div>
+          );
+        })}
       </div>
     </div>
   );
