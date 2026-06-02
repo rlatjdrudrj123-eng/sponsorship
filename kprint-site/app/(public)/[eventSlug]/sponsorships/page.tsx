@@ -834,14 +834,12 @@ export default function SponsorshipsPage() {
             {locale === "en" ? "Clear" : "지우기"}
           </button>
           <Link
-            href={`/${eventId}/compare?ids=${encodeURIComponent(
-              Array.from(compareIds)
-                .map((k) => {
-                  // slot-cat:catId → 비교 페이지가 카테고리 단위 비교를 지원하도록 같은 형태로 패스
-                  return k;
-                })
-                .join(",")
-            )}`}
+            href={(() => {
+              const ids = Array.from(compareIds).join(",");
+              return locale === "en"
+                ? `/${eventId}/en/compare?ids=${encodeURIComponent(ids)}`
+                : `/${eventId}/compare?ids=${encodeURIComponent(ids)}`;
+            })()}
             className="ml-1 px-4 py-2 rounded-pill bg-brand-500 text-white font-bold hover:bg-brand-700 transition-colors"
           >
             {locale === "en" ? "Compare →" : "나란히 비교 →"}

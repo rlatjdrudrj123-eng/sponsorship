@@ -48,3 +48,18 @@ export function localizedField(
   if (locale === "en") return en?.trim() || ko || "";
   return ko || en || "";
 }
+
+/**
+ * 행사 라우트에 locale 세그먼트 자동 삽입.
+ * localeHref('kprint-2026', '/cart', 'en') -> '/kprint-2026/en/cart'
+ * localeHref('kprint-2026', '/cart', 'ko') -> '/kprint-2026/cart'
+ * suffix 는 반드시 '/' 로 시작.
+ */
+export function localeHref(
+  eventId: string,
+  suffix: string,
+  locale: Locale
+): string {
+  if (!eventId) return suffix || "/";
+  return locale === "en" ? `/${eventId}/en${suffix}` : `/${eventId}${suffix}`;
+}

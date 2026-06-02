@@ -15,7 +15,7 @@ import { ArrowLeft } from "lucide-react";
 import { getDb } from "@/lib/firebase/firestore";
 import type { Package, SiteSettings } from "@/lib/types";
 import { Footer } from "@/components/public/Footer";
-import { useLocale, localized as localizedHelper, localizedField } from "@/lib/i18n/locale";
+import { useLocale, localized as localizedHelper, localizedField, localeHref } from "@/lib/i18n/locale";
 import { t } from "@/lib/i18n/strings";
 
 type Tab = "all" | "signature" | "standard";
@@ -129,7 +129,7 @@ export default function PackagesListPage() {
                 return (
                   <Link
                     key={pkg.id}
-                    href={`/${eventId}/packages/${pkg.id}`}
+                    href={localeHref(eventId, `/packages/${pkg.id}`, locale)}
                     className="group bg-surface border border-ink-100 rounded-card overflow-hidden hover:border-brand-500 hover:shadow-card transition-all flex flex-col h-full"
                   >
                     <div className="aspect-[16/9] bg-ink-100 relative shrink-0">

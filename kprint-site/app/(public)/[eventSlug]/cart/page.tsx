@@ -14,7 +14,7 @@ import type {
   Subcategory,
 } from "@/lib/types";
 import { Footer } from "@/components/public/Footer";
-import { useLocale } from "@/lib/i18n/locale";
+import { useLocale, localeHref } from "@/lib/i18n/locale";
 import { localized as localizedHelper } from "@/lib/i18n/locale";
 import { t } from "@/lib/i18n/strings";
 
@@ -154,7 +154,7 @@ export default function CartPage() {
         <header className="px-6 md:px-16 pt-16 md:pt-20 pb-8 md:pb-10 border-b border-ink-100 bg-surface">
           <div className="max-w-4xl mx-auto">
             <Link
-              href={`/${eventId}/sponsorships`}
+              href={localeHref(eventId, "/sponsorships", locale)}
               className="inline-flex items-center gap-1.5 text-[12px] text-ink-500 hover:text-brand-500 mb-4 font-num font-semibold"
             >
               <ArrowLeft className="w-3.5 h-3.5" />
@@ -218,7 +218,7 @@ export default function CartPage() {
                   : "마음에 드는 스폰서십을 찾아보세요."}
               </p>
               <Link
-                href={`/${eventId}/sponsorships`}
+                href={localeHref(eventId, "/sponsorships", locale)}
                 className="mt-6 inline-flex items-center gap-2 px-6 py-3 rounded-pill bg-brand-500 text-white font-bold hover:bg-brand-700 hover:shadow-glow-sm transition-all"
               >
                 {locale === "en" ? "Browse sponsorships" : "스폰서십 둘러보기"}
@@ -245,9 +245,7 @@ export default function CartPage() {
                 </label>
                 <div className="flex items-center gap-2 flex-wrap">
                   <Link
-                    href={`/${eventId}/compare?ids=${encodeURIComponent(
-                      Array.from(selected).join(",")
-                    )}`}
+                    href={localeHref(eventId, `/compare?ids=${encodeURIComponent(Array.from(selected).join(","))}`, locale)}
                     aria-disabled={noneSelected}
                     className={
                       "px-3.5 py-2 rounded-btn border text-[12.5px] font-semibold flex items-center gap-1.5 transition-colors " +
@@ -396,7 +394,7 @@ export default function CartPage() {
                   {locale === "en" ? "Clear all" : "전체 비우기"}
                 </button>
                 <Link
-                  href={`/${eventId}/contact`}
+                  href={localeHref(eventId, "/contact", locale)}
                   className="px-6 py-3.5 rounded-pill bg-brand-500 text-white font-bold hover:bg-brand-700 hover:shadow-glow-sm flex items-center gap-2 transition-all"
                 >
                   {locale === "en"

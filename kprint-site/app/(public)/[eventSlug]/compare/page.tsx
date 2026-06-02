@@ -28,7 +28,7 @@ import type {
 import { derivePurposes } from "@/lib/purposes";
 import { PURPOSE_META } from "@/lib/types";
 import { Footer } from "@/components/public/Footer";
-import { localized, useLocale } from "@/lib/i18n/locale";
+import { localized, useLocale, localeHref } from "@/lib/i18n/locale";
 import { t } from "@/lib/i18n/strings";
 import {
   getDisplayPrice,
@@ -310,7 +310,7 @@ function CompareContent() {
         <header className="px-6 md:px-16 pt-16 md:pt-20 pb-8 md:pb-10 border-b border-ink-100 bg-surface">
           <div className="max-w-7xl mx-auto">
             <Link
-              href={`/${eventId}/sponsorships`}
+              href={localeHref(eventId, "/sponsorships", locale)}
               className="inline-flex items-center gap-1.5 text-[12px] text-ink-500 hover:text-brand-500 mb-4 font-num font-semibold"
             >
               <ArrowLeft className="w-3.5 h-3.5" />
@@ -383,7 +383,7 @@ function CompareContent() {
                   : "카트에 담은 항목을 선택해 비교할 수 있어요."}
               </p>
               <Link
-                href={`/${eventId}/sponsorships`}
+                href={localeHref(eventId, "/sponsorships", locale)}
                 className="mt-6 inline-flex items-center gap-2 px-6 py-3 rounded-pill bg-brand-500 text-white font-bold hover:bg-brand-700 hover:shadow-glow-sm transition-all"
               >
                 {locale === "en" ? "Browse sponsorships" : "스폰서십 둘러보기"}

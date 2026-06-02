@@ -28,7 +28,7 @@ import type {
   Subcategory,
 } from "@/lib/types";
 import { Footer } from "@/components/public/Footer";
-import { useLocale, localized as localizedHelper } from "@/lib/i18n/locale";
+import { useLocale, localized as localizedHelper, localeHref } from "@/lib/i18n/locale";
 import { t } from "@/lib/i18n/strings";
 
 function buildSchema(locale: "ko" | "en") {
@@ -268,7 +268,7 @@ function ContactPageInner() {
         <header className="px-6 md:px-16 pt-16 md:pt-20 pb-8 md:pb-10 border-b border-ink-100 bg-surface">
           <div className="max-w-5xl mx-auto">
             <Link
-              href={`/${eventId}/cart`}
+              href={localeHref(eventId, "/cart", locale)}
               className="inline-flex items-center gap-1.5 text-[12px] text-ink-500 hover:text-brand-500 mb-4 font-num font-semibold"
             >
               <ArrowLeft className="w-3.5 h-3.5" />
@@ -363,7 +363,7 @@ function ContactPageInner() {
 
             <div className="flex items-center justify-end gap-3">
               <Link
-                href={`/${eventId}/sponsorships`}
+                href={localeHref(eventId, "/sponsorships", locale)}
                 className="text-[13px] text-ink-500 hover:text-ink-900"
               >
                 {locale === "en" ? "Back to browse" : "둘러보기로 돌아가기"}

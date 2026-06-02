@@ -9,7 +9,7 @@ import { getDb } from "@/lib/firebase/firestore";
 import { cachedFetch } from "@/lib/firebase/cache";
 import type { SiteSettings } from "@/lib/types";
 import { Footer } from "@/components/public/Footer";
-import { useLocale } from "@/lib/i18n/locale";
+import { useLocale, localeHref } from "@/lib/i18n/locale";
 import { t } from "@/lib/i18n/strings";
 
 export default function ContactDonePage() {
@@ -66,13 +66,13 @@ export default function ContactDonePage() {
           )}
           <div className="mt-10 flex items-center justify-center gap-3 flex-wrap">
             <Link
-              href={`/${eventId}`}
+              href={localeHref(eventId, "", locale)}
               className="px-5 py-3 rounded-pill border border-ink-100 text-[13px] font-bold hover:border-ink-900 hover:bg-surface transition-colors"
             >
               {t("contact.toHome", locale)}
             </Link>
             <Link
-              href={`/${eventId}/sponsorships`}
+              href={localeHref(eventId, "/sponsorships", locale)}
               className="px-5 py-3 rounded-pill bg-brand-500 text-white font-bold text-[13px] hover:bg-brand-700 hover:shadow-glow-sm transition-all"
             >
               {t("contact.browseMore", locale)}

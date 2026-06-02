@@ -562,12 +562,17 @@ function BundledPerksCard({
             />
             <div className="flex-1 min-w-0">
               <div className="flex items-baseline gap-2 flex-wrap">
-                <span className="font-semibold">{perk.label}</span>
-                {perk.condition && (
-                  <span className="text-[9.5px] font-mono px-1.5 py-0.5 rounded bg-ink-100 text-ink-500">
-                    {perk.condition}
-                  </span>
-                )}
+                <span className="font-semibold">
+                  {localizedField(perk.label, perk.labelEn, locale)}
+                </span>
+                {(() => {
+                  const cn = localizedField(perk.condition, perk.conditionEn, locale);
+                  return cn ? (
+                    <span className="text-[9.5px] font-mono px-1.5 py-0.5 rounded bg-ink-100 text-ink-500">
+                      {cn}
+                    </span>
+                  ) : null;
+                })()}
                 {perk.valueKRW && !compact && (
                   <span className="text-[11px] text-ink-500 font-num ml-auto">
                     {isEn
@@ -576,11 +581,15 @@ function BundledPerksCard({
                   </span>
                 )}
               </div>
-              {perk.description && !compact && (
-                <p className="text-[11.5px] text-ink-500 mt-0.5 leading-snug">
-                  {perk.description}
-                </p>
-              )}
+              {!compact &&
+                (() => {
+                  const pd = localizedField(perk.description, perk.descriptionEn, locale);
+                  return pd ? (
+                    <p className="text-[11.5px] text-ink-500 mt-0.5 leading-snug">
+                      {pd}
+                    </p>
+                  ) : null;
+                })()}
             </div>
           </li>
         ))}
