@@ -413,7 +413,7 @@ export function getRecommendations(args: {
         minPriceKRW: minPrice,
         priceLabel,
         category: cat,
-        reason: pickReason(reasons, q1, id),
+        reason: pickReason(reasons, q1, id, locale),
       });
     } else if (pkg) {
       if (pkg.discountPrice > ceiling) continue;
@@ -425,7 +425,7 @@ export function getRecommendations(args: {
         minPriceKRW: pkg.discountPrice,
         priceLabel: pkgLabel(pkg),
         package: pkg,
-        reason: pickReason(reasons, q1, id),
+        reason: pickReason(reasons, q1, id, locale),
       });
     }
   }
@@ -436,11 +436,15 @@ export function getRecommendations(args: {
 function pickReason(
   reasons: ReasonTemplates,
   q1: DiagQ1Value,
-  selectorId: string
+  selectorId: string,
+  locale: "ko" | "en" = "ko"
 ): string {
   const key = selectorToReasonKey(selectorId);
   const tpl = reasons[q1];
-  return (tpl?.[key] ?? tpl?.other ?? "") || "추천 매체";
+  return (
+    (tpl?.[key] ?? tpl?.other ?? "") ||
+    (locale === "en" ? "Recommended item" : "추천 매체")
+  );
 }
 
 // ─── 매트릭스 / 이유 머지 — override + 기본값 ───────────────
@@ -565,10 +569,15 @@ export function findUpsellPackage(args: {
 
 export function mergeQuestion(
   qid: DiagV2QuestionId,
-  override?: DiagV2QuestionOverride
+  override?: DiagV2QuestionOverride,
+  locale: "ko" | "en" = "ko"
 ): DiagV2Question {
-  const base = DEFAULT_DIAG_V2_QUESTIONS[qid];
-  if (!override) return base;
+  const base =
+    locale === "en"
+      ? DEFAULT_DIAG_V2_QUESTIONS_EN[qid]
+      : DEFAULT_DIAG_V2_QUESTIONS[qid];
+  // 어드민 override 는 한국어 기준만 (현재 어드민 한글) — EN 페이지에서는 base 그대로.
+  if (!override || locale === "en") return base;
   const chipLabels = override.chipLabels ?? {};
   return {
     ...base,

@@ -206,13 +206,18 @@ function FullPrintContent() {
   }, [subcategories]);
 
   // 랜딩 블록 중 canvasPage 만 추출 (다른 블록은 print 친화 아님)
-  // 어드민이 [랜딩 빌더] 에서 만든 표지·패키지 안내·소개 슬라이드들이 자동으로 PDF 앞쪽에 들어감
+  // 어드민이 [랜딩 빌더] 에서 만든 표지·패키지 안내·소개 슬라이드들이 자동으로 PDF 앞쪽에 들어감.
+  // 영문 페이지(/en) 에서는 settings.landingEn 우선 — 비어있으면 한국어 폴백.
   const canvasBlocks = useMemo<CanvasPageBlock[]>(() => {
-    const blocks: LandingBlock[] = settings?.landing ?? [];
+    const isEn = locale === "en";
+    const enBlocks: LandingBlock[] = settings?.landingEn ?? [];
+    const koBlocks: LandingBlock[] = settings?.landing ?? [];
+    const blocks =
+      isEn && enBlocks.length > 0 ? enBlocks : koBlocks;
     return blocks.filter(
       (b): b is CanvasPageBlock => b.type === "canvasPage"
     );
-  }, [settings?.landing]);
+  }, [settings?.landing, settings?.landingEn, locale]);
 
   // 표지 페이지 수 — 랜딩 캔버스가 있으면 그 개수, 없으면 fallback Cover 1장
   const coverPagesCount = canvasBlocks.length > 0 ? canvasBlocks.length : 1;
