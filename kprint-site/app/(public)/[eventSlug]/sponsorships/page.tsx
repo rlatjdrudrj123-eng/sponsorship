@@ -2619,8 +2619,11 @@ function SlideSection({
       .map((s) => {
         const count = slots.filter((sl) => sl.subcategoryId === s.id).length;
         if (count === 0) return null;
-        const unit = localized(s.unit, locale) || "구좌";
-        return `${localized(s.name, locale)} ${count}${unit}`;
+        const unit =
+          localized(s.unit, locale) || (locale === "en" ? "slot" : "구좌");
+        // 영문은 숫자·단위 사이에 공백, 한글은 붙여서.
+        const sep = locale === "en" ? " " : "";
+        return `${localized(s.name, locale)} ${count}${sep}${unit}`;
       })
       .filter(Boolean)
       .join(", ");
@@ -2786,7 +2789,10 @@ function SlideSection({
                   break;
                 case "deadline":
                   if (deadlineStr)
-                    rows.push({ label: "마감", value: deadlineStr });
+                    rows.push({
+                      label: locale === "en" ? "Deadline" : "마감",
+                      value: deadlineStr,
+                    });
                   break;
                 case "detail":
                   if (detailLabel)

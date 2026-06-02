@@ -29,7 +29,6 @@ const app = initializeApp({ projectId: PROJECT_ID, credential: loadCredentials()
 const fs = getFirestore(app);
 
 const KOR = /[가-힯]/;
-const KOR_WORDS = /(구좌|장|회|발송|상기|행사|영업)/;
 
 function check(label, text) {
   if (!text) return null;
