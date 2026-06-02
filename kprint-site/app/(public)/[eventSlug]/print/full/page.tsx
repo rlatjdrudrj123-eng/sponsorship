@@ -63,7 +63,7 @@ import type {
   Subcategory,
   TypeLayout,
 } from "@/lib/types";
-import { useLocale, localized as localizedHelper } from "@/lib/i18n/locale";
+import { useLocale, localized as localizedHelper, localizedField } from "@/lib/i18n/locale";
 import { getDisplayPackagePrice, formatPrice } from "@/lib/price";
 import { getTypeLayout } from "@/lib/typeLayouts";
 
@@ -718,11 +718,14 @@ function PrintPackageCard({
     <div className="bg-surface border border-ink-100 rounded-card p-3">
       <div className="grid grid-cols-[1.4fr_1fr] gap-3 items-start">
         <div className="min-w-0">
-          {pkg.tagline && (
-            <p className="text-[10.5px] text-brand-500 font-semibold leading-snug mb-1 line-clamp-1">
-              {pkg.tagline}
-            </p>
-          )}
+          {(() => {
+            const tg = localizedField(pkg.tagline, pkg.taglineEn, locale);
+            return tg ? (
+              <p className="text-[10.5px] text-brand-500 font-semibold leading-snug mb-1 line-clamp-1">
+                {tg}
+              </p>
+            ) : null;
+          })()}
           <div className="text-[16px] font-bold text-ink-900 leading-tight mb-2">
             {localizedHelper(pkg.name, locale)}
           </div>
@@ -1063,11 +1066,14 @@ function CategorySlide({
             </span>
           </div>
 
-          {category.shortDesc && (
-            <p className="text-[13px] text-ink-700 mt-3 leading-relaxed">
-              {category.shortDesc}
-            </p>
-          )}
+          {(() => {
+            const sd = localizedField(category.shortDesc, category.shortDescEn, locale);
+            return sd ? (
+              <p className="text-[13px] text-ink-700 mt-3 leading-relaxed">
+                {sd}
+              </p>
+            ) : null;
+          })()}
 
           <hr className="border-ink-100 my-6" />
 
@@ -1404,11 +1410,14 @@ function _LegacyPackageSlide({
             <span className="text-[15px] text-ink-300 font-num">#{pkg.code}</span>
           </div>
 
-          {pkg.tagline && (
-            <p className="text-[13px] text-ink-700 mt-3 leading-relaxed">
-              {pkg.tagline}
-            </p>
-          )}
+          {(() => {
+            const tg = localizedField(pkg.tagline, pkg.taglineEn, locale);
+            return tg ? (
+              <p className="text-[13px] text-ink-700 mt-3 leading-relaxed">
+                {tg}
+              </p>
+            ) : null;
+          })()}
 
           <hr className="border-ink-100 my-6" />
 
@@ -1419,17 +1428,22 @@ function _LegacyPackageSlide({
               </div>
               <ul className="space-y-1 text-[12.5px] text-ink-700">
                 {pkg.includedItems.map((it, i) => (
-                  <li key={i}>· {it.label}</li>
+                  <li key={i}>
+                    · {localizedField(it.label, it.labelEn, locale)}
+                  </li>
                 ))}
               </ul>
             </div>
           )}
 
-          {pkg.priceNote && (
-            <p className="text-[11px] text-ink-500 mt-3 leading-relaxed whitespace-pre-line">
-              {pkg.priceNote}
-            </p>
-          )}
+          {(() => {
+            const pn = localizedField(pkg.priceNote, pkg.priceNoteEn, locale);
+            return pn ? (
+              <p className="text-[11px] text-ink-500 mt-3 leading-relaxed whitespace-pre-line">
+                {pn}
+              </p>
+            ) : null;
+          })()}
 
           <div className="mt-auto pt-6">
             <hr className="border-ink-100 mb-5" />

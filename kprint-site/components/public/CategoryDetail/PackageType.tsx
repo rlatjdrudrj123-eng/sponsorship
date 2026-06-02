@@ -7,7 +7,7 @@ import { ArrowLeft, Bookmark, BookmarkCheck, Check, Gift, X } from "lucide-react
 import type { Category, Package, SiteSettings, Slot } from "@/lib/types";
 import { useCartStore } from "@/lib/cart/cartStore";
 import { Footer } from "@/components/public/Footer";
-import { useLocale, localizedField } from "@/lib/i18n/locale";
+import { useLocale, localized, localizedField } from "@/lib/i18n/locale";
 import { getDisplayPackagePrice, formatPrice } from "@/lib/price";
 import {
   DEFAULT_BUNDLED_PERKS,
@@ -372,6 +372,8 @@ function PackageHeroAutoCarousel({
   categories: Category[];
   aspectClass?: string;
 }) {
+  const locale = useLocale((s) => s.locale);
+  const isEn = locale === "en";
   const slides = useMemo(() => {
     const byId = new Map(categories.map((c) => [c.id, c]));
     const fromIncluded: Array<{
@@ -389,8 +391,8 @@ function PackageHeroAutoCarousel({
       if (!url) continue;
       fromIncluded.push({
         url,
-        categoryName: cat?.name?.ko ?? cat?.code,
-        caption: it.label,
+        categoryName: localized(cat?.name, locale) || cat?.code,
+        caption: localizedField(it.label, it.labelEn, locale),
       });
     }
     if (fromIncluded.length > 0) return fromIncluded;
@@ -400,7 +402,7 @@ function PackageHeroAutoCarousel({
       caption: img.caption,
       categoryName: undefined as string | undefined,
     }));
-  }, [pkg, categories]);
+  }, [pkg, categories, locale]);
 
   const [idx, setIdx] = useState(0);
 
@@ -417,7 +419,7 @@ function PackageHeroAutoCarousel({
       <div
         className={`${aspectClass} bg-ink-100 rounded-card grid place-items-center text-ink-300 text-sm`}
       >
-        이미지 준비 중
+        {isEn ? "Images coming soon" : "이미지 준비 중"}
       </div>
     );
   }
@@ -454,7 +456,7 @@ function PackageHeroAutoCarousel({
                     "w-1.5 h-1.5 rounded-full transition-colors " +
                     (idx === i ? "bg-white" : "bg-white/40 hover:bg-white/70")
                   }
-                  aria-label={`${i + 1}번 이미지`}
+                  aria-label={isEn ? `Image ${i + 1}` : `${i + 1}번 이미지`}
                 />
               ))}
             </div>
