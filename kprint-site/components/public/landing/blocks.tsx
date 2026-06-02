@@ -624,14 +624,20 @@ export function CtaSection({
       <Reveal delay={150 + lines.length * 200}>
         <div className="mt-8 flex flex-wrap gap-3">
           <Link
-            href={primaryHref ?? `/${eventId}/sponsorships`}
+            href={
+              primaryHref ??
+              (isEn ? `/${eventId}/en/sponsorships` : `/${eventId}/sponsorships`)
+            }
             className="px-7 py-4 rounded-pill bg-white text-ink-900 hover:bg-ink-900 hover:text-white text-[15px] md:text-[16px] font-bold flex items-center gap-3 transition-colors"
           >
             {primaryLabel ?? (isEn ? "Browse sponsorships" : "스폰서십 둘러보기")}
             <ArrowRight className="w-4 h-4" />
           </Link>
           <Link
-            href={secondaryHref ?? `/${eventId}/contact`}
+            href={
+              secondaryHref ??
+              (isEn ? `/${eventId}/en/contact` : `/${eventId}/contact`)
+            }
             className="px-7 py-4 rounded-pill border-2 border-white hover:bg-white hover:text-brand-500 text-[15px] md:text-[16px] font-bold transition-colors"
           >
             {secondaryLabel ?? (isEn ? "Contact us" : "바로 문의하기")}
@@ -1102,6 +1108,8 @@ export function SlotsTeaserSection({
   eventId: string;
 }) {
   const { eyebrow, headline, categorySlugs, layout } = block.data;
+  const locale = useLocale((s) => s.locale);
+  const isEn = locale === "en";
   return (
     <SlideShell style={block.style}>
       {eyebrow && (
@@ -1132,7 +1140,7 @@ export function SlotsTeaserSection({
           {categorySlugs.map((slug) => (
             <Link
               key={slug}
-              href={`/${eventId}/sponsorships/${slug}`}
+              href={isEn ? `/${eventId}/en/sponsorships/${slug}` : `/${eventId}/sponsorships/${slug}`}
               className={
                 "bg-surface border border-ink-100 rounded-card p-5 hover:border-brand-500 hover:shadow-card transition-all " +
                 (layout === "row" ? "min-w-[260px]" : "")

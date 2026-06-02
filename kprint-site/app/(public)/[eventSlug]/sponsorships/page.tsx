@@ -3945,7 +3945,8 @@ function AutoFitHeading({
   return (
     <h2
       ref={wrapRef}
-      className={`min-w-0 overflow-x-hidden relative ${className}`}
+      className={`min-w-0 overflow-hidden relative ${className}`}
+      style={{ paddingBottom: Math.ceil(size * 0.15) }}
     >
       <span
         className="block whitespace-nowrap"

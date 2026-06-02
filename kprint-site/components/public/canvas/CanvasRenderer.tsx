@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useRef, useState, type CSSProperties } from "react";
+import { useLocale } from "@/lib/i18n/locale";
 import type {
   CanvasButtonNode,
   CanvasChartNode,
@@ -780,9 +781,23 @@ function ButtonNodeView({
   mobile?: boolean;
 }) {
   const { label, href, variant = "primary", fontSize = 16 } = node.data;
-  const resolvedHref = href.startsWith("/") && eventId
-    ? href.replace(/^\/(?!\/)/, `/${eventId}/`).replace(`/${eventId}/${eventId}/`, `/${eventId}/`)
-    : href;
+  const locale = useLocale((s) => s.locale);
+  // 영문 페이지에서 캔버스 버튼이 KO URL 로 가는 버그 — locale 이 en 이고 href 가
+  // /[eventSlug] 하위 라우트면 /en/ 세그먼트 삽입.
+  const resolvedHref = (() => {
+    if (!href.startsWith("/") || !eventId) return href;
+    // 어드민이 href 를 절대경로 "/sponsorships" 식으로 입력한 경우 (= eventId 미포함)
+    if (!href.startsWith(`/${eventId}`)) {
+      return locale === "en"
+        ? `/${eventId}/en${href}`
+        : `/${eventId}${href}`;
+    }
+    // 이미 /{eventId}/foo 형태인데 locale 이 en 이면 /{eventId}/en/foo 로 보정
+    if (locale === "en" && !href.startsWith(`/${eventId}/en`)) {
+      return href.replace(`/${eventId}`, `/${eventId}/en`);
+    }
+    return href;
+  })();
   const cls =
     variant === "primary"
       ? "bg-brand-500 text-white hover:bg-brand-700 hover:shadow-glow-sm"

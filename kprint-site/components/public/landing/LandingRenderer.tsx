@@ -63,7 +63,7 @@ export function LandingRenderer({
           {locale === "en" ? "Full PDF" : "전체 PDF"}
         </a>
         <Link
-          href={`/${eventId}/sponsorships`}
+          href={locale === "en" ? `/${eventId}/en/sponsorships` : `/${eventId}/sponsorships`}
           className="px-5 py-2.5 rounded-pill bg-brand-500 text-white hover:bg-brand-700 text-[12px] md:text-[13px] font-bold transition-colors flex items-center gap-1.5 shadow-glow-sm hover:shadow-glow"
           title={
             locale === "en"
@@ -210,7 +210,7 @@ function ModeChoice({
             : "이미지·사이즈·가격·구좌 잔여까지 한눈에. 참가 목적에 맞는 항목을 골라보세요."}
         </p>
         <Link
-          href={`/${eventId}/sponsorships`}
+          href={locale === "en" ? `/${eventId}/en/sponsorships` : `/${eventId}/sponsorships`}
           className="inline-flex items-center gap-2.5 px-7 md:px-9 py-4 md:py-5 rounded-pill bg-ink-900 text-white hover:bg-brand-500 hover:text-ink-900 text-[15px] md:text-[16px] font-bold transition-colors shadow-glow-sm hover:shadow-glow"
         >
           {locale === "en" ? "Explore sponsorships" : "자세히 알아보기"}
