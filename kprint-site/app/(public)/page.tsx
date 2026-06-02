@@ -39,19 +39,24 @@ export default function RootRedirect() {
   if (state === "loading") {
     return (
       <main className="min-h-screen grid place-items-center bg-white">
-        <div className="text-sm text-ink-500">불러오는 중…</div>
+        <div className="text-sm text-ink-500">…</div>
       </main>
     );
   }
 
-  // 활성 행사 0개 — 운영자가 행사를 등록할 때까지의 placeholder
+  // 활성 행사 0개 — 운영자가 행사를 등록할 때까지의 placeholder.
+  // 루트(/) 는 행사가 정해지지 않아 locale 판단 불가 → 한·영 병기.
   return (
     <main className="min-h-screen bg-white grid place-items-center px-6">
       <div className="text-center max-w-md">
         <CalendarDays className="w-10 h-10 text-ink-300 mx-auto mb-4" />
-        <h1 className="text-[22px] font-bold text-ink-900">행사 준비 중</h1>
+        <h1 className="text-[22px] font-bold text-ink-900">
+          행사 준비 중 · Event coming soon
+        </h1>
         <p className="text-[13px] text-ink-700 mt-2 leading-relaxed">
           현재 안내 가능한 행사가 없습니다. 잠시 후 다시 방문해주세요.
+          <br />
+          No events are currently available. Please check back soon.
         </p>
         <Link
           href="/admin"

@@ -46,6 +46,7 @@ import { PersonaRecommendation } from "@/components/public/PersonaRecommendation
 import { ClosingSlide } from "@/components/public/landing/LandingRenderer";
 import { PackageType } from "@/components/public/CategoryDetail/PackageType";
 import { localized, localizedField, localeHref, useLocale, type Locale } from "@/lib/i18n/locale";
+import { getFullPdfHref, isDirectPdfHref } from "@/lib/pdf";
 import { t } from "@/lib/i18n/strings";
 import { getTypeLayout } from "@/lib/typeLayouts";
 import {
@@ -618,12 +619,12 @@ export default function SponsorshipsPage() {
                 </span>
                 <span className="ml-auto" />
                 <a
-                  href={settings?.pdfFullUrl || `/${eventId}/print/full`}
+                  href={getFullPdfHref(eventId, settings, locale)}
                   target="_blank"
                   rel="noopener noreferrer"
-                  {...(settings?.pdfFullUrl ? { download: "" } : {})}
+                  {...(isDirectPdfHref(settings, locale) ? { download: "" } : {})}
                   className="hidden md:inline-flex px-2.5 py-1.5 rounded-btn border border-ink-100 hover:border-ink-900 text-[12px] font-semibold items-center gap-1"
-                  title="전체 PDF 다운로드"
+                  title={locale === "en" ? "Download full PDF" : "전체 PDF 다운로드"}
                 >
                   <Download className="w-3.5 h-3.5" />
                   {locale === "en" ? "PDF" : "전체 PDF"}
@@ -752,7 +753,7 @@ export default function SponsorshipsPage() {
           {/* 배경 */}
           <button
             type="button"
-            aria-label="필터 닫기"
+            aria-label={locale === "en" ? "Close filters" : "필터 닫기"}
             onClick={() => setSheetOpen(false)}
             className="flex-1 bg-ink-900/30 backdrop-blur-[1px]"
           />
@@ -1497,7 +1498,11 @@ function PackageSection({
       {signature.length > 0 && (
         <PackageGroup
           label={`Signature Package`}
-          sub="전시회 핵심 동선과 주요 노출 지면을 중심으로 구성된 프리미엄 패키지"
+          sub={
+            locale === "en"
+              ? "Premium packages built around the exhibition's key traffic routes and primary exposure surfaces"
+              : "전시회 핵심 동선과 주요 노출 지면을 중심으로 구성된 프리미엄 패키지"
+          }
           items={signature}
           eventId={eventId}
           locale={locale}
@@ -1508,7 +1513,11 @@ function PackageSection({
       {standard.length > 0 && (
         <PackageGroup
           label={`Standard Package`}
-          sub="선택 가능한 스폰서십 항목을 유연하게 구성한 실속형 패키지"
+          sub={
+            locale === "en"
+              ? "Value-oriented packages with flexibly combinable sponsorship items"
+              : "선택 가능한 스폰서십 항목을 유연하게 구성한 실속형 패키지"
+          }
           items={standard}
           eventId={eventId}
           locale={locale}
@@ -2008,12 +2017,12 @@ function SlideStream({
           <span className="ml-auto" />
           {/* 데스크톱 전용 보조 — PDF */}
           <a
-            href={settings?.pdfFullUrl || `/${eventId}/print/full`}
+            href={getFullPdfHref(eventId, settings, locale)}
             target="_blank"
             rel="noopener noreferrer"
-            {...(settings?.pdfFullUrl ? { download: "" } : {})}
+            {...(isDirectPdfHref(settings, locale) ? { download: "" } : {})}
             className="hidden md:inline-flex px-2.5 py-1.5 rounded-btn border border-ink-100 hover:border-ink-900 text-[12px] font-semibold items-center gap-1"
-            title="전체 PDF 다운로드"
+            title={locale === "en" ? "Download full PDF" : "전체 PDF 다운로드"}
           >
             <Download className="w-3.5 h-3.5" />
             {locale === "en" ? "PDF" : "전체 PDF"}
@@ -2153,6 +2162,7 @@ function SlideTopFab({
 }: {
   mainRef: React.RefObject<HTMLElement>;
 }) {
+  const locale = useLocale((s) => s.locale);
   const [visible, setVisible] = useState(false);
   useEffect(() => {
     // mount 직후 ref.current 가 잡힐 때까지 폴링 (한 번이라도 main 이 잡히면 listener 부착)
@@ -2186,8 +2196,8 @@ function SlideTopFab({
         mainRef.current?.scrollTo({ top: 0, behavior: "smooth" });
       }}
       className="fixed left-5 bottom-5 md:left-7 md:bottom-7 z-40 w-11 h-11 md:w-12 md:h-12 rounded-full bg-ink-900 text-white shadow-2xl hover:bg-brand-500 hover:text-ink-900 grid place-items-center transition-colors"
-      title="맨 위로"
-      aria-label="맨 위로"
+      title={locale === "en" ? "Back to top" : "맨 위로"}
+      aria-label={locale === "en" ? "Back to top" : "맨 위로"}
     >
       <svg
         viewBox="0 0 24 24"
@@ -2327,7 +2337,7 @@ function AtAGlanceSlide({
           sec?.scrollIntoView({ behavior: "smooth", block: "start" });
         }}
         className="absolute bottom-3 md:bottom-5 left-1/2 -translate-x-1/2 flex flex-col items-center gap-1 text-ink-500 hover:text-ink-900 transition-colors animate-bounce z-10"
-        aria-label="다음 슬라이드"
+        aria-label={locale === "en" ? "Next slide" : "다음 슬라이드"}
         title={
           locale === "en" ? "Scroll down to see more" : "스크롤해서 더 보기"
         }
@@ -3543,7 +3553,7 @@ function FloorMapModal({
             type="button"
             onClick={onClose}
             className="w-9 h-9 grid place-items-center rounded-full hover:bg-ink-50 text-ink-500"
-            aria-label="닫기"
+            aria-label={locale === "en" ? "Close" : "닫기"}
           >
             <X className="w-4 h-4" />
           </button>
@@ -3986,6 +3996,7 @@ function PackageDetailModal({
   settings: SiteSettings | null;
   onClose: () => void;
 }) {
+  const locale = useLocale((s) => s.locale);
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") onClose();
@@ -4011,7 +4022,7 @@ function PackageDetailModal({
         <button
           type="button"
           onClick={onClose}
-          aria-label="닫기"
+          aria-label={locale === "en" ? "Close" : "닫기"}
           className="absolute top-3 right-3 z-10 w-9 h-9 rounded-full bg-ink-900/80 text-white flex items-center justify-center hover:bg-ink-900 transition-colors"
         >
           <X className="w-4 h-4" />
