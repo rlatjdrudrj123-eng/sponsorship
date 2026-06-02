@@ -539,13 +539,20 @@ function AtAGlancePrintSlide({
           <div className="text-center mb-6">
             <div className="inline-flex items-baseline gap-2 text-[16px] font-bold text-ink-900 pb-1.5 border-b-2 border-ink-900">
               {persona.emoji && <span className="text-[18px]">{persona.emoji}</span>}
-              {persona.title}
+              {localizedField(persona.title, persona.titleEn, locale)}
             </div>
-            {persona.description && (
-              <p className="text-[11.5px] text-ink-500 mt-2 leading-snug max-w-2xl mx-auto">
-                {persona.description}
-              </p>
-            )}
+            {(() => {
+              const pd = localizedField(
+                persona.description,
+                persona.descriptionEn,
+                locale
+              );
+              return pd ? (
+                <p className="text-[11.5px] text-ink-500 mt-2 leading-snug max-w-2xl mx-auto">
+                  {pd}
+                </p>
+              ) : null;
+            })()}
           </div>
         )}
 
@@ -771,7 +778,8 @@ function PrintPackageCard({
 // 외부 신청 링크(인쇄해도 URL 보이도록 노출) + Contact + K·print 브랜드.
 // ============================================================================
 
-const APPLY_URL = "https://kprint.kr/ko/mypage/exhibitor/advertise";
+const APPLY_URL_KO = "https://kprint.kr/ko/mypage/exhibitor/advertise";
+const APPLY_URL_EN = "https://kprint.kr/en/auth/login/exhibitor";
 
 function ClosingSlide({
   settings,
@@ -786,7 +794,12 @@ function ClosingSlide({
 }) {
   const phone = settings?.contact?.phone || "02-551-0102";
   const email = settings?.contact?.email || "kprint@kprint.kr";
-  const address = settings?.contact?.address;
+  const address = localizedField(
+    settings?.contact?.address,
+    settings?.contact?.addressEn,
+    locale
+  );
+  const applyUrl = locale === "en" ? APPLY_URL_EN : APPLY_URL_KO;
   return (
     <section className="a4-page bg-white shadow print:shadow-none mx-auto print:mx-0 my-4 print:my-0 w-[297mm] h-[210mm] relative overflow-hidden">
       <div className="h-full px-20 py-14 flex flex-col items-center justify-center text-center break-keep">
@@ -820,7 +833,7 @@ function ClosingSlide({
           </div>
         </div>
         <div className="text-[10.5px] text-ink-500 font-mono mb-12">
-          {APPLY_URL}
+          {applyUrl}
         </div>
 
         <div className="mt-2">

@@ -217,6 +217,45 @@ export const DEFAULT_REASON_TEMPLATES: ReasonTemplates = {
   },
 };
 
+export const DEFAULT_REASON_TEMPLATES_EN: ReasonTemplates = {
+  launch: {
+    seminar: "New product launch = seminar is the shortest path (demo and Q&A on the spot)",
+    content: "Talk videos and interviews become post-event marketing assets",
+    signature: "Large launches need full-route integrated exposure for maximum first-impression impact",
+    package: "Pre/on-site/post-event launch funnel in one — efficient bundled coverage",
+    ceiling: "Large overhead media seen the moment visitors enter — establishes new-product presence",
+    lanyard: "Carried by every visitor all day — longest launch awareness window",
+    other: "Channels well suited for new-product/new-technology launches",
+  },
+  acquisition: {
+    search: "Top placement in search is the shortest path to your booth",
+    floor_map: "Exposure on the floor map directly triggers booth-visit intent",
+    package: "Booth-traffic bundle — floor map, search, and on-site routes in one",
+    signature: "Large-booth-friendly integrated exposure — full lead-generation funnel",
+    ceiling: "A visual marker visible from afar — drives visits to your booth",
+    lanyard: "Worn by every visitor — longest exposure to leads and buyers",
+    seminar: "Demonstrate to prospects via seminar talks and demos",
+    other: "Media that work for finding new leads",
+  },
+  retention: {
+    invitation: "Direct reach to existing customers and VIP buyers",
+    newsletter: "Return-visit reminders and booth-event briefings",
+    signature: "Brand presence along every key route — reinforces trust",
+    package: "Integrated on-site exposure — steady presence for existing customers",
+    ceiling: "A visual \"we're here\" cue for existing customers — drives booth visits",
+    lanyard: "Carried by existing partners throughout the show — natural re-exposure",
+    seminar: "A channel for trend talks and product updates aimed at existing customers",
+    other: "Media that strengthen existing relationships",
+  },
+  awareness: {
+    ceiling: "The first large media visitors see on entry — visualizes share of voice",
+    lanyard: "Worn by every visitor all day — overwhelmingly long exposure time",
+    package: "Integrated full-route exposure — fastest path to visualized share of voice",
+    signature: "Top-tier presence across the event with integrated exposure",
+    other: "Media effective for broad brand awareness (guidebook, on-site exposure)",
+  },
+};
+
 // ─── 카테고리/패키지 → ReasonCategoryKey ────────────────────
 // 매트릭스 추천 ID 별로 어떤 reason key 를 쓸지 결정.
 
@@ -321,7 +360,11 @@ export function getRecommendations(args: {
   const { q1, q2, q3, data } = args;
   const locale = args.locale ?? "ko";
   const matrix = mergeMatrix(args.matrix);
-  const reasons = mergeReasons(args.reasons);
+  // EN 페이지에서는 영어 기본 템플릿 사용. 어드민 override 가 있으면 그대로.
+  const reasons = mergeReasons(
+    args.reasons,
+    locale === "en" ? DEFAULT_REASON_TEMPLATES_EN : DEFAULT_REASON_TEMPLATES
+  );
 
   const baseIds = matrix[q1]?.[q2] ?? [];
   const ceiling = DIAG_Q3_PRICE_CEILING[q3];
@@ -425,8 +468,11 @@ function mergeMatrix(
   return out;
 }
 
-function mergeReasons(override?: ReasonTemplates): ReasonTemplates {
-  if (!override) return DEFAULT_REASON_TEMPLATES;
+function mergeReasons(
+  override?: ReasonTemplates,
+  base: ReasonTemplates = DEFAULT_REASON_TEMPLATES
+): ReasonTemplates {
+  if (!override) return base;
   const out: ReasonTemplates = {};
   const q1Values: DiagQ1Value[] = [
     "launch",
@@ -436,7 +482,7 @@ function mergeReasons(override?: ReasonTemplates): ReasonTemplates {
   ];
   for (const q1 of q1Values) {
     out[q1] = {
-      ...(DEFAULT_REASON_TEMPLATES[q1] ?? {}),
+      ...(base[q1] ?? {}),
       ...(override[q1] ?? {}),
     };
   }
