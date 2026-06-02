@@ -37,7 +37,7 @@ import type {
   Subcategory,
 } from "@/lib/types";
 import { X, ChevronLeft, ArrowRight, FileText } from "lucide-react";
-import { useLocale } from "@/lib/i18n/locale";
+import { useLocale, localeHref } from "@/lib/i18n/locale";
 import { t } from "@/lib/i18n/strings";
 
 type Answers = {
@@ -652,7 +652,7 @@ function ResultScreen({
         </button>
         <div className="flex flex-wrap gap-2">
           <Link
-            href={`/${eventId}/contact`}
+            href={localeHref(eventId, "/contact", locale)}
             onClick={onClose}
             className={
               "px-4 py-2 rounded-btn text-[13px] font-bold flex items-center gap-1.5 " +
@@ -735,7 +735,7 @@ function DecisionFocused({
               {t("diag.focused.detailBtn", locale)}
             </Link>
             <Link
-              href={`/${eventId}/contact`}
+              href={localeHref(eventId, "/contact", locale)}
               onClick={onClose}
               className="px-4 py-2.5 rounded-btn bg-brand-500 hover:bg-brand-700 text-white text-[12.5px] font-bold"
             >
@@ -785,7 +785,7 @@ function DecisionFocused({
       {/* 패키지 업셀 */}
       {upsell && (
         <Link
-          href={`/${eventId}/packages/${upsell.package.id}`}
+          href={localeHref(eventId, `/packages/${upsell.package.id}`, locale)}
           onClick={onClose}
           className="block border border-brand-500 rounded-card p-4 md:p-5 bg-brand-50/60 hover:bg-brand-50 transition-colors"
         >
@@ -957,7 +957,7 @@ function RecommendationCard({
           {t("diag.cards.detailBtn", locale)}
         </Link>
         <Link
-          href={`/${eventId}/contact`}
+          href={localeHref(eventId, "/contact", locale)}
           onClick={onClose}
           className={
             "px-3.5 py-1.5 rounded-btn text-[12px] font-bold " +

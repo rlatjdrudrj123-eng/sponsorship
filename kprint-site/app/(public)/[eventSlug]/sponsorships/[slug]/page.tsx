@@ -19,6 +19,7 @@ import type {
   Slot,
   Subcategory,
 } from "@/lib/types";
+import { useLocale, localeHref } from "@/lib/i18n/locale";
 import { FloorPlanType } from "@/components/public/CategoryDetail/FloorPlanType";
 import { QuantityType } from "@/components/public/CategoryDetail/QuantityType";
 import { MediaType } from "@/components/public/CategoryDetail/MediaType";
@@ -105,22 +106,10 @@ export default function CategoryDetailPage() {
   }, [slug, eventId]);
 
   if (!loaded) {
-    return <div className="min-h-screen grid place-items-center text-sm text-ink-500">불러오는 중…</div>;
+    return <PageStatus />;
   }
   if (notFound || !category) {
-    return (
-      <div className="min-h-screen grid place-items-center px-6">
-        <div className="text-center">
-          <p className="text-sm text-ink-700">카테고리를 찾을 수 없습니다.</p>
-          <Link
-            href={`/${eventId}/sponsorships`}
-            className="text-brand-700 font-semibold mt-3 inline-block hover:underline"
-          >
-            전체 보기로 →
-          </Link>
-        </div>
-      </div>
-    );
+    return <PageStatus eventId={eventId} notFound />;
   }
 
   const props = {
@@ -154,4 +143,36 @@ export default function CategoryDetailPage() {
     default:
       return <QuantityType {...props} />;
   }
+}
+
+function PageStatus({
+  eventId,
+  notFound,
+}: { eventId?: string; notFound?: boolean } = {}) {
+  const locale = useLocale((s) => s.locale);
+  const isEn = locale === "en";
+  if (!notFound) {
+    return (
+      <div className="min-h-screen grid place-items-center text-sm text-ink-500">
+        {isEn ? "Loading…" : "불러오는 중…"}
+      </div>
+    );
+  }
+  return (
+    <div className="min-h-screen grid place-items-center px-6">
+      <div className="text-center">
+        <p className="text-sm text-ink-700">
+          {isEn ? "Category not found." : "카테고리를 찾을 수 없습니다."}
+        </p>
+        {eventId && (
+          <Link
+            href={localeHref(eventId, "/sponsorships", locale)}
+            className="text-brand-700 font-semibold mt-3 inline-block hover:underline"
+          >
+            {isEn ? "Browse all →" : "전체 보기로 →"}
+          </Link>
+        )}
+      </div>
+    </div>
+  );
 }

@@ -334,6 +334,8 @@ export function CoverSection({
 
 export function Stats3YearSection({ block }: { block: Stats3YearBlock }) {
   const { eyebrow, headline, years, footnote } = block.data;
+  const locale = useLocale((s) => s.locale);
+  const isEn = locale === "en";
   return (
     <SlideShell style={block.style}>
       <Reveal>
@@ -354,16 +356,24 @@ export function Stats3YearSection({ block }: { block: Stats3YearBlock }) {
               </div>
               <div className="font-num text-[40px] md:text-[48px] font-bold text-ink-900 leading-none tracking-tight">
                 {y.visitors.toLocaleString()}
-                <span className="text-[18px] ml-1 font-semibold">명</span>
+                {!isEn && (
+                  <span className="text-[18px] ml-1 font-semibold">명</span>
+                )}
               </div>
-              <div className="text-[11px] text-ink-500 mt-1">전체 방문객</div>
+              <div className="text-[11px] text-ink-500 mt-1">
+                {isEn ? "Total visitors" : "전체 방문객"}
+              </div>
               {y.overseas !== undefined && y.overseas > 0 && (
                 <div className="mt-5 pt-5 border-t border-ink-100">
                   <div className="font-num text-[22px] md:text-[26px] font-bold text-ink-900">
                     {y.overseas.toLocaleString()}
-                    <span className="text-[14px] ml-1 font-semibold">명</span>
+                    {!isEn && (
+                      <span className="text-[14px] ml-1 font-semibold">명</span>
+                    )}
                   </div>
-                  <div className="text-[11px] text-ink-500 mt-0.5">해외 바이어</div>
+                  <div className="text-[11px] text-ink-500 mt-0.5">
+                    {isEn ? "Overseas buyers" : "해외 바이어"}
+                  </div>
                 </div>
               )}
               {y.note && (
@@ -430,6 +440,8 @@ export function AdGoals4Section({ block }: { block: AdGoals4Block }) {
 
 export function Benefits4Section({ block }: { block: Benefits4Block }) {
   const { eyebrow, headline, cards } = block.data;
+  const locale = useLocale((s) => s.locale);
+  const isEn = locale === "en";
   return (
     <SlideShell style={block.style}>
       <Reveal>
@@ -446,7 +458,7 @@ export function Benefits4Section({ block }: { block: Benefits4Block }) {
           <Reveal key={i} delay={300 + i * 120}>
             <div className="relative bg-surface border border-ink-100 rounded-card p-5 md:p-6 h-full flex flex-col shadow-card">
               <div className="absolute -top-3 left-5 px-2.5 py-1 rounded-pill bg-brand-500 text-white text-[10px] font-num font-bold uppercase tracking-widest shadow-glow-sm">
-                혜택 {i + 1}
+                {isEn ? `Perk ${i + 1}` : `혜택 ${i + 1}`}
               </div>
               {c.emoji && <div className="text-[32px] mb-2 mt-2">{c.emoji}</div>}
               <div className="text-[16px] md:text-[17px] font-bold leading-tight tracking-tight mt-2">
@@ -1153,7 +1165,7 @@ export function SlotsTeaserSection({
                 {slug}
               </div>
               <div className="mt-3 text-[12px] text-ink-500 font-num">
-                자세히 보기 →
+                {isEn ? "View details →" : "자세히 보기 →"}
               </div>
             </Link>
           ))}

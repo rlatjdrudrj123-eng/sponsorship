@@ -56,7 +56,7 @@ export default function ComparePage() {
   return (
     <Suspense
       fallback={
-        <div className="p-12 text-center text-sm text-ink-500">불러오는 중…</div>
+        <div className="p-12 text-center text-sm text-ink-500">…</div>
       }
     >
       <CompareContent />

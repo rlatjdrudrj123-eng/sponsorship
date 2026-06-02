@@ -5,13 +5,16 @@ import { useParams } from "next/navigation";
 import { Download, FileText, Layers, Mail, MapPin, Phone } from "lucide-react";
 import type { SiteSettings } from "@/lib/types";
 import { useLocale, localizedField } from "@/lib/i18n/locale";
+import { getFullPdfHref, isDirectPdfHref } from "@/lib/pdf";
 
 export function Footer({ settings }: { settings: SiteSettings | null }) {
   const params = useParams<{ eventSlug?: string }>();
   const eventId = params?.eventSlug ?? "";
-  const base = eventId ? `/${eventId}` : "";
   const locale = useLocale((s) => s.locale);
   const isEn = locale === "en";
+  // base — 영문 페이지에서 /en/ 세그먼트 자동 포함. 옛 `/${eventId}` 단순 prefix
+  // 는 footer 의 sponsorships / contact 링크가 KO 로 가던 버그를 일으킴.
+  const base = eventId ? (isEn ? `/${eventId}/en` : `/${eventId}`) : "";
 
   const eventName = isEn
     ? settings?.event.nameEn || settings?.event.nameKo || ""
@@ -125,16 +128,22 @@ export function Footer({ settings }: { settings: SiteSettings | null }) {
             </h4>
             <ul className="text-ink-300 space-y-2">
               <li>
-                <a
-                  href={settings?.pdfFullUrl || `${base}/print/full`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  {...(settings?.pdfFullUrl ? { download: "" } : {})}
-                  className="hover:text-brand-500 flex items-center gap-2"
-                >
-                  <Download className="w-3.5 h-3.5 text-ink-500" />
-                  {isEn ? "Full sponsorship PDF" : "전체 스폰서십 PDF"}
-                </a>
+                {(() => {
+                  const pdfHref = eventId ? getFullPdfHref(eventId, settings, locale) : "#";
+                  const direct = isDirectPdfHref(settings, locale);
+                  return (
+                    <a
+                      href={pdfHref}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      {...(direct ? { download: "" } : {})}
+                      className="hover:text-brand-500 flex items-center gap-2"
+                    >
+                      <Download className="w-3.5 h-3.5 text-ink-500" />
+                      {isEn ? "Full sponsorship PDF" : "전체 스폰서십 PDF"}
+                    </a>
+                  );
+                })()}
               </li>
               <li>
                 <Link

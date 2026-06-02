@@ -45,7 +45,7 @@ import { SlotPicker } from "@/components/public/CategoryDetail/_shared/SlotPicke
 import { PersonaRecommendation } from "@/components/public/PersonaRecommendation";
 import { ClosingSlide } from "@/components/public/landing/LandingRenderer";
 import { PackageType } from "@/components/public/CategoryDetail/PackageType";
-import { localized, localizedField, useLocale, type Locale } from "@/lib/i18n/locale";
+import { localized, localizedField, localeHref, useLocale, type Locale } from "@/lib/i18n/locale";
 import { t } from "@/lib/i18n/strings";
 import { getTypeLayout } from "@/lib/typeLayouts";
 import {
@@ -575,7 +575,7 @@ export default function SponsorshipsPage() {
             <div className="sticky top-0 z-30 bg-canvas/95 backdrop-blur border-b border-ink-100 h-14">
               <div className="max-w-7xl mx-auto h-full px-3 md:px-16 flex items-center gap-2 md:gap-3 overflow-hidden">
                 <Link
-                  href={`/${eventId}`}
+                  href={localeHref(eventId, "", locale)}
                   className="text-[12px] text-ink-500 hover:text-ink-900 flex items-center gap-1 shrink-0"
                   title={t("common.home", locale)}
                 >

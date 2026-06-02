@@ -16,7 +16,7 @@ export default function EventHomePage() {
   if (!eventId) {
     return (
       <main className="min-h-screen grid place-items-center bg-canvas">
-        <div className="text-sm text-ink-500">불러오는 중…</div>
+        <div className="text-sm text-ink-500">…</div>
       </main>
     );
   }

@@ -13,12 +13,15 @@ import {
 } from "firebase/firestore";
 import { getDb } from "@/lib/firebase/firestore";
 import type { Category, Package, SiteSettings, Slot } from "@/lib/types";
+import { useLocale, localeHref } from "@/lib/i18n/locale";
 import { PackageType } from "@/components/public/CategoryDetail/PackageType";
 
 export default function PackageDetailPage() {
   const params = useParams<{ eventSlug: string; id: string }>();
   const eventId = params.eventSlug;
   const id = params.id;
+  const locale = useLocale((s) => s.locale);
+  const isEn = locale === "en";
 
   const [pkg, setPkg] = useState<Package | null>(null);
   const [resolvedSlots, setResolvedSlots] = useState<Map<string, Slot>>(
@@ -73,7 +76,7 @@ export default function PackageDetailPage() {
   if (!loaded) {
     return (
       <div className="min-h-screen grid place-items-center text-sm text-ink-500">
-        불러오는 중…
+        {isEn ? "Loading…" : "불러오는 중…"}
       </div>
     );
   }
@@ -81,12 +84,14 @@ export default function PackageDetailPage() {
     return (
       <div className="min-h-screen grid place-items-center px-6">
         <div className="text-center">
-          <p className="text-sm text-ink-700">패키지를 찾을 수 없습니다.</p>
+          <p className="text-sm text-ink-700">
+            {isEn ? "Package not found." : "패키지를 찾을 수 없습니다."}
+          </p>
           <Link
-            href={`/${eventId}/packages`}
+            href={localeHref(eventId, "/packages", locale)}
             className="text-brand-700 font-semibold mt-3 inline-block hover:underline"
           >
-            전체 패키지로 →
+            {isEn ? "Browse all packages →" : "전체 패키지로 →"}
           </Link>
         </div>
       </div>

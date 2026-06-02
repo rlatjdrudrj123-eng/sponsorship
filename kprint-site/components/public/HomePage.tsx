@@ -8,7 +8,7 @@ import { getDb } from "@/lib/firebase/firestore";
 import { cachedFetch } from "@/lib/firebase/cache";
 import type { SiteSettings } from "@/lib/types";
 import { LandingRenderer } from "./landing/LandingRenderer";
-import { useLocale } from "@/lib/i18n/locale";
+import { useLocale, localeHref } from "@/lib/i18n/locale";
 import { t } from "@/lib/i18n/strings";
 
 /**
@@ -94,7 +94,7 @@ function EmptyLanding({ eventId }: { eventId: string }) {
             : "준비 중인 페이지가 있습니다. 먼저 스폰서십 카탈로그를 둘러보실 수 있습니다."}
         </p>
         <Link
-          href={`/${eventId}/sponsorships`}
+          href={localeHref(eventId, "/sponsorships", locale)}
           className="mt-8 inline-flex items-center gap-2 px-6 py-3 rounded-pill bg-brand-500 text-white font-bold text-[14px] hover:bg-brand-700 transition-colors"
         >
           <LayoutGrid className="w-4 h-4" />

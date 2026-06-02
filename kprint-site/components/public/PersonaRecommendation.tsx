@@ -5,7 +5,7 @@ import Link from "next/link";
 import { Check, Sparkles, ShoppingBag } from "lucide-react";
 import type { Category, Package, Persona, Slot, Subcategory } from "@/lib/types";
 import { useCartStore } from "@/lib/cart/cartStore";
-import { localized, useLocale } from "@/lib/i18n/locale";
+import { localized, useLocale, localeHref } from "@/lib/i18n/locale";
 import { krwToUsd } from "@/lib/price";
 
 /**
@@ -283,9 +283,11 @@ export function PersonaRecommendation({
 
         <div className="mt-5 flex items-center justify-between gap-3 flex-wrap">
           <Link
-            href={`/${eventId}/compare?ids=${encodeURIComponent(
-              combo.picks.map((p) => p.key).join(",")
-            )}`}
+            href={localeHref(
+              eventId,
+              `/compare?ids=${encodeURIComponent(combo.picks.map((p) => p.key).join(","))}`,
+              locale
+            )}
             className="text-[12px] text-ink-500 hover:text-ink-900 font-semibold underline-offset-2 hover:underline"
           >
             {isEn ? "Compare side-by-side →" : "나란히 비교해서 보기 →"}
