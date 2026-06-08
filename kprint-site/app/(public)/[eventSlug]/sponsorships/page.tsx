@@ -49,6 +49,7 @@ import { localized, localizedField, localeHref, useLocale, type Locale } from "@
 import { getFullPdfHref, isDirectPdfHref } from "@/lib/pdf";
 import { t } from "@/lib/i18n/strings";
 import { getTypeLayout } from "@/lib/typeLayouts";
+import { CATEGORY_TYPE_LABELS } from "@/lib/categoryTypeLabels";
 import {
   DEFAULT_BUNDLED_PERKS,
   calcPerksTotalValue,
@@ -74,6 +75,8 @@ function channelLabel(c: Channel | "all", locale: Locale): string {
 type Timing = "pre" | "onsite" | "post";
 type LocationTag = "hall_a" | "hall_b" | "hall_c" | "hall_d" | "outdoor" | "online";
 
+// 노출 시점 필터는 UI 에서 제거됨 (2026-06). 옵션 상수는 어드민 호환을 위해 유지.
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 const TIMING_OPTIONS: Array<{
   id: Timing;
   label: { ko: string; en: string };
@@ -201,6 +204,7 @@ export default function SponsorshipsPage() {
   const [selectedPersona, setSelectedPersona] = useState<Persona | null>(null);
   const [activeTimings, setActiveTimings] = useState<Set<Timing>>(new Set());
   const [activeLocations, setActiveLocations] = useState<Set<LocationTag>>(new Set());
+  const [activeMediaTypes, setActiveMediaTypes] = useState<Set<string>>(new Set());
   const [deadlineSoon, setDeadlineSoon] = useState(false);
   const [search, setSearch] = useState("");
   const [sheetOpen, setSheetOpen] = useState(false);
@@ -368,6 +372,9 @@ export default function SponsorshipsPage() {
         return l.some((x) => activeLocations.has(x));
       });
     }
+    if (activeMediaTypes.size > 0) {
+      rows = rows.filter((r) => activeMediaTypes.has(r.type));
+    }
     if (deadlineSoon) {
       const now = Date.now();
       const windowMs = 7 * 24 * 60 * 60 * 1000;
@@ -391,6 +398,7 @@ export default function SponsorshipsPage() {
     selectedPersona,
     activeTimings,
     activeLocations,
+    activeMediaTypes,
   ]);
 
   const resetFilters = () => {
@@ -398,6 +406,7 @@ export default function SponsorshipsPage() {
     setSelectedPersona(null);
     setActiveTimings(new Set());
     setActiveLocations(new Set());
+    setActiveMediaTypes(new Set());
     setDeadlineSoon(false);
     setSearch("");
   };
@@ -409,7 +418,8 @@ export default function SponsorshipsPage() {
     search.trim() !== "" ||
     !!selectedPersona ||
     activeTimings.size > 0 ||
-    activeLocations.size > 0;
+    activeLocations.size > 0 ||
+    activeMediaTypes.size > 0;
 
   // 패키지는 필터와 무관하게 항상 별도 섹션 표시 (사용자 요청).
   // (옛 packagesToShow 노출 규칙 폐기)
@@ -668,6 +678,8 @@ export default function SponsorshipsPage() {
                   setActiveTimings={setActiveTimings}
                   activeLocations={activeLocations}
                   setActiveLocations={setActiveLocations}
+                  activeMediaTypes={activeMediaTypes}
+                  setActiveMediaTypes={setActiveMediaTypes}
                   deadlineSoon={deadlineSoon}
                   setDeadlineSoon={setDeadlineSoon}
                   totalCount={totalCount}
@@ -785,6 +797,8 @@ export default function SponsorshipsPage() {
                 setActiveTimings={setActiveTimings}
                 activeLocations={activeLocations}
                 setActiveLocations={setActiveLocations}
+                activeMediaTypes={activeMediaTypes}
+                setActiveMediaTypes={setActiveMediaTypes}
                 deadlineSoon={deadlineSoon}
                 setDeadlineSoon={setDeadlineSoon}
                 totalCount={totalCount}
@@ -1090,12 +1104,14 @@ function FilterPanel({
   personas,
   selectedPersona,
   setSelectedPersona,
-  activeTimings,
-  setActiveTimings,
+  activeTimings: _activeTimings,
+  setActiveTimings: _setActiveTimings,
   activeLocations,
   setActiveLocations,
-  deadlineSoon,
-  setDeadlineSoon,
+  activeMediaTypes,
+  setActiveMediaTypes,
+  deadlineSoon: _deadlineSoon,
+  setDeadlineSoon: _setDeadlineSoon,
   totalCount,
   resultCount,
   hasActiveFilter,
@@ -1114,6 +1130,8 @@ function FilterPanel({
   setActiveTimings: (s: Set<Timing>) => void;
   activeLocations: Set<LocationTag>;
   setActiveLocations: (s: Set<LocationTag>) => void;
+  activeMediaTypes: Set<string>;
+  setActiveMediaTypes: (s: Set<string>) => void;
   deadlineSoon: boolean;
   setDeadlineSoon: (v: boolean) => void;
   totalCount: number;
@@ -1122,29 +1140,20 @@ function FilterPanel({
   onReset: () => void;
   taxonomy?: Taxonomy | null;
 }) {
+  void _activeTimings;
+  void _setActiveTimings;
+  void _deadlineSoon;
+  void _setDeadlineSoon;
   const locale = useLocale((s) => s.locale);
   // taxonomy 도큐먼트의 timingBuckets / locationBuckets 우선,
   // 없으면 코드 상수 fallback. 어드민 「분류 관리 > 항목 편집」 변경이 즉시 반영됨.
   // EN 페이지에서 taxonomy.label 이 한국어로 들어있으면 코드 기본값에서 영문 라벨로 보정.
-  const timingFallbackById = new Map(
-    TIMING_OPTIONS.map((o) => [o.id, localized(o.label, locale)])
-  );
   const locationFallbackById = new Map(
     LOCATION_OPTIONS.map((o) => [o.id, localized(o.label, locale)])
   );
   const isKorean = (s: string) => /[가-힯]/.test(s);
-  const timingOptions = (taxonomy?.timingBuckets && taxonomy.timingBuckets.length > 0
-    ? taxonomy.timingBuckets.map((b) => ({
-        id: b.id as Timing,
-        label:
-          locale === "en" && isKorean(b.label) && timingFallbackById.has(b.id as Timing)
-            ? timingFallbackById.get(b.id as Timing)!
-            : b.label,
-      }))
-    : TIMING_OPTIONS.map((o) => ({
-        id: o.id,
-        label: localized(o.label, locale),
-      })));
+  // 노출 시점 필터는 제거됨. TIMING_OPTIONS 상수는 데이터 모델 (Category.timingOverride)
+  // 호환을 위해 남겨두고 PDF/내부에서만 사용.
   const locationOptions = (taxonomy?.locationBuckets && taxonomy.locationBuckets.length > 0
     ? taxonomy.locationBuckets.map((b) => ({
         id: b.id as LocationTag,
@@ -1237,15 +1246,10 @@ function FilterPanel({
         )}
       </FilterSection>
 
-      {/* (2) 참가 상황 — 페르소나(어드민 /admin/classification 에서 자유롭게 추가/수정).
-          이전에 분리되어 있던 "광고 목적" 4개는 페르소나 시스템으로 흡수됨. */}
+      {/* (2) 추천 코스 — 페르소나 (어드민 /admin/classification 에서 자유롭게 추가/수정).
+          이전 '참가 상황' 라벨 + 보조 설명은 너무 장황 → 간결한 '추천 코스' 로 통일. */}
       <FilterSection
-        title={locale === "en" ? "Your situation" : "참가 상황"}
-        hint={
-          locale === "en"
-            ? "Pick the profile that fits"
-            : "회사 상황·목적과 맞는 항목 선택"
-        }
+        title={locale === "en" ? "Tailored picks" : "추천 코스"}
       >
         <div className="space-y-1.5">
           {personas.map((p) => {
@@ -1288,16 +1292,22 @@ function FilterPanel({
         </div>
       </FilterSection>
 
-      {/* (3) 노출 시점 */}
-      <FilterSection title={t("spons.timing", locale)}>
+      {/* (3) 매체 유형 — category.type 기반. CategoryType 9 종 중 실제 등장하는
+          유형만 옵션 노출 (taxonomy.mediaBuckets 대신 코드 상수 사용 — i18n 일관). */}
+      <FilterSection title={locale === "en" ? "Media type" : "매체 유형"}>
         <CheckboxList
-          options={timingOptions}
-          active={activeTimings}
+          options={(Object.keys(CATEGORY_TYPE_LABELS) as Array<keyof typeof CATEGORY_TYPE_LABELS>)
+            .filter((t) => t !== "package") // 패키지는 별도 섹션으로 노출
+            .map((t) => ({
+              id: t,
+              label: CATEGORY_TYPE_LABELS[t][locale],
+            }))}
+          active={activeMediaTypes}
           onToggle={(id) => {
-            const next = new Set(activeTimings);
+            const next = new Set(activeMediaTypes);
             if (next.has(id)) next.delete(id);
             else next.add(id);
-            setActiveTimings(next);
+            setActiveMediaTypes(next);
           }}
         />
       </FilterSection>
@@ -1316,19 +1326,7 @@ function FilterPanel({
         />
       </FilterSection>
 
-      {/* (5) 마감 임박 */}
-      <FilterSection title={t("spons.deadline", locale)}>
-        <label className="flex items-center gap-2 text-[13px] text-ink-700 cursor-pointer hover:text-ink-900">
-          <input
-            type="checkbox"
-            checked={deadlineSoon}
-            onChange={(e) => setDeadlineSoon(e.target.checked)}
-            className="accent-brand-500 w-3.5 h-3.5"
-          />
-          <span>{t("spons.deadlineSoon", locale)}</span>
-        </label>
-      </FilterSection>
-
+      {/* 마감 임박 / 노출 시점 필터는 사용자 요청으로 제거됨 (2026-06). */}
     </div>
   );
 }
@@ -1854,7 +1852,7 @@ function CardGrid({
                         className="text-[10px] font-num font-semibold text-brand-500 bg-brand-50 px-2 py-0.5 rounded-pill inline-flex items-center gap-1"
                       >
                         {p.emoji && <span aria-hidden>{p.emoji}</span>}
-                        {p.title}
+                        {localizedField(p.title, p.titleEn, locale)}
                       </span>
                     ))}
                   </div>
