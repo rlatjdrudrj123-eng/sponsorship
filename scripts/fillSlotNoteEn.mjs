@@ -23,8 +23,10 @@ const fs = getFirestore(app);
 
 const KOR = /[가-힯]/;
 const REPLACE = [
-  [/킨텍스 제2전시장/g, "KINTEX Hall 2"],
-  [/킨텍스 제1전시장/g, "KINTEX Hall 1"],
+  // KPRINT 2026 = 제2전시장 7·8홀. "킨텍스 제2전시장 2층" 같은 표현은
+  // 실제로 7·8홀 안의 2층을 의미.
+  [/킨텍스 제2전시장/g, "KINTEX 2nd Exhibition Center"],
+  [/킨텍스 제1전시장/g, "KINTEX 1st Exhibition Center"],
   [/킨텍스/g, "KINTEX"],
   [/(\d+)\s*층/g, "$1F"],
   [/(\d+)\s*홀/g, "Hall $1"],
@@ -52,16 +54,20 @@ const slots = await fs
   .collection("slots")
   .where("eventId", "==", EVENT_ID)
   .get();
+// 옛 잘못된 영문 매핑 (예: "Hall 2") 를 강제 갱신하기 위해 --force 옵션 지원.
+const FORCE = process.argv.includes("--force");
+
 let count = 0;
 for (const d of slots.docs) {
   const s = d.data();
-  if (s.noteEn && s.noteEn.trim()) continue; // 이미 있음
-  if (!s.note || !KOR.test(s.note)) continue; // 한글 없는 노트는 그대로
+  if (!s.note || !KOR.test(s.note)) continue; // 한글 없는 노트는 원본 그대로
+  if (!FORCE && s.noteEn && s.noteEn.trim()) continue; // 이미 있으면 skip (force 모드 제외)
   const en = toEn(s.note);
   if (!en) {
     console.log(`  skip [${s.code}] "${s.note}" (자동 변환 불가)`);
     continue;
   }
+  if (s.noteEn === en) continue; // 변동 없으면 write 생략
   await fs.collection("slots").doc(d.id).set({ noteEn: en }, { merge: true });
   console.log(`✓ [${s.code}] "${s.note}" → "${en}"`);
   count++;

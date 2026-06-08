@@ -36,10 +36,11 @@ await ref.set(
   {
     event: {
       ...event,
-      // KINTEX 제2전시장 = Hall 2 (실제 행사장)
-      venue: "킨텍스 제2전시장",
-      venueEn: "KINTEX Hall 2",
-      dateRangeEn: event.dateRangeEn || "Aug 26 (Wed) – 28 (Fri), 2026",
+      // KPRINT 2026 = 2026년 8월 19일(수) ~ 22일(토), 킨텍스 제2전시장 7·8홀.
+      dateRange: "2026년 8월 19일(수) – 22일(토)",
+      dateRangeEn: "Aug 19 (Wed) – 22 (Sat), 2026",
+      venue: "킨텍스 제2전시장 7·8홀",
+      venueEn: "KINTEX 2nd Exhibition Center, Halls 7-8",
     },
   },
   { merge: true }

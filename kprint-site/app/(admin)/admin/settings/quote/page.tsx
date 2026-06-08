@@ -32,7 +32,7 @@ const DEFAULT_SETTINGS: QuoteSettings = {
   },
   eventSubtitle: "K-PRINT 2026 — 국제 인쇄·디지털 프린팅 전시회",
   eventIntro:
-    "오는 2026년 8월 26일부터 28일까지 KINTEX 제1전시장에서 개최되는 K-PRINT 2026 전시회의 스폰서십 참가에 관하여, 다음과 같이 제안하오니 검토해주시기 바랍니다.",
+    "오는 2026년 8월 19일부터 22일까지 킨텍스 제2전시장 7·8홀에서 개최되는 K-PRINT 2026 전시회의 스폰서십 참가에 관하여, 다음과 같이 제안하오니 검토해주시기 바랍니다.",
   serialPrefix: "KPR26-",
   serialNextNumber: 1,
   defaultPaymentTerms: "전액 현금 완납",
