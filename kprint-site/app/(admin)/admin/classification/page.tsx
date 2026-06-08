@@ -27,7 +27,7 @@ import {
 import { getDb } from "@/lib/firebase/firestore";
 import { useEventFilter } from "@/lib/admin/useEventFilter";
 import { PersonaEditModal } from "@/components/admin/PersonaEditModal";
-import type { Category, CategoryType, Package, Persona, Taxonomy } from "@/lib/types";
+import type { Category, CategoryType, Persona, Taxonomy } from "@/lib/types";
 import { CATEGORY_TYPE_LABELS } from "@/lib/categoryTypeLabels";
 
 type Tab = "persona" | "media" | "timing" | "location";
@@ -71,7 +71,6 @@ export default function ClassificationPage() {
   const { eventId, ready } = useEventFilter();
   const [tab, setTab] = useState<Tab>("persona");
   const [categories, setCategories] = useState<Category[]>([]);
-  const [packages, setPackages] = useState<Package[]>([]);
   const [personas, setPersonas] = useState<Persona[]>([]);
   const [taxonomy, setTaxonomy] = useState<Taxonomy | null>(null);
   const [activeBucket, setActiveBucket] = useState<string | null>(null);
@@ -94,16 +93,10 @@ export default function ClassificationPage() {
     const u3 = onSnapshot(doc(getDb(), "taxonomy", eventId), (s) => {
       setTaxonomy(s.exists() ? (s.data() as Taxonomy) : null);
     });
-    const u4 = onSnapshot(
-      query(collection(getDb(), "packages"), where("eventId", "==", eventId)),
-      (s) =>
-        setPackages(s.docs.map((d) => ({ ...(d.data() as Package), id: d.id })))
-    );
     return () => {
       u1();
       u2();
       u3();
-      u4();
     };
   }, [ready, eventId]);
 
@@ -484,16 +477,12 @@ export default function ClassificationPage() {
         <PersonaEditModal
           mode={{ kind: "new", eventId, order: personas.length }}
           onClose={() => setAddingPersona(false)}
-          categories={categories}
-          packages={packages}
         />
       )}
       {editPersona && (
         <PersonaEditModal
           mode={{ kind: "edit", persona: editPersona }}
           onClose={() => setEditPersona(null)}
-          categories={categories}
-          packages={packages}
         />
       )}
     </div>

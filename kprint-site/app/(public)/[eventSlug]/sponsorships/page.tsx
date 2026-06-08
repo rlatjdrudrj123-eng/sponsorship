@@ -42,7 +42,6 @@ import type {
 import { Footer } from "@/components/public/Footer";
 import { LocaleSwitch } from "@/components/public/LocaleSwitch";
 import { SlotPicker } from "@/components/public/CategoryDetail/_shared/SlotPicker";
-import { PersonaRecommendation } from "@/components/public/PersonaRecommendation";
 import { ClosingSlide } from "@/components/public/landing/LandingRenderer";
 import { PackageType } from "@/components/public/CategoryDetail/PackageType";
 import { localized, localizedField, localeHref, useLocale, type Locale } from "@/lib/i18n/locale";
@@ -198,8 +197,7 @@ export default function SponsorshipsPage() {
   const [taxonomy, setTaxonomy] = useState<Taxonomy | null>(null);
 
   const [budget, setBudget] = useState<number>(0); // 0 = 필터 X
-  // 페르소나 — 필터 사이드바에서 직접 선택. 선택 시 그 페르소나 매칭 매체만 노출
-  // + PersonaRecommendation 배너 띄움.
+  // 페르소나 — 필터 사이드바에서 직접 선택. 선택 시 그 페르소나 매칭 매체만 노출.
   const [personas, setPersonas] = useState<Persona[]>([]);
   const [selectedPersona, setSelectedPersona] = useState<Persona | null>(null);
   const [activeTimings, setActiveTimings] = useState<Set<Timing>>(new Set());
@@ -692,18 +690,6 @@ export default function SponsorshipsPage() {
 
               {/* Grid */}
               <section>
-                {/* 페르소나 선택 시 추천 콤보 배너 */}
-                {selectedPersona && (
-                  <PersonaRecommendation
-                    persona={selectedPersona}
-                    categories={categories}
-                    subcategories={subcategories}
-                    slots={slots}
-                    packages={packages}
-                    eventId={eventId}
-                  />
-                )}
-
                 {filtered.length === 0 ? (
                   <div className="bg-ink-50 rounded-card py-16 px-6 text-center">
                     <div className="font-num text-[11px] uppercase tracking-[0.3em] text-ink-300 font-bold mb-3">
