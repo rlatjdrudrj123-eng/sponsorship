@@ -139,7 +139,12 @@ export function SponsorshipDiagnosisChat({
       budgetKRW: step === "q1" ? 0 : budgetKRW,
       mustHave: step === "q3" || step === "result" ? mustHave : [],
     };
-    const r = recommend({ candidates: categories, subcategories, answers: dummy });
+    const r = recommend({
+      candidates: categories,
+      subcategories,
+      answers: dummy,
+      locale: isEn ? "en" : "ko",
+    });
     return r.funnelCounts;
   }, [
     categories,
@@ -149,6 +154,7 @@ export function SponsorshipDiagnosisChat({
     budgetKRW,
     mustHave,
     step,
+    isEn,
   ]);
 
   // 진짜 추천 결과 (result 화면에서만 계산)
@@ -159,7 +165,12 @@ export function SponsorshipDiagnosisChat({
       budgetKRW,
       mustHave,
     };
-    return recommend({ candidates: categories, subcategories, answers });
+    return recommend({
+      candidates: categories,
+      subcategories,
+      answers,
+      locale: isEn ? "en" : "ko",
+    });
   }, [
     step,
     categories,
@@ -168,6 +179,7 @@ export function SponsorshipDiagnosisChat({
     secondaryGoal,
     budgetKRW,
     mustHave,
+    isEn,
   ]);
 
   // 업그레이드 경로
@@ -425,14 +437,14 @@ function IntroPanel({
   const items = isEn ? enBullets : koBullets;
 
   return (
-    <div className="py-4 max-w-md mx-auto">
-      <h3 className="text-[20px] font-bold text-ink-900 leading-snug mb-2">
+    <div className="py-4">
+      <h3 className="text-[19px] font-bold text-ink-900 leading-snug mb-1 whitespace-nowrap">
         {isEn
-          ? "Find the optimal sponsorship configuration for your goals."
-          : "귀사의 목표에 맞는 최적의 스폰서십 구성을 확인해 보십시오."}
+          ? "Optimal sponsorship configuration."
+          : "귀사 목표에 맞는 스폰서십 구성안."}
       </h3>
       <p className="text-[12px] text-ink-500 mb-5">
-        {isEn ? "3 questions · about 1 minute" : "3문항 / 약 1분 소요"}
+        {isEn ? "3 questions · about 1 minute" : "3문항 · 약 1분 소요"}
       </p>
       <ul className="space-y-2 mb-7">
         {items.map((t, i) => (

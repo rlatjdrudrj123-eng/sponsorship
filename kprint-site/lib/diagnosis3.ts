@@ -77,15 +77,15 @@ export type RecommendResult = {
   candidatePool: RecEntry[];
 };
 
-export function recommend(
-  args: {
-    candidates: Category[];
-    subcategories: Subcategory[];
-    answers: DiagAnswers;
-    k?: number;
-  }
-): RecommendResult {
+export function recommend(args: {
+  candidates: Category[];
+  subcategories: Subcategory[];
+  answers: DiagAnswers;
+  k?: number;
+  locale?: "ko" | "en";
+}): RecommendResult {
   const k = args.k ?? 3;
+  const locale = args.locale ?? "ko";
   const { candidates, subcategories, answers } = args;
 
   // 카테고리당 최저가 인덱스 (priceKRW > 0)
@@ -94,7 +94,7 @@ export function recommend(
   // 모든 후보를 채점 정보와 함께 entries 로 빌드
   const entries = candidates
     .filter((c) => c.channel !== "package" && c.type !== "package")
-    .map((c) => buildEntry(c, minPriceByCat, answers));
+    .map((c) => buildEntry(c, minPriceByCat, answers, locale));
 
   // 단계별 후보 풀 카운터 (UI 띠 표시용)
   const initial = entries.length;
@@ -107,29 +107,41 @@ export function recommend(
   );
 
   // 1차 시도: 모든 제약 적용
-  let chosen = greedySelect(passedMustHave, answers, k);
+  let chosen = greedySelect(passedMustHave, answers, k, locale);
   const relaxNotes: string[] = [];
   // 실제로 사용된 후보 풀 (UI 의 "매칭 N개" 표시용)
   let activePool = passedMustHave;
 
   // 폴백 사다리 — 결과가 k 미만이면 단계적으로 완화
   if (chosen.length < k) {
-    chosen = greedySelect(passedBudget, answers, k);
+    chosen = greedySelect(passedBudget, answers, k, locale);
     activePool = passedBudget;
     if (chosen.length >= k) {
-      relaxNotes.push("추가 요건 일부 미충족");
+      relaxNotes.push(
+        locale === "en"
+          ? "Some requirements unmet"
+          : "추가 요건 일부 미충족"
+      );
     }
   }
   if (chosen.length < k) {
-    chosen = greedySelect(passedGoal, answers, k);
+    chosen = greedySelect(passedGoal, answers, k, locale);
     activePool = passedGoal;
-    relaxNotes.push("예산 범위 일부 초과 가능");
+    relaxNotes.push(
+      locale === "en"
+        ? "Some items may exceed budget slightly"
+        : "예산 범위 일부 초과 가능"
+    );
   }
   if (chosen.length < k) {
     // 최후의 수단 — 전체 후보에서 점수 순. anti-pattern 도 무시.
-    chosen = greedySelect(entries, answers, k);
+    chosen = greedySelect(entries, answers, k, locale);
     activePool = entries;
-    relaxNotes.push("목표 부합도 낮은 매체 포함");
+    relaxNotes.push(
+      locale === "en"
+        ? "Includes items with lower goal fit"
+        : "목표 부합도 낮은 매체 포함"
+    );
   }
 
   const picksTotal = chosen.reduce((s, e) => s + e.minPriceKRW, 0);
@@ -155,14 +167,15 @@ export function recommend(
 function buildEntry(
   c: Category,
   minPriceByCat: Map<string, number>,
-  answers: DiagAnswers
+  answers: DiagAnswers,
+  locale: "ko" | "en"
 ): RecEntry {
   const minPriceKRW = minPriceByCat.get(c.id) ?? 0;
 
   const goalFit = computeGoalFit(c, answers.goals);
   const budgetFit = computeBudgetFit(minPriceKRW, answers.budgetKRW);
   const adminBoost = c.recommendBoost ?? 0;
-  const mustHaveMet = collectMustHaveMet(c, answers.mustHave);
+  const mustHaveMet = collectMustHaveMet(c, answers.mustHave, locale);
   const antiPatternHit = collectAntiPatterns(c, answers);
 
   const antiPenalty = antiPatternHit.length * 1.5;
@@ -186,7 +199,7 @@ function buildEntry(
     minPriceKRW,
     score: initialScore,
     breakdown,
-    reason: buildReason(c, answers, breakdown),
+    reason: buildReason(c, answers, breakdown, locale),
   };
 }
 
@@ -235,13 +248,17 @@ function meetsMustHaveSoft(c: Category, tags: MustHaveTag[]): boolean {
   return true;
 }
 
-function collectMustHaveMet(c: Category, tags: MustHaveTag[]): string[] {
+function collectMustHaveMet(
+  c: Category,
+  tags: MustHaveTag[],
+  locale: "ko" | "en"
+): string[] {
   const out: string[] = [];
   if (tags.includes("online_channel") && c.channel === "online") {
-    out.push("온라인 채널");
+    out.push(locale === "en" ? "Online channel" : "온라인 채널");
   }
   if (tags.includes("overseas") && hasOverseasTag(c)) {
-    out.push("해외 노출");
+    out.push(locale === "en" ? "Overseas" : "해외 노출");
   }
   return out;
 }
@@ -273,7 +290,8 @@ function collectAntiPatterns(c: Category, answers: DiagAnswers): string[] {
 function greedySelect(
   pool: RecEntry[],
   answers: DiagAnswers,
-  k: number
+  k: number,
+  locale: "ko" | "en"
 ): RecEntry[] {
   if (pool.length === 0) return [];
   const remainingIds = new Set(pool.map((e) => e.category.id));
@@ -330,7 +348,7 @@ function greedySelect(
     picked.push({
       ...top,
       // reason 재생성 — synergy/journey 정보 포함
-      reason: buildReason(top.category, answers, top.breakdown),
+      reason: buildReason(top.category, answers, top.breakdown, locale),
     });
     pickedIds.add(top.category.id);
     remainingIds.delete(top.category.id);
@@ -379,7 +397,8 @@ function budgetOverPenalty(e: RecEntry, used: number, budget: number): number {
 function buildReason(
   c: Category,
   answers: DiagAnswers,
-  bd: ScoreBreakdown
+  bd: ScoreBreakdown,
+  locale: "ko" | "en"
 ): string {
   // 1) 목표 매칭 — 자연어 한 줄
   const aff = c.goalAffinity ?? {};
@@ -388,27 +407,56 @@ function buildReason(
   const primaryHit = (aff[primary] ?? 0) >= 2;
   const secondaryHit = secondary && (aff[secondary] ?? 0) >= 2;
 
+  const STRONG_KO = "강함";
+  const STRONG_EN = "strong fit";
+  const SUPPORT_KO = "보조";
+  const SUPPORT_EN = "supports";
+  const ALL_KO = "모두 강함";
+  const ALL_EN = "strong fit on both";
+
   let goalText = "";
   if (primaryHit && secondaryHit) {
-    goalText = `${purposeLabel(primary)}·${purposeLabel(secondary!)} 모두 강함`;
+    goalText =
+      locale === "en"
+        ? `${purposeLabel(primary, "en")} · ${purposeLabel(secondary!, "en")} — ${ALL_EN}`
+        : `${purposeLabel(primary, "ko")}·${purposeLabel(secondary!, "ko")} ${ALL_KO}`;
   } else if (primaryHit) {
-    goalText = `${purposeLabel(primary)} 강함`;
+    goalText =
+      locale === "en"
+        ? `${purposeLabel(primary, "en")} — ${STRONG_EN}`
+        : `${purposeLabel(primary, "ko")} ${STRONG_KO}`;
   } else if (secondaryHit) {
-    goalText = `${purposeLabel(secondary!)} 보조`;
+    goalText =
+      locale === "en"
+        ? `${purposeLabel(secondary!, "en")} — ${SUPPORT_EN}`
+        : `${purposeLabel(secondary!, "ko")} ${SUPPORT_KO}`;
   } else if (bd.goalFit > 0) {
-    goalText = `${purposeLabel(primary)} 보조`;
+    goalText =
+      locale === "en"
+        ? `${purposeLabel(primary, "en")} — ${SUPPORT_EN}`
+        : `${purposeLabel(primary, "ko")} ${SUPPORT_KO}`;
   }
 
-  // 2) mustHave 충족 — 짧게
+  // 2) mustHave 충족
   const mustHaveText =
-    bd.mustHaveMet.length > 0 ? bd.mustHaveMet.join("·") + " 포함" : "";
+    bd.mustHaveMet.length > 0
+      ? bd.mustHaveMet.join("·") + (locale === "en" ? " incl." : " 포함")
+      : "";
 
-  // synergy / journeyFill 은 내부 점수 가산에만 쓰고 화면에는 노출 안 함 (UX 노이즈)
-  // 신호가 없으면 빈 줄 — RecCard 가 자동으로 숨김.
   return [goalText, mustHaveText].filter(Boolean).join(" · ");
 }
 
-function purposeLabel(p: Purpose): string {
+function purposeLabel(p: Purpose, locale: "ko" | "en"): string {
+  if (locale === "en") {
+    switch (p) {
+      case "new_product":
+        return "New product";
+      case "traffic_driver":
+        return "On-floor traffic";
+      case "brand_awareness":
+        return "Brand awareness";
+    }
+  }
   switch (p) {
     case "new_product":
       return "신제품 홍보";
