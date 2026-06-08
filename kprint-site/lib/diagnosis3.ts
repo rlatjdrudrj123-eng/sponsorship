@@ -276,21 +276,31 @@ function greedySelect(
   k: number
 ): RecEntry[] {
   if (pool.length === 0) return [];
-  const remaining = pool.slice().sort((a, b) => b.score - a.score);
+  const remainingIds = new Set(pool.map((e) => e.category.id));
+  const byId = new Map(pool.map((e) => [e.category.id, e]));
   const picked: RecEntry[] = [];
+  const pickedIds = new Set<string>();
   let budgetUsed = 0;
 
-  while (picked.length < k && remaining.length > 0) {
-    // 매 슬롯마다 점수 재평가 (synergy + journey 반영)
-    const reranked = remaining
+  while (picked.length < k && remainingIds.size > 0) {
+    // 매 슬롯마다 점수 재평가 (synergy + journey 반영) — id 기반 dedup.
+    const reranked = Array.from(remainingIds)
+      .map((id) => byId.get(id)!)
+      .filter((e) => !pickedIds.has(e.category.id))
       .map((e) => {
-        const synergy = computeSynergy(e.category, picked.map((p) => p.category));
+        const synergy = computeSynergy(
+          e.category,
+          picked.map((p) => p.category)
+        );
         const journeyFill = computeJourneyFill(
           e.category,
           picked.map((p) => p.category)
         );
         const newScore =
-          e.score + synergy + journeyFill - budgetOverPenalty(e, budgetUsed, answers.budgetKRW);
+          e.score +
+          synergy +
+          journeyFill -
+          budgetOverPenalty(e, budgetUsed, answers.budgetKRW);
         return {
           entry: {
             ...e,
@@ -322,10 +332,9 @@ function greedySelect(
       // reason 재생성 — synergy/journey 정보 포함
       reason: buildReason(top.category, answers, top.breakdown),
     });
+    pickedIds.add(top.category.id);
+    remainingIds.delete(top.category.id);
     budgetUsed += top.minPriceKRW;
-    // remaining 에서 빼기
-    const idx = remaining.indexOf(top);
-    if (idx >= 0) remaining.splice(idx, 1);
   }
 
   return picked;
@@ -418,8 +427,8 @@ export type UpgradeOffer = {
   package: Package;
   /** 사용자 추천 단품 중 패키지에 포함된 카테고리 (체크 표시) */
   covered: Category[];
-  /** 패키지가 추가로 주는 카테고리 ID (별 표시) */
-  extraCategoryIds: string[];
+  /** 패키지가 추가로 주는 카테고리 (별 표시) — 카테고리 객체로 이름 노출 */
+  extras: Category[];
   /** 사용자 픽 단품 합산가 + 패키지에 들어간 항목들을 단품으로 살 때의 추정 추가가 */
   singlesEquivalentKRW: number;
   packagePriceKRW: number;
@@ -459,10 +468,13 @@ export function findUpgradeOffers(args: {
     const extraCategoryIds = Array.from(pkgCatIds).filter(
       (id) => !pickIds.has(id)
     );
+    const extras = extraCategoryIds
+      .map((id) => catById.get(id))
+      .filter((c): c is Category => !!c);
 
     // 추가 항목들을 단품으로 살 때 가격
-    const extraSinglesPrice = extraCategoryIds.reduce(
-      (sum, id) => sum + (minPriceByCat.get(id) ?? 0),
+    const extraSinglesPrice = extras.reduce(
+      (sum, c) => sum + (minPriceByCat.get(c.id) ?? 0),
       0
     );
     const userPicksTotal = picks.reduce((s, p) => s + p.minPriceKRW, 0);
@@ -471,16 +483,16 @@ export function findUpgradeOffers(args: {
 
     // 추가 비용이 예산의 60% 미만이면 후보로 (너무 큰 점프는 제안 안 함)
     const delta = packagePriceKRW - userPicksTotal;
-    if (delta <= 0) continue; // 더 싸면 별도 추천 필요 (현재는 skip)
+    if (delta <= 0) continue;
     if (budgetKRW > 0 && delta > budgetKRW * 0.6) continue;
 
     const savings = totalIfSinglesKRW - packagePriceKRW;
-    if (savings <= 0) continue; // 절감이 없으면 제안 의미 없음
+    if (savings <= 0) continue;
 
     candidates.push({
       package: pkg,
       covered: covered.map((p) => p.category),
-      extraCategoryIds: extraCategoryIds.filter((id) => catById.has(id)),
+      extras,
       singlesEquivalentKRW: extraSinglesPrice,
       packagePriceKRW,
       savingsKRW: savings,

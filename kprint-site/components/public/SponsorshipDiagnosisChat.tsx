@@ -991,21 +991,21 @@ function UpgradeBlock({
         <div className="mb-1.5">
           <span className="font-semibold">
             {isEn
-              ? "Includes your 3 + extra:"
-              : "당신이 고른 3개 모두 포함 + 추가:"}
+              ? `Includes your ${offer.covered.length} + extra:`
+              : `선택한 ${offer.covered.length}개 모두 포함 + 추가:`}
           </span>
         </div>
         <ul className="space-y-0.5 pl-2">
-          {offer.extraCategoryIds.slice(0, 3).map((id) => (
-            <li key={id} className="text-[11.5px] text-ink-700">
-              ★ <CategoryNameById id={id} isEn={isEn} />
+          {offer.extras.slice(0, 4).map((c) => (
+            <li key={c.id} className="text-[11.5px] text-ink-700">
+              + {isEn && c.name.en ? c.name.en : c.name.ko}
             </li>
           ))}
-          {offer.extraCategoryIds.length > 3 && (
+          {offer.extras.length > 4 && (
             <li className="text-[10.5px] text-ink-500">
               {isEn
-                ? `+ ${offer.extraCategoryIds.length - 3} more`
-                : `+ ${offer.extraCategoryIds.length - 3}개 더`}
+                ? `+ ${offer.extras.length - 4} more`
+                : `외 ${offer.extras.length - 4}개`}
             </li>
           )}
         </ul>
@@ -1042,14 +1042,6 @@ function UpgradeBlock({
       </Link>
     </div>
   );
-}
-
-// 패키지에 들어있는 카테고리 ID 로 이름 찾기 — 부모에 categories 가 있어야 하는데
-// UpgradeBlock 가 categories prop 을 받지 않으므로 별도 컴포넌트로 분리.
-// 단순화: 카테고리 id 만으로는 이름 찾기 불가 → 그냥 id 표기.
-function CategoryNameById({ id, isEn }: { id: string; isEn: boolean }) {
-  void isEn;
-  return <span className="font-mono text-[10.5px] text-ink-500">{id}</span>;
 }
 
 // ============================================================================
