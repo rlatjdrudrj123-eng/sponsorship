@@ -269,12 +269,12 @@ export function SponsorshipDiagnosisChat({
               <div className="text-[13px] font-bold text-ink-900 truncate">
                 {step === "intro"
                   ? isEn
-                    ? "Find what fits you"
-                    : "당신에게 맞는 매체 찾기"
+                    ? "Tailored Sponsorship Proposal"
+                    : "맞춤형 스폰서십 제안"
                   : step === "result"
                   ? isEn
-                    ? "Your match"
-                    : "당신의 매칭"
+                    ? "Recommended Configuration"
+                    : "추천 구성"
                   : isEn
                   ? `Question ${progressIdx} of 3`
                   : `질문 ${progressIdx} / 3`}
@@ -408,39 +408,34 @@ export function SponsorshipDiagnosisChat({
 function IntroPanel({
   isEn,
   onStart,
-  categoryCount,
 }: {
   isEn: boolean;
   onStart: () => void;
-  categoryCount: number;
+  categoryCount?: number;
 }) {
-  const bullets = isEn
-    ? [
-        `매체 ${categoryCount}종 → 매칭 점수 상위 3종 자동 산출`,
-        "답변별 후보 풀 즉시 표시",
-        "패키지 전환 시 절감액 동시 안내",
-      ]
-    : [
-        `매체 ${categoryCount}종 → 매칭 점수 상위 3종 자동 산출`,
-        "답변별 후보 풀 즉시 표시",
-        "패키지 전환 시 절감액 동시 안내",
-      ];
-  const enBullets = [
-    `${categoryCount} media → top 3 by match score`,
-    "Live candidate count per answer",
-    "Package savings calculated alongside",
+  const koBullets = [
+    "스폰서십 큐레이션 (상위 3종 추천)",
+    "답변별 매칭 후보 수 실시간 표시",
+    "단품 → 패키지 전환 시 절감액 자동 산출",
   ];
-  const items = isEn ? enBullets : bullets;
+  const enBullets = [
+    "Sponsorship curation (top 3 picks)",
+    "Real-time match count per answer",
+    "Package upgrade savings auto-calculated",
+  ];
+  const items = isEn ? enBullets : koBullets;
 
   return (
     <div className="py-4 max-w-md mx-auto">
       <div className="font-num text-[10.5px] uppercase tracking-[0.25em] text-brand-500 font-bold mb-2">
-        {isEn ? "Sponsorship Match · 3 Q · ~1 min" : "스폰서십 매칭 진단 · 3문항 · 약 1분"}
-      </div>
-      <h3 className="text-[22px] font-bold text-ink-900 leading-tight tracking-tight mb-5">
         {isEn
-          ? "Find the right sponsorship mix."
-          : "참가 목표에 맞는 스폰서십 구성을 산출합니다."}
+          ? "Sponsorship Proposal · 3 Q · ~1 min"
+          : "맞춤형 스폰서십 제안 · 3문항 / 약 1분 소요"}
+      </div>
+      <h3 className="text-[22px] font-bold text-ink-900 leading-tight tracking-tight mb-3">
+        {isEn
+          ? "Find the optimal sponsorship configuration for your goals."
+          : "귀사의 목표에 맞는 최적의 스폰서십 구성을 확인해 보십시오."}
       </h3>
       <ul className="space-y-2.5 mb-7">
         {items.map((t, i) => (
@@ -787,7 +782,7 @@ function ResultPanel({
       {/* 폴백 안내 (필요 시) */}
       {result.relaxNotes.length > 0 && (
         <div className="bg-amber-50 border border-amber-200 rounded-btn px-3 py-2 text-[11.5px] text-amber-800 leading-snug">
-          ⓘ {isEn ? "Constraint relaxation applied. " : "조건 일부 완화 적용. "}
+          ⓘ {isEn ? "Note · " : "안내 · "}
           {result.relaxNotes.join(" · ")}
         </div>
       )}

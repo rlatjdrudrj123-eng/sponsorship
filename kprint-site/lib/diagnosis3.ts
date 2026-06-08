@@ -110,23 +110,27 @@ export function recommend(
   // 1차 시도: 모든 제약 적용
   let chosen = greedySelect(passedMustHave, answers, k);
   const relaxNotes: string[] = [];
+  // 실제로 사용된 후보 풀 (UI 의 "매칭 N개" 표시용)
+  let activePool = passedMustHave;
 
   // 폴백 사다리 — 결과가 k 미만이면 단계적으로 완화
   if (chosen.length < k) {
     chosen = greedySelect(passedBudget, answers, k);
-    if (chosen.length < k) {
-      relaxNotes.push("일부 필수 조건을 완화했습니다");
+    activePool = passedBudget;
+    if (chosen.length >= k) {
+      relaxNotes.push("추가 요건 일부 미충족");
     }
   }
   if (chosen.length < k) {
     chosen = greedySelect(passedGoal, answers, k);
-    if (!relaxNotes.includes("일부 필수 조건을 완화했습니다"))
-      relaxNotes.push("일부 추천은 예산을 살짝 넘을 수 있습니다");
+    activePool = passedGoal;
+    relaxNotes.push("예산 범위 일부 초과 가능");
   }
   if (chosen.length < k) {
     // 최후의 수단 — 전체 후보에서 점수 순. anti-pattern 도 무시.
     chosen = greedySelect(entries, answers, k);
-    relaxNotes.push("답변이 좁아 일부 매체는 답과 거리 있을 수 있어요");
+    activePool = entries;
+    relaxNotes.push("목표 부합도 낮은 매체 포함");
   }
 
   const picksTotal = chosen.reduce((s, e) => s + e.minPriceKRW, 0);
@@ -141,7 +145,7 @@ export function recommend(
     },
     picksTotal,
     relaxNotes,
-    candidatePool: passedMustHave.sort((a, b) => b.score - a.score),
+    candidatePool: activePool.sort((a, b) => b.score - a.score),
   };
 }
 
