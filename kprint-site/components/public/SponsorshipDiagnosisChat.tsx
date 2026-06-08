@@ -18,7 +18,6 @@ import {
   ChevronLeft,
   FileText,
   Package2,
-  Sparkles,
   X,
 } from "lucide-react";
 import { getDb } from "@/lib/firebase/firestore";
@@ -416,32 +415,51 @@ function IntroPanel({
   onStart: () => void;
   categoryCount: number;
 }) {
+  const bullets = isEn
+    ? [
+        `매체 ${categoryCount}종 → 매칭 점수 상위 3종 자동 산출`,
+        "답변별 후보 풀 즉시 표시",
+        "패키지 전환 시 절감액 동시 안내",
+      ]
+    : [
+        `매체 ${categoryCount}종 → 매칭 점수 상위 3종 자동 산출`,
+        "답변별 후보 풀 즉시 표시",
+        "패키지 전환 시 절감액 동시 안내",
+      ];
+  const enBullets = [
+    `${categoryCount} media → top 3 by match score`,
+    "Live candidate count per answer",
+    "Package savings calculated alongside",
+  ];
+  const items = isEn ? enBullets : bullets;
+
   return (
-    <div className="text-center py-6">
-      <div className="w-14 h-14 grid place-items-center mx-auto bg-brand-50 rounded-full mb-4">
-        <Sparkles className="w-6 h-6 text-brand-500" />
+    <div className="py-4 max-w-md mx-auto">
+      <div className="font-num text-[10.5px] uppercase tracking-[0.25em] text-brand-500 font-bold mb-2">
+        {isEn ? "Sponsorship Match · 3 Q · ~1 min" : "스폰서십 매칭 진단 · 3문항 · 약 1분"}
       </div>
-      <h3 className="text-[20px] font-bold text-ink-900 leading-tight mb-2">
+      <h3 className="text-[22px] font-bold text-ink-900 leading-tight tracking-tight mb-5">
         {isEn
-          ? "3 questions, 1 minute."
-          : "3가지 질문, 약 1분."}
+          ? "Find the right sponsorship mix."
+          : "참가 목표에 맞는 스폰서십 구성을 산출합니다."}
       </h3>
-      <p className="text-[13px] text-ink-500 leading-relaxed max-w-md mx-auto mb-1">
-        {isEn
-          ? `From ${categoryCount} sponsorship media, we narrow down to your top 3 fits — with an upgrade path if a package would save money.`
-          : `스폰서십 매체 ${categoryCount}개에서 당신에게 맞는 3개로 좁혀드립니다. 패키지로 묶는 게 더 이득이면 그것도 알려드려요.`}
-      </p>
-      <p className="text-[11.5px] text-ink-400 leading-relaxed max-w-md mx-auto mb-6">
-        {isEn
-          ? "Each answer visibly narrows the pool — no black-box recommendations."
-          : "각 답이 후보를 어떻게 좁히는지 그대로 보여드립니다. 블랙박스 추천 아닙니다."}
-      </p>
+      <ul className="space-y-2.5 mb-7">
+        {items.map((t, i) => (
+          <li
+            key={i}
+            className="flex items-start gap-2.5 text-[13px] text-ink-700 leading-snug"
+          >
+            <span className="w-1 h-1 rounded-full bg-brand-500 mt-2 shrink-0" />
+            <span>{t}</span>
+          </li>
+        ))}
+      </ul>
       <button
         type="button"
         onClick={onStart}
-        className="px-6 py-3 rounded-pill bg-brand-500 text-white text-[14px] font-bold hover:bg-brand-700 hover:shadow-glow-sm inline-flex items-center gap-2 transition-all"
+        className="w-full px-5 py-3 rounded-pill bg-brand-500 text-white text-[13.5px] font-bold hover:bg-brand-700 hover:shadow-glow-sm inline-flex items-center justify-center gap-2 transition-all"
       >
-        {isEn ? "Start" : "시작하기"}
+        {isEn ? "Start" : "진단 시작"}
         <ArrowRight className="w-4 h-4" />
       </button>
     </div>
