@@ -38,22 +38,17 @@ export function PersonaEditModal({
 
   const [emoji, setEmoji] = useState(initial.emoji ?? "🎯");
   const [title, setTitle] = useState(initial.title ?? "");
+  const [titleEn, setTitleEn] = useState(initial.titleEn ?? "");
   const [description, setDescription] = useState(initial.description ?? "");
-  // targetTags — 카테고리.personas 매핑 안 된 카테고리에 대한 fallback 매칭 키워드.
-  // 콤마 구분 입력. matchesPersona() 가 c.tags 와 교집합 확인.
-  const [targetTags, setTargetTags] = useState(
-    (initial.targetTags ?? []).join(", ")
-  );
+  const [descriptionEn, setDescriptionEn] = useState(initial.descriptionEn ?? "");
   const [socialProofNote, setSocialProofNote] = useState(
     initial.socialProofNote ?? ""
   );
+  const [socialProofNoteEn, setSocialProofNoteEn] = useState(
+    initial.socialProofNoteEn ?? ""
+  );
   const [budgetNote, setBudgetNote] = useState(initial.budgetNote ?? "");
-  const [budgetMin, setBudgetMin] = useState<string>(
-    initial.budgetMin ? String(initial.budgetMin) : ""
-  );
-  const [budgetMax, setBudgetMax] = useState<string>(
-    initial.budgetMax ? String(initial.budgetMax) : ""
-  );
+  const [budgetNoteEn, setBudgetNoteEn] = useState(initial.budgetNoteEn ?? "");
   const [packageTier, setPackageTier] = useState<
     "signature" | "standard" | ""
   >(initial.packageTier ?? "");
@@ -76,22 +71,16 @@ export function PersonaEditModal({
     }
     setSaving(true);
 
-    const minN = budgetMin ? parseInt(budgetMin, 10) : undefined;
-    const maxN = budgetMax ? parseInt(budgetMax, 10) : undefined;
-    const tags = targetTags
-      .split(",")
-      .map((s) => s.trim())
-      .filter(Boolean);
-
     const payload: Partial<Persona> = {
       emoji,
       title: t,
+      titleEn: titleEn.trim() || undefined,
       description: description.trim(),
-      targetTags: tags,
+      descriptionEn: descriptionEn.trim() || undefined,
       socialProofNote: socialProofNote.trim() || undefined,
+      socialProofNoteEn: socialProofNoteEn.trim() || undefined,
       budgetNote: budgetNote.trim() || undefined,
-      budgetMin: minN,
-      budgetMax: maxN,
+      budgetNoteEn: budgetNoteEn.trim() || undefined,
       packageTier: packageTier ? packageTier : undefined,
     };
 
@@ -235,11 +224,31 @@ export function PersonaEditModal({
             />
           </Field>
 
+          <Field label="제목 (영문)" hint="/en 사이트 노출. 비우면 한글 제목 폴백.">
+            <input
+              type="text"
+              value={titleEn}
+              onChange={(e) => setTitleEn(e.target.value)}
+              placeholder="e.g. First-time exhibitor"
+              className={inputCls()}
+            />
+          </Field>
+
           <Field label="서브 카피">
             <textarea
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               placeholder="예: 예산 부담 적게 진입 채널 확보. 500만~1500만원 사이 단품·스탠다드 패키지 위주."
+              rows={2}
+              className={inputCls() + " resize-y"}
+            />
+          </Field>
+
+          <Field label="서브 카피 (영문)" hint="/en 사이트 노출. 비우면 한글 폴백.">
+            <textarea
+              value={descriptionEn}
+              onChange={(e) => setDescriptionEn(e.target.value)}
+              placeholder="One-line description for /en site"
               rows={2}
               className={inputCls() + " resize-y"}
             />
@@ -263,6 +272,16 @@ export function PersonaEditModal({
             />
           </Field>
 
+          <Field label="사회적 증거 (영문)">
+            <input
+              type="text"
+              value={socialProofNoteEn}
+              onChange={(e) => setSocialProofNoteEn(e.target.value)}
+              placeholder="e.g. 18 first-timers started here last year"
+              className={inputCls()}
+            />
+          </Field>
+
           <Field
             label="예산 anchor"
             hint='예: "평균 1,200만원 (시그니처 + 단품 2개)"'
@@ -276,30 +295,19 @@ export function PersonaEditModal({
             />
           </Field>
 
-          <div className="grid grid-cols-2 gap-3">
-            <Field label="예산 하한 (KRW)">
-              <input
-                type="number"
-                value={budgetMin}
-                onChange={(e) => setBudgetMin(e.target.value)}
-                placeholder="0"
-                className={inputCls() + " font-mono"}
-              />
-            </Field>
-            <Field label="예산 상한 (KRW)">
-              <input
-                type="number"
-                value={budgetMax}
-                onChange={(e) => setBudgetMax(e.target.value)}
-                placeholder="15000000"
-                className={inputCls() + " font-mono"}
-              />
-            </Field>
-          </div>
+          <Field label="예산 anchor (영문)">
+            <input
+              type="text"
+              value={budgetNoteEn}
+              onChange={(e) => setBudgetNoteEn(e.target.value)}
+              placeholder="e.g. ~12M KRW avg (signature + 2 singles)"
+              className={inputCls()}
+            />
+          </Field>
 
           <Field
             label="패키지 티어 선호"
-            hint="선택하면 카드 카운트·추천에 해당 티어 패키지 포함"
+            hint="선택하면 페르소나 카드 카운트에 해당 티어 패키지가 포함됨"
           >
             <select
               value={packageTier}
@@ -312,20 +320,6 @@ export function PersonaEditModal({
               <option value="signature">시그니처</option>
               <option value="standard">스탠다드</option>
             </select>
-          </Field>
-
-          {/* 매칭 키워드 (fallback) — 카테고리에 personas 매핑이 없을 때 c.tags 와 교집합 매칭 */}
-          <Field
-            label="매칭 키워드 (콤마 구분)"
-            hint='카테고리 편집에서 페르소나 매핑을 못 했을 때의 fallback — 카테고리.tags 와 겹치는 것이 있으면 매칭. 예: "옥외, 동선, 인지도"'
-          >
-            <input
-              type="text"
-              value={targetTags}
-              onChange={(e) => setTargetTags(e.target.value)}
-              placeholder="옥외, 동선, 인지도"
-              className={inputCls() + " font-mono text-[11.5px]"}
-            />
           </Field>
 
         </div>

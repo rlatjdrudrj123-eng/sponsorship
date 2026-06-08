@@ -1095,12 +1095,12 @@ export type Tag = {
 export type Taxonomy = {
   tags: Tag[];
   channels: Array<{ id: Channel; label: string }>;
-  /** 분류 관리에서 사용자가 수정·삭제 가능한 매체 유형 버킷. 없으면 코드 기본값. */
-  mediaBuckets?: Array<{ id: string; label: string; description?: string }>;
+  /** 분류 관리에서 사용자가 수정·삭제 가능한 매체 유형 버킷. 없으면 코드 기본값. labelEn 은 /en 사이트 노출용. */
+  mediaBuckets?: Array<{ id: string; label: string; labelEn?: string; description?: string }>;
   /** 노출 시점 버킷. */
-  timingBuckets?: Array<{ id: string; label: string; description?: string }>;
+  timingBuckets?: Array<{ id: string; label: string; labelEn?: string; description?: string }>;
   /** 노출 위치 버킷 (예: K-PRINT 는 Hall 7·8). 행사별로 다름. */
-  locationBuckets?: Array<{ id: string; label: string; description?: string }>;
+  locationBuckets?: Array<{ id: string; label: string; labelEn?: string; description?: string }>;
 };
 
 // ============= EVENT (다년도/다행사) =============
@@ -1180,7 +1180,7 @@ export type Sponsor = {
 // ============= PERSONA (참가업체 페르소나) =============
 export type Persona = {
   id: string;
-  eventId: string;       // 행사별 분리
+  eventId: string;
   emoji: string;
   title: string;
   /** 영문 사이트용 타이틀. 비어있으면 title 폴백. */
@@ -1188,33 +1188,14 @@ export type Persona = {
   description: string;
   /** 영문 사이트용 설명. 비어있으면 description 폴백. */
   descriptionEn?: string;
-  targetTags?: string[];   // 카테고리 자동 추천용 (옵션 — 명시적 personas 필드가 우선)
-  purposes?: Purpose[];    // 이 페르소나가 강조하는 광고 목적 — 사이드바 필터와 단일 진실원 공유
-  budgetMin?: number;
-  budgetMax?: number;
+  purposes?: Purpose[];    // 사이드바 필터와 단일 진실원 공유
   packageTier?: "signature" | "standard";
-
-  // ── 강화: 결정 부담을 줄이고 행동을 유도하는 메타 ──
-
-  /** 페르소나 카드와 결과 배너에 들어갈 사회적 증거 한 줄 — 예: "작년 18개 회사가 이 코스 선택" */
+  /** 페르소나 카드 사회적 증거 한 줄 — "작년 N개 회사가 선택" */
   socialProofNote?: string;
-
-  /** 예산 anchor 한 줄 — 예: "평균 1,200만원 (단품 + 시그니처 콤보)" */
+  socialProofNoteEn?: string;
+  /** 페르소나 카드 예산 anchor 한 줄 — "평균 ○○만원" */
   budgetNote?: string;
-
-  /**
-   * 페르소나 선택 시 결과 화면 상단 배너에 보여주는 "정석 조합" — 어드민이 큐레이션.
-   * 추천 콤보 = (slot/package id 배열) + 한 줄 카피.
-   * "한 번에 카트 담기" 버튼이 자동 생성됨.
-   */
-  recommendedCombo?: {
-    headline?: string;       // "당신 같은 회사가 보통 이렇게 합니다"
-    rationale?: string;      // "동선 + 인지 + 자산 3박자"
-    categorySlugs?: string[]; // 최저가 슬롯 1개를 자동 선택해 카트에 담음
-    packageIds?: string[];   // 패키지 직접 명시
-    expectedKRW?: number;    // 예상 총액 (정보용)
-  };
-
+  budgetNoteEn?: string;
   order: number;
   isActive: boolean;
 };

@@ -467,6 +467,81 @@ export default function PackageEditPage() {
               단품 추가
             </button>
           </div>
+
+          {/* 자동 생성 결과 미리보기 — 어드민이 어떤 값이 저장되는지 명시적으로 확인. */}
+          {(() => {
+            const { resolved, composition } = resolveItems(watchedItems ?? []);
+            if (resolved.length === 0) return null;
+            const missingSelectorIds = resolved
+              .map((r) => {
+                const cat = allCategories.find((c) => c.id === r.categoryId);
+                return cat && !cat.selectorId ? cat : null;
+              })
+              .filter((c): c is NonNullable<typeof c> => !!c);
+            return (
+              <div className="mt-4 bg-ink-50 border border-ink-100 rounded-btn p-3 space-y-2">
+                <div className="text-[10.5px] uppercase tracking-wider text-ink-500 font-bold">
+                  자동 생성 (저장되는 값)
+                </div>
+                <div>
+                  <div className="text-[11px] text-ink-500 mb-1">사이트에 노출될 라벨</div>
+                  <ul className="space-y-0.5">
+                    {resolved.map((r, i) => (
+                      <li
+                        key={i}
+                        className="text-[12px] text-ink-900 font-mono leading-snug"
+                      >
+                        · {r.label}
+                        {r.referencedSlotIds && r.referencedSlotIds.length > 0 && (
+                          <span className="text-ink-400 ml-2">
+                            ({r.referencedSlotIds.length}개 슬롯 연결)
+                          </span>
+                        )}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+                <div>
+                  <div className="text-[11px] text-ink-500 mb-1">
+                    composition (진단 챗봇 매칭용 selectorId 배열)
+                  </div>
+                  {composition.length === 0 ? (
+                    <div className="text-[11.5px] text-amber-700 font-semibold">
+                      ⚠ selectorId 가 지정된 카테고리가 하나도 없습니다 — 진단 챗봇에서 이 패키지는 추천되지 않습니다.
+                    </div>
+                  ) : (
+                    <div className="flex flex-wrap gap-1">
+                      {composition.map((cid, i) => (
+                        <span
+                          key={i}
+                          className="px-1.5 py-0.5 bg-white border border-ink-100 rounded text-[11px] font-mono text-ink-700"
+                        >
+                          {cid}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                </div>
+                {missingSelectorIds.length > 0 && (
+                  <div className="text-[11.5px] text-amber-700 bg-amber-50 border border-amber-200 rounded p-2">
+                    selectorId 없음:{" "}
+                    {missingSelectorIds.map((c, i) => (
+                      <span key={c.id}>
+                        {i > 0 && ", "}
+                        <Link
+                          href={`/admin/categories/${c.id}`}
+                          className="font-mono underline-offset-2 hover:underline"
+                        >
+                          {c.code}
+                        </Link>
+                      </span>
+                    ))}
+                    {" — 진단 챗봇 매칭에서 빠집니다."}
+                  </div>
+                )}
+              </div>
+            );
+          })()}
         </Section>
 
         <Section title="가격">

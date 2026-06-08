@@ -7,14 +7,8 @@ import { localizedField, useLocale } from "@/lib/i18n/locale";
 
 /**
  * 페르소나 추천 코스 — sponsorships 페이지 상단.
- *
- * 단순 필터가 아니라:
- *  - 사회적 증거 (작년 N곳이 선택)
- *  - 예산 anchor (평균 ○○만원)
- *  - 추천 콤보 (선택 시 결과 배너에 narration + 한 번에 카트 담기)
- *
- * Firestore 의 personas 컬렉션에서 로드.
- * 카테고리 매칭: Category.personas 명시 우선, 없으면 targetTags 휴리스틱.
+ * 사회적 증거 + 예산 anchor 한 줄로 결정 부담을 줄임.
+ * 카테고리 매칭: Category.personas 필드만 사용.
  */
 
 export type PersonaPick = { id: string; persona: Persona };
@@ -52,8 +46,6 @@ export function PersonaCourses({
   }, [personas, categories, packages]);
 
   if (personas.length === 0) return null;
-
-  const active = personas.find((p) => p.id === selectedPersonaId) ?? null;
 
   // ─── 컴팩트 모드 (메인 CTA 가 별도로 있을 때) ───
   if (compact) {
@@ -194,39 +186,52 @@ export function PersonaCourses({
                     {localizedField(p.description, p.descriptionEn, locale)}
                   </p>
 
-                  {(p.socialProofNote || p.budgetNote) && (
-                    <div
-                      className={
-                        "mt-3 pt-3 border-t space-y-1 " +
-                        (isActive ? "border-white/25" : "border-ink-100")
-                      }
-                    >
-                      {p.socialProofNote && (
-                        <div
-                          className={
-                            "flex items-start gap-1.5 text-[11px] leading-snug " +
-                            (isActive ? "text-white" : "text-ink-700")
-                          }
-                        >
-                          <Users
-                            className="w-3 h-3 mt-0.5 shrink-0"
-                            strokeWidth={2.5}
-                          />
-                          <span>{p.socialProofNote}</span>
-                        </div>
-                      )}
-                      {p.budgetNote && (
-                        <div
-                          className={
-                            "text-[10.5px] font-num " +
-                            (isActive ? "text-white/85" : "text-ink-500")
-                          }
-                        >
-                          💰 {p.budgetNote}
-                        </div>
-                      )}
-                    </div>
-                  )}
+                  {(() => {
+                    const sp = localizedField(
+                      p.socialProofNote,
+                      p.socialProofNoteEn,
+                      locale
+                    );
+                    const bn = localizedField(
+                      p.budgetNote,
+                      p.budgetNoteEn,
+                      locale
+                    );
+                    if (!sp && !bn) return null;
+                    return (
+                      <div
+                        className={
+                          "mt-3 pt-3 border-t space-y-1 " +
+                          (isActive ? "border-white/25" : "border-ink-100")
+                        }
+                      >
+                        {sp && (
+                          <div
+                            className={
+                              "flex items-start gap-1.5 text-[11px] leading-snug " +
+                              (isActive ? "text-white" : "text-ink-700")
+                            }
+                          >
+                            <Users
+                              className="w-3 h-3 mt-0.5 shrink-0"
+                              strokeWidth={2.5}
+                            />
+                            <span>{sp}</span>
+                          </div>
+                        )}
+                        {bn && (
+                          <div
+                            className={
+                              "text-[10.5px] font-num " +
+                              (isActive ? "text-white/85" : "text-ink-500")
+                            }
+                          >
+                            💰 {bn}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })()}
 
                   <div
                     className={
@@ -250,30 +255,13 @@ export function PersonaCourses({
             })}
         </div>
 
-        {/* 선택된 페르소나의 추천 콤보 — 결과 배너 (페이지 본체에서 별도 컴포넌트로 노출) */}
-        {active && active.recommendedCombo && (
-          <p className="mt-4 text-[11.5px] text-ink-500">
-            {isEn
-              ? "↓ See this profile's recommended combo in the results area."
-              : "↓ 결과 영역에서 이 페르소나의 추천 콤보를 확인하세요."}
-          </p>
-        )}
       </div>
     </section>
   );
 }
 
-// 카테고리가 페르소나에 매칭되는지 — 명시적 personas 우선, 없으면 targetTags 휴리스틱
+// 카테고리 ↔ 페르소나 매칭 — 카테고리의 명시적 personas 필드만 사용
+// (어드민 [매체 분류] 페이지에서 카테고리에 페르소나를 드래그·할당)
 export function matchesPersona(c: Category, p: Persona): boolean {
-  if (c.personas && c.personas.length > 0) {
-    if (!c.personas.includes(p.id)) return false;
-  } else {
-    if (!p.targetTags || p.targetTags.length === 0) return false;
-    const hasTag = p.targetTags.some((t) => (c.tags ?? []).includes(t));
-    if (!hasTag) return false;
-  }
-  if (p.budgetMax !== undefined) {
-    // minPrice는 enriched 단계에서 계산되므로 여기서는 체크 X (호출부에서 추가 필터)
-  }
-  return true;
+  return (c.personas ?? []).includes(p.id);
 }

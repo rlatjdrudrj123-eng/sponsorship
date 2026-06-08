@@ -65,6 +65,7 @@ type FormValues = {
   channel: Category["channel"];
   type: Category["type"];
   slug: string;
+  selectorId: string;
   shortDesc: string;
   shortDescEn: string;
   size: string;
@@ -165,6 +166,7 @@ export default function CategoryEditPage() {
       channel: "offline",
       type: "floor_plan",
       slug: "",
+      selectorId: "",
       shortDesc: "",
       shortDescEn: "",
       size: "",
@@ -190,6 +192,7 @@ export default function CategoryEditPage() {
           channel: data.channel,
           type: data.type,
           slug: data.slug ?? "",
+          selectorId: data.selectorId ?? "",
           shortDesc: data.shortDesc ?? "",
           shortDescEn: data.shortDescEn ?? "",
           size: data.size ?? "",
@@ -278,6 +281,7 @@ export default function CategoryEditPage() {
             channel: v.channel,
             type: v.type,
             slug: v.slug,
+            selectorId: v.selectorId ? v.selectorId : deleteField(),
             shortDesc: v.shortDesc ? v.shortDesc : deleteField(),
             shortDescEn: v.shortDescEn ? v.shortDescEn : deleteField(),
             size: v.size ? v.size : deleteField(),
@@ -454,6 +458,16 @@ export default function CategoryEditPage() {
                 <input
                   {...form.register("slug")}
                   className={inputCls(false) + " font-mono"}
+                />
+              </Field>
+              <Field
+                label="selectorId"
+                hint="진단 챗봇·패키지 구성 매칭용 안정 ID. 영문 snake_case 권장. 한 번 정하면 바꾸지 마세요."
+              >
+                <input
+                  {...form.register("selectorId")}
+                  className={inputCls(false) + " font-mono"}
+                  placeholder="예: ceiling_banner_hall_a"
                 />
               </Field>
               <Field

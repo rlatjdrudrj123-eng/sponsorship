@@ -1138,16 +1138,36 @@ function FilterPanel({
     LOCATION_OPTIONS.map((o) => [o.id, localized(o.label, locale)])
   );
   const isKorean = (s: string) => /[가-힯]/.test(s);
+  // 흔한 위치 한글 라벨의 자동 영문 치환 — 어드민이 labelEn 를 안 채워도 EN 사이트가 깨지지 않게.
+  const autoLocaleSwap = (label: string): string => {
+    return label
+      .replace(/홀\s*내부/g, "Inside hall")
+      .replace(/홀\s*외부/g, "Outside hall")
+      .replace(/로비/g, "Lobby")
+      .replace(/입구/g, "Entrance")
+      .replace(/메인/g, "Main")
+      .replace(/옥외/g, "Outdoor")
+      .replace(/온라인/g, "Online");
+  };
   // 노출 시점 필터는 제거됨. TIMING_OPTIONS 상수는 데이터 모델 (Category.timingOverride)
   // 호환을 위해 남겨두고 PDF/내부에서만 사용.
   const locationOptions = (taxonomy?.locationBuckets && taxonomy.locationBuckets.length > 0
-    ? taxonomy.locationBuckets.map((b) => ({
-        id: b.id as LocationTag,
-        label:
-          locale === "en" && isKorean(b.label) && locationFallbackById.has(b.id as LocationTag)
-            ? locationFallbackById.get(b.id as LocationTag)!
-            : b.label,
-      }))
+    ? taxonomy.locationBuckets.map((b) => {
+        if (locale === "en") {
+          // 1) 어드민이 명시한 labelEn → 2) 코드 기본값 → 3) 자동 치환 → 4) 원본
+          if (b.labelEn) return { id: b.id as LocationTag, label: b.labelEn };
+          const id = b.id as LocationTag;
+          if (locationFallbackById.has(id) && !isKorean(locationFallbackById.get(id)!)) {
+            return { id, label: locationFallbackById.get(id)! };
+          }
+          if (isKorean(b.label)) {
+            const swapped = autoLocaleSwap(b.label);
+            if (!isKorean(swapped)) return { id, label: swapped };
+          }
+          return { id, label: b.label };
+        }
+        return { id: b.id as LocationTag, label: b.label };
+      })
     : LOCATION_OPTIONS.map((o) => ({
         id: o.id,
         label: localized(o.label, locale),
@@ -1296,10 +1316,12 @@ function FilterPanel({
               ? buckets.map((b) => {
                   const fallback =
                     CATEGORY_TYPE_LABELS[b.id as keyof typeof CATEGORY_TYPE_LABELS]?.[locale];
-                  const label =
-                    locale === "en" && isKorean(b.label) && fallback
-                      ? fallback
-                      : b.label;
+                  // EN 시: 1) bucket.labelEn → 2) 코드 기본값 → 3) 원본 라벨
+                  let label = b.label;
+                  if (locale === "en") {
+                    if (b.labelEn) label = b.labelEn;
+                    else if (isKorean(b.label) && fallback) label = fallback;
+                  }
                   return { id: b.id, label };
                 })
               : TYPE_KEYS.map((t) => ({

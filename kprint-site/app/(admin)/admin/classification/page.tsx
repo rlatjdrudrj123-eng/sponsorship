@@ -35,6 +35,7 @@ type Tab = "persona" | "media" | "timing" | "location";
 type Bucket = {
   id: string;
   label: string;
+  labelEn?: string;
   description?: string;
 };
 
@@ -604,7 +605,7 @@ function BucketEditor({
                 setDraft(next);
               }}
               placeholder="ID"
-              className="px-2 py-1.5 rounded border border-ink-100 text-[11.5px] font-mono w-[160px] focus:border-ink-900 focus:outline-none"
+              className="px-2 py-1.5 rounded border border-ink-100 text-[11.5px] font-mono w-[140px] focus:border-ink-900 focus:outline-none"
             />
             <input
               type="text"
@@ -614,7 +615,18 @@ function BucketEditor({
                 next[i] = { ...next[i], label: e.target.value };
                 setDraft(next);
               }}
-              placeholder="라벨"
+              placeholder="라벨 (한글)"
+              className="flex-1 px-2 py-1.5 rounded border border-ink-100 text-[12px] focus:border-ink-900 focus:outline-none"
+            />
+            <input
+              type="text"
+              value={b.labelEn ?? ""}
+              onChange={(e) => {
+                const next = [...draft];
+                next[i] = { ...next[i], labelEn: e.target.value };
+                setDraft(next);
+              }}
+              placeholder="EN label"
               className="flex-1 px-2 py-1.5 rounded border border-ink-100 text-[12px] focus:border-ink-900 focus:outline-none"
             />
             <button
