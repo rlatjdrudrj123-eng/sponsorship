@@ -114,11 +114,14 @@ export function SlotPicker({ categoryId, eventId, subcategories, slots }: Props)
                         <div className="text-[10px] mt-0.5 font-bold opacity-90">
                           {isEn ? "Added" : "담김"}
                         </div>
-                      ) : slot.note ? (
-                        <div className="text-[10px] mt-0.5 truncate opacity-70">
-                          {slot.note}
-                        </div>
-                      ) : null}
+                      ) : (() => {
+                        const n = localizedField(slot.note, slot.noteEn, locale);
+                        return n ? (
+                          <div className="text-[10px] mt-0.5 truncate opacity-70">
+                            {n}
+                          </div>
+                        ) : null;
+                      })()}
                     </button>
                   );
                 })}
@@ -223,17 +226,20 @@ function SlotConfirmModal({
         </header>
 
         <div className="px-5 py-4 space-y-3">
-          {slot.note && (
-            <div className="flex items-start gap-2.5">
-              <MapPin className="w-4 h-4 text-brand-700 shrink-0 mt-0.5" />
-              <div>
-                <div className="text-[11px] text-ink-500 mb-0.5">
-                  {isEn ? "Location" : "위치"}
+          {(() => {
+            const n = localizedField(slot.note, slot.noteEn, locale);
+            return n ? (
+              <div className="flex items-start gap-2.5">
+                <MapPin className="w-4 h-4 text-brand-700 shrink-0 mt-0.5" />
+                <div>
+                  <div className="text-[11px] text-ink-500 mb-0.5">
+                    {isEn ? "Location" : "위치"}
+                  </div>
+                  <div className="text-[14px] text-ink-900">{n}</div>
                 </div>
-                <div className="text-[14px] text-ink-900">{slot.note}</div>
               </div>
-            </div>
-          )}
+            ) : null;
+          })()}
           <div>
             <div className="text-[11px] text-ink-500 mb-0.5">
               {isEn ? "Unit price" : "단가"}

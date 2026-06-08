@@ -221,6 +221,8 @@ export type Slot = {
   code: string;
   status: "available" | "sold" | "reserved";
   note?: string;
+  /** 영문 사이트용 메모. 비어있으면 note 폴백. */
+  noteEn?: string;
   order: number;
 };
 

@@ -1292,16 +1292,36 @@ function FilterPanel({
         </div>
       </FilterSection>
 
-      {/* (3) 매체 유형 — category.type 기반. CategoryType 9 종 중 실제 등장하는
-          유형만 옵션 노출 (taxonomy.mediaBuckets 대신 코드 상수 사용 — i18n 일관). */}
+      {/* (3) 매체 유형 — taxonomy.mediaBuckets (어드민 [분류 관리]) 우선,
+          없으면 코드 상수. id 가 CategoryType 인 케이스만 매칭되도록 화이트리스트.
+          EN 페이지에서 bucket.label 이 한국어면 CATEGORY_TYPE_LABELS 영문으로 폴백. */}
       <FilterSection title={locale === "en" ? "Media type" : "매체 유형"}>
         <CheckboxList
-          options={(Object.keys(CATEGORY_TYPE_LABELS) as Array<keyof typeof CATEGORY_TYPE_LABELS>)
-            .filter((t) => t !== "package") // 패키지는 별도 섹션으로 노출
-            .map((t) => ({
-              id: t,
-              label: CATEGORY_TYPE_LABELS[t][locale],
-            }))}
+          options={(() => {
+            const TYPE_KEYS = (Object.keys(CATEGORY_TYPE_LABELS) as Array<
+              keyof typeof CATEGORY_TYPE_LABELS
+            >).filter((t) => t !== "package");
+            const validIdSet: Set<string> = new Set(TYPE_KEYS);
+            const buckets =
+              taxonomy?.mediaBuckets && taxonomy.mediaBuckets.length > 0
+                ? taxonomy.mediaBuckets.filter((b) => validIdSet.has(b.id))
+                : null;
+            const opts = buckets
+              ? buckets.map((b) => {
+                  const fallback =
+                    CATEGORY_TYPE_LABELS[b.id as keyof typeof CATEGORY_TYPE_LABELS]?.[locale];
+                  const label =
+                    locale === "en" && isKorean(b.label) && fallback
+                      ? fallback
+                      : b.label;
+                  return { id: b.id, label };
+                })
+              : TYPE_KEYS.map((t) => ({
+                  id: t,
+                  label: CATEGORY_TYPE_LABELS[t][locale],
+                }));
+            return opts;
+          })()}
           active={activeMediaTypes}
           onToggle={(id) => {
             const next = new Set(activeMediaTypes);
