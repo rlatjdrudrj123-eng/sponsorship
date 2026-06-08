@@ -40,7 +40,6 @@ import type {
   Purpose,
   Subcategory,
 } from "@/lib/types";
-import { useCartStore } from "@/lib/cart/cartStore";
 import { useLocale, localeHref } from "@/lib/i18n/locale";
 
 type Step = "intro" | "q1" | "q2" | "q3" | "result";
@@ -483,16 +482,12 @@ function GoalsPanel({
   return (
     <div>
       <div className="mb-5">
-        <h3 className="text-[16px] font-bold text-ink-900 mb-1.5">
-          {isEn
-            ? "What matters most? (1st priority)"
-            : "가장 중요한 목표는? (1순위)"}
+        <div className="font-num text-[10.5px] uppercase tracking-[0.25em] text-brand-500 font-bold mb-1.5">
+          {isEn ? "Step 1 · Goal" : "STEP 1 · 목표"}
+        </div>
+        <h3 className="text-[18px] font-bold text-ink-900 leading-tight">
+          {isEn ? "1st priority goal" : "1순위 목표"}
         </h3>
-        <p className="text-[12px] text-ink-500 leading-snug">
-          {isEn
-            ? "Pick one — this is the main signal we'll use."
-            : "1개 선택. 추천의 핵심 신호로 쓰입니다."}
-        </p>
       </div>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mb-6">
         {PURPOSES.map((p) => (
@@ -520,16 +515,9 @@ function GoalsPanel({
       {primary && (
         <>
           <div className="mb-3">
-            <h3 className="text-[14px] font-bold text-ink-900 mb-1">
-              {isEn
-                ? "And one more? (2nd priority, optional)"
-                : "추가로 고려할 목표는? (2순위, 선택)"}
-            </h3>
-            <p className="text-[11.5px] text-ink-500 leading-snug">
-              {isEn
-                ? "Half weight — used for tie-breaking."
-                : "1순위의 절반 가중치. 결과 차별화에 사용."}
-            </p>
+            <div className="font-num text-[10px] uppercase tracking-[0.2em] text-ink-500 font-bold mb-1">
+              {isEn ? "2nd Priority (Optional)" : "2순위 (선택)"}
+            </div>
           </div>
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
             <button
@@ -542,7 +530,7 @@ function GoalsPanel({
                   : "bg-white text-ink-500 border-ink-100 hover:border-ink-300")
               }
             >
-              {isEn ? "Skip" : "건너뛰기"}
+              {isEn ? "Skip" : "지정 안 함"}
             </button>
             {PURPOSES.filter((p) => p !== primary).map((p) => (
               <button
@@ -578,20 +566,15 @@ function BudgetPanel({
   return (
     <div>
       <div className="mb-5">
-        <h3 className="text-[16px] font-bold text-ink-900 mb-1.5">
-          {isEn ? "What's your budget?" : "예산은 얼마나?"}
+        <div className="font-num text-[10.5px] uppercase tracking-[0.25em] text-brand-500 font-bold mb-1.5">
+          {isEn ? "Step 2 · Budget" : "STEP 2 · 예산"}
+        </div>
+        <h3 className="text-[18px] font-bold text-ink-900 leading-tight">
+          {isEn ? "Set executable budget" : "집행 가능 예산을 설정하세요"}
         </h3>
-        <p className="text-[12px] text-ink-500 leading-snug">
-          {isEn
-            ? "Drag to set. We'll match within this — and show what unlocks if you go higher."
-            : "슬라이더로 설정. 이 안에서 매칭하고, 한 단계 위로 가면 뭐가 열리는지도 알려드립니다."}
-        </p>
       </div>
 
       <div className="bg-brand-50 border border-brand-100 rounded-card p-5 text-center mb-5">
-        <div className="text-[10.5px] uppercase tracking-[0.25em] text-brand-700 font-bold font-num mb-2">
-          {isEn ? "Your budget" : "예산"}
-        </div>
         <div className="text-[28px] font-bold text-brand-700 font-num">
           {isEn ? `$${Math.round(value / 1000).toLocaleString()}` : `${(value / 10000).toLocaleString()}만원`}
         </div>
@@ -641,16 +624,14 @@ function MustHavePanel({
   return (
     <div>
       <div className="mb-5">
-        <h3 className="text-[16px] font-bold text-ink-900 mb-1.5">
+        <div className="font-num text-[10.5px] uppercase tracking-[0.25em] text-brand-500 font-bold mb-1.5">
+          {isEn ? "Step 3 · Requirements" : "STEP 3 · 추가 요건"}
+        </div>
+        <h3 className="text-[18px] font-bold text-ink-900 leading-tight">
           {isEn
-            ? "Anything you must include? (optional)"
-            : "꼭 잡고 싶은 게 있나요? (선택)"}
+            ? "Required conditions (optional, multi-select)"
+            : "포함이 필요한 요건을 선택하세요 (선택, 복수 가능)"}
         </h3>
-        <p className="text-[12px] text-ink-500 leading-snug">
-          {isEn
-            ? "Multiple OK. Each adds a soft requirement to the matching."
-            : "다중 선택 가능. 매칭에 소프트 조건으로 반영됩니다."}
-        </p>
       </div>
       <div className="space-y-2">
         {MUST_HAVE_OPTIONS.map((t) => {
@@ -753,12 +734,13 @@ function ResultPanel({
 }) {
   const purposeLabels = isEn ? PURPOSE_LABEL_EN : PURPOSE_LABEL_KO;
   const mustHaveLabels = isEn ? MUST_HAVE_LABEL_EN : MUST_HAVE_LABEL_KO;
-  const addSlot = useCartStore((s) => s.addSlot);
-  const addPackage = useCartStore((s) => s.addPackage);
 
-  // 추천 모두 카트 담기 (단품 — 카테고리의 최저가 슬롯 1개씩)
-  const [adding, setAdding] = useState(false);
-  const [added, setAdded] = useState(false);
+  // 전체 후보 풀 펼치기 토글
+  const [showAll, setShowAll] = useState(false);
+  // 외 후보 (추천 3개 제외 나머지)
+  const moreCandidates = result.candidatePool.filter(
+    (e) => !result.picks.some((p) => p.category.id === e.category.id)
+  );
 
   const fmtKRW = (n: number) =>
     isEn ? `$${Math.round(n / 1000).toLocaleString()}` : `${n.toLocaleString()}원`;
@@ -768,7 +750,7 @@ function ResultPanel({
       {/* 답변 영수증 */}
       <div className="bg-ink-50 rounded-card p-4 space-y-2">
         <div className="text-[10.5px] uppercase tracking-[0.2em] text-ink-500 font-bold font-num">
-          {isEn ? "Your answers" : "당신이 답한 것"}
+          {isEn ? "Your Inputs" : "입력 답변"}
         </div>
         <Receipt
           label={
@@ -782,8 +764,8 @@ function ResultPanel({
         <Receipt
           label={
             isEn
-              ? `≤ $${Math.round(answers.budgetKRW / 1000).toLocaleString()}`
-              : `${(answers.budgetKRW / 10000).toLocaleString()}만원 이내`
+              ? `Budget ≤ $${Math.round(answers.budgetKRW / 1000).toLocaleString()}`
+              : `예산 ${(answers.budgetKRW / 10000).toLocaleString()}만원 이내`
           }
           onEdit={onEditBudget}
           editLabel={isEn ? "Edit" : "수정"}
@@ -792,9 +774,10 @@ function ResultPanel({
           label={
             answers.mustHave.length === 0
               ? isEn
-                ? "no specific must-haves"
-                : "특정 필수 조건 없음"
-              : answers.mustHave.map((t) => mustHaveLabels[t]).join(" · ")
+                ? "Requirements: none"
+                : "추가 요건: 없음"
+              : (isEn ? "Requirements: " : "추가 요건: ") +
+                answers.mustHave.map((t) => mustHaveLabels[t]).join(" · ")
           }
           onEdit={onEditMustHave}
           editLabel={isEn ? "Edit" : "수정"}
@@ -804,7 +787,8 @@ function ResultPanel({
       {/* 폴백 안내 (필요 시) */}
       {result.relaxNotes.length > 0 && (
         <div className="bg-amber-50 border border-amber-200 rounded-btn px-3 py-2 text-[11.5px] text-amber-800 leading-snug">
-          ⓘ {result.relaxNotes.join(". ")}
+          ⓘ {isEn ? "Constraint relaxation applied. " : "조건 일부 완화 적용. "}
+          {result.relaxNotes.join(" · ")}
         </div>
       )}
 
@@ -812,38 +796,65 @@ function ResultPanel({
       <div>
         <div className="flex items-baseline justify-between mb-3">
           <h3 className="text-[15px] font-bold text-ink-900">
-            {isEn ? "Singles that fit you" : "당신에게 맞는 단품"}
+            {isEn ? "Recommended Items" : "추천 단품"}
           </h3>
           <div className="text-[11px] text-ink-500 font-num">
-            {result.candidatePool.length} {isEn ? "candidates" : "후보"}
+            {isEn
+              ? `${result.candidatePool.length} match · top ${result.picks.length}`
+              : `매칭 ${result.candidatePool.length}개 · 상위 ${result.picks.length}개`}
           </div>
         </div>
 
         {result.picks.length === 0 ? (
           <div className="text-center py-8 text-[13px] text-ink-500 bg-ink-50 rounded-card">
             {isEn
-              ? "No singles match — try widening the budget."
-              : "조건에 맞는 단품이 없어요. 예산을 살짝 올려보세요."}
+              ? "No matches within constraints. Adjust the budget or requirements."
+              : "조건 내 매칭 없음. 예산·요건을 조정하세요."}
           </div>
         ) : (
           <ul className="space-y-2">
             {result.picks.map((p) => (
-              <RecCard
-                key={p.category.id}
-                entry={p}
-                isEn={isEn}
-                eventId={eventId}
-              />
+              <RecCard key={p.category.id} entry={p} isEn={isEn} />
             ))}
             <li className="flex items-baseline justify-between border-t border-ink-100 pt-2.5 text-[12px]">
               <span className="text-ink-500">
-                {isEn ? "Singles total" : "단품 합계"}
+                {isEn ? "Subtotal" : "단품 합계"}
               </span>
               <span className="font-num font-bold text-ink-900">
-                {fmtKRW(result.picksTotal)} <span className="text-ink-400 font-normal">/ {fmtKRW(answers.budgetKRW)}</span>
+                {fmtKRW(result.picksTotal)}
+                <span className="text-ink-400 font-normal">
+                  {" / "}
+                  {fmtKRW(answers.budgetKRW)}
+                </span>
               </span>
             </li>
           </ul>
+        )}
+
+        {/* 전체 후보 펼치기 */}
+        {moreCandidates.length > 0 && (
+          <div className="mt-3">
+            <button
+              type="button"
+              onClick={() => setShowAll((v) => !v)}
+              className="text-[11.5px] text-ink-500 hover:text-ink-900 font-semibold underline-offset-2 hover:underline"
+            >
+              {showAll
+                ? isEn
+                  ? "Collapse"
+                  : "접기"
+                : isEn
+                ? `View ${moreCandidates.length} more candidates`
+                : `매칭 후보 ${moreCandidates.length}개 더 보기`}
+            </button>
+            {showAll && (
+              <ul className="mt-2 space-y-1.5">
+                {moreCandidates.slice(0, 10).map((p) => (
+                  <RecCard key={p.category.id} entry={p} isEn={isEn} compact />
+                ))}
+              </ul>
+            )}
+          </div>
         )}
       </div>
 
@@ -858,7 +869,7 @@ function ResultPanel({
       )}
 
       {/* 액션 버튼들 */}
-      <div className="flex flex-wrap gap-2 pt-2 border-t border-ink-100">
+      <div className="flex items-center gap-2 pt-2 border-t border-ink-100">
         <Link
           href={localeHref(eventId, "/contact", isEn ? "en" : "ko")}
           className="px-4 py-2.5 rounded-pill bg-brand-500 text-white text-[12.5px] font-bold hover:bg-brand-700 hover:shadow-glow-sm flex items-center gap-1.5 transition-all"
@@ -866,41 +877,6 @@ function ResultPanel({
           <FileText className="w-3.5 h-3.5" />
           {isEn ? "Request quote" : "이대로 견적 요청"}
         </Link>
-        <button
-          type="button"
-          disabled={adding || added || result.picks.length === 0}
-          onClick={async () => {
-            if (added || result.picks.length === 0) return;
-            setAdding(true);
-            // 각 카테고리 최저가 슬롯 1개씩 카트에 담음
-            for (const p of result.picks) {
-              const cat = p.category;
-              // priceKRW > 0 인 가용 슬롯 찾기 (Subcategory · Slot 데이터 필요한데 여기 없음)
-              // 단순화: 카트는 slot 단위지만 진단 결과 카드는 카테고리 단위라
-              // "카테고리 상세 페이지에서 본인이 골라 담기" 흐름이 더 정확.
-              // 따라서 여기는 견적 요청 CTA 만 강조하고, 카트 담기는 카테고리 클릭으로 유도.
-              void cat;
-              void addSlot;
-              void addPackage;
-            }
-            setAdding(false);
-            setAdded(true);
-          }}
-          className={
-            "px-4 py-2.5 rounded-pill text-[12.5px] font-semibold flex items-center gap-1.5 transition-colors " +
-            (added
-              ? "bg-ink-100 text-ink-500"
-              : "bg-white border border-ink-100 text-ink-700 hover:border-ink-300")
-          }
-        >
-          {added
-            ? isEn
-              ? "Saved"
-              : "저장됨"
-            : isEn
-            ? "View all candidates"
-            : "전체 후보 보기"}
-        </button>
         <button
           type="button"
           onClick={onClose}
@@ -941,35 +917,55 @@ function Receipt({
 function RecCard({
   entry,
   isEn,
-  eventId,
+  compact = false,
 }: {
   entry: RecEntry;
   isEn: boolean;
-  eventId: string;
+  compact?: boolean;
 }) {
   const c = entry.category;
   const name = isEn && c.name.en ? c.name.en : c.name.ko;
   const fmt = (n: number) =>
     isEn ? `$${Math.round(n / 1000).toLocaleString()}` : `${n.toLocaleString()}원`;
+  // 답 인용 reason — 매칭 신호가 약하면(폴백) 숨김
+  const reason = entry.reason && !entry.reason.includes("부합하는 후보")
+    ? entry.reason
+    : null;
+
+  if (compact) {
+    return (
+      <li className="bg-white border border-ink-100 rounded-btn px-3 py-2 flex items-baseline justify-between gap-2">
+        <span className="text-[12px] text-ink-700 truncate">{name}</span>
+        <span className="text-[11px] font-num text-ink-500 shrink-0">
+          {entry.minPriceKRW > 0
+            ? fmt(entry.minPriceKRW)
+            : isEn
+            ? "Contact"
+            : "별도 문의"}
+        </span>
+      </li>
+    );
+  }
 
   return (
-    <li className="bg-white border border-ink-100 rounded-card hover:border-brand-300 transition-colors">
-      <Link
-        href={localeHref(eventId, `/sponsorships/${c.slug}`, isEn ? "en" : "ko")}
-        className="block px-4 py-3"
-      >
-        <div className="flex items-baseline justify-between gap-3 mb-1">
-          <span className="text-[13.5px] font-bold text-ink-900 truncate">
-            {name}
-          </span>
-          <span className="text-[12.5px] font-num font-bold text-ink-900 shrink-0">
-            {entry.minPriceKRW > 0 ? fmt(entry.minPriceKRW) : (isEn ? "Contact" : "별도 문의")}
-          </span>
-        </div>
+    <li className="bg-white border border-ink-100 rounded-card px-4 py-3">
+      <div className="flex items-baseline justify-between gap-3 mb-0.5">
+        <span className="text-[13.5px] font-bold text-ink-900 truncate">
+          {name}
+        </span>
+        <span className="text-[12.5px] font-num font-bold text-ink-900 shrink-0">
+          {entry.minPriceKRW > 0
+            ? fmt(entry.minPriceKRW)
+            : isEn
+            ? "Contact"
+            : "별도 문의"}
+        </span>
+      </div>
+      {reason && (
         <div className="text-[11.5px] text-brand-700 leading-snug">
-          └ {entry.reason}
+          └ {reason}
         </div>
-      </Link>
+      )}
     </li>
   );
 }

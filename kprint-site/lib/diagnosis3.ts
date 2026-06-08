@@ -421,11 +421,7 @@ function buildReason(
     parts.push(`${bd.mustHaveMet.join("·")} 조건 충족`);
   }
 
-  // 폴백 — 무엇이라도 띄움
-  if (parts.length === 0) {
-    parts.push("답변에 부합하는 후보");
-  }
-
+  // 인용할 매칭 신호가 없으면 빈 문자열 — UI 가 줄을 숨김.
   return parts.join(" · ");
 }
 
