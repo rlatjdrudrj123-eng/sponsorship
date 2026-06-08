@@ -22,6 +22,7 @@ import {
   Maximize2,
   RotateCcw,
   Search,
+  Sparkles,
   X,
 } from "lucide-react";
 import { getDb } from "@/lib/firebase/firestore";
@@ -450,127 +451,7 @@ export default function SponsorshipsPage() {
               <LocaleSwitch />
             </div>
 
-            {/* 진단 챗봇은 우하단 floating 버튼(DiagnosisFab) 으로 이동. 메인 영역 침범 안 함. */}
-            <section className="hidden">
-              <div>
-                <div>
-                  {/* 좌측 — 안내 카피 (비즈니스 포멀) */}
-                  <div>
-                    <div className="font-num text-[11px] uppercase tracking-[0.3em] text-brand-500 font-bold flex items-center gap-2 mb-5">
-                      <span className="w-6 h-px bg-brand-500" />
-                      Sponsorship Advisor
-                    </div>
-                    <h2 className="text-[34px] md:text-[52px] font-bold text-ink-900 leading-[1.04] tracking-tight">
-                      참가 목표 기반
-                      <br />
-                      <span className="text-brand-500">맞춤 스폰서십 진단</span>
-                    </h2>
-                    <p className="text-[14px] md:text-[16px] text-ink-700 mt-6 leading-[1.7] max-w-md">
-                      목적·부스 규모·예산·검토 단계 4문항으로 가장 효율 높은
-                      노출 조합을 즉시 제안합니다. 클릭 응답 기반,
-                      소요 시간 약 1분.
-                    </p>
-                    <ul className="mt-7 space-y-2.5 text-[13px] text-ink-700 leading-relaxed">
-                      {[
-                        "목적별 채널 매칭 (런칭·발굴·관계강화·인지도)",
-                        "예산 상한에 맞춰 가격 초과 매체 자동 필터",
-                        "검토 단계에 따라 카드형·비교표 결과",
-                      ].map((t) => (
-                        <li key={t} className="flex items-start gap-2">
-                          <span className="w-1.5 h-1.5 rounded-full bg-brand-500 mt-2 shrink-0" />
-                          <span>{t}</span>
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-
-                  {/* 우측 — 채팅 카드 (첫 질문 노출, 칩 클릭 = 모달 진입) */}
-                  <div className="bg-surface border border-ink-100 rounded-card shadow-card overflow-hidden">
-                    <div className="px-5 py-3 bg-ink-50 border-b border-ink-100 flex items-center gap-2.5">
-                      <div className="w-8 h-8 rounded-full bg-ink-900 grid place-items-center text-white text-[11px] font-bold tracking-wider">
-                        SA
-                      </div>
-                      <div className="text-[12.5px] text-ink-700 font-semibold">
-                        Sponsorship Advisor
-                        <span className="ml-2 inline-flex items-center gap-1 text-[10.5px] font-num text-ink-500">
-                          <span
-                            className="w-1.5 h-1.5 rounded-full"
-                            style={{ background: "#10B981" }}
-                          />
-                          준비됨
-                        </span>
-                      </div>
-                    </div>
-                    <div className="p-5 md:p-6 space-y-4">
-                      <div className="flex items-start gap-2.5">
-                        <div className="w-8 h-8 rounded-full bg-ink-900 grid place-items-center text-white text-[10px] font-bold shrink-0 tracking-wider">
-                          SA
-                        </div>
-                        <div className="bg-ink-50 rounded-2xl rounded-tl-sm px-4 py-2.5 text-[13.5px] text-ink-900 max-w-[88%] leading-relaxed">
-                          K-PRINT 2026 사무국입니다. 귀사의 참가 목표·예산·필수 조건을
-                          바탕으로 가장 효율이 높은 스폰서십 구성을 검토해
-                          드립니다. 3개 항목, 약 1분이 소요됩니다.
-                        </div>
-                      </div>
-                      <div className="flex items-start gap-2.5">
-                        <div className="w-8 h-8 rounded-full bg-ink-900 grid place-items-center text-white text-[10px] font-bold shrink-0 tracking-wider">
-                          SA
-                        </div>
-                        <div className="bg-ink-50 rounded-2xl rounded-tl-sm px-4 py-2.5 text-[13.5px] text-ink-900 max-w-[88%] leading-relaxed">
-                          이번 K-PRINT 참가, 가장 우선하는 목표 하나를 선택해주세요.
-                        </div>
-                      </div>
-
-                      <div className="pl-10 grid grid-cols-2 gap-2">
-                        {([
-                          {
-                            label: "부스 트래픽 유도",
-                            value: "traffic_driver" as Purpose,
-                            hint: "현장 동선 노출",
-                          },
-                          {
-                            label: "브랜드 인지도",
-                            value: "brand_awareness" as Purpose,
-                            hint: "대형 노출 채널",
-                          },
-                          {
-                            label: "바이어 도달",
-                            value: "buyer_reach" as Purpose,
-                            hint: "타겟·해외 직접",
-                          },
-                          {
-                            label: "행사 후 콘텐츠 자산",
-                            value: "post_asset" as Purpose,
-                            hint: "인터뷰·SNS",
-                          },
-                        ]).map((c) => (
-                          <button
-                            key={c.value}
-                            type="button"
-                            onClick={() => {
-                              setAiChatInitial(c.value);
-                              setAiChatOpen(true);
-                            }}
-                            className="w-full text-left px-3.5 py-3 rounded-2xl border-[1.5px] border-ink-100 hover:border-brand-500 hover:bg-brand-50 transition-colors group"
-                          >
-                            <div className="text-[13px] font-semibold text-ink-900 leading-tight">
-                              {c.label}
-                            </div>
-                            <div className="text-[11.5px] text-ink-500 mt-0.5">
-                              {c.hint}
-                            </div>
-                          </button>
-                        ))}
-                      </div>
-
-                      <div className="text-center text-[11px] text-ink-400 pt-2 font-num tracking-wider">
-                        STEP 1 / 3 · 목표
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </section>
+            {/* 1분 진단은 우하단 floating 버튼(Sparkles) 으로 진입. 별도 인라인 섹션 없음. */}
 
             {/* 카드(필터로 보기 BETA) 모드 상단 sticky 바 — 슬라이드 모드 헤더와 같은 톤
                 (bg-canvas/95, h-14, max-w-7xl) 으로 통일. 좌측 홈/카운트, 우측 보조+모드 토글. */}
@@ -841,23 +722,17 @@ export default function SponsorshipsPage() {
         </div>
       )}
 
-      {/* 우하단 floating 진단 챗봇 — z-50. 모바일·데스크톱 모두 라벨 노출(사용자가 SA만 보고
-          뭔지 모름). 구좌 선택 영역은 정보 패널 상단으로 올려서 시각 충돌 없음. */}
+      {/* 우하단 floating 진단 CTA — 1분 진단 모달 트리거. */}
       {!aiChatOpen && (
         <button
           type="button"
           onClick={() => setAiChatOpen(true)}
-          className="fixed bottom-5 right-5 md:bottom-7 md:right-7 z-50 group flex items-center gap-2 pl-2.5 pr-3.5 py-2.5 md:pl-3 md:pr-4 md:py-3 rounded-pill bg-ink-900 text-white shadow-glow hover:bg-brand-500 hover:text-ink-900 transition-colors"
-          title={locale === "en" ? "1-min sponsorship advisor" : "1분 맞춤 진단"}
+          className="fixed bottom-5 right-5 md:bottom-7 md:right-7 z-50 group flex items-center gap-2 pl-3 pr-4 py-2.5 md:pl-3.5 md:pr-5 md:py-3 rounded-pill bg-brand-500 text-white shadow-glow hover:bg-brand-700 transition-all hover:scale-105"
+          title={locale === "en" ? "1-minute match" : "1분 맞춤 진단"}
         >
-          <span
-            className="w-6 h-6 md:w-7 md:h-7 rounded-full bg-white/15 grid place-items-center text-[9.5px] md:text-[10.5px] font-bold tracking-wider shrink-0"
-            aria-hidden
-          >
-            SA
-          </span>
-          <span className="text-[11.5px] md:text-[12.5px] font-bold whitespace-nowrap">
-            {locale === "en" ? "1-min advisor" : "1분 맞춤 진단"}
+          <Sparkles className="w-4 h-4 md:w-[18px] md:h-[18px] shrink-0" />
+          <span className="text-[12px] md:text-[13px] font-bold whitespace-nowrap">
+            {locale === "en" ? "1-min match" : "1분 맞춤 진단"}
           </span>
         </button>
       )}
