@@ -17,7 +17,9 @@ type FormValues = {
     nameKo: string;
     nameEn: string;
     dateRange: string;
+    dateRangeEn: string;
     venue: string;
+    venueEn: string;
     applicationDeadline: string; // yyyy-mm-dd
   };
   kv: {
@@ -73,7 +75,9 @@ export default function SettingsPage() {
         nameKo: "",
         nameEn: "",
         dateRange: "",
+        dateRangeEn: "",
         venue: "",
+        venueEn: "",
         applicationDeadline: "",
       },
       kv: { desktopUrl: "", mobileUrl: "", overlayText: "" },
@@ -113,7 +117,9 @@ export default function SettingsPage() {
           nameKo: data.event?.nameKo ?? "",
           nameEn: data.event?.nameEn ?? "",
           dateRange: data.event?.dateRange ?? "",
+          dateRangeEn: data.event?.dateRangeEn ?? "",
           venue: data.event?.venue ?? "",
+          venueEn: data.event?.venueEn ?? "",
           applicationDeadline: data.event?.applicationDeadline
             ? data.event.applicationDeadline.toDate().toISOString().slice(0, 10)
             : "",
@@ -237,7 +243,9 @@ export default function SettingsPage() {
           nameKo: v.event.nameKo,
           nameEn: v.event.nameEn,
           dateRange: v.event.dateRange,
+          dateRangeEn: v.event.dateRangeEn,
           venue: v.event.venue,
+          venueEn: v.event.venueEn,
           applicationDeadline: v.event.applicationDeadline
             ? Timestamp.fromDate(new Date(v.event.applicationDeadline))
             : (Timestamp.fromDate(new Date()) as never),
@@ -363,17 +371,31 @@ export default function SettingsPage() {
           <Field label="행사명 (영문)">
             <input {...form.register("event.nameEn")} className={inputCls()} />
           </Field>
-          <Field label="일정 표시">
+          <Field label="일정 표시 (한글)">
             <input
               {...form.register("event.dateRange")}
               placeholder="2026.08.19 — 22"
               className={inputCls()}
             />
           </Field>
-          <Field label="장소">
+          <Field label="일정 표시 (영문)">
+            <input
+              {...form.register("event.dateRangeEn")}
+              placeholder="Aug 19 (Wed) – 22 (Sat), 2026"
+              className={inputCls()}
+            />
+          </Field>
+          <Field label="장소 (한글)">
             <input
               {...form.register("event.venue")}
               placeholder="KINTEX 제2전시장 7,8홀"
+              className={inputCls()}
+            />
+          </Field>
+          <Field label="장소 (영문)">
+            <input
+              {...form.register("event.venueEn")}
+              placeholder="KINTEX Hall 7, 8"
               className={inputCls()}
             />
           </Field>

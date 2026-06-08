@@ -35,11 +35,19 @@ export function Footer({ settings }: { settings: SiteSettings | null }) {
               </span>
             </div>
             <p className="text-ink-300 leading-relaxed text-[12.5px]">
-              {settings?.event.dateRange ?? ""}
+              {localizedField(
+                settings?.event.dateRange,
+                settings?.event.dateRangeEn,
+                locale
+              )}
               {settings?.event.venue ? (
                 <>
                   <br />
-                  {settings.event.venue}
+                  {localizedField(
+                    settings.event.venue,
+                    settings.event.venueEn,
+                    locale
+                  )}
                 </>
               ) : null}
             </p>

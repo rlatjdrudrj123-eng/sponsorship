@@ -323,7 +323,11 @@ export type SiteSettings = {
     nameKo: string;
     nameEn: string;
     dateRange: string;
+    /** 영문 사이트용 일정 표기. 비어있으면 dateRange 폴백. */
+    dateRangeEn?: string;
     venue: string;
+    /** 영문 사이트용 장소 표기. 비어있으면 venue 폴백. */
+    venueEn?: string;
     applicationDeadline: Timestamp;
   };
 
