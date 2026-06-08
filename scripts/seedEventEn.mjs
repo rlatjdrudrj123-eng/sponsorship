@@ -36,11 +36,13 @@ await ref.set(
   {
     event: {
       ...event,
+      // KINTEX 제2전시장 = Hall 2 (실제 행사장)
+      venue: "킨텍스 제2전시장",
+      venueEn: "KINTEX Hall 2",
       dateRangeEn: event.dateRangeEn || "Aug 26 (Wed) – 28 (Fri), 2026",
-      venueEn: event.venueEn || "KINTEX Hall 1",
     },
   },
   { merge: true }
 );
-console.log("✓ event.dateRangeEn / venueEn 시드 완료");
+console.log("✓ event venue/dateRange 갱신 완료");
 process.exit(0);

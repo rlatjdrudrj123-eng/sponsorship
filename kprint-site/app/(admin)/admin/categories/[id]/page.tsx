@@ -613,14 +613,83 @@ export default function CategoryEditPage() {
             </div>
 
             <div className="mt-4">
-              <div className="flex items-center gap-1.5 mb-2 flex-wrap">
-                <span className="text-[12px] font-semibold text-ink-700 uppercase tracking-wide">
-                  태그
-                </span>
-                <WhereBadges where={["slide-tag", "card"]} />
-                <span className="text-[11px] text-ink-500">
-                  — 채널 + 앞 2개 태그가 슬라이드/카드 해시태그로 노출
-                </span>
+              <div className="flex items-start gap-3 mb-2 flex-wrap">
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  <span className="text-[12px] font-semibold text-ink-700 uppercase tracking-wide">
+                    태그
+                  </span>
+                  <WhereBadges where={["slide-tag", "card"]} />
+                  <span className="text-[11px] text-ink-500">
+                    — 채널 + 앞 2개 태그가 슬라이드/카드 해시태그로 노출
+                  </span>
+                </div>
+                {(() => {
+                  // 자동 제안: 이 카테고리의 personas 와 카테고리를 포함한 패키지 이름
+                  // 으로부터 normalize (소문자·언더바·공백 제거) 매칭되는 태그 찾기.
+                  const norm = (s: string) =>
+                    s.toLowerCase().replace(/[\s_·]/g, "");
+                  const targets: string[] = [];
+                  for (const pid of category.personas ?? []) {
+                    const p = allPersonas.find((x) => x.id === pid);
+                    if (p) {
+                      targets.push(norm(p.title));
+                      if (p.titleEn) targets.push(norm(p.titleEn));
+                    }
+                  }
+                  for (const pkg of allPackages) {
+                    if (
+                      (pkg.includedItems ?? []).some(
+                        (it) => it.categoryId === id
+                      )
+                    ) {
+                      targets.push(norm(pkg.name.ko));
+                      if (pkg.name.en) targets.push(norm(pkg.name.en));
+                      targets.push(norm(pkg.code));
+                    }
+                  }
+                  const suggested = taxonomyTags
+                    .filter((t) =>
+                      targets.some(
+                        (tgt) =>
+                          tgt && (norm(t.label).includes(tgt) || tgt.includes(norm(t.label)))
+                      )
+                    )
+                    .map((t) => t.id);
+                  if (suggested.length === 0) return null;
+                  const missing = suggested.filter((s) => !selectedTags.includes(s));
+                  if (missing.length === 0) {
+                    return (
+                      <span className="text-[11px] text-brand-700 font-semibold">
+                        ✓ 자동 제안 모두 선택됨
+                      </span>
+                    );
+                  }
+                  return (
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        const next = Array.from(
+                          new Set([...selectedTags, ...suggested])
+                        );
+                        setSelectedTags(next);
+                        try {
+                          await updateDoc(doc(getDb(), "categories", id), {
+                            tags: next,
+                            updatedAt: Timestamp.fromDate(new Date()),
+                          });
+                        } catch (e) {
+                          alert(
+                            `태그 갱신 실패: ${e instanceof Error ? e.message : String(e)}`
+                          );
+                        }
+                      }}
+                      className="ml-auto px-3 py-1.5 rounded-btn bg-brand-500 text-white text-[11.5px] font-bold hover:bg-brand-700 shrink-0"
+                      title="페르소나·포함 패키지 이름으로 매칭되는 태그를 자동 선택"
+                    >
+                      자동 제안 추가 ({missing.length}개)
+                    </button>
+                  );
+                })()}
               </div>
               {taxonomyTags.length === 0 ? (
                 <div className="text-[12px] text-ink-500 bg-ink-50 rounded-btn px-3 py-2">
@@ -1313,48 +1382,108 @@ function ParticipantViewEditor({
 
       <hr className="border-ink-100" />
 
-      {/* inPackages 크로스 표시 */}
-      <div>
-        <div className="text-[13px] font-semibold text-ink-900 mb-1">
-          이 카테고리를 포함하는 패키지
+      {/* inPackages — 자동 계산 (현재 패키지 includedItems 기반) + 수동 오버라이드. */}
+      <InPackagesEditor
+        category={category}
+        allPackages={allPackages}
+        inPackages={inPackages}
+        onUpdate={onUpdate}
+      />
+    </div>
+  );
+}
+
+function InPackagesEditor({
+  category,
+  allPackages,
+  inPackages,
+  onUpdate,
+}: {
+  category: Category;
+  allPackages: Package[];
+  inPackages: string[];
+  onUpdate: (patch: Partial<Category>) => Promise<void>;
+}) {
+  // 패키지의 includedItems[].categoryId 를 스캔해 "현재 이 카테고리를 포함한 패키지" 자동 산출.
+  const autoDerived = allPackages
+    .filter((pkg) =>
+      (pkg.includedItems ?? []).some((it) => it.categoryId === category.id)
+    )
+    .map((pkg) => pkg.id);
+
+  const autoSet = new Set(autoDerived);
+  const storedSet = new Set(inPackages);
+  const isInSync =
+    autoSet.size === storedSet.size &&
+    autoDerived.every((id) => storedSet.has(id));
+
+  return (
+    <div>
+      <div className="flex items-start justify-between gap-3 mb-1 flex-wrap">
+        <div>
+          <div className="text-[13px] font-semibold text-ink-900">
+            이 카테고리를 포함하는 패키지
+          </div>
+          <p className="text-[11px] text-ink-500 mt-0.5 leading-snug max-w-md">
+            슬롯·카드에 &quot;이 패키지에 포함됨&quot; 크로스 라벨 노출. 패키지의
+            includedItems 를 기준으로 자동 계산되지만, 직접 토글로 보정 가능.
+          </p>
         </div>
-        <p className="text-[11px] text-ink-500 mb-3">
-          슬롯·카드에 &quot;이 패키지에 포함됨&quot; 크로스 라벨 노출. 패키지 매력 살리기용.
-        </p>
-        {allPackages.length === 0 ? (
-          <div className="text-[12px] text-ink-500 bg-ink-50 rounded-btn px-3 py-2.5">
-            이 행사에 등록된 패키지가 없습니다.
-          </div>
-        ) : (
-          <div className="flex flex-wrap gap-1.5">
-            {allPackages.map((pkg) => {
-              const on = inPackages.includes(pkg.id);
-              return (
-                <button
-                  key={pkg.id}
-                  type="button"
-                  onClick={() => {
-                    const next = on
-                      ? inPackages.filter((x) => x !== pkg.id)
-                      : [...inPackages, pkg.id];
-                    onUpdate({ inPackages: next });
-                  }}
-                  className={
-                    "px-2.5 py-1 rounded-full text-[11px] border transition-colors " +
-                    (on
-                      ? "bg-brand-50 border-brand-500 text-brand-700 font-semibold"
-                      : "bg-white border-ink-100 text-ink-700 hover:border-ink-300")
-                  }
-                  title={pkg.code}
-                >
-                  {pkg.tier === "signature" ? "★ " : ""}
-                  {pkg.name.ko}
-                </button>
-              );
-            })}
-          </div>
+        {!isInSync && (
+          <button
+            type="button"
+            onClick={() => onUpdate({ inPackages: autoDerived })}
+            className="px-3 py-1.5 rounded-btn bg-brand-500 text-white text-[11.5px] font-bold hover:bg-brand-700 shrink-0"
+          >
+            현재 데이터로 자동 갱신 ({autoDerived.length}개)
+          </button>
+        )}
+        {isInSync && autoDerived.length > 0 && (
+          <span className="text-[11px] text-brand-700 font-semibold shrink-0">
+            ✓ 자동 계산과 일치
+          </span>
         )}
       </div>
+      {allPackages.length === 0 ? (
+        <div className="text-[12px] text-ink-500 bg-ink-50 rounded-btn px-3 py-2.5">
+          이 행사에 등록된 패키지가 없습니다.
+        </div>
+      ) : (
+        <div className="flex flex-wrap gap-1.5 mt-3">
+          {allPackages.map((pkg) => {
+            const on = inPackages.includes(pkg.id);
+            const isAuto = autoSet.has(pkg.id);
+            return (
+              <button
+                key={pkg.id}
+                type="button"
+                onClick={() => {
+                  const next = on
+                    ? inPackages.filter((x) => x !== pkg.id)
+                    : [...inPackages, pkg.id];
+                  onUpdate({ inPackages: next });
+                }}
+                className={
+                  "px-2.5 py-1 rounded-full text-[11px] border transition-colors " +
+                  (on
+                    ? "bg-brand-50 border-brand-500 text-brand-700 font-semibold"
+                    : "bg-white border-ink-100 text-ink-700 hover:border-ink-300")
+                }
+                title={`${pkg.code}${isAuto ? " — includedItems 에 이 카테고리 포함" : ""}`}
+              >
+                {pkg.tier === "signature" ? "★ " : ""}
+                {pkg.name.ko}
+                {isAuto && <span className="ml-1 text-[9px] text-brand-500">●</span>}
+              </button>
+            );
+          })}
+        </div>
+      )}
+      {autoDerived.length > 0 && (
+        <div className="mt-2 text-[10.5px] text-ink-400">
+          ● = includedItems 자동 매칭 ({autoDerived.length}개)
+        </div>
+      )}
     </div>
   );
 }

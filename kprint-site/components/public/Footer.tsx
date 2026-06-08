@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { Download, FileText, Layers, Mail, MapPin, Phone } from "lucide-react";
+import { Download, FileText, Layers, Mail, Phone } from "lucide-react";
 import type { SiteSettings } from "@/lib/types";
 import { useLocale, localizedField } from "@/lib/i18n/locale";
 import { getFullPdfHref, isDirectPdfHref } from "@/lib/pdf";
@@ -86,19 +86,6 @@ export function Footer({ settings }: { settings: SiteSettings | null }) {
                   </a>
                 </li>
               )}
-              {(() => {
-                const addr = localizedField(
-                  settings?.contact.address,
-                  settings?.contact.addressEn,
-                  locale
-                );
-                return addr ? (
-                  <li className="flex items-start gap-2 text-[12px] text-ink-500">
-                    <MapPin className="w-3.5 h-3.5 mt-0.5 shrink-0" />
-                    <span>{addr}</span>
-                  </li>
-                ) : null;
-              })()}
             </ul>
           </div>
 
@@ -168,26 +155,29 @@ export function Footer({ settings }: { settings: SiteSettings | null }) {
           </div>
         </div>
 
-        {/* 하단 메타 — 회사 정보 + 카피라이트 */}
+        {/* 하단 메타 — 회사 법적 정보 (사업자등록·대표이사·주소). 주소는 1회만. */}
         <div className="mt-12 pt-6 border-t border-white/10 grid md:grid-cols-2 gap-4 text-[11px] text-ink-500">
           <div className="space-y-1">
             <div className="text-ink-300 font-bold">
               {isEn ? "Korea E&EX Co., Ltd." : "㈜한국이앤엑스 (Korea E&EX)"}
             </div>
             <div className="font-num text-ink-500/80 leading-relaxed">
-              {isEn ? (
-                <>
-                  Biz Reg. No. 120-81-813111 · CEO Jeong-jo Kim
-                  <br />
-                  Trade Tower #2001, 511 Yeongdong-daero, Gangnam-gu, Seoul
-                </>
-              ) : (
-                <>
-                  사업자등록번호 120-81-813111 · 대표이사 김정조
-                  <br />
-                  서울특별시 강남구 영동대로 511 트레이드타워 2001호
-                </>
-              )}
+              {isEn
+                ? "Biz Reg. No. 120-81-813111 · CEO Jeong-jo Kim"
+                : "사업자등록번호 120-81-813111 · 대표이사 김정조"}
+              {(() => {
+                const addr = localizedField(
+                  settings?.contact.address,
+                  settings?.contact.addressEn,
+                  locale
+                );
+                return addr ? (
+                  <>
+                    <br />
+                    {addr}
+                  </>
+                ) : null;
+              })()}
             </div>
           </div>
           <div className="md:text-right flex md:items-end md:justify-end">

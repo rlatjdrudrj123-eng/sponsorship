@@ -746,7 +746,9 @@ function PrintPackageCard({
               {items.map((it, i) => (
                 <li key={i} className="flex items-start gap-1.5">
                   <span className="text-brand-500 shrink-0 mt-0.5">•</span>
-                  <span className="line-clamp-1">{it.label}</span>
+                  <span className="line-clamp-1">
+                    {localizedField(it.label, it.labelEn, locale)}
+                  </span>
                 </li>
               ))}
             </ul>
