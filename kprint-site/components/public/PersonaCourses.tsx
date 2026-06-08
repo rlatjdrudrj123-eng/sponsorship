@@ -92,7 +92,7 @@ export function PersonaCourses({
                         : "bg-white border-ink-100 text-ink-900 hover:border-ink-900")
                     }
                   >
-                    <span className="text-[15px]">{p.emoji}</span>
+                    {p.emoji && <span className="text-[15px]">{p.emoji}</span>}
                     <span>{p.title}</span>
                     <span
                       className={
@@ -166,7 +166,11 @@ export function PersonaCourses({
                   }
                 >
                   <div className="flex items-baseline justify-between gap-2">
-                    <div className="text-[28px]">{p.emoji}</div>
+                    {p.emoji ? (
+                      <div className="text-[28px]">{p.emoji}</div>
+                    ) : (
+                      <div />
+                    )}
                     <span
                       className={
                         "font-num text-[10.5px] font-bold " +

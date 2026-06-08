@@ -192,7 +192,7 @@ export function PersonaEditModal({
         <div className="px-5 py-4 space-y-5 overflow-y-auto flex-1">
           {/* 미리보기 */}
           <div className="bg-canvas border border-ink-100 rounded-card p-4">
-            <div className="text-[26px] mb-2">{emoji}</div>
+            {emoji && <div className="text-[26px] mb-2">{emoji}</div>}
             <div className="text-[14px] font-bold text-ink-900 leading-tight">
               {title || "(제목 미정)"}
             </div>
@@ -220,12 +220,26 @@ export function PersonaEditModal({
           {/* ── 기본 ── */}
           <SectionHeader>기본 정보</SectionHeader>
 
-          {/* 아이콘 */}
+          {/* 아이콘 — 공백 옵션 포함. 선택 안 하면 공개 페이지에서 아이콘 없이 텍스트만 노출. */}
           <div>
             <span className="text-[12px] text-ink-700 font-semibold mb-2 block">
-              아이콘
+              아이콘 <span className="text-ink-400 font-normal">(선택, 비워도 됨)</span>
             </span>
             <div className="grid grid-cols-10 gap-1">
+              {/* '없음' 옵션 — 가장 앞 */}
+              <button
+                type="button"
+                onClick={() => setEmoji("")}
+                title="아이콘 없음"
+                className={
+                  "h-9 grid place-items-center rounded-btn text-[11px] font-bold transition-colors " +
+                  (emoji === ""
+                    ? "bg-brand-500 ring-2 ring-brand-700 text-white"
+                    : "bg-white border border-ink-100 text-ink-500 hover:bg-brand-50")
+                }
+              >
+                없음
+              </button>
               {EMOJI_OPTIONS.map((e) => {
                 const active = emoji === e;
                 return (
