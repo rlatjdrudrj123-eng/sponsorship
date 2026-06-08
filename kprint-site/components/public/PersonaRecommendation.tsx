@@ -40,9 +40,11 @@ export function PersonaRecommendation({
 
   const [added, setAdded] = useState<string[]>([]);
 
-  // 콤보 산출 — 어드민 큐레이션 우선
+  // 콤보 산출 — 어드민 큐레이션 우선. 각 필드별로 독립 판단:
+  // categorySlugs / packageIds 가 명시되면 그걸 사용, 비어있으면 자동 매칭으로 채움.
+  // (옛 로직은 recommendedCombo 자체 존재만 보고 auto=false 라 headline 만 채운
+  //  페르소나는 콤보 항목 0개 → 카드가 아예 안 떴음.)
   const combo = useMemo(() => {
-    const auto = !persona.recommendedCombo;
     const cfg = persona.recommendedCombo ?? {};
 
     // 카테고리 결정
@@ -51,7 +53,7 @@ export function PersonaRecommendation({
       comboCategories = cfg.categorySlugs
         .map((slug) => categories.find((c) => c.slug === slug))
         .filter((c): c is Category => !!c);
-    } else if (auto) {
+    } else {
       // 자동 — 페르소나 매칭 + 가격 낮은 순 상위 3
       const matched = categories.filter((c) => matchesByPersonaIds(c, persona));
       comboCategories = matched.slice(0, 3);
@@ -63,10 +65,13 @@ export function PersonaRecommendation({
       comboPackages = cfg.packageIds
         .map((id) => packages.find((p) => p.id === id))
         .filter((p): p is Package => !!p);
-    } else if (auto && persona.packageTier) {
+    } else if (persona.packageTier) {
       const p = packages.find((pk) => pk.tier === persona.packageTier);
       if (p) comboPackages = [p];
     }
+
+    // headline / rationale 가 어드민에서 명시되면 큐레이션 표시, 아니면 자동.
+    const auto = !cfg.headline && !cfg.rationale;
 
     // 각 카테고리에서 가용 슬롯 1개씩 (최저가 소분류 기준)
     type Pick = {

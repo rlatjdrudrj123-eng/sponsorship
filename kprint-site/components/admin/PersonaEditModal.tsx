@@ -1,10 +1,10 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { doc, setDoc, Timestamp } from "firebase/firestore";
-import { X } from "lucide-react";
+import { Check, Search, X } from "lucide-react";
 import { getDb } from "@/lib/firebase/firestore";
-import type { Persona } from "@/lib/types";
+import type { Category, Package, Persona } from "@/lib/types";
 
 // 페르소나 이모지 — 산업·마케팅 컨텍스트
 const EMOJI_OPTIONS = [
@@ -23,9 +23,13 @@ type Mode =
 export function PersonaEditModal({
   mode,
   onClose,
+  categories = [],
+  packages = [],
 }: {
   mode: Mode;
   onClose: () => void;
+  categories?: Category[];
+  packages?: Package[];
 }) {
   const initial =
     mode.kind === "edit"
@@ -63,11 +67,11 @@ export function PersonaEditModal({
   const [comboRationale, setComboRationale] = useState(
     initial.recommendedCombo?.rationale ?? ""
   );
-  const [comboSlugs, setComboSlugs] = useState(
-    (initial.recommendedCombo?.categorySlugs ?? []).join(", ")
+  const [comboSlugs, setComboSlugs] = useState<string[]>(
+    initial.recommendedCombo?.categorySlugs ?? []
   );
-  const [comboPackageIds, setComboPackageIds] = useState(
-    (initial.recommendedCombo?.packageIds ?? []).join(", ")
+  const [comboPackageIds, setComboPackageIds] = useState<string[]>(
+    initial.recommendedCombo?.packageIds ?? []
   );
   const [comboExpected, setComboExpected] = useState<string>(
     initial.recommendedCombo?.expectedKRW
@@ -93,14 +97,8 @@ export function PersonaEditModal({
     }
     setSaving(true);
 
-    const slugs = comboSlugs
-      .split(",")
-      .map((s) => s.trim())
-      .filter(Boolean);
-    const pkgIds = comboPackageIds
-      .split(",")
-      .map((s) => s.trim())
-      .filter(Boolean);
+    const slugs = comboSlugs.map((s) => s.trim()).filter(Boolean);
+    const pkgIds = comboPackageIds.map((s) => s.trim()).filter(Boolean);
     const recommendedCombo =
       comboHeadline || comboRationale || slugs.length > 0 || pkgIds.length > 0 || comboExpected
         ? {
@@ -397,28 +395,24 @@ export function PersonaEditModal({
           </Field>
 
           <Field
-            label="카테고리 slug (콤마 구분)"
-            hint='어드민 [카테고리]에서 카테고리 별 slug 확인. 예: "ceiling-banner-hall-a, xpace-bridge"'
+            label="추천할 카테고리 선택"
+            hint="콤보에 포함될 단품 카테고리. 비우면 페르소나 매칭에서 자동 선정."
           >
-            <input
-              type="text"
-              value={comboSlugs}
-              onChange={(e) => setComboSlugs(e.target.value)}
-              placeholder="ceiling-banner-hall-a, ..."
-              className={inputCls() + " font-mono text-[11.5px]"}
+            <CategoryPicker
+              categories={categories}
+              selected={comboSlugs}
+              onChange={setComboSlugs}
             />
           </Field>
 
           <Field
-            label="패키지 ID (콤마 구분)"
-            hint="어드민 [패키지]에서 ID 확인. 보통 1개."
+            label="추천할 패키지 선택"
+            hint="보통 1개. 비우면 페르소나 패키지 티어 기준 자동 선정."
           >
-            <input
-              type="text"
-              value={comboPackageIds}
-              onChange={(e) => setComboPackageIds(e.target.value)}
-              placeholder="signature-bundle-2026"
-              className={inputCls() + " font-mono text-[11.5px]"}
+            <PackagePicker
+              packages={packages}
+              selected={comboPackageIds}
+              onChange={setComboPackageIds}
             />
           </Field>
 
@@ -513,4 +507,253 @@ function slugify(s: string): string {
     .replace(/[^a-z0-9가-힣]+/g, "-")
     .replace(/^-+|-+$/g, "")
     .slice(0, 30);
+}
+
+// ============================================================================
+// 카테고리 / 패키지 픽커 — 슬러그/ID 텍스트 입력 대신 실제 데이터 보고 고르게.
+// ============================================================================
+
+function CategoryPicker({
+  categories,
+  selected,
+  onChange,
+}: {
+  categories: Category[];
+  selected: string[];
+  onChange: (next: string[]) => void;
+}) {
+  const [q, setQ] = useState("");
+
+  const items = useMemo(() => {
+    const all = categories
+      .slice()
+      .sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
+    if (!q.trim()) return all;
+    const lower = q.toLowerCase();
+    return all.filter((c) => {
+      return (
+        c.slug?.toLowerCase().includes(lower) ||
+        c.code?.toLowerCase().includes(lower) ||
+        c.name?.ko?.toLowerCase().includes(lower) ||
+        c.name?.en?.toLowerCase().includes(lower)
+      );
+    });
+  }, [categories, q]);
+
+  const selectedItems = selected
+    .map((slug) => categories.find((c) => c.slug === slug))
+    .filter((c): c is Category => !!c);
+  const orphans = selected.filter((slug) => !categories.find((c) => c.slug === slug));
+
+  const toggle = (slug: string) => {
+    if (selected.includes(slug)) onChange(selected.filter((s) => s !== slug));
+    else onChange([...selected, slug]);
+  };
+
+  const remove = (slug: string) => onChange(selected.filter((s) => s !== slug));
+
+  return (
+    <div className="border border-ink-100 rounded-btn bg-white overflow-hidden">
+      {/* 선택된 항목 (chips) */}
+      {(selectedItems.length > 0 || orphans.length > 0) && (
+        <div className="p-2 border-b border-ink-100 bg-brand-50/40 flex flex-wrap gap-1.5">
+          {selectedItems.map((c) => (
+            <span
+              key={c.id}
+              className="inline-flex items-center gap-1 px-2 py-1 bg-brand-500 text-white rounded-full text-[11px] font-semibold"
+            >
+              <span className="font-mono text-[9.5px] opacity-80">{c.code}</span>
+              <span className="truncate max-w-[180px]">{c.name.ko}</span>
+              <button
+                type="button"
+                onClick={() => remove(c.slug)}
+                className="ml-0.5 -mr-0.5 hover:bg-white/20 rounded-full w-3.5 h-3.5 grid place-items-center"
+                aria-label="제거"
+              >
+                <X className="w-2.5 h-2.5" />
+              </button>
+            </span>
+          ))}
+          {orphans.map((slug) => (
+            <span
+              key={slug}
+              className="inline-flex items-center gap-1 px-2 py-1 bg-amber-100 text-amber-800 border border-amber-300 rounded-full text-[11px] font-mono"
+              title="해당 slug 카테고리를 찾을 수 없음"
+            >
+              ⚠ {slug}
+              <button
+                type="button"
+                onClick={() => remove(slug)}
+                className="hover:bg-amber-200 rounded-full w-3.5 h-3.5 grid place-items-center"
+              >
+                <X className="w-2.5 h-2.5" />
+              </button>
+            </span>
+          ))}
+        </div>
+      )}
+
+      {/* 검색 */}
+      <div className="relative border-b border-ink-100">
+        <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-ink-400" />
+        <input
+          type="text"
+          value={q}
+          onChange={(e) => setQ(e.target.value)}
+          placeholder="이름·코드·slug 검색"
+          className="w-full pl-8 pr-3 py-2 text-[12px] focus:outline-none bg-white"
+        />
+      </div>
+
+      {/* 리스트 */}
+      <ul className="max-h-[220px] overflow-y-auto">
+        {items.length === 0 ? (
+          <li className="px-3 py-4 text-[12px] text-ink-500 text-center">
+            {categories.length === 0 ? "카테고리를 불러오는 중…" : "검색 결과 없음"}
+          </li>
+        ) : (
+          items.map((c) => {
+            const active = selected.includes(c.slug);
+            return (
+              <li key={c.id}>
+                <button
+                  type="button"
+                  onClick={() => toggle(c.slug)}
+                  className={
+                    "w-full text-left px-3 py-2 flex items-center gap-2 border-t border-ink-100 first:border-t-0 transition-colors " +
+                    (active
+                      ? "bg-brand-50 hover:bg-brand-100"
+                      : "hover:bg-ink-50")
+                  }
+                >
+                  <span
+                    className={
+                      "w-4 h-4 rounded border grid place-items-center shrink-0 " +
+                      (active
+                        ? "bg-brand-500 border-brand-500 text-white"
+                        : "border-ink-300")
+                    }
+                  >
+                    {active && <Check className="w-3 h-3" strokeWidth={3} />}
+                  </span>
+                  <span className="font-mono text-[10px] text-ink-500 shrink-0 w-[60px] truncate">
+                    {c.code}
+                  </span>
+                  <span className="text-[12.5px] text-ink-900 font-semibold truncate flex-1">
+                    {c.name.ko}
+                  </span>
+                  <span className="font-mono text-[10px] text-ink-400 shrink-0 truncate max-w-[140px]">
+                    {c.slug}
+                  </span>
+                </button>
+              </li>
+            );
+          })
+        )}
+      </ul>
+    </div>
+  );
+}
+
+function PackagePicker({
+  packages,
+  selected,
+  onChange,
+}: {
+  packages: Package[];
+  selected: string[];
+  onChange: (next: string[]) => void;
+}) {
+  const items = packages
+    .slice()
+    .sort((a, b) => {
+      if (a.tier === b.tier) return 0;
+      return a.tier === "signature" ? -1 : 1;
+    });
+  const orphans = selected.filter((id) => !packages.find((p) => p.id === id));
+
+  const toggle = (id: string) => {
+    if (selected.includes(id)) onChange(selected.filter((s) => s !== id));
+    else onChange([...selected, id]);
+  };
+
+  if (packages.length === 0) {
+    return (
+      <div className="border border-ink-100 rounded-btn bg-ink-50 px-3 py-3 text-[12px] text-ink-500 text-center">
+        등록된 패키지가 없습니다.
+      </div>
+    );
+  }
+
+  return (
+    <div className="border border-ink-100 rounded-btn bg-white overflow-hidden">
+      <ul>
+        {items.map((p, i) => {
+          const active = selected.includes(p.id);
+          return (
+            <li key={p.id}>
+              <button
+                type="button"
+                onClick={() => toggle(p.id)}
+                className={
+                  "w-full text-left px-3 py-2.5 flex items-center gap-2.5 transition-colors " +
+                  (i > 0 ? "border-t border-ink-100 " : "") +
+                  (active
+                    ? "bg-brand-50 hover:bg-brand-100"
+                    : "hover:bg-ink-50")
+                }
+              >
+                <span
+                  className={
+                    "w-4 h-4 rounded border grid place-items-center shrink-0 " +
+                    (active
+                      ? "bg-brand-500 border-brand-500 text-white"
+                      : "border-ink-300")
+                  }
+                >
+                  {active && <Check className="w-3 h-3" strokeWidth={3} />}
+                </span>
+                <span
+                  className={
+                    "text-[9.5px] font-bold px-1.5 py-0.5 rounded uppercase tracking-wider shrink-0 " +
+                    (p.tier === "signature"
+                      ? "bg-ink-900 text-white"
+                      : "bg-ink-100 text-ink-700")
+                  }
+                >
+                  {p.tier === "signature" ? "시그니처" : "스탠다드"}
+                </span>
+                <span className="text-[13px] text-ink-900 font-semibold truncate flex-1">
+                  {p.name.ko}
+                </span>
+                <span className="font-mono text-[10px] text-ink-400 shrink-0 truncate">
+                  {p.id}
+                </span>
+              </button>
+            </li>
+          );
+        })}
+      </ul>
+      {orphans.length > 0 && (
+        <div className="p-2 border-t border-ink-100 bg-amber-50 flex flex-wrap gap-1.5">
+          {orphans.map((id) => (
+            <span
+              key={id}
+              className="inline-flex items-center gap-1 px-2 py-1 bg-amber-100 text-amber-800 border border-amber-300 rounded-full text-[11px] font-mono"
+              title="해당 ID 패키지를 찾을 수 없음"
+            >
+              ⚠ {id}
+              <button
+                type="button"
+                onClick={() => onChange(selected.filter((s) => s !== id))}
+                className="hover:bg-amber-200 rounded-full w-3.5 h-3.5 grid place-items-center"
+              >
+                <X className="w-2.5 h-2.5" />
+              </button>
+            </span>
+          ))}
+        </div>
+      )}
+    </div>
+  );
 }
