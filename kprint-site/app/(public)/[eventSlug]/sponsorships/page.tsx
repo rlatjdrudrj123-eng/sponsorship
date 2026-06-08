@@ -1215,7 +1215,7 @@ function FilterPanel({
           {[
             { label: locale === "en" ? "Up to $1,000" : "100만 이하", value: 1_000_000 },
             { label: locale === "en" ? "Up to $3,000" : "300만 이하", value: 3_000_000 },
-            { label: locale === "en" ? "Up to $10,000" : "1,000만 이하", value: 10_000_000 },
+            { label: locale === "en" ? "Up to $5,000" : "500만 이하", value: 5_000_000 },
             { label: locale === "en" ? "All" : "전체", value: 0 },
           ].map((tier) => {
             const active =
