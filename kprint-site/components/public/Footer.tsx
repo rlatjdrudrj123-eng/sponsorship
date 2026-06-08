@@ -177,15 +177,15 @@ export function Footer({ settings }: { settings: SiteSettings | null }) {
             <div className="font-num text-ink-500/80 leading-relaxed">
               {isEn ? (
                 <>
-                  Biz Reg. No. 220-87-30068 · CEO Eung-sik Kim
+                  Biz Reg. No. 120-81-813111 · CEO Jeong-jo Kim
                   <br />
-                  7F, Trade Tower, 511 Yeongdong-daero, Gangnam-gu, Seoul
+                  Trade Tower #2001, 511 Yeongdong-daero, Gangnam-gu, Seoul
                 </>
               ) : (
                 <>
-                  사업자등록번호 220-87-30068 · 대표이사 김응식
+                  사업자등록번호 120-81-813111 · 대표이사 김정조
                   <br />
-                  서울특별시 강남구 영동대로 511 트레이드타워 7층
+                  서울특별시 강남구 영동대로 511 트레이드타워 2001호
                 </>
               )}
             </div>
