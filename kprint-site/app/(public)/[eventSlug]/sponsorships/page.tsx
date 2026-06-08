@@ -1125,8 +1125,22 @@ function FilterPanel({
   const locale = useLocale((s) => s.locale);
   // taxonomy 도큐먼트의 timingBuckets / locationBuckets 우선,
   // 없으면 코드 상수 fallback. 어드민 「분류 관리 > 항목 편집」 변경이 즉시 반영됨.
+  // EN 페이지에서 taxonomy.label 이 한국어로 들어있으면 코드 기본값에서 영문 라벨로 보정.
+  const timingFallbackById = new Map(
+    TIMING_OPTIONS.map((o) => [o.id, localized(o.label, locale)])
+  );
+  const locationFallbackById = new Map(
+    LOCATION_OPTIONS.map((o) => [o.id, localized(o.label, locale)])
+  );
+  const isKorean = (s: string) => /[가-힯]/.test(s);
   const timingOptions = (taxonomy?.timingBuckets && taxonomy.timingBuckets.length > 0
-    ? taxonomy.timingBuckets.map((b) => ({ id: b.id as Timing, label: b.label }))
+    ? taxonomy.timingBuckets.map((b) => ({
+        id: b.id as Timing,
+        label:
+          locale === "en" && isKorean(b.label) && timingFallbackById.has(b.id as Timing)
+            ? timingFallbackById.get(b.id as Timing)!
+            : b.label,
+      }))
     : TIMING_OPTIONS.map((o) => ({
         id: o.id,
         label: localized(o.label, locale),
@@ -1134,7 +1148,10 @@ function FilterPanel({
   const locationOptions = (taxonomy?.locationBuckets && taxonomy.locationBuckets.length > 0
     ? taxonomy.locationBuckets.map((b) => ({
         id: b.id as LocationTag,
-        label: b.label,
+        label:
+          locale === "en" && isKorean(b.label) && locationFallbackById.has(b.id as LocationTag)
+            ? locationFallbackById.get(b.id as LocationTag)!
+            : b.label,
       }))
     : LOCATION_OPTIONS.map((o) => ({
         id: o.id,
@@ -1487,11 +1504,12 @@ function PackageSection({
           PACKAGES
         </div>
         <h2 className="text-[26px] md:text-[34px] font-bold text-ink-900 leading-tight tracking-tight">
-          패키지 광고 안내
+          {locale === "en" ? "Package deals" : "패키지 광고 안내"}
         </h2>
         <p className="text-[13.5px] md:text-[15px] text-ink-500 mt-2 leading-relaxed">
-          단품을 묶어 할인된 가격에 — 전시회 핵심 동선 + 노출 채널을 통합 구성한
-          프리미엄 패키지입니다.
+          {locale === "en"
+            ? "Discounted bundles — premium packages integrating the exhibition's key traffic routes and exposure channels."
+            : "단품을 묶어 할인된 가격에 — 전시회 핵심 동선 + 노출 채널을 통합 구성한 프리미엄 패키지입니다."}
         </p>
       </header>
 
@@ -1526,7 +1544,9 @@ function PackageSection({
       )}
 
       <p className="text-[11.5px] text-ink-500 text-center">
-        ※ 패키지 내 광고상품은 별도 표기가 없을 경우 1개 구좌 기준입니다.
+        {locale === "en"
+          ? "※ Sponsorship items within a package count as 1 slot unless otherwise noted."
+          : "※ 패키지 내 광고상품은 별도 표기가 없을 경우 1개 구좌 기준입니다."}
       </p>
     </section>
   );

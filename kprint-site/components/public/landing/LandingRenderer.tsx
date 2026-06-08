@@ -5,7 +5,7 @@ import { ArrowRight, Download, Tag } from "lucide-react";
 import Link from "next/link";
 import type { LandingBlock, SiteSettings } from "@/lib/types";
 import { BlockSection } from "./blocks";
-import { useLocale } from "@/lib/i18n/locale";
+import { useLocale, localizedField } from "@/lib/i18n/locale";
 import { getFullPdfHref, isDirectPdfHref } from "@/lib/pdf";
 import { LocaleSwitch } from "@/components/public/LocaleSwitch";
 
@@ -113,7 +113,11 @@ export function ClosingSlide({
   // settings.contact 가 비어있어도 기본값으로 노출. 라벨만 있고 정보 없으면 어색.
   const phone = settings?.contact?.phone || "02-551-0102";
   const email = settings?.contact?.email || "kprint@kprint.kr";
-  const address = settings?.contact?.address;
+  const address = localizedField(
+    settings?.contact?.address,
+    settings?.contact?.addressEn,
+    locale
+  );
   const pdfHref = getFullPdfHref(eventId, settings, locale);
   const pdfDirect = isDirectPdfHref(settings, locale);
   return (
