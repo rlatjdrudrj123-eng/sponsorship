@@ -34,11 +34,16 @@ export const DEFAULT_TYPE_LAYOUTS: Record<CategoryType, TypeLayout> = {
   },
 };
 
+// 어드민이 taxonomy.mediaBuckets 에 코드 외 ID 를 추가하면 category.type 이
+// DEFAULT_TYPE_LAYOUTS 키에 없을 수 있음 → undefined 반환 시 호출부 .showHashtags 에서 크래시.
+// 안전망: 모르는 type 은 가장 일반적 quantity 레이아웃으로 폴백.
+const FALLBACK_LAYOUT: TypeLayout = DEFAULT_TYPE_LAYOUTS.quantity;
+
 export function getTypeLayout(
   type: CategoryType,
   override?: Partial<Record<CategoryType, TypeLayout>>
 ): TypeLayout {
-  return override?.[type] ?? DEFAULT_TYPE_LAYOUTS[type];
+  return override?.[type] ?? DEFAULT_TYPE_LAYOUTS[type] ?? FALLBACK_LAYOUT;
 }
 
 /** 스펙 필드 라벨 (어드민 + 공개 사이트 공용) */
