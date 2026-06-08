@@ -57,11 +57,16 @@ export function MailingType({
                         {isEn ? "people" : "명"}
                       </span>
                     </div>
-                    {spec.audienceLabel && (
-                      <div className="text-[11px] text-ink-500 mt-0.5">
-                        {spec.audienceLabel}
-                      </div>
-                    )}
+                    {(() => {
+                      const lbl = isEn
+                        ? spec.audienceLabelEn || spec.audienceLabel
+                        : spec.audienceLabel;
+                      return lbl ? (
+                        <div className="text-[11px] text-ink-500 mt-0.5">
+                          {lbl}
+                        </div>
+                      ) : null;
+                    })()}
                   </div>
                 )}
                 {spec.sendDates?.length > 0 && (

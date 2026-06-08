@@ -3101,14 +3101,18 @@ function SlideSection({
                       const m = item.mailingSpec;
                       if (m && (m.audience || m.sendDates?.length)) {
                         const parts: string[] = [];
+                        const audLabel =
+                          locale === "en"
+                            ? m.audienceLabelEn || m.audienceLabel
+                            : m.audienceLabel;
                         if (m.audience)
                           parts.push(
                             locale === "en"
                               ? `${m.audience.toLocaleString()} recipients${
-                                  m.audienceLabel ? ` (${m.audienceLabel})` : ""
+                                  audLabel ? ` (${audLabel})` : ""
                                 }`
                               : `${m.audience.toLocaleString()}명${
-                                  m.audienceLabel ? ` (${m.audienceLabel})` : ""
+                                  audLabel ? ` (${audLabel})` : ""
                                 }`
                           );
                         if (m.sendDates?.length)

@@ -146,6 +146,8 @@ export type Category = {
     sendDates: string[];
     audience: number;
     audienceLabel?: string;
+    /** 영문 사이트용 audienceLabel. 비어있으면 KO 폴백. */
+    audienceLabelEn?: string;
   };
 
   // 콘텐츠형

@@ -45,21 +45,18 @@ export function SpecCard({ category }: { category: Category }) {
   }
 
   if (category.mailingSpec) {
-    if (category.mailingSpec.audience)
+    if (category.mailingSpec.audience) {
+      const audLabel = isEn
+        ? category.mailingSpec.audienceLabelEn ||
+          category.mailingSpec.audienceLabel
+        : category.mailingSpec.audienceLabel;
       items.push({
         label: isEn ? "Audience" : "발송 대상",
         value: isEn
-          ? `${category.mailingSpec.audience.toLocaleString()}${
-              category.mailingSpec.audienceLabel
-                ? ` (${category.mailingSpec.audienceLabel})`
-                : ""
-            }`
-          : `${category.mailingSpec.audience.toLocaleString()}명${
-              category.mailingSpec.audienceLabel
-                ? ` (${category.mailingSpec.audienceLabel})`
-                : ""
-            }`,
+          ? `${category.mailingSpec.audience.toLocaleString()}${audLabel ? ` (${audLabel})` : ""}`
+          : `${category.mailingSpec.audience.toLocaleString()}명${audLabel ? ` (${audLabel})` : ""}`,
       });
+    }
     if (category.mailingSpec.sendDates?.length)
       items.push({
         label: isEn ? "Send dates" : "발송 예정일",
