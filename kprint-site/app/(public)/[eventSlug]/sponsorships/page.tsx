@@ -35,6 +35,7 @@ import type {
   Channel,
   Package,
   Persona,
+  Purpose,
   SiteSettings,
   Slot,
   Subcategory,
@@ -214,10 +215,8 @@ export default function SponsorshipsPage() {
   const [aiChatOpen, setAiChatOpen] = useState(false);
   // 패키지 카드 클릭 시 페이지 이동 대신 모달로 표시 (UX 일관성)
   const [selectedPackageId, setSelectedPackageId] = useState<string | null>(null);
-  // 첫 질문 Q1 (목적) 의 4가지 (룩업 매트릭스 Q1 값)
-  const [aiChatInitial, setAiChatInitial] = useState<
-    "launch" | "acquisition" | "retention" | "awareness" | null
-  >(null);
+  // 1분 진단 — 외부 칩에서 1순위 목표를 prefill 해서 들어옴.
+  const [aiChatInitial, setAiChatInitial] = useState<Purpose | null>(null);
   // 비교 모드 — 카드에서 직접 체크해 모은다 (카트 거치지 않고 바로 compare로)
   const [compareIds, setCompareIds] = useState<Set<string>>(new Set());
   // 도면·사례 모달 — 카드 클릭 시 SlideSection 형 모달.
@@ -508,9 +507,9 @@ export default function SponsorshipsPage() {
                           SA
                         </div>
                         <div className="bg-ink-50 rounded-2xl rounded-tl-sm px-4 py-2.5 text-[13.5px] text-ink-900 max-w-[88%] leading-relaxed">
-                          K-PRINT 2026 사무국입니다. 귀사의 참가 목표·부스 규모·예산을
+                          K-PRINT 2026 사무국입니다. 귀사의 참가 목표·예산·필수 조건을
                           바탕으로 가장 효율이 높은 스폰서십 구성을 검토해
-                          드립니다. 4개 항목, 약 1분이 소요됩니다.
+                          드립니다. 3개 항목, 약 1분이 소요됩니다.
                         </div>
                       </div>
                       <div className="flex items-start gap-2.5">
@@ -518,44 +517,38 @@ export default function SponsorshipsPage() {
                           SA
                         </div>
                         <div className="bg-ink-50 rounded-2xl rounded-tl-sm px-4 py-2.5 text-[13.5px] text-ink-900 max-w-[88%] leading-relaxed">
-                          이번 K-PRINT 참가, 가장 우선하는 목적 하나를 선택해주세요.
+                          이번 K-PRINT 참가, 가장 우선하는 목표 하나를 선택해주세요.
                         </div>
                       </div>
 
                       <div className="pl-10 grid grid-cols-2 gap-2">
-                        {[
+                        {([
                           {
-                            label: "신제품·신기술 런칭",
-                            value: "launch",
-                            hint: "세미나·콘텐츠·시그니처",
+                            label: "부스 트래픽 유도",
+                            value: "traffic_driver" as Purpose,
+                            hint: "현장 동선 노출",
                           },
                           {
-                            label: "신규 거래선·대리점 발굴",
-                            value: "acquisition",
-                            hint: "검색·도면 노출",
+                            label: "브랜드 인지도",
+                            value: "brand_awareness" as Purpose,
+                            hint: "대형 노출 채널",
                           },
                           {
-                            label: "기존 고객·파트너 강화",
-                            value: "retention",
-                            hint: "초대장·뉴스레터",
+                            label: "바이어 도달",
+                            value: "buyer_reach" as Purpose,
+                            hint: "타겟·해외 직접",
                           },
                           {
-                            label: "브랜드 인지도·점유율",
-                            value: "awareness",
-                            hint: "천장·목걸이·통합",
+                            label: "행사 후 콘텐츠 자산",
+                            value: "post_asset" as Purpose,
+                            hint: "인터뷰·SNS",
                           },
-                        ].map((c) => (
+                        ]).map((c) => (
                           <button
                             key={c.value}
                             type="button"
                             onClick={() => {
-                              setAiChatInitial(
-                                c.value as
-                                  | "launch"
-                                  | "acquisition"
-                                  | "retention"
-                                  | "awareness"
-                              );
+                              setAiChatInitial(c.value);
                               setAiChatOpen(true);
                             }}
                             className="w-full text-left px-3.5 py-3 rounded-2xl border-[1.5px] border-ink-100 hover:border-brand-500 hover:bg-brand-50 transition-colors group"
@@ -571,7 +564,7 @@ export default function SponsorshipsPage() {
                       </div>
 
                       <div className="text-center text-[11px] text-ink-400 pt-2 font-num tracking-wider">
-                        STEP 1 / 4 · 목적
+                        STEP 1 / 3 · 목표
                       </div>
                     </div>
                   </div>
@@ -883,7 +876,7 @@ export default function SponsorshipsPage() {
         );
       })()}
 
-      {/* 진단 챗봇 v2 — 4문항 룩업 매트릭스 기반. 우하단 FAB 클릭으로 진입. */}
+      {/* 1분 진단 v3 — 3문항 점수 기반. 우하단 FAB 또는 인라인 칩으로 진입. */}
       <SponsorshipDiagnosisChat
         open={aiChatOpen}
         onClose={() => {
@@ -895,8 +888,7 @@ export default function SponsorshipsPage() {
         categories={categories}
         subcategories={subcategories}
         packages={packages}
-        diagnosisV2Config={settings?.diagnosisV2Config}
-        initialQ1={aiChatInitial ?? undefined}
+        initialPrimaryGoal={aiChatInitial}
       />
 
       {/* 도면·사례 상세 모달 — 슬라이드형(SlideSection) 그대로 띄움.

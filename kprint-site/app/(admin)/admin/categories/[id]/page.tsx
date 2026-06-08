@@ -149,6 +149,7 @@ export default function CategoryEditPage() {
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [allPackages, setAllPackages] = useState<Package[]>([]);
   const [allPersonas, setAllPersonas] = useState<Persona[]>([]);
+  const [allCategories, setAllCategories] = useState<Category[]>([]);
   const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
   const [saveError, setSaveError] = useState<string | null>(null);
   const [lastSaved, setLastSaved] = useState<Date | null>(null);
@@ -245,6 +246,20 @@ export default function CategoryEditPage() {
       (s) =>
         setAllPersonas(
           s.docs.map((d) => ({ ...(d.data() as Persona), id: d.id }))
+        )
+    );
+    return () => u();
+  }, [category?.eventId]);
+
+  // all categories (행사별, 1분 진단 시너지 페어 픽커용)
+  useEffect(() => {
+    const evId = category?.eventId;
+    if (!evId) return;
+    const u = onSnapshot(
+      query(collection(getDb(), "categories"), where("eventId", "==", evId)),
+      (s) =>
+        setAllCategories(
+          s.docs.map((d) => ({ ...(d.data() as Category), id: d.id }))
         )
     );
     return () => u();
@@ -864,6 +879,7 @@ export default function CategoryEditPage() {
               category={category}
               allPackages={allPackages}
               allPersonas={allPersonas}
+              allCategories={allCategories}
               onUpdate={async (patch) => {
                 await updateDoc(doc(getDb(), "categories", id), {
                   ...patch,
@@ -1188,11 +1204,13 @@ function ParticipantViewEditor({
   category,
   allPackages,
   allPersonas,
+  allCategories,
   onUpdate,
 }: {
   category: Category;
   allPackages: Package[];
   allPersonas: Persona[];
+  allCategories: Category[];
   onUpdate: (patch: Partial<Category>) => Promise<void>;
 }) {
   const selectedPersonaIds = category.personas ?? [];
@@ -1382,6 +1400,15 @@ function ParticipantViewEditor({
 
       <hr className="border-ink-100" />
 
+      {/* 1분 진단 매칭 — 목표 친화도·시너지·boost */}
+      <DiagnosisAffinityEditor
+        category={category}
+        allCategories={allCategories}
+        onUpdate={onUpdate}
+      />
+
+      <hr className="border-ink-100" />
+
       {/* inPackages — 자동 계산 (현재 패키지 includedItems 기반) + 수동 오버라이드. */}
       <InPackagesEditor
         category={category}
@@ -1389,6 +1416,190 @@ function ParticipantViewEditor({
         inPackages={inPackages}
         onUpdate={onUpdate}
       />
+    </div>
+  );
+}
+
+// ============================================================================
+// 1분 진단 매칭 데이터 — goalAffinity / synergyTargets / recommendBoost
+// ============================================================================
+
+function DiagnosisAffinityEditor({
+  category,
+  allCategories,
+  onUpdate,
+}: {
+  category: Category;
+  allCategories: Category[];
+  onUpdate: (patch: Partial<Category>) => Promise<void>;
+}) {
+  const aff = category.goalAffinity ?? {};
+  const synergyTargets = category.synergyTargets ?? [];
+  const boost = category.recommendBoost ?? 0;
+
+  const PURPOSES: Array<{ key: "traffic_driver" | "brand_awareness" | "buyer_reach" | "post_asset"; label: string; desc: string }> = [
+    {
+      key: "traffic_driver",
+      label: "부스 트래픽 유도",
+      desc: "현장 동선·부스 방문 자극",
+    },
+    {
+      key: "brand_awareness",
+      label: "브랜드 인지도",
+      desc: "대형 노출·반복 노출",
+    },
+    {
+      key: "buyer_reach",
+      label: "바이어 도달",
+      desc: "타겟·해외·직접 도달",
+    },
+    {
+      key: "post_asset",
+      label: "행사 후 콘텐츠 자산",
+      desc: "인터뷰·영상·SNS",
+    },
+  ];
+
+  const setAff = (k: typeof PURPOSES[number]["key"], v: number) => {
+    const next = { ...aff, [k]: v };
+    // 0 인 값은 저장 안 함 — 도큐먼트 클린.
+    if (v === 0) delete next[k];
+    onUpdate({ goalAffinity: next });
+  };
+
+  const toggleSynergy = (id: string) => {
+    const next = synergyTargets.includes(id)
+      ? synergyTargets.filter((x) => x !== id)
+      : [...synergyTargets, id];
+    onUpdate({ synergyTargets: next });
+  };
+
+  const setBoost = (v: number) => {
+    onUpdate({ recommendBoost: v });
+  };
+
+  return (
+    <div>
+      <div className="mb-3">
+        <div className="text-[13px] font-semibold text-ink-900">
+          1분 진단 매칭 (점수 기반 추천용)
+        </div>
+        <p className="text-[11px] text-ink-500 mt-0.5 leading-snug max-w-md">
+          이 카테고리가 어떤 목표에 잘 맞는지 0~3 점으로. 진단 챗봇이 사용자의
+          1·2순위 목표 답과 곱해 점수를 계산합니다. 비워두면 진단에서 잘 안 잡힘.
+        </p>
+      </div>
+
+      {/* 목표 친화도 — 4개 슬라이더 */}
+      <div className="space-y-2.5 mb-4">
+        {PURPOSES.map((p) => {
+          const v = aff[p.key] ?? 0;
+          return (
+            <div key={p.key} className="flex items-center gap-3">
+              <div className="w-[140px] shrink-0">
+                <div className="text-[12px] font-semibold text-ink-900">
+                  {p.label}
+                </div>
+                <div className="text-[10.5px] text-ink-500">{p.desc}</div>
+              </div>
+              <div className="flex-1 flex items-center gap-1.5">
+                {[0, 1, 2, 3].map((n) => (
+                  <button
+                    key={n}
+                    type="button"
+                    onClick={() => setAff(p.key, n)}
+                    className={
+                      "w-9 h-7 rounded-btn text-[11px] font-bold transition-colors " +
+                      (v === n
+                        ? "bg-brand-500 text-white"
+                        : "bg-white border border-ink-100 text-ink-500 hover:border-ink-300")
+                    }
+                    title={
+                      n === 0
+                        ? "무관"
+                        : n === 1
+                        ? "보조"
+                        : n === 2
+                        ? "잘 맞음"
+                        : "거의 완벽"
+                    }
+                  >
+                    {n}
+                  </button>
+                ))}
+              </div>
+              <div className="w-[80px] text-right text-[10.5px] text-ink-400">
+                {v === 0
+                  ? "—"
+                  : v === 1
+                  ? "보조"
+                  : v === 2
+                  ? "잘 맞음"
+                  : "거의 완벽"}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* 시너지 페어 */}
+      <div className="mb-4">
+        <div className="text-[12px] font-semibold text-ink-900 mb-1">
+          시너지 페어 — 함께 추천될 때 점수 +
+        </div>
+        <p className="text-[10.5px] text-ink-500 leading-snug mb-2">
+          이 카테고리와 함께 추천될 때 점수 가산되는 다른 카테고리 (예: 천장 + 라이팅월).
+          한 쪽만 입력해도 양방향으로 작동.
+        </p>
+        <div className="flex flex-wrap gap-1.5 max-h-[140px] overflow-y-auto border border-ink-100 rounded-btn p-2">
+          {allCategories
+            .filter((c) => c.id !== category.id)
+            .sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
+            .map((c) => {
+              const on = synergyTargets.includes(c.id);
+              return (
+                <button
+                  key={c.id}
+                  type="button"
+                  onClick={() => toggleSynergy(c.id)}
+                  className={
+                    "px-2 py-1 rounded-full text-[10.5px] border transition-colors " +
+                    (on
+                      ? "bg-brand-50 border-brand-500 text-brand-700 font-semibold"
+                      : "bg-white border-ink-100 text-ink-500 hover:border-ink-300")
+                  }
+                  title={c.code}
+                >
+                  {c.name.ko}
+                </button>
+              );
+            })}
+        </div>
+      </div>
+
+      {/* recommendBoost */}
+      <div className="flex items-center gap-3">
+        <div className="w-[140px] shrink-0">
+          <div className="text-[12px] font-semibold text-ink-900">
+            추천 가중 (boost)
+          </div>
+          <div className="text-[10.5px] text-ink-500">
+            동률일 때 살짝 위로
+          </div>
+        </div>
+        <input
+          type="range"
+          min="0"
+          max="1"
+          step="0.1"
+          value={boost}
+          onChange={(e) => setBoost(Number(e.target.value))}
+          className="flex-1 accent-brand-500"
+        />
+        <div className="w-[40px] text-right text-[11px] font-num text-ink-700">
+          {boost.toFixed(1)}
+        </div>
+      </div>
     </div>
   );
 }

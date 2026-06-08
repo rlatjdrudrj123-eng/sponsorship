@@ -216,10 +216,19 @@ export default function DiagnosisAdminPage() {
           <div>
             <h1 className="text-[24px] font-bold text-ink-900 flex items-center gap-2">
               <Brain className="w-5 h-5 text-brand-500" />
-              1분 맞춤 진단 설정
+              1분 맞춤 진단 설정 (구버전 v2)
             </h1>
             <p className="text-[13px] text-ink-500 mt-1 leading-relaxed">
-              4문항 룩업 매트릭스 기반. 비어있는 셀은 시스템 기본값이 사용됩니다.
+              ⚠ 이 페이지는 옛 룩업 매트릭스(v2) 편집기입니다 — <strong>현재 사이트는 v3 점수 기반</strong>으로 작동합니다.
+              <br />
+              v3 는 카테고리별 점수 데이터로 매칭되므로,{" "}
+              <Link
+                href="/admin/categories"
+                className="text-brand-700 font-semibold hover:underline"
+              >
+                /admin/categories
+              </Link>
+              {" "}각 카테고리 편집 페이지의 「1분 진단 매칭」 섹션에서 목표 친화도·시너지·boost 를 조정하세요.
             </p>
           </div>
           <div className="flex items-center gap-2">

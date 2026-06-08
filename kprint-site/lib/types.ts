@@ -183,6 +183,28 @@ export type Category = {
   // 패키지 크로스 표시 — 이 카테고리에 포함된 슬롯이 어느 패키지에 속하는지
   inPackages?: string[];      // Package.id 배열
 
+  // ── 1분 진단 v3 (점수 기반 추천) 매칭용 ──
+  /**
+   * 목표 친화도 — Purpose 키마다 0~3 점. 진단 점수 모델의 핵심 입력.
+   *   3: 이 목적에 거의 완벽히 부합
+   *   2: 잘 맞음
+   *   1: 보조적
+   *   0: 무관
+   * 카테고리 편집 페이지에서 어드민이 슬라이더로 설정.
+   */
+  goalAffinity?: Partial<Record<Purpose, number>>;
+  /**
+   * 시너지 페어 — 이 카테고리와 함께 추천될 때 점수 가산되는 다른 카테고리 ID 들.
+   *  예: ceiling_banner 의 synergyTargets = ["lighting_wall"] (동선 강화)
+   * 단방향만 입력해도 진단 로직이 양방향으로 처리.
+   */
+  synergyTargets?: string[];   // Category.id 배열
+  /**
+   * 어드민 큐레이션 가중치 — 진단 결과에서 동률일 때 살짝 위로 끌어올리는 약한 레버.
+   * 0 ~ 1 사이. 기본 0.
+   */
+  recommendBoost?: number;
+
   order: number;
 
   // 잠금 상태 (엑셀 동기화 필드는 잠금)
