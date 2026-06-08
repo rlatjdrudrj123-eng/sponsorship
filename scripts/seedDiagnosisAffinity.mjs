@@ -7,7 +7,7 @@
  */
 
 import { initializeApp, cert } from "firebase-admin/app";
-import { getFirestore } from "firebase-admin/firestore";
+import { getFirestore, FieldValue } from "firebase-admin/firestore";
 import { readFileSync, readdirSync, existsSync } from "node:fs";
 
 const PROJECT_ID = "kprint-845c3";
@@ -24,37 +24,32 @@ function loadCredentials() {
 const app = initializeApp({ projectId: PROJECT_ID, credential: loadCredentials() });
 const fs = getFirestore(app);
 
-// type → 기본 친화도 벡터 (0~3)
+// type → 기본 친화도 벡터 (0~3) — Purpose 3개: new_product / traffic_driver / brand_awareness
 const TYPE_AFFINITY = {
-  // 도면형 (천장 배너, 라이팅월, 등록데스크 등) — 부스 동선 강력
-  floor_plan: { traffic_driver: 3, brand_awareness: 2, buyer_reach: 1, post_asset: 0 },
+  // 도면형 (천장 배너, 라이팅월, 등록데스크) — 부스 동선 강력
+  floor_plan: { new_product: 1, traffic_driver: 3, brand_awareness: 2 },
   // 수량형 (목걸이, 초대장 삽지) — 노출 시간 길어 인지도 강
-  quantity: { traffic_driver: 1, brand_awareness: 3, buyer_reach: 1, post_asset: 0 },
-  // 미디어형 (LED 영상) — 시각 임팩트 → 인지도
-  media: { traffic_driver: 2, brand_awareness: 3, buyer_reach: 0, post_asset: 1 },
-  // 디지털 배너 — 사전·온라인 도달
-  digital_banner: { traffic_driver: 1, brand_awareness: 1, buyer_reach: 3, post_asset: 0 },
-  // 발송형 (뉴스레터, 푸시, 사전등록 메일) — 타겟 직접 도달
-  mailing: { traffic_driver: 0, brand_awareness: 1, buyer_reach: 3, post_asset: 0 },
-  // 지면형 (가이드북) — 인지도
-  print_page: { traffic_driver: 1, brand_awareness: 2, buyer_reach: 1, post_asset: 0 },
-  // 콘텐츠형 (인터뷰, SNS, 세미나) — 후속 자산 핵심
-  content: { traffic_driver: 0, brand_awareness: 2, buyer_reach: 1, post_asset: 3 },
+  quantity: { new_product: 1, traffic_driver: 1, brand_awareness: 3 },
+  // 미디어형 (LED 영상) — 시각 임팩트 → 인지도 + 신제품 시각화
+  media: { new_product: 2, traffic_driver: 2, brand_awareness: 3 },
+  // 디지털 배너 — 사전 검색 노출 → 신제품 인지
+  digital_banner: { new_product: 3, traffic_driver: 1, brand_awareness: 1 },
+  // 발송형 (뉴스레터, 푸시, 사전등록 메일) — 사전 신제품 알림
+  mailing: { new_product: 3, traffic_driver: 1, brand_awareness: 1 },
+  // 지면형 (가이드북) — 브랜드 인지
+  print_page: { new_product: 1, traffic_driver: 1, brand_awareness: 2 },
+  // 콘텐츠형 (인터뷰, SNS, 카드뉴스) — 신제품 인지 + 브랜드
+  content: { new_product: 3, traffic_driver: 0, brand_awareness: 2 },
   // X-Pace (옥외 하이브리드)
-  xpace: { traffic_driver: 2, brand_awareness: 3, buyer_reach: 1, post_asset: 0 },
+  xpace: { new_product: 1, traffic_driver: 2, brand_awareness: 3 },
 };
 
 /** 키워드별 추가 가산 (이름·코드·태그에 포함되면 +). */
 const KEYWORD_BUMPS = [
-  // 해외·국제 → buyer_reach +1
-  { re: /해외|overseas|global|international/i, key: "buyer_reach", bump: 1 },
-  // 초대장 → buyer_reach +1 (타겟 발송)
-  { re: /초대장|invitation/i, key: "buyer_reach", bump: 1 },
-  // 세미나·발표 → post_asset +1 (발표 영상 자산화)
-  { re: /세미나|seminar/i, key: "post_asset", bump: 1 },
-  // 인터뷰·SNS·카드뉴스 → post_asset 이미 max
-  // 검색·search → buyer_reach +1 (지향성)
-  { re: /검색|search/i, key: "buyer_reach", bump: 1 },
+  // 세미나·발표 → new_product +1 (신제품 발표 채널)
+  { re: /세미나|seminar|발표/i, key: "new_product", bump: 1 },
+  // 인터뷰 → new_product 이미 max 이므로 brand 가산
+  { re: /인터뷰|interview/i, key: "brand_awareness", bump: 1 },
 ];
 
 function clamp(v) {
@@ -138,7 +133,16 @@ for (const cat of cats) {
 
   const patch = {};
   if (affinity && Object.keys(affinity).length > 0) {
-    patch.goalAffinity = affinity;
+    // Firestore merge 가 중첩 객체를 재귀 merge — 옛 키(buyer_reach/post_asset)
+    // 가 남아있을 수 있으니 명시 삭제 후 새 값 채움.
+    const fullAffinity = {
+      new_product: affinity.new_product ?? FieldValue.delete(),
+      traffic_driver: affinity.traffic_driver ?? FieldValue.delete(),
+      brand_awareness: affinity.brand_awareness ?? FieldValue.delete(),
+      buyer_reach: FieldValue.delete(),
+      post_asset: FieldValue.delete(),
+    };
+    patch.goalAffinity = fullAffinity;
   }
   if (synergy.length > 0) {
     patch.synergyTargets = synergy;

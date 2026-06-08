@@ -40,7 +40,7 @@ export const DEFAULT_KPRINT_PERSONAS: Array<
     title: "해외 바이어 도달",
     description:
       "해외 영업·바이어 매칭이 목표. 검색·뉴스레터·도면 노출이 핵심.",
-    purposes: ["buyer_reach"] as Purpose[],
+    purposes: ["new_product"] as Purpose[],
     packageTier: "standard",
     socialProofNote: "해외 영업 강화 회사가 선호하는 조합",
     budgetNote: "평균 500만원 — 프라임 스팟 + 해외 뉴스레터",
@@ -53,7 +53,7 @@ export const DEFAULT_KPRINT_PERSONAS: Array<
     title: "콘텐츠·SNS 자산 확보",
     description:
       "행사 후에도 마케팅에 쓸 자산(영상·사진·인터뷰)이 필요한 회사. 콘텐츠형 매체 중심.",
-    purposes: ["post_asset", "brand_awareness"] as Purpose[],
+    purposes: ["new_product", "brand_awareness"] as Purpose[],
     packageTier: "standard",
     socialProofNote: "마케팅 부서가 가장 많이 픽업하는 코스",
     budgetNote: "평균 400만원 — 세미나 + 인터뷰 SNS",

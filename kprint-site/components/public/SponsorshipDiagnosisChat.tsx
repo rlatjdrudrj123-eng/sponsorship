@@ -48,7 +48,6 @@ const STEP_ORDER: Step[] = ["intro", "q1", "q2", "q3", "result"];
 
 const MUST_HAVE_OPTIONS: MustHaveTag[] = [
   "online_channel",
-  "post_event_asset",
   "overseas",
   "signature_combo",
 ];

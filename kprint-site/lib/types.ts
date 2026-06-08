@@ -3,44 +3,37 @@ import type { Timestamp } from "firebase/firestore";
 export type { Timestamp };
 
 // ============= PURPOSE (참가업체 시점의 광고 목적) =============
-// 참가업체가 "왜 사는지" — 사이드바 필터·페르소나 매칭의 단일 진실원.
+// 페르소나 3종과 1:1 매칭 — 신제품 홍보형 / 현장 방문객 유도형 / 브랜드 확산형.
 // 카테고리는 명시적 purposeOverride 또는 휴리스틱(derivePurposes)으로 매핑됨.
 export type Purpose =
-  | "traffic_driver"     // 부스 방문 유도 (현장 동선 위 광고)
-  | "brand_awareness"    // 브랜드 인지도 확보 (대형 노출 채널)
-  | "buyer_reach"        // 해외/특정 바이어 도달 (타겟팅 직접 도달)
-  | "post_asset";        // 행사 후 자산 (콘텐츠·SNS·인터뷰)
+  | "new_product"        // 신제품 홍보 — 새 제품·서비스 인지 확보
+  | "traffic_driver"     // 현장 방문객 유도 — 부스 동선·트래픽
+  | "brand_awareness";   // 브랜드 확산 — 전 동선 통합 노출
 
 export const PURPOSE_ORDER: Purpose[] = [
+  "new_product",
   "traffic_driver",
   "brand_awareness",
-  "buyer_reach",
-  "post_asset",
 ];
 
 export const PURPOSE_META: Record<
   Purpose,
   { ko: string; en: string; desc: string }
 > = {
+  new_product: {
+    ko: "신제품 홍보",
+    en: "New product launch",
+    desc: "새 제품·서비스 인지 확보 (사전·온라인 노출 + 발표 채널)",
+  },
   traffic_driver: {
-    ko: "부스 방문 유도",
-    en: "Drive booth traffic",
+    ko: "현장 방문객 유도",
+    en: "Drive on-floor traffic",
     desc: "참관객 동선 위에서 부스로 유도",
   },
   brand_awareness: {
-    ko: "브랜드 인지도 확보",
+    ko: "브랜드 확산",
     en: "Brand awareness",
     desc: "전 동선 통합 노출로 브랜드 인지",
-  },
-  buyer_reach: {
-    ko: "해외·특정 바이어 도달",
-    en: "Reach key buyers",
-    desc: "결정권자에게 직접 도달 (메일·등록·세미나)",
-  },
-  post_asset: {
-    ko: "행사 후 자산 남기기",
-    en: "Post-event assets",
-    desc: "콘텐츠·SNS·인터뷰로 사후 활용",
   },
 };
 

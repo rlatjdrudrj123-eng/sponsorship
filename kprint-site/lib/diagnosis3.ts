@@ -27,7 +27,6 @@ export type DiagAnswers = {
 
 export type MustHaveTag =
   | "online_channel"       // 온라인 채널도 포함
-  | "post_event_asset"     // 행사 후 콘텐츠 자산
   | "overseas"             // 해외 노출
   | "signature_combo";     // 시그니처 패키지 풀 콤보
 
@@ -241,46 +240,28 @@ function collectMustHaveMet(c: Category, tags: MustHaveTag[]): string[] {
   if (tags.includes("online_channel") && c.channel === "online") {
     out.push("온라인 채널");
   }
-  if (tags.includes("post_event_asset") && hasPostAsset(c)) {
-    out.push("콘텐츠 자산");
-  }
   if (tags.includes("overseas") && hasOverseasTag(c)) {
     out.push("해외 노출");
   }
   return out;
 }
 
-function hasPostAsset(c: Category): boolean {
-  // content 스펙이 있거나 timing 에 post 가 포함되거나 type=content
-  if (c.type === "content") return true;
-  if ((c.timingOverride ?? []).includes("post")) return true;
-  if (c.contentSpec) return true;
-  return false;
-}
-
 function hasOverseasTag(c: Category): boolean {
   const tags = (c.tags ?? []).map((t) => t.toLowerCase());
-  return tags.some((t) => t.includes("해외") || t.includes("overseas") || t.includes("global"));
+  return tags.some(
+    (t) => t.includes("해외") || t.includes("overseas") || t.includes("global")
+  );
 }
 
 function collectAntiPatterns(c: Category, answers: DiagAnswers): string[] {
   const out: string[] = [];
-  // 트래픽 목적인데 매체가 온라인 전용 — 약감점
+  // 현장 방문객 유도가 목표인데 매체가 온라인 전용 — 약감점
   if (
     (answers.goals.primary === "traffic_driver" ||
       answers.goals.secondary === "traffic_driver") &&
     c.channel === "online"
   ) {
     out.push("traffic vs online");
-  }
-  // 콘텐츠 자산 필수인데 매체가 onsite 만
-  if (
-    answers.mustHave.includes("post_event_asset") &&
-    (c.timingOverride ?? []).length > 0 &&
-    !(c.timingOverride ?? []).includes("post") &&
-    c.type !== "content"
-  ) {
-    out.push("no post asset");
   }
   return out;
 }
@@ -431,14 +412,12 @@ function buildReason(
 
 function purposeLabel(p: Purpose): string {
   switch (p) {
+    case "new_product":
+      return "신제품 홍보";
     case "traffic_driver":
-      return "부스 트래픽";
+      return "현장 방문객 유도";
     case "brand_awareness":
-      return "브랜드 인지";
-    case "buyer_reach":
-      return "바이어 도달";
-    case "post_asset":
-      return "행사 후 자산";
+      return "브랜드 확산";
   }
 }
 
@@ -551,29 +530,25 @@ function computeMinPriceByCategory(
 export const PURPOSES = PURPOSE_ORDER;
 
 export const PURPOSE_LABEL_KO: Record<Purpose, string> = {
-  traffic_driver: "부스 트래픽 유도",
-  brand_awareness: "브랜드 인지도",
-  buyer_reach: "바이어 도달",
-  post_asset: "행사 후 콘텐츠 자산",
+  new_product: "신제품 홍보",
+  traffic_driver: "현장 방문객 유도",
+  brand_awareness: "브랜드 확산",
 };
 
 export const PURPOSE_LABEL_EN: Record<Purpose, string> = {
-  traffic_driver: "Drive booth traffic",
+  new_product: "New product launch",
+  traffic_driver: "Drive on-floor traffic",
   brand_awareness: "Brand awareness",
-  buyer_reach: "Reach buyers",
-  post_asset: "Post-event content asset",
 };
 
 export const MUST_HAVE_LABEL_KO: Record<MustHaveTag, string> = {
-  online_channel: "온라인 채널도 포함",
-  post_event_asset: "행사 후 콘텐츠 자산",
-  overseas: "해외 노출",
+  online_channel: "온라인 채널 포함",
+  overseas: "해외 노출 포함",
   signature_combo: "시그니처 패키지 풀 콤보",
 };
 
 export const MUST_HAVE_LABEL_EN: Record<MustHaveTag, string> = {
   online_channel: "Include online channels",
-  post_event_asset: "Post-event content asset",
   overseas: "Overseas exposure",
   signature_combo: "Signature full bundle",
 };

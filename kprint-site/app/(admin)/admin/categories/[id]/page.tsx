@@ -1437,26 +1437,25 @@ function DiagnosisAffinityEditor({
   const synergyTargets = category.synergyTargets ?? [];
   const boost = category.recommendBoost ?? 0;
 
-  const PURPOSES: Array<{ key: "traffic_driver" | "brand_awareness" | "buyer_reach" | "post_asset"; label: string; desc: string }> = [
+  const PURPOSES: Array<{
+    key: "new_product" | "traffic_driver" | "brand_awareness";
+    label: string;
+    desc: string;
+  }> = [
+    {
+      key: "new_product",
+      label: "신제품 홍보",
+      desc: "사전 알림·검색·발표 채널",
+    },
     {
       key: "traffic_driver",
-      label: "부스 트래픽 유도",
-      desc: "현장 동선·부스 방문 자극",
+      label: "현장 방문객 유도",
+      desc: "부스 동선·천장·라이팅",
     },
     {
       key: "brand_awareness",
-      label: "브랜드 인지도",
-      desc: "대형 노출·반복 노출",
-    },
-    {
-      key: "buyer_reach",
-      label: "바이어 도달",
-      desc: "타겟·해외·직접 도달",
-    },
-    {
-      key: "post_asset",
-      label: "행사 후 콘텐츠 자산",
-      desc: "인터뷰·영상·SNS",
+      label: "브랜드 확산",
+      desc: "장시간 노출·반복 노출",
     },
   ];
 
