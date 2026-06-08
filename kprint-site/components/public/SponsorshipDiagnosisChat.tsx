@@ -262,7 +262,7 @@ export function SponsorshipDiagnosisChat({
               </button>
             )}
             <div className="min-w-0">
-              <div className="text-[10px] uppercase tracking-[0.2em] text-brand-700 font-bold font-num">
+              <div className="text-[11px] text-brand-700 font-bold">
                 {isEn ? "1-min match" : "1분 진단"}
               </div>
               <div className="text-[13px] font-bold text-ink-900 truncate">
@@ -426,17 +426,15 @@ function IntroPanel({
 
   return (
     <div className="py-4 max-w-md mx-auto">
-      <div className="font-num text-[10.5px] uppercase tracking-[0.25em] text-brand-500 font-bold mb-2">
-        {isEn
-          ? "Sponsorship Proposal · 3 Q · ~1 min"
-          : "맞춤형 스폰서십 제안 · 3문항 / 약 1분 소요"}
-      </div>
-      <h3 className="text-[22px] font-bold text-ink-900 leading-tight tracking-tight mb-3">
+      <h3 className="text-[20px] font-bold text-ink-900 leading-snug mb-2">
         {isEn
           ? "Find the optimal sponsorship configuration for your goals."
           : "귀사의 목표에 맞는 최적의 스폰서십 구성을 확인해 보십시오."}
       </h3>
-      <ul className="space-y-2.5 mb-7">
+      <p className="text-[12px] text-ink-500 mb-5">
+        {isEn ? "3 questions · about 1 minute" : "3문항 / 약 1분 소요"}
+      </p>
+      <ul className="space-y-2 mb-7">
         {items.map((t, i) => (
           <li
             key={i}
@@ -450,7 +448,7 @@ function IntroPanel({
       <button
         type="button"
         onClick={onStart}
-        className="w-full px-5 py-3 rounded-pill bg-brand-500 text-white text-[13.5px] font-bold hover:bg-brand-700 hover:shadow-glow-sm inline-flex items-center justify-center gap-2 transition-all"
+        className="w-full px-5 py-3 rounded-pill bg-brand-500 text-white text-[14px] font-bold hover:bg-brand-700 hover:shadow-glow-sm inline-flex items-center justify-center gap-2 transition-all"
       >
         {isEn ? "Start" : "진단 시작"}
         <ArrowRight className="w-4 h-4" />
@@ -476,9 +474,6 @@ function GoalsPanel({
   return (
     <div>
       <div className="mb-5">
-        <div className="font-num text-[10.5px] uppercase tracking-[0.25em] text-brand-500 font-bold mb-1.5">
-          {isEn ? "Step 1 · Goal" : "STEP 1 · 목표"}
-        </div>
         <h3 className="text-[18px] font-bold text-ink-900 leading-tight">
           {isEn ? "1st priority goal" : "1순위 목표"}
         </h3>
@@ -509,9 +504,9 @@ function GoalsPanel({
       {primary && (
         <>
           <div className="mb-3">
-            <div className="font-num text-[10px] uppercase tracking-[0.2em] text-ink-500 font-bold mb-1">
-              {isEn ? "2nd Priority (Optional)" : "2순위 (선택)"}
-            </div>
+            <h4 className="text-[14px] font-semibold text-ink-700">
+              {isEn ? "2nd priority (optional)" : "2순위 (선택)"}
+            </h4>
           </div>
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
             <button
@@ -560,11 +555,8 @@ function BudgetPanel({
   return (
     <div>
       <div className="mb-5">
-        <div className="font-num text-[10.5px] uppercase tracking-[0.25em] text-brand-500 font-bold mb-1.5">
-          {isEn ? "Step 2 · Budget" : "STEP 2 · 예산"}
-        </div>
         <h3 className="text-[18px] font-bold text-ink-900 leading-tight">
-          {isEn ? "Set executable budget" : "집행 가능 예산을 설정하세요"}
+          {isEn ? "Set executable budget" : "집행 가능 예산"}
         </h3>
       </div>
 
@@ -618,14 +610,14 @@ function MustHavePanel({
   return (
     <div>
       <div className="mb-5">
-        <div className="font-num text-[10.5px] uppercase tracking-[0.25em] text-brand-500 font-bold mb-1.5">
-          {isEn ? "Step 3 · Requirements" : "STEP 3 · 추가 요건"}
-        </div>
         <h3 className="text-[18px] font-bold text-ink-900 leading-tight">
           {isEn
-            ? "Required conditions (optional, multi-select)"
-            : "포함이 필요한 요건을 선택하세요 (선택, 복수 가능)"}
+            ? "Required conditions (optional)"
+            : "포함이 필요한 요건 (선택)"}
         </h3>
+        <p className="text-[12px] text-ink-500 mt-1">
+          {isEn ? "Multiple choice possible" : "복수 선택 가능"}
+        </p>
       </div>
       <div className="space-y-2">
         {MUST_HAVE_OPTIONS.map((t) => {
@@ -743,8 +735,8 @@ function ResultPanel({
     <div className="space-y-5">
       {/* 답변 영수증 */}
       <div className="bg-ink-50 rounded-card p-4 space-y-2">
-        <div className="text-[10.5px] uppercase tracking-[0.2em] text-ink-500 font-bold font-num">
-          {isEn ? "Your Inputs" : "입력 답변"}
+        <div className="text-[12px] text-ink-500 font-semibold">
+          {isEn ? "Your inputs" : "입력 답변"}
         </div>
         <Receipt
           label={
@@ -956,8 +948,8 @@ function RecCard({
         </span>
       </div>
       {reason && (
-        <div className="text-[11.5px] text-brand-700 leading-snug">
-          └ {reason}
+        <div className="text-[11.5px] text-brand-700 leading-snug mt-0.5">
+          {reason}
         </div>
       )}
     </li>
@@ -985,8 +977,8 @@ function UpgradeBlock({
     <div className="bg-gradient-to-br from-brand-50 to-white border-2 border-brand-500 rounded-card p-4">
       <div className="flex items-center gap-2 mb-2">
         <Package2 className="w-4 h-4 text-brand-700" />
-        <span className="text-[10.5px] uppercase tracking-[0.2em] text-brand-700 font-bold font-num">
-          {isEn ? "Upgrade path" : "업그레이드 경로"}
+        <span className="text-[12px] text-brand-700 font-bold">
+          {isEn ? "Upgrade path" : "패키지 전환 가능"}
         </span>
       </div>
       <h4 className="text-[15px] font-bold text-ink-900 leading-tight mb-2">

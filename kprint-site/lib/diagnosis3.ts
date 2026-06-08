@@ -372,42 +372,31 @@ function buildReason(
   answers: DiagAnswers,
   bd: ScoreBreakdown
 ): string {
-  const parts: string[] = [];
-
-  // 1) 목표 매칭이 가장 강한 신호. goalAffinity 점수가 높은 목표를 인용.
+  // 1) 목표 매칭 — 자연어 한 줄
   const aff = c.goalAffinity ?? {};
   const primary = answers.goals.primary;
   const secondary = answers.goals.secondary;
   const primaryHit = (aff[primary] ?? 0) >= 2;
   const secondaryHit = secondary && (aff[secondary] ?? 0) >= 2;
 
+  let goalText = "";
   if (primaryHit && secondaryHit) {
-    parts.push(`${purposeLabel(primary)}·${purposeLabel(secondary!)}에 부합`);
+    goalText = `${purposeLabel(primary)}·${purposeLabel(secondary!)} 모두 강함`;
   } else if (primaryHit) {
-    parts.push(`${purposeLabel(primary)}에 부합`);
+    goalText = `${purposeLabel(primary)} 강함`;
   } else if (secondaryHit) {
-    parts.push(`${purposeLabel(secondary!)}에 보조`);
+    goalText = `${purposeLabel(secondary!)} 보조`;
   } else if (bd.goalFit > 0) {
-    parts.push(`${purposeLabel(primary)} 보조`);
+    goalText = `${purposeLabel(primary)} 보조`;
   }
 
-  // 2) 시너지
-  if (bd.synergy > 0.3) {
-    parts.push("앞 선택과 시너지");
-  }
+  // 2) mustHave 충족 — 짧게
+  const mustHaveText =
+    bd.mustHaveMet.length > 0 ? bd.mustHaveMet.join("·") + " 포함" : "";
 
-  // 3) 단계 보강
-  if (bd.journeyFill > 0.3) {
-    parts.push(timingFillLabel(c));
-  }
-
-  // 4) mustHave 충족
-  if (bd.mustHaveMet.length > 0) {
-    parts.push(`${bd.mustHaveMet.join("·")} 조건 충족`);
-  }
-
-  // 인용할 매칭 신호가 없으면 빈 문자열 — UI 가 줄을 숨김.
-  return parts.join(" · ");
+  // synergy / journeyFill 은 내부 점수 가산에만 쓰고 화면에는 노출 안 함 (UX 노이즈)
+  // 신호가 없으면 빈 줄 — RecCard 가 자동으로 숨김.
+  return [goalText, mustHaveText].filter(Boolean).join(" · ");
 }
 
 function purposeLabel(p: Purpose): string {
@@ -419,14 +408,6 @@ function purposeLabel(p: Purpose): string {
     case "brand_awareness":
       return "브랜드 확산";
   }
-}
-
-function timingFillLabel(c: Category): string {
-  const t = c.timingOverride ?? [];
-  if (t.includes("post")) return "행사 후 단계 보강";
-  if (t.includes("pre")) return "사전 단계 보강";
-  if (t.includes("onsite")) return "현장 단계 보강";
-  return "단계 분포 보강";
 }
 
 // ============================================================================
