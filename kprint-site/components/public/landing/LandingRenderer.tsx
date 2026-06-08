@@ -148,7 +148,11 @@ export function ClosingSlide({
         {/* CTA 두 버튼 */}
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 md:gap-3 w-full sm:w-auto">
           <a
-            href="https://kprint.kr/ko/mypage/exhibitor/advertise"
+            href={
+              locale === "en"
+                ? "https://kprint.kr/en/auth/login/exhibitor"
+                : "https://kprint.kr/ko/mypage/exhibitor/advertise"
+            }
             target="_blank"
             rel="noopener noreferrer"
             className="px-7 md:px-9 py-3.5 md:py-4 rounded-btn bg-brand-500 text-white hover:bg-brand-700 text-[14px] md:text-[15px] font-bold transition-colors inline-flex items-center justify-center gap-2"
