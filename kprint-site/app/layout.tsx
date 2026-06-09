@@ -24,6 +24,18 @@ const themePreloadScript = `
 })();
 `.trim();
 
+// Microsoft Clarity — 세션 리플레이 + 히트맵. 공개 사이트·어드민 모두 적용.
+// 어드민 페이지는 트래픽 적고 사용자 행동 분석 대상이 아니지만, 사무국이
+// 실제 사용 패턴 확인하는 데 참고로 둠. 분석 페이지에서 페이지별 필터 가능.
+const CLARITY_PROJECT_ID = "x46kkolzo9";
+const clarityScript = `
+(function(c,l,a,r,i,t,y){
+  c[a]=c[a]||function(){(c[a].q=c[a].q||[]).push(arguments)};
+  t=l.createElement(r);t.async=1;t.src="https://www.clarity.ms/tag/"+i;
+  y=l.getElementsByTagName(r)[0];y.parentNode.insertBefore(t,y);
+})(window, document, "clarity", "script", "${CLARITY_PROJECT_ID}");
+`.trim();
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -36,6 +48,11 @@ export default function RootLayout({
           id="theme-preload"
           strategy="beforeInteractive"
           dangerouslySetInnerHTML={{ __html: themePreloadScript }}
+        />
+        <Script
+          id="ms-clarity"
+          strategy="afterInteractive"
+          dangerouslySetInnerHTML={{ __html: clarityScript }}
         />
         {children}
       </body>
