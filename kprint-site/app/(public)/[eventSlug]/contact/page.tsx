@@ -66,6 +66,14 @@ export default function ContactPage() {
   );
 }
 
+type DiagnosisContext = {
+  primaryGoal: string;
+  secondaryGoal?: string;
+  budgetKRW: number;
+  mustHave: string[];
+  recommendedCategories: Array<{ id: string; nameKo: string }>;
+};
+
 function ContactPageInner() {
   const router = useRouter();
   const params = useParams<{ eventSlug: string }>();
@@ -77,6 +85,22 @@ function ContactPageInner() {
   const removeSlot = useCartStore((s) => s.removeSlot);
   const removePackage = useCartStore((s) => s.removePackage);
   const hydrated = useCartStore((s) => s.hasHydrated);
+
+  // 1분 진단에서 넘어온 컨텍스트 — sessionStorage 에 있으면 inquiry 에 첨부.
+  const [diagnosisContext, setDiagnosisContext] =
+    useState<DiagnosisContext | null>(null);
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    try {
+      const raw = sessionStorage.getItem("diagnosisContext");
+      if (raw) {
+        const parsed = JSON.parse(raw) as DiagnosisContext;
+        if (parsed && parsed.primaryGoal) setDiagnosisContext(parsed);
+      }
+    } catch {
+      // 무시
+    }
+  }, []);
 
   const [categories, setCategories] = useState<Map<string, Category>>(new Map());
   const [subcategories, setSubcategories] = useState<Map<string, Subcategory>>(
@@ -239,6 +263,7 @@ function ContactPageInner() {
         cartSubtotal: subtotal,
         cartVat: vat,
         cartTotal: total,
+        ...(diagnosisContext ? { diagnosisContext } : {}),
         status: "new",
         createdAt: Timestamp.fromDate(new Date()),
         updatedAt: Timestamp.fromDate(new Date()),
@@ -249,6 +274,14 @@ function ContactPageInner() {
           if (it.type === "slot") removeSlot(it.slotId);
           else removePackage(it.packageId);
         });
+      }
+      // 진단 컨텍스트는 한 번 쓰면 비움 — 다음 일반 문의에 잘못 따라붙지 않게
+      if (typeof window !== "undefined") {
+        try {
+          sessionStorage.removeItem("diagnosisContext");
+        } catch {
+          // 무시
+        }
       }
       router.push(`/${eventId}/contact/done`);
     } catch (e) {
@@ -292,6 +325,23 @@ function ContactPageInner() {
         <div className="max-w-5xl mx-auto px-6 md:px-12 py-10 grid lg:grid-cols-[1fr_360px] gap-8 items-start">
           {/* Form */}
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
+            {diagnosisContext && (
+              <div className="bg-brand-50 border border-brand-200 rounded-card px-4 py-3 text-[12.5px] text-brand-700 flex items-start gap-2.5">
+                <span>💡</span>
+                <div className="leading-snug">
+                  <div className="font-bold">
+                    {locale === "en"
+                      ? "1-min diagnosis result attached"
+                      : "1분 진단 결과가 함께 전송됩니다"}
+                  </div>
+                  <div className="text-[11.5px] text-brand-700/80 mt-0.5">
+                    {locale === "en"
+                      ? `Goal · budget · recommended ${diagnosisContext.recommendedCategories.length} items will be visible to the secretariat.`
+                      : `사무국에 답변·예산·추천 매체 ${diagnosisContext.recommendedCategories.length}종이 그대로 전달됩니다.`}
+                  </div>
+                </div>
+              </div>
+            )}
             <Field
               label={t("contact.companyName", locale)}
               error={errors.companyName?.message}

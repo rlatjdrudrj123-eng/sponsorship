@@ -214,8 +214,11 @@ export default function SponsorshipsPage() {
     searchParams?.get("view") === "card" ? "card" : "slide"
   );
   const [aiChatOpen, setAiChatOpen] = useState(false);
-  // 패키지 카드 클릭 시 페이지 이동 대신 모달로 표시 (UX 일관성)
-  const [selectedPackageId, setSelectedPackageId] = useState<string | null>(null);
+  // 패키지 카드 클릭 시 페이지 이동 대신 모달로 표시 (UX 일관성).
+  // ?package=<id> query 로 진입하면 자동 오픈 (예: 1분 진단의 업그레이드 경로).
+  const [selectedPackageId, setSelectedPackageId] = useState<string | null>(
+    searchParams?.get("package") ?? null
+  );
   // 1분 진단 — 외부 칩에서 1순위 목표를 prefill 해서 들어옴.
   const [aiChatInitial, setAiChatInitial] = useState<Purpose | null>(null);
   // 비교 모드 — 카드에서 직접 체크해 모은다 (카트 거치지 않고 바로 compare로)

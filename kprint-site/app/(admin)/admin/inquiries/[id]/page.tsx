@@ -193,6 +193,16 @@ export default function InquiryDetailPage() {
             </div>
           </Section>
 
+          {/* 1분 진단 컨텍스트 — 사용자가 진단 결과에서 견적 요청한 경우만 노출 */}
+          {inquiry.diagnosisContext && (
+            <Section title="🧭 1분 진단 결과로 온 문의">
+              <DiagnosisContextView
+                ctx={inquiry.diagnosisContext}
+                allCategories={categories}
+              />
+            </Section>
+          )}
+
           {/* Cart */}
           <Section title={`카트 항목 (${inquiry.cartItems.length}건)`}>
             {inquiry.cartItems.length === 0 ? (
@@ -407,4 +417,103 @@ function fmtDate(ts: Timestamp | undefined): string {
   } catch {
     return "—";
   }
+}
+
+// ============================================================================
+// 1분 진단 컨텍스트 — 사용자가 진단 결과에서 견적 요청 시 같이 전송됨
+// ============================================================================
+
+const PURPOSE_LABEL_KO: Record<string, string> = {
+  new_product: "신제품 홍보",
+  traffic_driver: "현장 방문객 유도",
+  brand_awareness: "브랜드 확산",
+};
+const MUST_HAVE_LABEL_KO: Record<string, string> = {
+  online_channel: "온라인 채널 노출",
+  overseas: "글로벌(해외) 바이어 타깃",
+  pre_exposure: "사전 노출 포함",
+};
+
+function DiagnosisContextView({
+  ctx,
+  allCategories,
+}: {
+  ctx: NonNullable<Inquiry["diagnosisContext"]>;
+  allCategories: Category[];
+}) {
+  const goalText = ctx.secondaryGoal
+    ? `${PURPOSE_LABEL_KO[ctx.primaryGoal] ?? ctx.primaryGoal} · ${PURPOSE_LABEL_KO[ctx.secondaryGoal] ?? ctx.secondaryGoal}`
+    : (PURPOSE_LABEL_KO[ctx.primaryGoal] ?? ctx.primaryGoal);
+  const mustHaveText =
+    ctx.mustHave && ctx.mustHave.length > 0
+      ? ctx.mustHave
+          .map((m) => MUST_HAVE_LABEL_KO[m] ?? m)
+          .join(" · ")
+      : "(없음)";
+
+  return (
+    <div className="space-y-3 bg-brand-50/40 border border-brand-100 rounded-btn p-4">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-[12.5px]">
+        <div>
+          <div className="text-[10.5px] text-ink-500 font-semibold mb-0.5">
+            목표
+          </div>
+          <div className="text-ink-900 font-semibold">{goalText}</div>
+        </div>
+        <div>
+          <div className="text-[10.5px] text-ink-500 font-semibold mb-0.5">
+            예산
+          </div>
+          <div className="text-ink-900 font-num font-semibold">
+            {(ctx.budgetKRW / 10000).toLocaleString()}만 원 이내
+          </div>
+        </div>
+        <div>
+          <div className="text-[10.5px] text-ink-500 font-semibold mb-0.5">
+            추가 요건
+          </div>
+          <div className="text-ink-900">{mustHaveText}</div>
+        </div>
+      </div>
+
+      <div>
+        <div className="text-[10.5px] text-ink-500 font-semibold mb-1">
+          진단이 추천한 매체 ({ctx.recommendedCategories.length}종)
+        </div>
+        {ctx.recommendedCategories.length === 0 ? (
+          <div className="text-[12px] text-ink-500">(추천 매체 없음)</div>
+        ) : (
+          <ul className="space-y-0.5">
+            {ctx.recommendedCategories.map((rc) => {
+              const live = allCategories.find((c) => c.id === rc.id);
+              const name = live?.name?.ko ?? rc.nameKo;
+              const code = live?.code;
+              return (
+                <li
+                  key={rc.id}
+                  className="text-[12.5px] text-ink-900 flex items-baseline gap-2"
+                >
+                  <span className="text-brand-500">•</span>
+                  <span className="font-semibold">{name}</span>
+                  {code && (
+                    <span className="text-[10.5px] font-mono text-ink-400">
+                      {code}
+                    </span>
+                  )}
+                  {live && (
+                    <Link
+                      href={`/admin/categories/${live.id}`}
+                      className="text-[10.5px] text-brand-700 hover:underline ml-auto"
+                    >
+                      카테고리 편집 →
+                    </Link>
+                  )}
+                </li>
+              );
+            })}
+          </ul>
+        )}
+      </div>
+    </div>
+  );
 }

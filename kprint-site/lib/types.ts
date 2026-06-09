@@ -312,7 +312,7 @@ export type CartItem =
 
 export type Inquiry = {
   id: string;
-  eventId: string;  // 어느 행사를 둘러보다 문의했는지
+  eventId: string;
   companyName: string;
   contactName: string;
   email: string;
@@ -324,6 +324,16 @@ export type Inquiry = {
   cartTotal: number;
 
   message: string;
+
+  /** 1분 진단을 거쳐 문의한 경우의 컨텍스트 — 어드민에 답·추천 매체 그대로 보여줌 */
+  diagnosisContext?: {
+    primaryGoal: string;
+    secondaryGoal?: string;
+    budgetKRW: number;
+    mustHave: string[];
+    /** 진단이 추천한 카테고리 (ID + 이름 함께 저장해서 어드민에서 카테고리 fetch 불필요) */
+    recommendedCategories: Array<{ id: string; nameKo: string }>;
+  };
 
   status: "new" | "in_progress" | "closed";
   adminNote?: string;

@@ -10,7 +10,7 @@
  * lib/diagnosis3.ts 의 recommend() / findUpgradeOffers() 가 점수·시너지·폴백 처리.
  */
 import { useEffect, useMemo, useRef, useState } from "react";
-import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { addDoc, collection, serverTimestamp } from "firebase/firestore";
 import {
   ArrowRight,
@@ -751,6 +751,7 @@ function ResultPanel({
   onEditMustHave: () => void;
   onClose: () => void;
 }) {
+  const router = useRouter();
   const purposeLabels = isEn ? PURPOSE_LABEL_EN : PURPOSE_LABEL_KO;
   const mustHaveLabels = isEn ? MUST_HAVE_LABEL_EN : MUST_HAVE_LABEL_KO;
 
@@ -763,6 +764,41 @@ function ResultPanel({
 
   const fmtKRW = (n: number) =>
     isEn ? `$${Math.round(n / 1000).toLocaleString()}` : `${n.toLocaleString()}원`;
+
+  // 진단 컨텍스트 — sessionStorage 에 저장해서 /contact 또는 패키지 상세 모달에서
+  // 다시 끌어다 쓰게. inquiry 제출 시 admin 에 같이 기록됨.
+  const buildAndSaveContext = () => {
+    if (typeof window === "undefined") return;
+    const ctx = {
+      primaryGoal: answers.primaryGoal,
+      secondaryGoal: answers.secondaryGoal ?? undefined,
+      budgetKRW: answers.budgetKRW,
+      mustHave: answers.mustHave,
+      recommendedCategories: result.picks.map((p) => ({
+        id: p.category.id,
+        nameKo: p.category.name.ko,
+      })),
+    };
+    try {
+      sessionStorage.setItem("diagnosisContext", JSON.stringify(ctx));
+    } catch {
+      // sessionStorage 비활성 환경은 무시
+    }
+  };
+
+  const onClickQuote = () => {
+    buildAndSaveContext();
+    onClose();
+    router.push(localeHref(eventId, "/contact", isEn ? "en" : "ko"));
+  };
+
+  const onClickPackageDetail = (pkgId: string) => {
+    buildAndSaveContext();
+    onClose();
+    router.push(
+      localeHref(eventId, `/sponsorships?package=${pkgId}`, isEn ? "en" : "ko")
+    );
+  };
 
   return (
     <div className="space-y-5">
@@ -886,20 +922,20 @@ function ResultPanel({
           userPicksTotal={result.picksTotal}
           fmt={fmtKRW}
           isEn={isEn}
+          onViewPackage={() => onClickPackageDetail(upgrade.package.id)}
         />
       )}
 
       {/* 액션 버튼들 */}
       <div className="flex items-center gap-2 pt-2 border-t border-ink-100">
-        <Link
-          href={localeHref(eventId, "/contact", isEn ? "en" : "ko")}
+        <button
+          type="button"
+          onClick={onClickQuote}
           className="px-4 py-2.5 rounded-pill bg-brand-500 text-white text-[12.5px] font-bold hover:bg-brand-700 hover:shadow-glow-sm flex items-center gap-1.5 transition-all"
         >
           <FileText className="w-3.5 h-3.5" />
-          {isEn
-            ? "Get a quote for this"
-            : "현재 구성으로 견적서 받기"}
-        </Link>
+          {isEn ? "Get a quote for this" : "현재 구성으로 견적서 받기"}
+        </button>
         <button
           type="button"
           onClick={onClose}
@@ -998,11 +1034,13 @@ function UpgradeBlock({
   userPicksTotal,
   fmt,
   isEn,
+  onViewPackage,
 }: {
   offer: UpgradeOffer;
   userPicksTotal: number;
   fmt: (n: number) => string;
   isEn: boolean;
+  onViewPackage: () => void;
 }) {
   const delta = offer.packagePriceKRW - userPicksTotal;
   const name = isEn && offer.package.name.en ? offer.package.name.en : offer.package.name.ko;
@@ -1079,12 +1117,13 @@ function UpgradeBlock({
         </div>
       </div>
 
-      <Link
-        href="/sponsorships"
+      <button
+        type="button"
+        onClick={onViewPackage}
         className="block w-full text-center px-4 py-2.5 rounded-pill bg-brand-500 text-white text-[12.5px] font-bold hover:bg-brand-700 hover:shadow-glow-sm transition-all"
       >
         {isEn ? "View discounted package" : "할인 적용 패키지 상세 보기"}
-      </Link>
+      </button>
     </div>
   );
 }
