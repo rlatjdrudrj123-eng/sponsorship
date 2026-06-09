@@ -1318,8 +1318,8 @@ function CategorySlide({
                     </div>
                     <p className="text-[11px] text-ink-500 mt-3">
                       {locale === "en"
-                        ? "(Production & install included, VAT excluded)"
-                        : "(제작설치비 포함, 부가세 별도)"}
+                        ? "(VAT excluded)"
+                        : "(부가세 별도)"}
                     </p>
                   </div>
                 ) : (
@@ -1342,8 +1342,8 @@ function CategorySlide({
                     </div>
                     <p className="text-[11px] text-ink-500 mt-2">
                       {locale === "en"
-                        ? "(Production & install included, VAT excluded)"
-                        : "(제작설치비 포함, 부가세 별도)"}
+                        ? "(VAT excluded)"
+                        : "(부가세 별도)"}
                     </p>
                   </div>
                 )
@@ -1492,8 +1492,8 @@ function _LegacyPackageSlide({
                   </div>
                   <p className="text-[11px] text-ink-500 mt-2">
                     {locale === "en"
-                      ? "(Production & install included, VAT excluded)"
-                      : "(제작설치비 포함, 부가세 별도)"}
+                      ? "(VAT excluded)"
+                      : "(부가세 별도)"}
                   </p>
                 </div>
               ) : (

@@ -197,7 +197,7 @@ const subcatsCBA: Subcategory[] = [
     priceKRW: 3_000_000,
     priceUSD: 2400,
     unit: { ko: "구좌당", en: "per slot" },
-    priceNote: "제작·설치비 포함, 부가세 별도",
+    priceNote: "부가세 별도",
     order: 0,
   },
   {
@@ -208,7 +208,7 @@ const subcatsCBA: Subcategory[] = [
     priceKRW: 3_000_000,
     priceUSD: 2400,
     unit: { ko: "구좌당", en: "per slot" },
-    priceNote: "제작·설치비 포함, 부가세 별도",
+    priceNote: "부가세 별도",
     order: 1,
   },
   {
@@ -219,7 +219,7 @@ const subcatsCBA: Subcategory[] = [
     priceKRW: 2_700_000,
     priceUSD: 2200,
     unit: { ko: "구좌당", en: "per slot" },
-    priceNote: "제작·설치비 포함, 부가세 별도",
+    priceNote: "부가세 별도",
     order: 2,
   },
 ];

@@ -3372,8 +3372,8 @@ function SlideSection({
                         </div>
                         <p className="text-[11.5px] text-ink-500 mt-3">
                           {locale === "en"
-                            ? "(Production & install included, VAT excluded)"
-                            : "(제작설치비 포함, 부가세 별도)"}
+                            ? "(VAT excluded)"
+                            : "(부가세 별도)"}
                         </p>
                       </div>
                     ) : (
@@ -3397,8 +3397,8 @@ function SlideSection({
                         </div>
                         <p className="text-[11.5px] text-ink-500 mt-2">
                           {locale === "en"
-                            ? "(Production & install included, VAT excluded)"
-                            : "(제작설치비 포함, 부가세 별도)"}
+                            ? "(VAT excluded)"
+                            : "(부가세 별도)"}
                         </p>
                       </div>
                     )
