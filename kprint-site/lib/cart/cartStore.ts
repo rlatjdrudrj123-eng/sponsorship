@@ -3,6 +3,7 @@
 import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
 import type { CartItem } from "../types";
+import * as clarity from "@/lib/clarity";
 
 type SlotItem = Extract<CartItem, { type: "slot" }>;
 type PackageItem = Extract<CartItem, { type: "package" }>;
@@ -30,7 +31,7 @@ export const useCartStore = create<CartState>()(
       hasHydrated: false,
       setHasHydrated: (h) => set({ hasHydrated: h }),
 
-      addSlot: (slot) =>
+      addSlot: (slot) => {
         set((s) => ({
           items: [
             ...s.items.filter(
@@ -38,21 +39,26 @@ export const useCartStore = create<CartState>()(
             ),
             slot,
           ],
-        })),
+        }));
+        clarity.event("cart_slot_added");
+        clarity.tag("last_added_slot_code", slot.code);
+      },
 
-      removeSlot: (slotId) =>
+      removeSlot: (slotId) => {
         set((s) => ({
           items: s.items.filter(
             (i) => !(i.type === "slot" && i.slotId === slotId)
           ),
-        })),
+        }));
+        clarity.event("cart_slot_removed");
+      },
 
       toggleSlot: (slot) => {
         if (get().hasSlot(slot.slotId)) get().removeSlot(slot.slotId);
         else get().addSlot(slot);
       },
 
-      addPackage: (pkg) =>
+      addPackage: (pkg) => {
         set((s) => ({
           items: [
             ...s.items.filter(
@@ -60,14 +66,19 @@ export const useCartStore = create<CartState>()(
             ),
             pkg,
           ],
-        })),
+        }));
+        clarity.event("cart_package_added");
+        clarity.tag("last_added_package_code", pkg.code);
+      },
 
-      removePackage: (packageId) =>
+      removePackage: (packageId) => {
         set((s) => ({
           items: s.items.filter(
             (i) => !(i.type === "package" && i.packageId === packageId)
           ),
-        })),
+        }));
+        clarity.event("cart_package_removed");
+      },
 
       togglePackage: (pkg) => {
         if (get().hasPackage(pkg.packageId)) get().removePackage(pkg.packageId);

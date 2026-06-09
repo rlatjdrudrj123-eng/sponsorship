@@ -46,6 +46,7 @@ import { SlotPicker } from "@/components/public/CategoryDetail/_shared/SlotPicke
 import { ClosingSlide } from "@/components/public/landing/LandingRenderer";
 import { PackageType } from "@/components/public/CategoryDetail/PackageType";
 import { localized, localizedField, localeHref, useLocale, type Locale } from "@/lib/i18n/locale";
+import * as clarity from "@/lib/clarity";
 import { getFullPdfHref, isDirectPdfHref } from "@/lib/pdf";
 import { t } from "@/lib/i18n/strings";
 import { getTypeLayout } from "@/lib/typeLayouts";
@@ -215,9 +216,20 @@ export default function SponsorshipsPage() {
   const [aiChatOpen, setAiChatOpen] = useState(false);
   // 패키지 카드 클릭 시 페이지 이동 대신 모달로 표시 (UX 일관성).
   // ?package=<id> query 로 진입하면 자동 오픈 (예: 1분 진단의 업그레이드 경로).
-  const [selectedPackageId, setSelectedPackageId] = useState<string | null>(
+  const [selectedPackageId, setSelectedPackageIdState] = useState<string | null>(
     searchParams?.get("package") ?? null
   );
+  // setSelectedPackageId 래퍼 — Clarity 이벤트 같이 발화.
+  const setSelectedPackageId = (id: string | null) => {
+    setSelectedPackageIdState(id);
+    if (id) {
+      const pkg = packages.find((p) => p.id === id);
+      if (pkg) {
+        clarity.event("package_detail_opened");
+        clarity.tag("last_package_viewed", pkg.code);
+      }
+    }
+  };
   // 비교 모드 — 카드에서 직접 체크해 모은다 (카트 거치지 않고 바로 compare로)
   const [compareIds, setCompareIds] = useState<Set<string>>(new Set());
   // 도면·사례 모달 — 카드 클릭 시 SlideSection 형 모달.

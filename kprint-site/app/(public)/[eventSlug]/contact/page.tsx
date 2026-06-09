@@ -30,6 +30,7 @@ import type {
 import { Footer } from "@/components/public/Footer";
 import { useLocale, localized as localizedHelper, localeHref } from "@/lib/i18n/locale";
 import { t } from "@/lib/i18n/strings";
+import * as clarity from "@/lib/clarity";
 
 function buildSchema(locale: "ko" | "en") {
   const isEn = locale === "en";
@@ -257,6 +258,19 @@ function ContactPageInner() {
 
   const onSubmit = async (values: FormValues) => {
     setSubmitError(null);
+    // Clarity — 제출 시도 (실패해도 보냄) + 사용자 식별. 회사명#이메일 로 같은
+    // 사람의 다른 세션 묶기 가능. 이메일은 contact 폼에 자발적으로 입력한 것이라
+    // 분석 목적 사용 OK (PIPA 동의 범위 내).
+    clarity.event("contact_form_submitted");
+    clarity.upgrade("contact_submit");
+    if (diagnosisContext) clarity.event("contact_from_diagnosis");
+    if (items.length > 0)
+      clarity.tag("contact_cart_count", items.length);
+    if (total > 0) clarity.tag("contact_cart_total_man", Math.round(total / 10000));
+    clarity.identify(
+      `${values.companyName}#${values.email}`,
+      values.companyName
+    );
     try {
       await addDoc(collection(getDb(), "inquiries"), {
         eventId,

@@ -42,6 +42,7 @@ import type {
 } from "@/lib/types";
 import { useCartStore } from "@/lib/cart/cartStore";
 import { useLocale, localeHref } from "@/lib/i18n/locale";
+import * as clarity from "@/lib/clarity";
 
 type Step = "intro" | "q1" | "q2" | "q3" | "result";
 
@@ -112,6 +113,7 @@ export function SponsorshipDiagnosisChat({
         setMustHave([]);
       }
       loggedFinalRef.current = false;
+      clarity.event("diagnosis_opened");
     }
   }, [open, initialPrimaryGoal]);
 
@@ -185,6 +187,18 @@ export function SponsorshipDiagnosisChat({
         mustHave,
         recommendedCategoryIds: result.picks.map((p) => p.category.id),
       }).catch(() => {});
+      // Clarity — 진단 완료 + 답변 태그. 대시보드에서 "신제품 홍보 답한 사람만" 같은 필터.
+      clarity.event("diagnosis_completed");
+      clarity.tag("diagnosis_primary_goal", primaryGoal);
+      if (secondaryGoal) clarity.tag("diagnosis_secondary_goal", secondaryGoal);
+      clarity.tag("diagnosis_budget_man", Math.round(budgetKRW / 10000));
+      if (mustHave.length > 0)
+        clarity.tag("diagnosis_must_have", mustHave);
+      if (result.picks.length > 0)
+        clarity.tag(
+          "diagnosis_recommended_codes",
+          result.picks.map((p) => p.category.code).filter(Boolean)
+        );
     }
   }, [step, primaryGoal, secondaryGoal, budgetKRW, mustHave, result, eventId]);
 
@@ -204,6 +218,7 @@ export function SponsorshipDiagnosisChat({
         mustHave,
         recommendedCategoryIds: [],
       }).catch(() => {});
+      clarity.event(`diagnosis_exited_${step}`);
     }
     onClose();
   };
@@ -738,6 +753,8 @@ function ResultPanel({
 
   const onClickQuote = () => {
     buildAndSaveContext();
+    clarity.event("diagnosis_quote_clicked");
+    clarity.upgrade("diagnosis_quote_intent");
     // 추천 단품을 카트에 자동 추가 — entry 가 가리키는 sub 그룹의 가용 슬롯 1개.
     // 가격 다른 sub 는 각각 별개 entry 라 카트도 각각 별개 cart item 으로 들어감.
     for (const p of result.picks) {
@@ -761,6 +778,8 @@ function ResultPanel({
 
   const onClickPackageDetail = (pkgId: string) => {
     buildAndSaveContext();
+    clarity.event("diagnosis_upgrade_clicked");
+    clarity.tag("diagnosis_upgrade_package_id", pkgId);
     onClose();
     router.push(
       localeHref(eventId, `/sponsorships?package=${pkgId}`, isEn ? "en" : "ko")

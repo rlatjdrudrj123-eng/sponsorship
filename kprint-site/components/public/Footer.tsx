@@ -6,6 +6,7 @@ import { Download, FileText, Layers, Mail, Phone } from "lucide-react";
 import type { SiteSettings } from "@/lib/types";
 import { useLocale, localizedField } from "@/lib/i18n/locale";
 import { getFullPdfHref, isDirectPdfHref } from "@/lib/pdf";
+import * as clarity from "@/lib/clarity";
 
 export function Footer({ settings }: { settings: SiteSettings | null }) {
   const params = useParams<{ eventSlug?: string }>();
@@ -132,6 +133,7 @@ export function Footer({ settings }: { settings: SiteSettings | null }) {
                       target="_blank"
                       rel="noopener noreferrer"
                       {...(direct ? { download: "" } : {})}
+                      onClick={() => clarity.event("pdf_full_downloaded")}
                       className="hover:text-brand-500 flex items-center gap-2"
                     >
                       <Download className="w-3.5 h-3.5 text-ink-500" />
@@ -145,6 +147,7 @@ export function Footer({ settings }: { settings: SiteSettings | null }) {
                   href={`${base}/landing/print`}
                   target="_blank"
                   rel="noopener noreferrer"
+                  onClick={() => clarity.event("pdf_overview_downloaded")}
                   className="hover:text-brand-500 flex items-center gap-2"
                 >
                   <Download className="w-3.5 h-3.5 text-ink-500" />

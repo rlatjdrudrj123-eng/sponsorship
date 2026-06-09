@@ -3,6 +3,7 @@
 import { useLayoutEffect, useEffect } from "react";
 import { usePathname } from "next/navigation";
 import { useLocale, type Locale } from "@/lib/i18n/locale";
+import { tag as clarityTag } from "@/lib/clarity";
 
 // SSR 에서 useLayoutEffect 경고 회피 — 서버는 useEffect, 클라는 useLayoutEffect.
 const useIsoLayoutEffect =
@@ -28,5 +29,35 @@ export function LocaleSetter({ locale: _legacyProp }: { locale?: Locale } = {}) 
   useIsoLayoutEffect(() => {
     setLocale(locale);
   }, [locale, setLocale]);
+
+  // Clarity 세션 태그 — locale + eventSlug + pageType. 대시보드 필터에 사용.
+  useEffect(() => {
+    clarityTag("locale", locale);
+    const eventSlug = segments[0];
+    if (eventSlug) clarityTag("eventSlug", eventSlug);
+    const pageType = derivePageType(segments, isEn);
+    if (pageType) clarityTag("pageType", pageType);
+  }, [pathname]); // eslint-disable-line react-hooks/exhaustive-deps
   return null;
+}
+
+function derivePageType(segments: string[], isEn: boolean): string | null {
+  // 첫 세그먼트는 eventSlug, isEn 이면 그다음이 'en'.
+  const offset = isEn ? 2 : 1;
+  const head = segments[offset];
+  if (!head) return "home";
+  if (head === "sponsorships") {
+    return segments[offset + 1] ? "sponsorship_detail" : "sponsorships";
+  }
+  if (head === "packages") {
+    return segments[offset + 1] ? "package_detail" : "packages";
+  }
+  if (head === "cart") return "cart";
+  if (head === "contact") {
+    return segments[offset + 1] === "done" ? "contact_done" : "contact";
+  }
+  if (head === "compare") return "compare";
+  if (head === "print") return "print";
+  if (head === "landing") return "landing";
+  return head;
 }

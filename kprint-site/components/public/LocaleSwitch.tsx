@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import * as clarity from "@/lib/clarity";
 
 /**
  * 공개 사이트 우상단 언어 토글. "KO / EN" 두 글자 세그먼트.
@@ -46,10 +47,22 @@ export function LocaleSwitch({
         text
       }
     >
-      <Link href={koHref} prefetch={false} aria-pressed={current === "ko"} className={cls(current === "ko")}>
+      <Link
+        href={koHref}
+        prefetch={false}
+        aria-pressed={current === "ko"}
+        onClick={() => current !== "ko" && clarity.event("locale_switch_to_ko")}
+        className={cls(current === "ko")}
+      >
         KO
       </Link>
-      <Link href={enHref} prefetch={false} aria-pressed={current === "en"} className={cls(current === "en")}>
+      <Link
+        href={enHref}
+        prefetch={false}
+        aria-pressed={current === "en"}
+        onClick={() => current !== "en" && clarity.event("locale_switch_to_en")}
+        className={cls(current === "en")}
+      >
         EN
       </Link>
     </div>
