@@ -48,7 +48,7 @@ const STEP_ORDER: Step[] = ["intro", "q1", "q2", "q3", "result"];
 const MUST_HAVE_OPTIONS: MustHaveTag[] = [
   "online_channel",
   "overseas",
-  "signature_combo",
+  "pre_exposure",
 ];
 
 const BUDGET_MIN = 1_000_000;
@@ -1019,14 +1019,22 @@ function UpgradeBlock({
         </span>
       </div>
       <h4 className="text-[15px] font-bold text-ink-900 leading-snug mb-1">
-        {isEn
-          ? `Add ${fmt(delta)} to unlock 「${name}」 with ${fmt(offer.savingsKRW)} savings.`
-          : `${fmt(delta)}을 추가하면 ${fmt(offer.savingsKRW)} 할인 혜택의「${name}」가 됩니다.`}
+        {delta > 0
+          ? isEn
+            ? `Add ${fmt(delta)} to unlock 「${name}」 with ${fmt(offer.savingsKRW)} in savings.`
+            : `${fmt(delta)} 추가하면 ${fmt(offer.savingsKRW)} 할인 혜택의「${name}」가 됩니다.`
+          : isEn
+            ? `Switch to 「${name}」 and save ${fmt(-delta)} vs your current picks.`
+            : `「${name}」로 묶으면 현재 구성보다 ${fmt(-delta)} 더 적게 쓰고 더 많이 받습니다.`}
       </h4>
       <p className="text-[12px] text-ink-700 leading-snug mb-3">
-        {isEn
-          ? `Your ${offer.covered.length} picks plus stronger on-floor exposure.`
-          : `선택하신 ${offer.covered.length}개 항목에 강력한 오프라인 노출이 추가됩니다.`}
+        {offer.extras.length > 0
+          ? isEn
+            ? `Includes your ${offer.covered.length} pick${offer.covered.length > 1 ? "s" : ""} plus ${offer.extras.length} extra item${offer.extras.length > 1 ? "s" : ""}.`
+            : `선택하신 ${offer.covered.length}개 + 추가 매체 ${offer.extras.length}종 동봉.`
+          : isEn
+            ? `Includes your ${offer.covered.length} pick${offer.covered.length > 1 ? "s" : ""} at package price.`
+            : `선택하신 ${offer.covered.length}개를 패키지가로 묶어 드립니다.`}
       </p>
 
       {offer.extras.length > 0 && (

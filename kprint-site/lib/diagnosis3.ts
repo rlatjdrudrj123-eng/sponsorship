@@ -26,9 +26,9 @@ export type DiagAnswers = {
 };
 
 export type MustHaveTag =
-  | "online_channel"       // 온라인 채널도 포함
-  | "overseas"             // 해외 노출
-  | "signature_combo";     // 시그니처 패키지 풀 콤보
+  | "online_channel"       // 온라인 채널 노출
+  | "overseas"             // 글로벌(해외) 바이어 타깃
+  | "pre_exposure";        // 사전 노출 포함 (행사 전 매체)
 
 // ============================================================================
 // 추천 결과 entry
@@ -260,7 +260,17 @@ function collectMustHaveMet(
   if (tags.includes("overseas") && hasOverseasTag(c)) {
     out.push(locale === "en" ? "Overseas" : "해외 노출");
   }
+  if (tags.includes("pre_exposure") && hasPreExposure(c)) {
+    out.push(locale === "en" ? "Pre-event" : "사전 노출");
+  }
   return out;
+}
+
+function hasPreExposure(c: Category): boolean {
+  // 사전 노출 = timing 에 pre 포함 or 타입이 mailing/digital_banner (행사 전 매체)
+  if ((c.timingOverride ?? []).includes("pre")) return true;
+  if (c.type === "mailing" || c.type === "digital_banner") return true;
+  return false;
 }
 
 function hasOverseasTag(c: Category): boolean {
@@ -486,7 +496,7 @@ export function findUpgradeOffers(args: {
   budgetKRW: number;
 }): UpgradeOffer[] {
   const { picks, packages, categories, subcategories, budgetKRW } = args;
-  if (picks.length < 2) return [];
+  if (picks.length === 0) return [];
 
   const pickIds = new Set(picks.map((p) => p.category.id));
   const minPriceByCat = computeMinPriceByCategory(subcategories);
@@ -500,9 +510,11 @@ export function findUpgradeOffers(args: {
         .map((it) => it.categoryId)
         .filter((id): id is string => !!id)
     );
-    // 패키지가 사용자 픽 중 최소 2개를 포함해야 의미 있음
+    if (pkgCatIds.size === 0) continue;
+
+    // 사용자 픽 중 패키지에 포함된 것 — 최소 1개 이상이면 후보
     const covered = picks.filter((p) => pkgCatIds.has(p.category.id));
-    if (covered.length < 2) continue;
+    if (covered.length === 0) continue;
 
     // 추가로 따라오는 카테고리들 (사용자가 안 고른 것)
     const extraCategoryIds = Array.from(pkgCatIds).filter(
@@ -512,7 +524,6 @@ export function findUpgradeOffers(args: {
       .map((id) => catById.get(id))
       .filter((c): c is Category => !!c);
 
-    // 추가 항목들을 단품으로 살 때 가격
     const extraSinglesPrice = extras.reduce(
       (sum, c) => sum + (minPriceByCat.get(c.id) ?? 0),
       0
@@ -521,12 +532,11 @@ export function findUpgradeOffers(args: {
     const totalIfSinglesKRW = userPicksTotal + extraSinglesPrice;
     const packagePriceKRW = pkg.discountPrice ?? pkg.originalPrice ?? 0;
 
-    // 추가 비용이 예산의 60% 미만이면 후보로 (너무 큰 점프는 제안 안 함)
-    const delta = packagePriceKRW - userPicksTotal;
-    if (delta <= 0) continue;
-    if (budgetKRW > 0 && delta > budgetKRW * 0.6) continue;
+    // 패키지 가격이 예산의 1.5배를 초과하면 너무 비쌈 — 제안 X
+    if (budgetKRW > 0 && packagePriceKRW > budgetKRW * 1.5) continue;
 
     const savings = totalIfSinglesKRW - packagePriceKRW;
+    // 절감이 양수여야 의미 있음 (패키지로 묶을 가치). 단품 합 대비 패키지가 더 비싸면 제안 안 함.
     if (savings <= 0) continue;
 
     candidates.push({
@@ -540,8 +550,17 @@ export function findUpgradeOffers(args: {
     });
   }
 
-  // 절감액 큰 순. 최대 1개만 표시 (혼란 방지).
-  return candidates.sort((a, b) => b.savingsKRW - a.savingsKRW).slice(0, 1);
+  // 정렬 우선순위:
+  //  1) covered 많은 순 (사용자 픽이 많이 들어간 패키지)
+  //  2) 같으면 절감액 큰 순
+  // 최대 1개만 표시 (혼란 방지).
+  return candidates
+    .sort((a, b) => {
+      if (a.covered.length !== b.covered.length)
+        return b.covered.length - a.covered.length;
+      return b.savingsKRW - a.savingsKRW;
+    })
+    .slice(0, 1);
 }
 
 // ============================================================================
@@ -577,11 +596,11 @@ export const PURPOSE_LABEL_EN: Record<Purpose, string> = {
 export const MUST_HAVE_LABEL_KO: Record<MustHaveTag, string> = {
   online_channel: "온라인 채널 노출",
   overseas: "글로벌(해외) 바이어 타깃",
-  signature_combo: "시그니처 풀 패키지 적용",
+  pre_exposure: "사전 노출 포함 (행사 전 매체)",
 };
 
 export const MUST_HAVE_LABEL_EN: Record<MustHaveTag, string> = {
   online_channel: "Online channel exposure",
   overseas: "Global (overseas) buyer targeting",
-  signature_combo: "Signature full package",
+  pre_exposure: "Include pre-event exposure",
 };
