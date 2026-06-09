@@ -37,8 +37,10 @@ import type {
   Category,
   Package,
   Purpose,
+  Slot,
   Subcategory,
 } from "@/lib/types";
+import { useCartStore } from "@/lib/cart/cartStore";
 import { useLocale, localeHref } from "@/lib/i18n/locale";
 
 type Step = "intro" | "q1" | "q2" | "q3" | "result";
@@ -63,6 +65,7 @@ export function SponsorshipDiagnosisChat({
   eventId,
   categories,
   subcategories,
+  slots,
   packages,
   initialPrimaryGoal,
 }: {
@@ -72,6 +75,7 @@ export function SponsorshipDiagnosisChat({
   eventName?: string;
   categories: Category[];
   subcategories: Subcategory[];
+  slots: Slot[];
   packages: Package[];
   /** 외부에서 Q1 1순위 답을 미리 채워 진단을 바로 Q2 부터 시작. */
   initialPrimaryGoal?: Purpose | null;
@@ -118,43 +122,6 @@ export function SponsorshipDiagnosisChat({
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [open, onClose]);
-
-  // 라이브 카운터 — 매 답마다 좁아지는 후보 풀 표시.
-  // primaryGoal 만 있어도 GoalFit 통과 후보 카운트는 가능.
-  const liveFunnel = useMemo(() => {
-    if (!primaryGoal) {
-      return {
-        initial: countDiagnosable(categories),
-        afterGoal: countDiagnosable(categories),
-        afterBudget: countDiagnosable(categories),
-        afterMustHave: countDiagnosable(categories),
-      };
-    }
-    const dummy: DiagAnswers = {
-      goals: {
-        primary: primaryGoal,
-        secondary: secondaryGoal ?? undefined,
-      },
-      budgetKRW: step === "q1" ? 0 : budgetKRW,
-      mustHave: step === "q3" || step === "result" ? mustHave : [],
-    };
-    const r = recommend({
-      candidates: categories,
-      subcategories,
-      answers: dummy,
-      locale: isEn ? "en" : "ko",
-    });
-    return r.funnelCounts;
-  }, [
-    categories,
-    subcategories,
-    primaryGoal,
-    secondaryGoal,
-    budgetKRW,
-    mustHave,
-    step,
-    isEn,
-  ]);
 
   // 진짜 추천 결과 (result 화면에서만 계산)
   const result = useMemo(() => {
@@ -301,40 +268,29 @@ export function SponsorshipDiagnosisChat({
           </button>
         </header>
 
-        {/* 진행률 + 라이브 카운터 */}
+        {/* 진행률 — 3단계 도트 */}
         {showProgress && (
-          <div className="px-5 py-2 border-b border-ink-100 bg-ink-50/50 flex items-center justify-between gap-3 shrink-0">
-            <div className="flex items-center gap-1.5">
-              {[1, 2, 3].map((n) => (
-                <div
-                  key={n}
-                  className={
-                    "h-1 rounded-full transition-all " +
-                    (n < progressIdx
-                      ? "bg-brand-500 w-6"
-                      : n === progressIdx
+          <div className="px-5 py-2 border-b border-ink-100 bg-ink-50/50 flex items-center gap-1.5 shrink-0">
+            {[1, 2, 3].map((n) => (
+              <div
+                key={n}
+                className={
+                  "h-1 rounded-full transition-all " +
+                  (n < progressIdx
+                    ? "bg-brand-500 w-6"
+                    : n === progressIdx
                       ? "bg-brand-500 w-10"
                       : "bg-ink-200 w-6")
-                  }
-                />
-              ))}
-            </div>
-            <LiveCounter
-              funnel={liveFunnel}
-              step={step}
-              isEn={isEn}
-            />
+                }
+              />
+            ))}
           </div>
         )}
 
         {/* 본문 */}
         <div className="px-5 py-5 overflow-y-auto flex-1">
           {step === "intro" && (
-            <IntroPanel
-              isEn={isEn}
-              onStart={() => setStep("q1")}
-              categoryCount={countDiagnosable(categories)}
-            />
+            <IntroPanel isEn={isEn} onStart={() => setStep("q1")} />
           )}
 
           {step === "q1" && (
@@ -373,6 +329,8 @@ export function SponsorshipDiagnosisChat({
               eventId={eventId}
               result={result}
               upgrade={upgradeOffer}
+              subcategories={subcategories}
+              slots={slots}
               answers={{
                 primaryGoal,
                 secondaryGoal,
@@ -427,16 +385,13 @@ function IntroPanel({
 }: {
   isEn: boolean;
   onStart: () => void;
-  categoryCount?: number;
 }) {
   const koBullets = [
     "목표 달성을 위한 최적의 스폰서십 TOP 3 추천",
-    "내 답변에 맞춰 실시간으로 좁혀지는 맞춤 후보군",
     "패키지 구성 시 절감되는 할인 혜택 자동 계산",
   ];
   const enBullets = [
     "Top 3 sponsorships matched to your goal",
-    "Live narrowing as you answer",
     "Package upgrade savings auto-calculated",
   ];
   const items = isEn ? enBullets : koBullets;
@@ -688,39 +643,6 @@ function MustHavePanel({
   );
 }
 
-function LiveCounter({
-  funnel,
-  step,
-  isEn,
-}: {
-  funnel: {
-    initial: number;
-    afterGoal: number;
-    afterBudget: number;
-    afterMustHave: number;
-  };
-  step: Step;
-  isEn: boolean;
-}) {
-  // 현재 단계 까지 적용된 카운트
-  let current = funnel.initial;
-  if (step === "q2" || step === "q3" || step === "result") current = funnel.afterGoal;
-  if (step === "q3" || step === "result") current = funnel.afterBudget;
-  if (step === "result") current = funnel.afterMustHave;
-
-  return (
-    <div className="text-[10.5px] font-num text-ink-500 flex items-center gap-1">
-      <span className="hidden sm:inline">
-        {isEn ? "candidates" : "후보"}
-      </span>
-      <span className="font-bold text-ink-900 tabular-nums">
-        {current}
-      </span>
-      <span className="text-ink-400">/ {funnel.initial}</span>
-    </div>
-  );
-}
-
 // ============================================================================
 // 결과 화면
 // ============================================================================
@@ -730,6 +652,8 @@ function ResultPanel({
   eventId,
   result,
   upgrade,
+  subcategories,
+  slots,
   answers,
   onEditGoals,
   onEditBudget,
@@ -740,6 +664,8 @@ function ResultPanel({
   eventId: string;
   result: ReturnType<typeof recommend>;
   upgrade: UpgradeOffer | null;
+  subcategories: Subcategory[];
+  slots: Slot[];
   answers: {
     primaryGoal: Purpose;
     secondaryGoal: Purpose | null;
@@ -754,6 +680,8 @@ function ResultPanel({
   const router = useRouter();
   const purposeLabels = isEn ? PURPOSE_LABEL_EN : PURPOSE_LABEL_KO;
   const mustHaveLabels = isEn ? MUST_HAVE_LABEL_EN : MUST_HAVE_LABEL_KO;
+  const addSlot = useCartStore((s) => s.addSlot);
+  const hasSlot = useCartStore((s) => s.hasSlot);
 
   // 전체 후보 풀 펼치기 토글
   const [showAll, setShowAll] = useState(false);
@@ -786,8 +714,40 @@ function ResultPanel({
     }
   };
 
+  // 카테고리 → 가장 싼 가용 슬롯 찾기 (자동 카트 추가용)
+  const findCheapestAvailableSlot = (
+    catId: string
+  ): { slot: Slot; sub: Subcategory } | null => {
+    const subs = subcategories
+      .filter((s) => s.categoryId === catId && s.priceKRW > 0)
+      .sort((a, b) => a.priceKRW - b.priceKRW);
+    for (const sub of subs) {
+      const slot = slots.find(
+        (s) => s.subcategoryId === sub.id && s.status === "available"
+      );
+      if (slot) return { slot, sub };
+    }
+    return null;
+  };
+
   const onClickQuote = () => {
     buildAndSaveContext();
+    // 추천 단품을 카트에 자동 추가 — 각 카테고리에서 가장 싼 가용 슬롯 1개씩.
+    // 어드민이 견적서 추출·스폰서 전환을 정상적으로 진행할 수 있게 실제 cartItem 으로 들어감.
+    for (const p of result.picks) {
+      const found = findCheapestAvailableSlot(p.category.id);
+      if (!found) continue;
+      if (hasSlot(found.slot.id)) continue;
+      addSlot({
+        type: "slot",
+        eventId,
+        slotId: found.slot.id,
+        categoryId: p.category.id,
+        subcategoryId: found.sub.id,
+        code: found.slot.code,
+        price: found.sub.priceKRW,
+      });
+    }
     onClose();
     router.push(localeHref(eventId, "/contact", isEn ? "en" : "ko"));
   };
@@ -1131,11 +1091,6 @@ function UpgradeBlock({
 // ============================================================================
 // 유틸
 // ============================================================================
-
-function countDiagnosable(categories: Category[]): number {
-  return categories.filter((c) => c.channel !== "package" && c.type !== "package")
-    .length;
-}
 
 function randomId(): string {
   return Math.random().toString(36).slice(2) + Math.random().toString(36).slice(2);

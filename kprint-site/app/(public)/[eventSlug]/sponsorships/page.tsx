@@ -765,6 +765,7 @@ export default function SponsorshipsPage() {
         eventId={eventId}
         categories={categories}
         subcategories={subcategories}
+        slots={slots}
         packages={packages}
         initialPrimaryGoal={aiChatInitial}
       />

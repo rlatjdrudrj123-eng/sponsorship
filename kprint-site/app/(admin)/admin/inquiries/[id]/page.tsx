@@ -203,13 +203,9 @@ export default function InquiryDetailPage() {
             </Section>
           )}
 
-          {/* Cart */}
-          <Section title={`카트 항목 (${inquiry.cartItems.length}건)`}>
-            {inquiry.cartItems.length === 0 ? (
-              <div className="text-sm text-ink-500 py-6 text-center bg-ink-50 rounded-btn">
-                카트 항목이 없습니다.
-              </div>
-            ) : (
+          {/* Cart — 항목 있을 때만 노출. 0건이면 섹션 전체 숨김 (빈 박스가 시선 분산). */}
+          {inquiry.cartItems.length > 0 && (
+            <Section title={`카트 항목 (${inquiry.cartItems.length}건)`}>
               <div className="overflow-hidden border border-ink-100 rounded-btn">
                 <table className="w-full text-[12px]">
                   <thead>
@@ -253,9 +249,7 @@ export default function InquiryDetailPage() {
                             </span>
                           </td>
                           <td className="px-3 py-2 font-mono text-ink-900">{item.code}</td>
-                          <td className="px-3 py-2">
-                            {pkg?.name.ko ?? "(삭제됨)"}
-                          </td>
+                          <td className="px-3 py-2">{pkg?.name.ko ?? "(삭제됨)"}</td>
                           <td className="px-3 py-2 text-right font-mono">
                             {item.price.toLocaleString()}원
                           </td>
@@ -265,21 +259,23 @@ export default function InquiryDetailPage() {
                   </tbody>
                 </table>
               </div>
-            )}
 
-            <div className="mt-4 grid grid-cols-2 gap-2 max-w-md ml-auto">
-              <SumRow label="소계" value={inquiry.cartSubtotal} />
-              <SumRow label="VAT (10%)" value={inquiry.cartVat} />
-              <SumRow label="합계" value={inquiry.cartTotal} accent />
-            </div>
-          </Section>
+              <div className="mt-4 grid grid-cols-2 gap-2 max-w-md ml-auto">
+                <SumRow label="소계" value={inquiry.cartSubtotal} />
+                <SumRow label="VAT (10%)" value={inquiry.cartVat} />
+                <SumRow label="합계" value={inquiry.cartTotal} accent />
+              </div>
+            </Section>
+          )}
 
-          {/* Message */}
-          <Section title="메시지">
-            <div className="text-[13px] text-ink-700 whitespace-pre-wrap leading-relaxed bg-ink-50/60 rounded-btn p-4 border border-ink-100">
-              {inquiry.message || <span className="text-ink-300">(메시지 없음)</span>}
-            </div>
-          </Section>
+          {/* Message — 내용 있을 때만. 비어있으면 섹션 자체 숨김. */}
+          {inquiry.message && inquiry.message.trim() && (
+            <Section title="메시지">
+              <div className="text-[13px] text-ink-700 whitespace-pre-wrap leading-relaxed bg-ink-50/60 rounded-btn p-4 border border-ink-100">
+                {inquiry.message}
+              </div>
+            </Section>
+          )}
         </div>
 
         {/* Right */}
