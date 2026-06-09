@@ -522,17 +522,18 @@ function purposeLabel(p: Purpose, locale: "ko" | "en"): string {
 
 export type UpgradeOffer = {
   package: Package;
-  /** 사용자 추천 단품 중 패키지에 포함된 카테고리 (체크 표시) */
+  /** 사용자 픽 중 패키지에 들어간 카테고리들 (covered) */
   covered: Category[];
-  /** 패키지가 추가로 주는 카테고리 (별 표시) — 카테고리 객체로 이름 노출 */
+  /** 패키지가 추가로 주는 카테고리 (사용자 픽이 아닌 것들) */
   extras: Category[];
-  /** 사용자 픽 단품 합산가 + 패키지에 들어간 항목들을 단품으로 살 때의 추정 추가가 */
-  singlesEquivalentKRW: number;
+  /** 패키지 가격 (할인가) */
   packagePriceKRW: number;
-  /** 절감액 (양수면 패키지가 이득) */
+  /** 패키지의 단품 합산가 (originalPrice 또는 컴포넌트 합산) */
+  packageSinglesKRW: number;
+  /** 절감액 = packageSinglesKRW - packagePriceKRW */
   savingsKRW: number;
-  /** 사용자 픽 + 추가 합산 — singlesEquivalentKRW */
-  totalIfSinglesKRW: number;
+  /** 절감률 (0~1) */
+  discountRatio: number;
 };
 
 export function findUpgradeOffers(args: {
@@ -564,12 +565,14 @@ export function findUpgradeOffers(args: {
     const coveredCatIds = Array.from(pickCatIds).filter((id) =>
       pkgCatIds.has(id)
     );
-    if (coveredCatIds.length === 0) continue;
+    // 2개 이상 매칭돼야 의미 있음 — 1개 매칭은 사용자에게 "단품 1개 빼고 패키지로?"
+    // 라는 어색한 제안이 됨 (나머지 픽은 별도로 사야 하니 오히려 비싸짐).
+    if (coveredCatIds.length < 2) continue;
+
     const coveredCategories = coveredCatIds
       .map((id) => catById.get(id))
       .filter((c): c is Category => !!c);
 
-    // 추가로 따라오는 카테고리 (사용자가 안 고른 것)
     const extraCategoryIds = Array.from(pkgCatIds).filter(
       (id) => !pickCatIds.has(id)
     );
@@ -577,36 +580,38 @@ export function findUpgradeOffers(args: {
       .map((id) => catById.get(id))
       .filter((c): c is Category => !!c);
 
-    const extraSinglesPrice = extras.reduce(
-      (sum, c) => sum + (minPriceByCat.get(c.id) ?? 0),
-      0
-    );
-    const userPicksTotal = picks.reduce((s, p) => s + p.minPriceKRW, 0);
-    const totalIfSinglesKRW = userPicksTotal + extraSinglesPrice;
     const packagePriceKRW = pkg.discountPrice ?? pkg.originalPrice ?? 0;
+    if (packagePriceKRW <= 0) continue;
 
-    // 패키지 가격이 예산의 1.5배를 초과하면 너무 비쌈 — 제안 X
+    // 패키지의 "단품 합산가" — 패키지가 originalPrice 를 정확히 들고 있으면 그걸 사용,
+    // 없으면 includedItems 카테고리들의 단품 최저가 합으로 계산.
+    const packageSinglesKRW =
+      pkg.originalPrice && pkg.originalPrice > packagePriceKRW
+        ? pkg.originalPrice
+        : Array.from(pkgCatIds).reduce(
+            (sum, id) => sum + (minPriceByCat.get(id) ?? 0),
+            0
+          );
+
+    // 예산의 1.5배 초과면 너무 비쌈
     if (budgetKRW > 0 && packagePriceKRW > budgetKRW * 1.5) continue;
 
-    const savings = totalIfSinglesKRW - packagePriceKRW;
-    // 절감이 양수여야 의미 있음 (패키지로 묶을 가치). 단품 합 대비 패키지가 더 비싸면 제안 안 함.
+    const savings = packageSinglesKRW - packagePriceKRW;
     if (savings <= 0) continue;
+    const discountRatio = savings / packageSinglesKRW;
 
     candidates.push({
       package: pkg,
       covered: coveredCategories,
       extras,
-      singlesEquivalentKRW: extraSinglesPrice,
       packagePriceKRW,
+      packageSinglesKRW,
       savingsKRW: savings,
-      totalIfSinglesKRW,
+      discountRatio,
     });
   }
 
-  // 정렬 우선순위:
-  //  1) covered 많은 순 (사용자 픽이 많이 들어간 패키지)
-  //  2) 같으면 절감액 큰 순
-  // 최대 1개만 표시 (혼란 방지).
+  // covered 많은 순 → 절감액 큰 순. 최대 1개만 표시.
   return candidates
     .sort((a, b) => {
       if (a.covered.length !== b.covered.length)

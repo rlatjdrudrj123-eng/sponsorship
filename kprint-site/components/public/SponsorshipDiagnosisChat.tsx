@@ -874,7 +874,6 @@ function ResultPanel({
       {upgrade && (
         <UpgradeBlock
           offer={upgrade}
-          userPicksTotal={result.picksTotal}
           fmt={fmtKRW}
           isEn={isEn}
           onViewPackage={() => onClickPackageDetail(upgrade.package.id)}
@@ -987,22 +986,20 @@ function RecCard({
 
 function UpgradeBlock({
   offer,
-  userPicksTotal,
   fmt,
   isEn,
   onViewPackage,
 }: {
   offer: UpgradeOffer;
-  userPicksTotal: number;
   fmt: (n: number) => string;
   isEn: boolean;
   onViewPackage: () => void;
 }) {
-  const delta = offer.packagePriceKRW - userPicksTotal;
   const name = isEn && offer.package.name.en ? offer.package.name.en : offer.package.name.ko;
-  const discountPct = Math.round(
-    ((offer.totalIfSinglesKRW - offer.packagePriceKRW) / offer.totalIfSinglesKRW) * 100
-  );
+  const discountPct = Math.round(offer.discountRatio * 100);
+  const coveredNames = offer.covered
+    .map((c) => (isEn && c.name.en ? c.name.en : c.name.ko))
+    .join(" · ");
 
   return (
     <div className="bg-gradient-to-br from-brand-50 to-white border-2 border-brand-500 rounded-card p-4">
@@ -1013,26 +1010,21 @@ function UpgradeBlock({
         </span>
       </div>
       <h4 className="text-[15px] font-bold text-ink-900 leading-snug mb-1">
-        {delta > 0
-          ? isEn
-            ? `Add ${fmt(delta)} to unlock 「${name}」 with ${fmt(offer.savingsKRW)} in savings.`
-            : `${fmt(delta)} 추가하면 ${fmt(offer.savingsKRW)} 할인 혜택의「${name}」가 됩니다.`
-          : isEn
-            ? `Switch to 「${name}」 and save ${fmt(-delta)} vs your current picks.`
-            : `「${name}」로 묶으면 현재 구성보다 ${fmt(-delta)} 더 적게 쓰고 더 많이 받습니다.`}
+        {isEn
+          ? `「${name}」 bundles your picks at ${discountPct}% off.`
+          : `「${name}」로 묶으면 ${discountPct}% 할인됩니다.`}
       </h4>
       <p className="text-[12px] text-ink-700 leading-snug mb-3">
-        {offer.extras.length > 0
-          ? isEn
-            ? `Includes your ${offer.covered.length} pick${offer.covered.length > 1 ? "s" : ""} plus ${offer.extras.length} extra item${offer.extras.length > 1 ? "s" : ""}.`
-            : `선택하신 ${offer.covered.length}개 + 추가 매체 ${offer.extras.length}종 동봉.`
-          : isEn
-            ? `Includes your ${offer.covered.length} pick${offer.covered.length > 1 ? "s" : ""} at package price.`
-            : `선택하신 ${offer.covered.length}개를 패키지가로 묶어 드립니다.`}
+        {isEn
+          ? `Your picks ${coveredNames} are in this package${offer.extras.length > 0 ? `, plus ${offer.extras.length} extra item${offer.extras.length > 1 ? "s" : ""}` : ""}.`
+          : `선택하신 ${coveredNames}가 이 패키지에 포함되어 있어요${offer.extras.length > 0 ? `. 추가 매체 ${offer.extras.length}종 동봉` : ""}.`}
       </p>
 
       {offer.extras.length > 0 && (
         <div className="text-[12px] text-ink-700 leading-relaxed mb-3">
+          <div className="text-[10.5px] text-ink-500 mb-1">
+            {isEn ? "Extras included" : "추가 동봉 매체"}
+          </div>
           <ul className="space-y-0.5 pl-1">
             {offer.extras.slice(0, 4).map((c) => (
               <li key={c.id} className="text-[11.5px] text-ink-700">
@@ -1053,10 +1045,10 @@ function UpgradeBlock({
       <div className="bg-white rounded-btn p-2.5 mb-3 text-[11.5px] space-y-1 font-num">
         <div className="flex items-baseline justify-between">
           <span className="text-ink-500">
-            {isEn ? "Buy singles total" : "단품 합산"}
+            {isEn ? "Package singles total" : "패키지 단품 합산"}
           </span>
-          <span className="text-ink-700">
-            {fmt(offer.totalIfSinglesKRW)}
+          <span className="text-ink-700 line-through">
+            {fmt(offer.packageSinglesKRW)}
           </span>
         </div>
         <div className="flex items-baseline justify-between font-bold">
@@ -1066,7 +1058,7 @@ function UpgradeBlock({
           <span className="text-brand-700">{fmt(offer.packagePriceKRW)}</span>
         </div>
         <div className="flex items-baseline justify-between text-[10.5px] text-ink-500 border-t border-ink-100 pt-1">
-          <span>{isEn ? "Savings" : "할인 혜택"}</span>
+          <span>{isEn ? "Discount" : "할인 혜택"}</span>
           <span>
             {fmt(offer.savingsKRW)} ({discountPct}%)
           </span>
