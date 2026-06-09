@@ -91,25 +91,42 @@ export type RecommendResult = {
 export function recommend(args: {
   candidates: Category[];
   subcategories: Subcategory[];
+  /**
+   * 가용 슬롯 정보 — 있으면 가용 슬롯 0건인 카테고리·sub 는 추천에서 제외.
+   * 카트 자동 추가가 silent skip 되어 사용자가 "추천 받았는데 카트가 빔" 보는
+   * 케이스 방지. 없으면(undefined) 슬롯 필터 안 함.
+   */
+  slots?: { subcategoryId: string; status: string }[];
   answers: DiagAnswers;
   k?: number;
   locale?: "ko" | "en";
 }): RecommendResult {
   const k = args.k ?? 3;
   const locale = args.locale ?? "ko";
-  const { candidates, subcategories, answers } = args;
+  const { candidates, subcategories, answers, slots } = args;
+
+  // 가용 슬롯이 있는 sub id 집합 (slots prop 이 주어진 경우만).
+  const availableSubIds = slots
+    ? new Set(
+        slots.filter((s) => s.status === "available").map((s) => s.subcategoryId)
+      )
+    : null;
 
   // 모든 후보를 채점 정보와 함께 entries 로 빌드.
   // 카테고리당 가격 그룹별로 별도 entry — 같은 가격이면 1 entry, 가격 다르면 분리.
   const entries: RecEntry[] = [];
   for (const c of candidates) {
     if (c.channel === "package" || c.type === "package") continue;
-    const subs = subcategories.filter(
+    let subs = subcategories.filter(
       (s) => s.categoryId === c.id && s.priceKRW > 0
     );
+    // 가용 슬롯 정보가 주어지면, 가용 슬롯이 0건인 sub 는 후보에서 제외.
+    if (availableSubIds) {
+      subs = subs.filter((s) => availableSubIds.has(s.id));
+    }
     if (subs.length === 0) {
-      // 가격 없는 카테고리 (별도 문의) — 1 entry, 0원
-      entries.push(buildEntry(c, [], 0, undefined, answers, locale));
+      // 가격·가용 슬롯 둘 다 없는 카테고리 = 진단 후보에서 제외 (사용자가
+      // 카트에 못 담는 매체를 추천하는 건 misleading).
       continue;
     }
     // 가격으로 그룹핑
@@ -238,7 +255,7 @@ function buildEntry(
   const antiPenalty = antiPatternHit.length * 1.5;
 
   const initialScore =
-    goalFit + budgetFit + adminBoost - antiPenalty + mustHaveMet.length * 0.3;
+    goalFit + budgetFit + adminBoost - antiPenalty + mustHaveMet.length * 1.0;
 
   const breakdown: ScoreBreakdown = {
     goalFit,
@@ -297,13 +314,12 @@ function computeBudgetFit(price: number, budget: number): number {
 }
 
 function meetsMustHaveSoft(c: Category, tags: MustHaveTag[]): boolean {
-  // 1단계 통과 기준: mustHave 중 하나라도 통과 못 하는 게 결정적이지 않으면 OK.
-  // 진짜 하드 필터는 selectChosen 단계에서 enforce_must_have 가 처리.
-  // 여기서는 명백히 상충하는 카테고리만 컷.
-  if (tags.includes("online_channel") && c.channel === "offline") {
-    // 전체 추천에서 1개는 온라인 필요 — 여기서 컷하면 안 됨. soft 통과.
-    return true;
-  }
+  // 사용자가 명시한 요건과 카테고리가 정면 충돌하면 1차 풀에서 제외.
+  // (충돌 안 한 카테고리는 통과 — 점수 bonus 로 적합 후보를 위로 끌어올림.)
+  // 폴백 사다리가 결과 부족 시 이 필터를 풀어줌.
+  if (tags.includes("online_channel") && c.channel === "offline") return false;
+  if (tags.includes("overseas") && !hasOverseasTag(c)) return false;
+  if (tags.includes("pre_exposure") && !hasPreExposure(c)) return false;
   return true;
 }
 

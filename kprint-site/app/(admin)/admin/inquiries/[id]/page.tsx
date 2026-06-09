@@ -24,6 +24,10 @@ import {
   User,
 } from "lucide-react";
 import { getDb } from "@/lib/firebase/firestore";
+import {
+  MUST_HAVE_LABEL_KO,
+  PURPOSE_LABEL_KO,
+} from "@/lib/diagnosis3";
 import type {
   Category,
   Inquiry,
@@ -419,17 +423,6 @@ function fmtDate(ts: Timestamp | undefined): string {
 // 1분 진단 컨텍스트 — 사용자가 진단 결과에서 견적 요청 시 같이 전송됨
 // ============================================================================
 
-const PURPOSE_LABEL_KO: Record<string, string> = {
-  new_product: "신제품 홍보",
-  traffic_driver: "현장 방문객 유도",
-  brand_awareness: "브랜드 확산",
-};
-const MUST_HAVE_LABEL_KO: Record<string, string> = {
-  online_channel: "온라인 채널 노출",
-  overseas: "글로벌(해외) 바이어 타깃",
-  pre_exposure: "사전 노출 포함",
-};
-
 function DiagnosisContextView({
   ctx,
   allCategories,
@@ -437,14 +430,17 @@ function DiagnosisContextView({
   ctx: NonNullable<Inquiry["diagnosisContext"]>;
   allCategories: Category[];
 }) {
+  // 옛 데이터 (buyer_reach / post_asset) 도 안전 처리 — 라벨 매핑 없으면 raw value.
+  const purposeLabel = (v: string): string =>
+    (PURPOSE_LABEL_KO as Record<string, string>)[v] ?? v;
+  const mustHaveLabel = (v: string): string =>
+    (MUST_HAVE_LABEL_KO as Record<string, string>)[v] ?? v;
   const goalText = ctx.secondaryGoal
-    ? `${PURPOSE_LABEL_KO[ctx.primaryGoal] ?? ctx.primaryGoal} · ${PURPOSE_LABEL_KO[ctx.secondaryGoal] ?? ctx.secondaryGoal}`
-    : (PURPOSE_LABEL_KO[ctx.primaryGoal] ?? ctx.primaryGoal);
+    ? `${purposeLabel(ctx.primaryGoal)} · ${purposeLabel(ctx.secondaryGoal)}`
+    : purposeLabel(ctx.primaryGoal);
   const mustHaveText =
     ctx.mustHave && ctx.mustHave.length > 0
-      ? ctx.mustHave
-          .map((m) => MUST_HAVE_LABEL_KO[m] ?? m)
-          .join(" · ")
+      ? ctx.mustHave.map(mustHaveLabel).join(" · ")
       : "(없음)";
 
   return (

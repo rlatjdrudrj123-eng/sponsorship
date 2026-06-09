@@ -91,6 +91,8 @@ export function SponsorshipDiagnosisChat({
 
   const sessionIdRef = useRef<string>("");
   const loggedFinalRef = useRef(false);
+  // Esc 핸들러가 매 렌더마다 재등록되지 않도록 onCloseWithLog 의 최신 참조 보관.
+  const closeRef = useRef<() => void>(() => {});
 
   // 세션 초기화 — initialPrimaryGoal 있으면 Q2 부터.
   useEffect(() => {
@@ -113,15 +115,16 @@ export function SponsorshipDiagnosisChat({
     }
   }, [open, initialPrimaryGoal]);
 
-  // Esc 닫기
+  // Esc 닫기 — onCloseWithLog 로 통일해 이탈 로그 일관성 확보.
+  // onCloseWithLog 자체는 컴포넌트 본문에서 재선언되지만 ref 통해 안정 호출.
   useEffect(() => {
     if (!open) return;
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
+      if (e.key === "Escape") closeRef.current();
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [open, onClose]);
+  }, [open]);
 
   // 진짜 추천 결과 (result 화면에서만 계산)
   const result = useMemo(() => {
@@ -134,6 +137,7 @@ export function SponsorshipDiagnosisChat({
     return recommend({
       candidates: categories,
       subcategories,
+      slots,
       answers,
       locale: isEn ? "en" : "ko",
     });
@@ -141,6 +145,7 @@ export function SponsorshipDiagnosisChat({
     step,
     categories,
     subcategories,
+    slots,
     primaryGoal,
     secondaryGoal,
     budgetKRW,
@@ -186,6 +191,8 @@ export function SponsorshipDiagnosisChat({
   // 닫기 (미완료면 이탈 로그)
   const onCloseWithLog = () => {
     if (step !== "result" && step !== "intro" && !loggedFinalRef.current) {
+      // 플래그 먼저 set — Esc/X/backdrop 동시 클릭으로 중복 호출 방지.
+      loggedFinalRef.current = true;
       writeLog({
         eventId,
         sessionId: sessionIdRef.current,
@@ -200,6 +207,11 @@ export function SponsorshipDiagnosisChat({
     }
     onClose();
   };
+
+  // closeRef 를 매 렌더마다 최신 핸들러로 갱신 — Esc 가 stale state 안 잡게.
+  useEffect(() => {
+    closeRef.current = onCloseWithLog;
+  });
 
   const goNext = () => {
     const i = STEP_ORDER.indexOf(step);
@@ -946,15 +958,22 @@ function RecCard({
 
   if (compact) {
     return (
-      <li className="bg-white border border-ink-100 rounded-btn px-3 py-2 flex items-baseline justify-between gap-2">
-        <span className="text-[12px] text-ink-700 truncate">{name}</span>
-        <span className="text-[11px] font-num text-ink-500 shrink-0">
-          {entry.minPriceKRW > 0
-            ? fmt(entry.minPriceKRW)
-            : isEn
-            ? "Contact"
-            : "별도 문의"}
-        </span>
+      <li className="bg-white border border-ink-100 rounded-btn px-3 py-2">
+        <div className="flex items-baseline justify-between gap-2">
+          <span className="text-[12px] text-ink-700 truncate">{name}</span>
+          <span className="text-[11px] font-num text-ink-500 shrink-0">
+            {entry.minPriceKRW > 0
+              ? fmt(entry.minPriceKRW)
+              : isEn
+                ? "Contact"
+                : "별도 문의"}
+          </span>
+        </div>
+        {reason && (
+          <div className="text-[10.5px] text-brand-700 leading-snug mt-0.5">
+            {reason}
+          </div>
+        )}
       </li>
     );
   }

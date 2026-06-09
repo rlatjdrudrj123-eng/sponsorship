@@ -36,7 +36,6 @@ import type {
   Channel,
   Package,
   Persona,
-  Purpose,
   SiteSettings,
   Slot,
   Subcategory,
@@ -219,8 +218,6 @@ export default function SponsorshipsPage() {
   const [selectedPackageId, setSelectedPackageId] = useState<string | null>(
     searchParams?.get("package") ?? null
   );
-  // 1분 진단 — 외부 칩에서 1순위 목표를 prefill 해서 들어옴.
-  const [aiChatInitial, setAiChatInitial] = useState<Purpose | null>(null);
   // 비교 모드 — 카드에서 직접 체크해 모은다 (카트 거치지 않고 바로 compare로)
   const [compareIds, setCompareIds] = useState<Set<string>>(new Set());
   // 도면·사례 모달 — 카드 클릭 시 SlideSection 형 모달.
@@ -754,20 +751,16 @@ export default function SponsorshipsPage() {
         );
       })()}
 
-      {/* 1분 진단 v3 — 3문항 점수 기반. 우하단 FAB 또는 인라인 칩으로 진입. */}
+      {/* 1분 진단 v3 — 3문항 점수 기반. 우하단 FAB 로 진입. */}
       <SponsorshipDiagnosisChat
         open={aiChatOpen}
-        onClose={() => {
-          setAiChatOpen(false);
-          setAiChatInitial(null);
-        }}
+        onClose={() => setAiChatOpen(false)}
         eventName={settings?.event.nameKo ?? eventId}
         eventId={eventId}
         categories={categories}
         subcategories={subcategories}
         slots={slots}
         packages={packages}
-        initialPrimaryGoal={aiChatInitial}
       />
 
       {/* 도면·사례 상세 모달 — 슬라이드형(SlideSection) 그대로 띄움.
