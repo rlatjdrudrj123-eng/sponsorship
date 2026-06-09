@@ -329,7 +329,6 @@ export function SponsorshipDiagnosisChat({
               eventId={eventId}
               result={result}
               upgrade={upgradeOffer}
-              subcategories={subcategories}
               slots={slots}
               answers={{
                 primaryGoal,
@@ -652,7 +651,6 @@ function ResultPanel({
   eventId,
   result,
   upgrade,
-  subcategories,
   slots,
   answers,
   onEditGoals,
@@ -664,7 +662,6 @@ function ResultPanel({
   eventId: string;
   result: ReturnType<typeof recommend>;
   upgrade: UpgradeOffer | null;
-  subcategories: Subcategory[];
   slots: Slot[];
   answers: {
     primaryGoal: Purpose;
@@ -714,28 +711,26 @@ function ResultPanel({
     }
   };
 
-  // 카테고리 → 가장 싼 가용 슬롯 찾기 (자동 카트 추가용)
-  const findCheapestAvailableSlot = (
-    catId: string
-  ): { slot: Slot; sub: Subcategory } | null => {
-    const subs = subcategories
-      .filter((s) => s.categoryId === catId && s.priceKRW > 0)
-      .sort((a, b) => a.priceKRW - b.priceKRW);
-    for (const sub of subs) {
+  // 추천 entry → 그 가격 그룹의 sub 들 중 가용 슬롯 1개 찾기.
+  const findAvailableSlotForEntry = (
+    entry: ReturnType<typeof recommend>["picks"][number]
+  ): { slot: Slot; subId: string } | null => {
+    for (const subId of entry.subcategoryIds) {
       const slot = slots.find(
-        (s) => s.subcategoryId === sub.id && s.status === "available"
+        (s) => s.subcategoryId === subId && s.status === "available"
       );
-      if (slot) return { slot, sub };
+      if (slot) return { slot, subId };
     }
     return null;
   };
 
   const onClickQuote = () => {
     buildAndSaveContext();
-    // 추천 단품을 카트에 자동 추가 — 각 카테고리에서 가장 싼 가용 슬롯 1개씩.
-    // 어드민이 견적서 추출·스폰서 전환을 정상적으로 진행할 수 있게 실제 cartItem 으로 들어감.
+    // 추천 단품을 카트에 자동 추가 — entry 가 가리키는 sub 그룹의 가용 슬롯 1개.
+    // 가격 다른 sub 는 각각 별개 entry 라 카트도 각각 별개 cart item 으로 들어감.
     for (const p of result.picks) {
-      const found = findCheapestAvailableSlot(p.category.id);
+      if (p.minPriceKRW <= 0) continue; // 가격 0 (별도 문의) 은 카트에 못 넣음
+      const found = findAvailableSlotForEntry(p);
       if (!found) continue;
       if (hasSlot(found.slot.id)) continue;
       addSlot({
@@ -743,9 +738,9 @@ function ResultPanel({
         eventId,
         slotId: found.slot.id,
         categoryId: p.category.id,
-        subcategoryId: found.sub.id,
+        subcategoryId: found.subId,
         code: found.slot.code,
-        price: found.sub.priceKRW,
+        price: p.minPriceKRW,
       });
     }
     onClose();
@@ -943,7 +938,8 @@ function RecCard({
   compact?: boolean;
 }) {
   const c = entry.category;
-  const name = isEn && c.name.en ? c.name.en : c.name.ko;
+  const baseName = isEn && c.name.en ? c.name.en : c.name.ko;
+  const name = entry.tierLabel ? `${baseName} (${entry.tierLabel})` : baseName;
   const fmt = (n: number) =>
     isEn ? `$${Math.round(n / 1000).toLocaleString()}` : `${n.toLocaleString()}원`;
   // 답 인용 reason — 매칭 신호가 약하면(폴백) 숨김

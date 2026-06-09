@@ -37,12 +37,23 @@ export type MustHaveTag =
 export type RecEntry = {
   kind: "category";
   category: Category;
+  /**
+   * 이 entry 가 묶는 소분류들. 보통 가격이 같은 sub 끼리 한 entry (위치만 다른
+   * 슬롯 변형은 같은 가격이면 같은 entry — 사용자 입장에선 동일 상품).
+   * 가격이 다른 sub 는 별도 entry 로 분리.
+   */
+  subcategoryIds: string[];
+  /**
+   * 가격 그룹 라벨 — 카테고리에 가격대가 1개면 undefined (카테고리 이름만 표시).
+   * 2개 이상이면 sub 이름 (예: "라벨 생수") 들어가서 카드에 "카테고리명 (라벨)" 노출.
+   */
+  tierLabel?: string;
   minPriceKRW: number;
   /** 점수 (내부용 — UI 미노출) */
   score: number;
-  /** 점수 컴포넌트별 분해 (advanced 펼치기에 사용 가능) */
+  /** 점수 컴포넌트별 분해 */
   breakdown: ScoreBreakdown;
-  /** 사용자 답 인용 한 줄 — "1순위 신제품 출시에 부합" 등 */
+  /** 사용자 답 인용 한 줄 */
   reason: string;
 };
 
@@ -88,13 +99,42 @@ export function recommend(args: {
   const locale = args.locale ?? "ko";
   const { candidates, subcategories, answers } = args;
 
-  // 카테고리당 최저가 인덱스 (priceKRW > 0)
-  const minPriceByCat = computeMinPriceByCategory(subcategories);
-
-  // 모든 후보를 채점 정보와 함께 entries 로 빌드
-  const entries = candidates
-    .filter((c) => c.channel !== "package" && c.type !== "package")
-    .map((c) => buildEntry(c, minPriceByCat, answers, locale));
+  // 모든 후보를 채점 정보와 함께 entries 로 빌드.
+  // 카테고리당 가격 그룹별로 별도 entry — 같은 가격이면 1 entry, 가격 다르면 분리.
+  const entries: RecEntry[] = [];
+  for (const c of candidates) {
+    if (c.channel === "package" || c.type === "package") continue;
+    const subs = subcategories.filter(
+      (s) => s.categoryId === c.id && s.priceKRW > 0
+    );
+    if (subs.length === 0) {
+      // 가격 없는 카테고리 (별도 문의) — 1 entry, 0원
+      entries.push(buildEntry(c, [], 0, undefined, answers, locale));
+      continue;
+    }
+    // 가격으로 그룹핑
+    const byPrice = new Map<number, Subcategory[]>();
+    for (const s of subs) {
+      const arr = byPrice.get(s.priceKRW) ?? [];
+      arr.push(s);
+      byPrice.set(s.priceKRW, arr);
+    }
+    const priceGroups = Array.from(byPrice.entries());
+    const singleTier = priceGroups.length === 1;
+    for (const [price, subsInTier] of priceGroups) {
+      const tierLabel = singleTier ? undefined : subsInTier[0].name?.ko;
+      entries.push(
+        buildEntry(
+          c,
+          subsInTier.map((s) => s.id),
+          price,
+          tierLabel,
+          answers,
+          locale
+        )
+      );
+    }
+  }
 
   // 단계별 후보 풀 카운터 (UI 띠 표시용)
   const initial = entries.length;
@@ -166,14 +206,14 @@ export function recommend(args: {
 
 function buildEntry(
   c: Category,
-  minPriceByCat: Map<string, number>,
+  subcategoryIds: string[],
+  priceKRW: number,
+  tierLabel: string | undefined,
   answers: DiagAnswers,
   locale: "ko" | "en"
 ): RecEntry {
-  const minPriceKRW = minPriceByCat.get(c.id) ?? 0;
-
   const goalFit = computeGoalFit(c, answers.goals);
-  const budgetFit = computeBudgetFit(minPriceKRW, answers.budgetKRW);
+  const budgetFit = computeBudgetFit(priceKRW, answers.budgetKRW);
   const adminBoost = c.recommendBoost ?? 0;
   const mustHaveMet = collectMustHaveMet(c, answers.mustHave, locale);
   const antiPatternHit = collectAntiPatterns(c, answers);
@@ -196,7 +236,9 @@ function buildEntry(
   return {
     kind: "category",
     category: c,
-    minPriceKRW,
+    subcategoryIds,
+    tierLabel,
+    minPriceKRW: priceKRW,
     score: initialScore,
     breakdown,
     reason: buildReason(c, answers, breakdown, locale),
@@ -297,6 +339,11 @@ function collectAntiPatterns(c: Category, answers: DiagAnswers): string[] {
 // 다양성 인식 그리디 선택
 // ============================================================================
 
+// entry 식별 키 — 같은 카테고리의 같은 가격 tier 가 다시 뽑히지 않게.
+function entryKey(e: RecEntry): string {
+  return `${e.category.id}:${e.minPriceKRW}`;
+}
+
 function greedySelect(
   pool: RecEntry[],
   answers: DiagAnswers,
@@ -304,17 +351,13 @@ function greedySelect(
   locale: "ko" | "en"
 ): RecEntry[] {
   if (pool.length === 0) return [];
-  const remainingIds = new Set(pool.map((e) => e.category.id));
-  const byId = new Map(pool.map((e) => [e.category.id, e]));
+  const remaining = new Map<string, RecEntry>();
+  for (const e of pool) remaining.set(entryKey(e), e);
   const picked: RecEntry[] = [];
-  const pickedIds = new Set<string>();
   let budgetUsed = 0;
 
-  while (picked.length < k && remainingIds.size > 0) {
-    // 매 슬롯마다 점수 재평가 (synergy + journey 반영) — id 기반 dedup.
-    const reranked = Array.from(remainingIds)
-      .map((id) => byId.get(id)!)
-      .filter((e) => !pickedIds.has(e.category.id))
+  while (picked.length < k && remaining.size > 0) {
+    const reranked = Array.from(remaining.values())
       .map((e) => {
         const synergy = computeSynergy(
           e.category,
@@ -324,10 +367,18 @@ function greedySelect(
           e.category,
           picked.map((p) => p.category)
         );
+        // 같은 카테고리에서 다른 가격 tier 가 이미 뽑힘 → 같은 노출 반복이라
+        // 감점 (다양성 우선). 너무 큰 감점은 아니어서, 점수 차이가 크면 여전히 뽑힘.
+        const sameCategoryPenalty = picked.some(
+          (p) => p.category.id === e.category.id
+        )
+          ? -1.5
+          : 0;
         const newScore =
           e.score +
           synergy +
-          journeyFill -
+          journeyFill +
+          sameCategoryPenalty -
           budgetOverPenalty(e, budgetUsed, answers.budgetKRW);
         return {
           entry: {
@@ -343,7 +394,6 @@ function greedySelect(
         };
       })
       .filter((x) => {
-        // 예산 hard 컷: 합계가 예산의 1.4배를 넘으면 탈락
         if (answers.budgetKRW <= 0) return true;
         return budgetUsed + x.entry.minPriceKRW <= answers.budgetKRW * 1.4;
       })
@@ -352,16 +402,13 @@ function greedySelect(
     if (reranked.length === 0) break;
     const top = reranked[0].entry;
 
-    // 점수가 0 이하면 의미 없음. 아예 안 뽑음.
     if (top.score <= 0) break;
 
     picked.push({
       ...top,
-      // reason 재생성 — synergy/journey 정보 포함
       reason: buildReason(top.category, answers, top.breakdown, locale),
     });
-    pickedIds.add(top.category.id);
-    remainingIds.delete(top.category.id);
+    remaining.delete(entryKey(top));
     budgetUsed += top.minPriceKRW;
   }
 
@@ -498,7 +545,8 @@ export function findUpgradeOffers(args: {
   const { picks, packages, categories, subcategories, budgetKRW } = args;
   if (picks.length === 0) return [];
 
-  const pickIds = new Set(picks.map((p) => p.category.id));
+  // 픽이 같은 카테고리의 여러 sub tier 일 수도 — covered 는 unique cat id 기준.
+  const pickCatIds = new Set(picks.map((p) => p.category.id));
   const minPriceByCat = computeMinPriceByCategory(subcategories);
   const catById = new Map(categories.map((c) => [c.id, c]));
 
@@ -512,13 +560,18 @@ export function findUpgradeOffers(args: {
     );
     if (pkgCatIds.size === 0) continue;
 
-    // 사용자 픽 중 패키지에 포함된 것 — 최소 1개 이상이면 후보
-    const covered = picks.filter((p) => pkgCatIds.has(p.category.id));
-    if (covered.length === 0) continue;
+    // covered: 사용자 픽 카테고리 (unique) 중 패키지에 포함된 것.
+    const coveredCatIds = Array.from(pickCatIds).filter((id) =>
+      pkgCatIds.has(id)
+    );
+    if (coveredCatIds.length === 0) continue;
+    const coveredCategories = coveredCatIds
+      .map((id) => catById.get(id))
+      .filter((c): c is Category => !!c);
 
-    // 추가로 따라오는 카테고리들 (사용자가 안 고른 것)
+    // 추가로 따라오는 카테고리 (사용자가 안 고른 것)
     const extraCategoryIds = Array.from(pkgCatIds).filter(
-      (id) => !pickIds.has(id)
+      (id) => !pickCatIds.has(id)
     );
     const extras = extraCategoryIds
       .map((id) => catById.get(id))
@@ -541,7 +594,7 @@ export function findUpgradeOffers(args: {
 
     candidates.push({
       package: pkg,
-      covered: covered.map((p) => p.category),
+      covered: coveredCategories,
       extras,
       singlesEquivalentKRW: extraSinglesPrice,
       packagePriceKRW,
