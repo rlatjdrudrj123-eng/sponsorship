@@ -407,40 +407,32 @@ function buildReason(
   const primaryHit = (aff[primary] ?? 0) >= 2;
   const secondaryHit = secondary && (aff[secondary] ?? 0) >= 2;
 
-  const STRONG_KO = "강함";
-  const STRONG_EN = "strong fit";
-  const SUPPORT_KO = "보조";
-  const SUPPORT_EN = "supports";
-  const ALL_KO = "모두 강함";
-  const ALL_EN = "strong fit on both";
+  // "핵심 매칭" 태그형 — 1순위 부합, "서브 매칭" — 2순위 부합 or 1순위 보조.
+  const CORE_KO = "[핵심 매칭]";
+  const CORE_EN = "[Core match]";
+  const SUB_KO = "[서브 매칭]";
+  const SUB_EN = "[Sub match]";
 
   let goalText = "";
-  if (primaryHit && secondaryHit) {
-    goalText =
-      locale === "en"
-        ? `${purposeLabel(primary, "en")} · ${purposeLabel(secondary!, "en")} — ${ALL_EN}`
-        : `${purposeLabel(primary, "ko")}·${purposeLabel(secondary!, "ko")} ${ALL_KO}`;
-  } else if (primaryHit) {
-    goalText =
-      locale === "en"
-        ? `${purposeLabel(primary, "en")} — ${STRONG_EN}`
-        : `${purposeLabel(primary, "ko")} ${STRONG_KO}`;
+  if (primaryHit) {
+    const tag = locale === "en" ? CORE_EN : CORE_KO;
+    const goal = purposeLabel(primary, locale);
+    goalText = `${tag} ${goal}`;
+    if (secondaryHit) {
+      goalText += ` · ${purposeLabel(secondary!, locale)}`;
+    }
   } else if (secondaryHit) {
-    goalText =
-      locale === "en"
-        ? `${purposeLabel(secondary!, "en")} — ${SUPPORT_EN}`
-        : `${purposeLabel(secondary!, "ko")} ${SUPPORT_KO}`;
+    const tag = locale === "en" ? SUB_EN : SUB_KO;
+    goalText = `${tag} ${purposeLabel(secondary!, locale)}`;
   } else if (bd.goalFit > 0) {
-    goalText =
-      locale === "en"
-        ? `${purposeLabel(primary, "en")} — ${SUPPORT_EN}`
-        : `${purposeLabel(primary, "ko")} ${SUPPORT_KO}`;
+    const tag = locale === "en" ? SUB_EN : SUB_KO;
+    goalText = `${tag} ${purposeLabel(primary, locale)}`;
   }
 
   // 2) mustHave 충족
   const mustHaveText =
     bd.mustHaveMet.length > 0
-      ? bd.mustHaveMet.join("·") + (locale === "en" ? " incl." : " 포함")
+      ? bd.mustHaveMet.join(" · ") + (locale === "en" ? " incl." : " 포함")
       : "";
 
   return [goalText, mustHaveText].filter(Boolean).join(" · ");
@@ -583,13 +575,13 @@ export const PURPOSE_LABEL_EN: Record<Purpose, string> = {
 };
 
 export const MUST_HAVE_LABEL_KO: Record<MustHaveTag, string> = {
-  online_channel: "온라인 채널 포함",
-  overseas: "해외 노출 포함",
-  signature_combo: "시그니처 패키지 풀 콤보",
+  online_channel: "온라인 채널 노출",
+  overseas: "글로벌(해외) 바이어 타깃",
+  signature_combo: "시그니처 풀 패키지 적용",
 };
 
 export const MUST_HAVE_LABEL_EN: Record<MustHaveTag, string> = {
-  online_channel: "Include online channels",
-  overseas: "Overseas exposure",
-  signature_combo: "Signature full bundle",
+  online_channel: "Online channel exposure",
+  overseas: "Global (overseas) buyer targeting",
+  signature_combo: "Signature full package",
 };

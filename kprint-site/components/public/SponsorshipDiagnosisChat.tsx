@@ -17,7 +17,6 @@ import {
   Check,
   ChevronLeft,
   FileText,
-  Package2,
   X,
 } from "lucide-react";
 import { getDb } from "@/lib/firebase/firestore";
@@ -284,8 +283,8 @@ export function SponsorshipDiagnosisChat({
                     : "맞춤형 스폰서십 제안"
                   : step === "result"
                   ? isEn
-                    ? "Recommended Configuration"
-                    : "추천 구성"
+                    ? "Your Sponsorship Proposal"
+                    : "맞춤형 스폰서십 제안 결과"
                   : isEn
                   ? `Question ${progressIdx} of 3`
                   : `질문 ${progressIdx} / 3`}
@@ -402,7 +401,13 @@ export function SponsorshipDiagnosisChat({
                   : "bg-brand-500 text-white hover:bg-brand-700 hover:shadow-glow-sm")
               }
             >
-              {step === "q3" ? (isEn ? "See match" : "결과 보기") : isEn ? "Next" : "다음"}
+              {step === "q3"
+                ? isEn
+                  ? "See results"
+                  : "결과 보기"
+                : isEn
+                  ? "Next"
+                  : "다음"}
               <ArrowRight className="w-4 h-4" />
             </button>
           </footer>
@@ -425,23 +430,23 @@ function IntroPanel({
   categoryCount?: number;
 }) {
   const koBullets = [
-    "스폰서십 큐레이션 (상위 3종 추천)",
-    "답변별 매칭 후보 수 실시간 표시",
-    "단품 → 패키지 전환 시 절감액 자동 산출",
+    "목표 달성을 위한 최적의 스폰서십 TOP 3 추천",
+    "내 답변에 맞춰 실시간으로 좁혀지는 맞춤 후보군",
+    "패키지 구성 시 절감되는 할인 혜택 자동 계산",
   ];
   const enBullets = [
-    "Sponsorship curation (top 3 picks)",
-    "Real-time match count per answer",
+    "Top 3 sponsorships matched to your goal",
+    "Live narrowing as you answer",
     "Package upgrade savings auto-calculated",
   ];
   const items = isEn ? enBullets : koBullets;
 
   return (
     <div className="py-4">
-      <h3 className="text-[19px] font-bold text-ink-900 leading-snug mb-1 whitespace-nowrap">
+      <h3 className="text-[19px] font-bold text-ink-900 leading-snug mb-1">
         {isEn
-          ? "Optimal sponsorship configuration."
-          : "귀사 목표에 맞는 스폰서십 구성안."}
+          ? "Find your sponsorship in 1 minute."
+          : "우리 기업에 딱 맞는 스폰서십, 1분 만에 찾아보세요."}
       </h3>
       <p className="text-[12px] text-ink-500 mb-5">
         {isEn ? "3 questions · about 1 minute" : "3문항 · 약 1분 소요"}
@@ -462,7 +467,7 @@ function IntroPanel({
         onClick={onStart}
         className="w-full px-5 py-3 rounded-pill bg-brand-500 text-white text-[14px] font-bold hover:bg-brand-700 hover:shadow-glow-sm inline-flex items-center justify-center gap-2 transition-all"
       >
-        {isEn ? "Start" : "진단 시작"}
+        {isEn ? "Find my sponsorship" : "맞춤 스폰서십 찾기"}
         <ArrowRight className="w-4 h-4" />
       </button>
     </div>
@@ -486,8 +491,10 @@ function GoalsPanel({
   return (
     <div>
       <div className="mb-5">
-        <h3 className="text-[18px] font-bold text-ink-900 leading-tight">
-          {isEn ? "1st priority goal" : "1순위 목표"}
+        <h3 className="text-[18px] font-bold text-ink-900 leading-snug">
+          {isEn
+            ? "What's the main goal of your sponsorship?"
+            : "스폰서십을 통해 달성하고자 하는 핵심 목표는 무엇인가요?"}
         </h3>
       </div>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mb-6">
@@ -516,8 +523,10 @@ function GoalsPanel({
       {primary && (
         <>
           <div className="mb-3">
-            <h4 className="text-[14px] font-semibold text-ink-700">
-              {isEn ? "2nd priority (optional)" : "2순위 (선택)"}
+            <h4 className="text-[14px] font-semibold text-ink-900">
+              {isEn
+                ? "Any secondary effect you'd like? (optional)"
+                : "추가로 기대하는 효과가 있다면 선택해 주세요."}
             </h4>
           </div>
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
@@ -531,7 +540,7 @@ function GoalsPanel({
                   : "bg-white text-ink-500 border-ink-100 hover:border-ink-300")
               }
             >
-              {isEn ? "Skip" : "지정 안 함"}
+              {isEn ? "Focus on main goal" : "핵심 목표에만 집중"}
             </button>
             {PURPOSES.filter((p) => p !== primary).map((p) => (
               <button
@@ -567,14 +576,26 @@ function BudgetPanel({
   return (
     <div>
       <div className="mb-5">
-        <h3 className="text-[18px] font-bold text-ink-900 leading-tight">
-          {isEn ? "Set executable budget" : "집행 가능 예산"}
+        <h3 className="text-[18px] font-bold text-ink-900 leading-snug">
+          {isEn
+            ? "Set your expected sponsorship budget."
+            : "스폰서십 예상 예산을 설정해 주세요."}
         </h3>
+        <p className="text-[12px] text-ink-500 mt-1.5 leading-snug">
+          {isEn
+            ? "We'll suggest the best package within this range."
+            : "선택하신 예산 범위 내에서 최적의 스폰서십 패키지를 제안해 드립니다."}
+        </p>
       </div>
 
       <div className="bg-brand-50 border border-brand-100 rounded-card p-5 text-center mb-5">
         <div className="text-[28px] font-bold text-brand-700 font-num">
-          {isEn ? `$${Math.round(value / 1000).toLocaleString()}` : `${(value / 10000).toLocaleString()}만원`}
+          {isEn
+            ? `$${Math.round(value / 1000).toLocaleString()}`
+            : `${(value / 10000).toLocaleString()}만 원`}
+        </div>
+        <div className="text-[10.5px] text-brand-700/60 mt-1">
+          {isEn ? "* VAT excluded" : "* 부가세 별도"}
         </div>
       </div>
 
@@ -601,7 +622,7 @@ function BudgetPanel({
                 : "bg-white text-ink-500 border-ink-100 hover:border-ink-300")
             }
           >
-            {isEn ? `$${Math.round(v / 1000).toLocaleString()}` : `${(v / 10000).toLocaleString()}만`}
+            {isEn ? `$${Math.round(v / 1000).toLocaleString()}` : `${(v / 10000).toLocaleString()}만 원`}
           </button>
         ))}
       </div>
@@ -622,13 +643,13 @@ function MustHavePanel({
   return (
     <div>
       <div className="mb-5">
-        <h3 className="text-[18px] font-bold text-ink-900 leading-tight">
+        <h3 className="text-[18px] font-bold text-ink-900 leading-snug">
           {isEn
-            ? "Required conditions (optional)"
-            : "포함이 필요한 요건 (선택)"}
+            ? "Any must-include conditions? (optional)"
+            : "스폰서십 구성 시 꼭 포함하고 싶은 조건이 있나요? (선택)"}
         </h3>
-        <p className="text-[12px] text-ink-500 mt-1">
-          {isEn ? "Multiple choice possible" : "복수 선택 가능"}
+        <p className="text-[12px] text-ink-500 mt-1.5">
+          {isEn ? "Select all that apply." : "원하시는 항목을 모두 선택해 주세요."}
         </p>
       </div>
       <div className="space-y-2">
@@ -748,7 +769,7 @@ function ResultPanel({
       {/* 답변 영수증 */}
       <div className="bg-ink-50 rounded-card p-4 space-y-2">
         <div className="text-[12px] text-ink-500 font-semibold">
-          {isEn ? "Your inputs" : "입력 답변"}
+          {isEn ? "My diagnosis" : "나의 진단 조건"}
         </div>
         <Receipt
           label={
@@ -794,12 +815,14 @@ function ResultPanel({
       <div>
         <div className="flex items-baseline justify-between mb-3">
           <h3 className="text-[15px] font-bold text-ink-900">
-            {isEn ? "Recommended Items" : "추천 단품"}
+            {isEn
+              ? `Best match for you (TOP ${result.picks.length})`
+              : `조건에 딱 맞는 추천 스폰서십 (TOP ${result.picks.length})`}
           </h3>
           <div className="text-[11px] text-ink-500 font-num">
             {isEn
-              ? `${result.candidatePool.length} match · top ${result.picks.length}`
-              : `매칭 ${result.candidatePool.length}개 · 상위 ${result.picks.length}개`}
+              ? `${result.candidatePool.length} candidates`
+              : `매칭 후보 ${result.candidatePool.length}개`}
           </div>
         </div>
 
@@ -873,7 +896,9 @@ function ResultPanel({
           className="px-4 py-2.5 rounded-pill bg-brand-500 text-white text-[12.5px] font-bold hover:bg-brand-700 hover:shadow-glow-sm flex items-center gap-1.5 transition-all"
         >
           <FileText className="w-3.5 h-3.5" />
-          {isEn ? "Request quote" : "이대로 견적 요청"}
+          {isEn
+            ? "Get a quote for this"
+            : "현재 구성으로 견적서 받기"}
         </Link>
         <button
           type="button"
@@ -988,40 +1013,40 @@ function UpgradeBlock({
   return (
     <div className="bg-gradient-to-br from-brand-50 to-white border-2 border-brand-500 rounded-card p-4">
       <div className="flex items-center gap-2 mb-2">
-        <Package2 className="w-4 h-4 text-brand-700" />
+        <span className="text-[15px]">💡</span>
         <span className="text-[12px] text-brand-700 font-bold">
-          {isEn ? "Upgrade path" : "패키지 전환 가능"}
+          {isEn ? "Package upgrade" : "패키지 업그레이드 제안"}
         </span>
       </div>
-      <h4 className="text-[15px] font-bold text-ink-900 leading-tight mb-2">
+      <h4 className="text-[15px] font-bold text-ink-900 leading-snug mb-1">
         {isEn
-          ? `+${fmt(delta)} unlocks「${name}」`
-          : `+${fmt(delta)}로「${name}」가 됩니다`}
+          ? `Add ${fmt(delta)} to unlock 「${name}」 with ${fmt(offer.savingsKRW)} savings.`
+          : `${fmt(delta)}을 추가하면 ${fmt(offer.savingsKRW)} 할인 혜택의「${name}」가 됩니다.`}
       </h4>
+      <p className="text-[12px] text-ink-700 leading-snug mb-3">
+        {isEn
+          ? `Your ${offer.covered.length} picks plus stronger on-floor exposure.`
+          : `선택하신 ${offer.covered.length}개 항목에 강력한 오프라인 노출이 추가됩니다.`}
+      </p>
 
-      <div className="text-[12px] text-ink-700 leading-relaxed mb-3">
-        <div className="mb-1.5">
-          <span className="font-semibold">
-            {isEn
-              ? `Includes your ${offer.covered.length} + extra:`
-              : `선택한 ${offer.covered.length}개 모두 포함 + 추가:`}
-          </span>
+      {offer.extras.length > 0 && (
+        <div className="text-[12px] text-ink-700 leading-relaxed mb-3">
+          <ul className="space-y-0.5 pl-1">
+            {offer.extras.slice(0, 4).map((c) => (
+              <li key={c.id} className="text-[11.5px] text-ink-700">
+                + {isEn && c.name.en ? c.name.en : c.name.ko}
+              </li>
+            ))}
+            {offer.extras.length > 4 && (
+              <li className="text-[10.5px] text-ink-500">
+                {isEn
+                  ? `+ ${offer.extras.length - 4} more`
+                  : `외 ${offer.extras.length - 4}개`}
+              </li>
+            )}
+          </ul>
         </div>
-        <ul className="space-y-0.5 pl-2">
-          {offer.extras.slice(0, 4).map((c) => (
-            <li key={c.id} className="text-[11.5px] text-ink-700">
-              + {isEn && c.name.en ? c.name.en : c.name.ko}
-            </li>
-          ))}
-          {offer.extras.length > 4 && (
-            <li className="text-[10.5px] text-ink-500">
-              {isEn
-                ? `+ ${offer.extras.length - 4} more`
-                : `외 ${offer.extras.length - 4}개`}
-            </li>
-          )}
-        </ul>
-      </div>
+      )}
 
       <div className="bg-white rounded-btn p-2.5 mb-3 text-[11.5px] space-y-1 font-num">
         <div className="flex items-baseline justify-between">
@@ -1036,13 +1061,13 @@ function UpgradeBlock({
           <span className="text-brand-700">
             {isEn ? "Package price" : "패키지가"}
           </span>
-          <span className="text-brand-700">
-            {fmt(offer.packagePriceKRW)}
-          </span>
+          <span className="text-brand-700">{fmt(offer.packagePriceKRW)}</span>
         </div>
         <div className="flex items-baseline justify-between text-[10.5px] text-ink-500 border-t border-ink-100 pt-1">
-          <span>{isEn ? "Savings" : "절감"}</span>
-          <span>{fmt(offer.savingsKRW)} ({discountPct}%)</span>
+          <span>{isEn ? "Savings" : "할인 혜택"}</span>
+          <span>
+            {fmt(offer.savingsKRW)} ({discountPct}%)
+          </span>
         </div>
       </div>
 
@@ -1050,7 +1075,7 @@ function UpgradeBlock({
         href="/sponsorships"
         className="block w-full text-center px-4 py-2.5 rounded-pill bg-brand-500 text-white text-[12.5px] font-bold hover:bg-brand-700 hover:shadow-glow-sm transition-all"
       >
-        {isEn ? `View 「${name}」` : `「${name}」 보기`}
+        {isEn ? "View discounted package" : "할인 적용 패키지 상세 보기"}
       </Link>
     </div>
   );
