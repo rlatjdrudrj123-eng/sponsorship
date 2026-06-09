@@ -941,10 +941,8 @@ function RecCard({
   const name = entry.tierLabel ? `${baseName} (${entry.tierLabel})` : baseName;
   const fmt = (n: number) =>
     isEn ? `$${Math.round(n / 1000).toLocaleString()}` : `${n.toLocaleString()}원`;
-  // 답 인용 reason — 매칭 신호가 약하면(폴백) 숨김
-  const reason = entry.reason && !entry.reason.includes("부합하는 후보")
-    ? entry.reason
-    : null;
+  // buildReason 이 매칭 신호 없으면 "" 반환 — 빈 문자열이면 라인 숨김.
+  const reason = entry.reason && entry.reason.trim() ? entry.reason : null;
 
   if (compact) {
     return (

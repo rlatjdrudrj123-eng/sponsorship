@@ -87,6 +87,9 @@ function ContactPageInner() {
   const hydrated = useCartStore((s) => s.hasHydrated);
 
   // 1분 진단에서 넘어온 컨텍스트 — sessionStorage 에 있으면 inquiry 에 첨부.
+  // 읽는 즉시 비움 (read-and-clear). 사용자가 페이지 떠난 후 돌아와 새 일반 문의
+  // 작성 시 옛 진단 컨텍스트가 잘못 따라붙는 걸 방지. state 에 보관해 현 페이지
+  // 라이프타임 동안만 사용.
   const [diagnosisContext, setDiagnosisContext] =
     useState<DiagnosisContext | null>(null);
   useEffect(() => {
@@ -95,7 +98,10 @@ function ContactPageInner() {
       const raw = sessionStorage.getItem("diagnosisContext");
       if (raw) {
         const parsed = JSON.parse(raw) as DiagnosisContext;
-        if (parsed && parsed.primaryGoal) setDiagnosisContext(parsed);
+        if (parsed && parsed.primaryGoal) {
+          setDiagnosisContext(parsed);
+          sessionStorage.removeItem("diagnosisContext");
+        }
       }
     } catch {
       // 무시
@@ -275,14 +281,7 @@ function ContactPageInner() {
           else removePackage(it.packageId);
         });
       }
-      // 진단 컨텍스트는 한 번 쓰면 비움 — 다음 일반 문의에 잘못 따라붙지 않게
-      if (typeof window !== "undefined") {
-        try {
-          sessionStorage.removeItem("diagnosisContext");
-        } catch {
-          // 무시
-        }
-      }
+      // diagnosisContext sessionStorage 는 mount 시점에 이미 read-and-clear 완료
       router.push(`/${eventId}/contact/done`);
     } catch (e) {
       setSubmitError(

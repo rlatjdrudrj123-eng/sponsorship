@@ -122,7 +122,24 @@ export function recommend(args: {
     const priceGroups = Array.from(byPrice.entries());
     const singleTier = priceGroups.length === 1;
     for (const [price, subsInTier] of priceGroups) {
-      const tierLabel = singleTier ? undefined : subsInTier[0].name?.ko;
+      // tierLabel — 카테고리에 가격대가 1개면 undefined (카테고리 이름만).
+      // 가격대 여러 개이면 sub 이름을 라벨로 (locale 별로).
+      // 같은 가격대에 sub 가 2개 이상이면 "첫 sub 외 N건" 으로 안전 표기.
+      let tierLabel: string | undefined;
+      if (!singleTier) {
+        const firstName =
+          locale === "en"
+            ? (subsInTier[0].name?.en ?? subsInTier[0].name?.ko)
+            : subsInTier[0].name?.ko;
+        if (subsInTier.length === 1) {
+          tierLabel = firstName;
+        } else {
+          tierLabel =
+            locale === "en"
+              ? `${firstName} +${subsInTier.length - 1}`
+              : `${firstName} 외 ${subsInTier.length - 1}건`;
+        }
+      }
       entries.push(
         buildEntry(
           c,
