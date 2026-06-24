@@ -184,6 +184,9 @@ export default function EventsPage() {
                     }}
                     className="w-full px-2 py-1.5 text-[13px] border border-transparent hover:border-ink-100 focus:border-brand-500 rounded-btn bg-transparent focus:bg-white focus:outline-none font-semibold text-ink-900"
                   />
+                  <div className="px-2 text-[10.5px] text-ink-400 font-mono mt-0.5">
+                    /{e.id}
+                  </div>
                 </td>
                 <td className="px-4 py-2">
                   <input
@@ -271,12 +274,27 @@ function AddEventModal({ events, onClose }: { events: Event[]; onClose: () => vo
   const [name, setName] = useState("");
   const [shortName, setShortName] = useState("");
   const [year, setYear] = useState<string>(String(new Date().getFullYear() + 1));
+  const [slug, setSlug] = useState("");
+  // 사용자가 slug 칸을 직접 손대면 자동 채움 중지 (사용자 의도 보존).
+  const [slugTouched, setSlugTouched] = useState(false);
   const [saving, setSaving] = useState(false);
 
   const nextOrder = useMemo(() => {
     if (events.length === 0) return 0;
     return Math.max(...events.map((e) => e.order)) + 1;
   }, [events]);
+
+  // 자동 slug — "단축명-연도" 패턴. 단축명 하이픈은 제거, 공백은 하이픈으로.
+  const autoSlug = useMemo(() => {
+    const s = shortName.trim();
+    const y = year.trim();
+    if (!s || !y) return "";
+    return slugifyShort(s) + "-" + y;
+  }, [shortName, year]);
+
+  const effectiveSlug = slugTouched ? slug : autoSlug;
+  const slugValid = /^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(effectiveSlug);
+  const slugDuplicate = events.some((e) => e.id === effectiveSlug);
 
   const submit = async () => {
     const n = name.trim();
@@ -286,15 +304,18 @@ function AddEventModal({ events, onClose }: { events: Event[]; onClose: () => vo
       alert("행사명·단축명·연도를 모두 입력해주세요.");
       return;
     }
-    const id = slugify(`${s} ${y}`);
-    if (events.some((e) => e.id === id)) {
-      alert("같은 단축명+연도의 행사가 이미 있습니다.");
+    if (!effectiveSlug || !slugValid) {
+      alert("URL 은 영문 소문자·숫자·하이픈만 가능합니다.");
+      return;
+    }
+    if (slugDuplicate) {
+      alert("같은 URL 의 행사가 이미 있습니다.");
       return;
     }
     setSaving(true);
     try {
-      await setDoc(doc(getDb(), "events", id), {
-        id,
+      await setDoc(doc(getDb(), "events", effectiveSlug), {
+        id: effectiveSlug,
         name: n,
         shortName: s,
         year: y,
@@ -323,6 +344,63 @@ function AddEventModal({ events, onClose }: { events: Event[]; onClose: () => vo
           <Field label="행사명" placeholder="K-PRINT 2026" value={name} onChange={setName} />
           <Field label="단축명" placeholder="K-PRINT" value={shortName} onChange={setShortName} />
           <Field label="연도" placeholder="2026" value={year} onChange={setYear} type="number" />
+
+          <div className="block">
+            <span className="text-[12px] text-ink-700 font-semibold mb-1 flex items-baseline gap-2">
+              URL
+              <span className="text-[10.5px] text-ink-400 font-normal">
+                (사이트 주소의 슬래시 뒤. 한 번 정하면 바꾸기 어려움)
+              </span>
+            </span>
+            <div className="flex items-stretch gap-1">
+              <div className="px-2.5 grid place-items-center bg-ink-50 border border-ink-100 rounded-btn text-[12px] text-ink-500 font-mono">
+                /
+              </div>
+              <input
+                type="text"
+                value={effectiveSlug}
+                onChange={(e) => {
+                  setSlugTouched(true);
+                  setSlug(e.target.value.toLowerCase().replace(/\s+/g, "-"));
+                }}
+                placeholder="kprint-2026"
+                className={
+                  "flex-1 px-3 py-2 text-sm border rounded-btn focus:outline-none bg-white font-mono " +
+                  (slugDuplicate || (effectiveSlug && !slugValid)
+                    ? "border-red-300 focus:border-red-500"
+                    : "border-ink-100 focus:border-brand-500")
+                }
+              />
+              {slugTouched && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSlugTouched(false);
+                    setSlug("");
+                  }}
+                  className="px-2.5 text-[11px] text-ink-500 hover:text-brand-700 rounded-btn border border-ink-100 hover:border-brand-300"
+                  title="자동 생성으로 복원"
+                >
+                  자동
+                </button>
+              )}
+            </div>
+            <div className="mt-1 text-[11px] leading-snug">
+              {!effectiveSlug ? (
+                <span className="text-ink-400">단축명·연도를 입력하면 자동 채워집니다.</span>
+              ) : slugDuplicate ? (
+                <span className="text-red-700">이미 존재하는 URL 입니다.</span>
+              ) : !slugValid ? (
+                <span className="text-red-700">
+                  영문 소문자·숫자·하이픈만 가능 (예: kprint-2026)
+                </span>
+              ) : (
+                <span className="text-ink-500 font-mono">
+                  사이트: /{effectiveSlug}
+                </span>
+              )}
+            </div>
+          </div>
         </div>
         <div className="mt-5 flex justify-end gap-2">
           <button
@@ -335,7 +413,7 @@ function AddEventModal({ events, onClose }: { events: Event[]; onClose: () => vo
           <button
             type="button"
             onClick={submit}
-            disabled={saving}
+            disabled={saving || !effectiveSlug || !slugValid || slugDuplicate}
             className="px-3.5 py-2 rounded-btn bg-brand-500 text-ink-900 text-[13px] font-semibold hover:bg-brand-700 disabled:opacity-50"
           >
             {saving ? "저장 중…" : "추가"}
@@ -344,6 +422,14 @@ function AddEventModal({ events, onClose }: { events: Event[]; onClose: () => vo
       </div>
     </div>
   );
+}
+
+// "K-PRINT" → "kprint", "ABC 2026 Pro" → "abc-2026-pro"
+function slugifyShort(s: string): string {
+  return s
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "")
+    .replace(/^-+|-+$/g, "");
 }
 
 function Field({
@@ -371,11 +457,4 @@ function Field({
       />
     </label>
   );
-}
-
-function slugify(s: string): string {
-  return s
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "");
 }
