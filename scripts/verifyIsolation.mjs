@@ -16,7 +16,7 @@ const app = initializeApp({ projectId: "kprint-845c3", credential: loadCredentia
 const fs = getFirestore(app);
 
 const A = "kprint-2026";
-const B = "kmb26-2026";
+const B = "kimesbusan-2026";
 
 // 1. doc id 겹침 검사 — 한 ID 가 양쪽 eventId 로 있으면 안 됨
 console.log("[1] doc id 겹침 검사 (양 행사 사이에 같은 ID 없어야 함)");
