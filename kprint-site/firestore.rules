@@ -25,10 +25,13 @@ service cloud.firestore {
 
     // ============================================================
     //  K-PRINT 어드민 헬퍼 (이메일 화이트리스트)
-    //  ⚠️ 'admin@kprint.kr'를 본인 실제 어드민 이메일로 교체
+    //  ⚠️ 이 목록은 앱의 NEXT_PUBLIC_ADMIN_EMAILS(.env.local) 와 반드시 일치해야 함.
+    //     현재 값: admin@kprint.kr (배포 전 실제 운영 어드민 이메일인지 재검증 필요)
+    //     email_verified == true 를 AND 로 걸어 미인증 이메일 위조를 방지함.
     // ============================================================
     function isKprintAdmin() {
       return request.auth != null
+        && request.auth.token.email_verified == true
         && request.auth.token.email in ['admin@kprint.kr'];
     }
 
@@ -111,9 +114,36 @@ service cloud.firestore {
       allow read: if true;
       allow write: if isKprintAdmin();
     }
+    // 문의(견적 요청) — 익명 공개 생성. 스팸/위조 방지를 위해 화이트리스트 + 타입/길이 검증.
+    // 실제 클라이언트 payload: app/(public)/[eventSlug]/contact/page.tsx (addDoc)
+    //   eventId, companyName, contactName, email, phone, message,
+    //   cartItems, cartSubtotal, cartVat, cartTotal,
+    //   diagnosisContext(선택), status, createdAt, updatedAt
     match /inquiries/{id} {
-      allow create: if request.resource.data.keys().hasAll(['companyName','contactName','email','phone','message'])
-                    && request.resource.data.status == 'new';
+      allow create: if request.resource.data.keys().hasOnly([
+                         'eventId','companyName','contactName','email','phone','message',
+                         'cartItems','cartSubtotal','cartVat','cartTotal',
+                         'diagnosisContext','status','createdAt','updatedAt'
+                       ])
+                    && request.resource.data.keys().hasAll([
+                         'eventId','companyName','contactName','email','phone','message','status'
+                       ])
+                    && request.resource.data.status == 'new'
+                    && request.resource.data.eventId is string
+                    && request.resource.data.companyName is string
+                    && request.resource.data.companyName.size() <= 200
+                    && request.resource.data.contactName is string
+                    && request.resource.data.contactName.size() <= 200
+                    && request.resource.data.email is string
+                    && request.resource.data.email.size() <= 320
+                    && request.resource.data.phone is string
+                    && request.resource.data.phone.size() <= 50
+                    && request.resource.data.message is string
+                    && request.resource.data.message.size() <= 5000
+                    && request.resource.data.cartItems is list
+                    && request.resource.data.cartSubtotal is number
+                    && request.resource.data.cartVat is number
+                    && request.resource.data.cartTotal is number;
       allow read, update, delete: if isKprintAdmin();
     }
     match /importHistory/{id} {
@@ -131,9 +161,10 @@ service cloud.firestore {
       allow read, write: if isKprintAdmin();
     }
 
-    // 견적서 설정 (사무국 정보, 계좌, 기본값)
+    // 견적서 설정 (사무국 정보, 계좌번호, 사업자번호 등 민감정보)
+    // → 공개 페이지에서 사용하지 않음. 어드민 전용 read 로 차단.
     match /quoteSettings/{id} {
-      allow read: if true;
+      allow read: if isKprintAdmin();
       allow write: if isKprintAdmin();
     }
 
@@ -144,11 +175,23 @@ service cloud.firestore {
     }
 
     // 진단 챗봇 로그 — 공개 생성 (익명 세션), 읽기 어드민 전용
+    // 실제 클라이언트 payload: components/public/SponsorshipDiagnosisChat.tsx (writeLog)
+    //   eventId, sessionId, completed, exitedAt(선택), primaryGoal/secondaryGoal(선택·null 가능),
+    //   budgetKRW(선택), mustHave(선택), recommendedCategoryIds(list), createdAt
+    //   ⚠️ 필드명은 recommendedCategoryIds (이전 규칙의 recommendedSelectorIds 는 오타라 전량 거부됐음)
     match /diagnostic_logs/{id} {
-      allow create: if request.resource.data.eventId is string
+      allow create: if request.resource.data.keys().hasOnly([
+                         'eventId','sessionId','completed','exitedAt',
+                         'primaryGoal','secondaryGoal','budgetKRW','mustHave',
+                         'recommendedCategoryIds','createdAt'
+                       ])
+                    && request.resource.data.eventId is string
+                    && request.resource.data.eventId.size() <= 200
                     && request.resource.data.sessionId is string
+                    && request.resource.data.sessionId.size() <= 200
                     && request.resource.data.completed is bool
-                    && request.resource.data.recommendedSelectorIds is list;
+                    && request.resource.data.recommendedCategoryIds is list
+                    && request.resource.data.recommendedCategoryIds.size() <= 50;
       allow read: if isKprintAdmin();
       allow update, delete: if false;
     }

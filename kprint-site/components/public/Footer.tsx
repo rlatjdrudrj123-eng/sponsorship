@@ -166,8 +166,8 @@ export function Footer({ settings }: { settings: SiteSettings | null }) {
             </div>
             <div className="font-num text-ink-500/80 leading-relaxed">
               {isEn
-                ? "Biz Reg. No. 120-81-813111 · CEO Jeong-jo Kim"
-                : "사업자등록번호 120-81-813111 · 대표이사 김정조"}
+                ? "Biz Reg. No. 120-81-81311 · CEOs Chung-han Kim, Jeong-jo Kim"
+                : "사업자등록번호 120-81-81311 · 대표이사 김충한·김정조"}
               {(() => {
                 const addr = localizedField(
                   settings?.contact.address,

@@ -20,7 +20,11 @@ type CartState = {
   togglePackage: (pkg: PackageItem) => void;
   hasSlot: (slotId: string) => boolean;
   hasPackage: (packageId: string) => boolean;
-  clear: () => void;
+  /**
+   * 특정 행사의 카트 항목만 비웁니다. 다중 행사 격리를 위해 eventId 필수.
+   * eventId 미지정 시(레거시 안전망)에는 store 전체를 비우지 않고 아무 동작도 하지 않습니다.
+   */
+  clear: (eventId: string) => void;
   subtotal: () => number;
 };
 
@@ -93,7 +97,12 @@ export const useCartStore = create<CartState>()(
           (i) => i.type === "package" && i.packageId === packageId
         ),
 
-      clear: () => set({ items: [] }),
+      clear: (eventId) =>
+        set((s) => ({
+          items: eventId
+            ? s.items.filter((i) => i.eventId !== eventId)
+            : s.items,
+        })),
 
       subtotal: () => get().items.reduce((sum, i) => sum + i.price, 0),
     }),

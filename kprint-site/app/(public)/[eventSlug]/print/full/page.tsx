@@ -101,6 +101,7 @@ function FullPrintContent() {
   const [personas, setPersonas] = useState<Persona[]>([]);
   const [settings, setSettings] = useState<SiteSettings | null>(null);
   const [ready, setReady] = useState(false);
+  const [error, setError] = useState(false);
   const [imgProgress, setImgProgress] = useState<{
     loaded: number;
     total: number;
@@ -111,6 +112,7 @@ function FullPrintContent() {
     if (!eventId) return;
     (async () => {
       try {
+        setError(false);
         const db = getDb();
         const [c, s, sl, p, pr, st] = await Promise.all([
           cachedFetch(`pub:cat:${eventId}`, async () => {
@@ -165,19 +167,27 @@ function FullPrintContent() {
         setReady(true);
       } catch (e) {
         console.error("full print fetch failed", e);
+        // fetch 실패 시 빈 PDF 가 자동 인쇄되지 않도록 에러 상태로 표시 — 아래 자동 인쇄
+        // effect 와 렌더가 error 를 보고 인쇄 대신 안내 UI 를 보여준다.
+        setError(true);
         setReady(true);
       }
     })();
   }, [eventId]);
 
   const sortedCategories = useMemo(() => {
-    return [...categories].sort((a, b) => {
-      if (a.channel !== b.channel) {
-        const order: Channel[] = ["offline", "online", "package"];
-        return order.indexOf(a.channel) - order.indexOf(b.channel);
-      }
-      return (a.order ?? 0) - (b.order ?? 0);
-    });
+    // 목록 페이지(sponsorships/page.tsx)와 동일하게 package 타입은 카테고리 슬라이드에서 제외.
+    // package 는 PackageOverviewPrintSlide(패키지 광고 안내)에서 별도로 다루므로
+    // 단품 카테고리 슬라이드에 섞이면 중복/오분류가 된다.
+    return [...categories]
+      .filter((c) => c.type !== "package")
+      .sort((a, b) => {
+        if (a.channel !== b.channel) {
+          const order: Channel[] = ["offline", "online", "package"];
+          return order.indexOf(a.channel) - order.indexOf(b.channel);
+        }
+        return (a.order ?? 0) - (b.order ?? 0);
+      });
   }, [categories]);
 
   const sortedPackages = useMemo(() => {
@@ -207,13 +217,14 @@ function FullPrintContent() {
 
   // 랜딩 블록 중 canvasPage 만 추출 (다른 블록은 print 친화 아님)
   // 어드민이 [랜딩 빌더] 에서 만든 표지·패키지 안내·소개 슬라이드들이 자동으로 PDF 앞쪽에 들어감.
-  // 영문 페이지(/en) 에서는 settings.landingEn 우선 — 비어있으면 한국어 폴백.
+  // 영문 페이지(/en) 에서는 settings.landingEn 만 사용 — lib/pdf.ts 정책("영문은 한국어로 폴백 안 함")과
+  // 일치시키기 위해 enBlocks 가 비어 있어도 koBlocks 로 폴백하지 않는다. (영문 표지에 한국어 슬라이드 혼입 방지)
+  // enBlocks 가 비면 canvasBlocks 는 빈 배열 → 아래에서 기본 영문 CoverSlide 로 렌더된다.
   const canvasBlocks = useMemo<CanvasPageBlock[]>(() => {
     const isEn = locale === "en";
     const enBlocks: LandingBlock[] = settings?.landingEn ?? [];
     const koBlocks: LandingBlock[] = settings?.landing ?? [];
-    const blocks =
-      isEn && enBlocks.length > 0 ? enBlocks : koBlocks;
+    const blocks = isEn ? enBlocks : koBlocks;
     return blocks.filter(
       (b): b is CanvasPageBlock => b.type === "canvasPage"
     );
@@ -222,8 +233,22 @@ function FullPrintContent() {
   // 표지 페이지 수 — 랜딩 캔버스가 있으면 그 개수, 없으면 fallback Cover 1장
   const coverPagesCount = canvasBlocks.length > 0 ? canvasBlocks.length : 1;
 
-  // 한눈에 보기 페이지 수 — 페르소나마다 한 페이지. 페르소나 없으면 전체 카테고리 1페이지.
-  const atGlancePageCount = personas.length > 0 ? personas.length : 1;
+  // 어느 페르소나에도 매핑되지 않은 published 카테고리 — "한눈에 보기" 요약에서 통째로 빠지지
+  // 않도록 별도 "기타/그 외" 요약 페이지로 모은다. (페르소나가 1개 이상일 때만 의미 있음)
+  const unmappedCategories = useMemo(() => {
+    if (personas.length === 0) return [] as Category[];
+    return sortedCategories.filter(
+      (c) => !(c.personas ?? []).some((pid) => personas.some((p) => p.id === pid))
+    );
+  }, [sortedCategories, personas]);
+
+  // 한눈에 보기 페이지 수 — 페르소나마다 한 페이지 + 미매핑 카테고리가 있으면 "기타" 1페이지.
+  // 페르소나 없으면 전체 카테고리 1페이지.
+  const hasUnmappedPage = personas.length > 0 && unmappedCategories.length > 0;
+  const atGlancePageCount =
+    personas.length > 0
+      ? personas.length + (hasUnmappedPage ? 1 : 0)
+      : 1;
   // 패키지 광고 안내 — 패키지 있을 때만 1페이지 (모든 패키지를 한 화면에 그룹별 카드).
   const packageOverviewPageCount = sortedPackages.length > 0 ? 1 : 0;
 
@@ -235,9 +260,15 @@ function FullPrintContent() {
     sortedCategories.length +
     1;
 
-  // 데이터 로드 완료 후 — 모든 이미지가 받아진 다음에 자동 인쇄
+  // 인쇄할 실제 콘텐츠가 있는지 — 카테고리/패키지 중 하나라도 있어야 의미 있는 PDF.
+  const hasPrintableData =
+    sortedCategories.length > 0 || sortedPackages.length > 0;
+
+  // 데이터 로드 완료 후 — 모든 이미지가 받아진 다음에 자동 인쇄.
+  // 단, fetch 에러이거나 데이터가 완전히 비면 빈/깨진 PDF 자동 인쇄를 막고 안내 UI 로 대체.
   useEffect(() => {
     if (!ready) return;
+    if (error || !hasPrintableData) return;
     let cancelled = false;
 
     const waitAllImages = async () => {
@@ -301,7 +332,7 @@ function FullPrintContent() {
     return () => {
       cancelled = true;
     };
-  }, [ready]);
+  }, [ready, error, hasPrintableData]);
 
   // print CSS — landing/print 와 동일 패턴.
   // styled-jsx 가 @page at-rule 을 삼키는 이슈 회피용 직접 삽입.
@@ -345,6 +376,41 @@ function FullPrintContent() {
     return (
       <div className="p-12 text-center text-sm text-ink-500">
         {locale === "en" ? "Loading…" : "불러오는 중…"}
+      </div>
+    );
+  }
+
+  // fetch 실패 또는 데이터가 완전히 비었을 때 — 빈 PDF 자동 인쇄 대신 안내 UI.
+  if (error || !hasPrintableData) {
+    return (
+      <div className="min-h-screen grid place-items-center bg-ink-50 px-6 print:hidden">
+        <div className="max-w-md w-full text-center bg-white border border-ink-100 rounded-card px-8 py-10 shadow-sm">
+          <h1 className="text-[18px] font-bold text-ink-900">
+            {error
+              ? locale === "en"
+                ? "Couldn't load the data"
+                : "데이터를 불러오지 못했습니다"
+              : locale === "en"
+                ? "No content to print"
+                : "인쇄할 내용이 없습니다"}
+          </h1>
+          <p className="text-[13px] text-ink-500 mt-3 leading-relaxed">
+            {error
+              ? locale === "en"
+                ? "There was a problem fetching the sponsorship data. Please try again."
+                : "스폰서십 데이터를 불러오는 중 문제가 발생했습니다. 다시 시도해 주세요."
+              : locale === "en"
+                ? "No published categories or packages were found for this event."
+                : "이 행사에 공개된 카테고리나 패키지가 없습니다."}
+          </p>
+          <button
+            type="button"
+            onClick={() => window.location.reload()}
+            className="mt-6 px-4 py-2.5 rounded-btn bg-ink-900 text-white text-[13px] font-semibold hover:bg-ink-700"
+          >
+            {locale === "en" ? "Try again" : "다시 시도"}
+          </button>
+        </div>
       </div>
     );
   }
@@ -415,21 +481,36 @@ function FullPrintContent() {
           ))
         )}
 
-        {/* 2) 한눈에 보기 — 페르소나마다 한 페이지. 페르소나 없으면 전체 카테고리 1페이지. */}
+        {/* 2) 한눈에 보기 — 페르소나마다 한 페이지. 페르소나 없으면 전체 카테고리 1페이지.
+            + 어느 페르소나에도 매핑 안 된 카테고리는 "기타/그 외" 요약 페이지로 누락 없이 표시. */}
         {personas.length > 0 ? (
-          personas.map((p, i) => (
-            <AtAGlancePrintSlide
-              key={`atg-${p.id}`}
-              persona={p}
-              categories={sortedCategories.filter((c) =>
-                (c.personas ?? []).includes(p.id)
-              )}
-              eventName={eventName}
-              index={coverPagesCount + i}
-              total={totalPages}
-              locale={locale}
-            />
-          ))
+          <>
+            {personas.map((p, i) => (
+              <AtAGlancePrintSlide
+                key={`atg-${p.id}`}
+                persona={p}
+                categories={sortedCategories.filter((c) =>
+                  (c.personas ?? []).includes(p.id)
+                )}
+                eventName={eventName}
+                index={coverPagesCount + i}
+                total={totalPages}
+                locale={locale}
+              />
+            ))}
+            {hasUnmappedPage && (
+              <AtAGlancePrintSlide
+                key="atg-others"
+                persona={null}
+                othersLabel={locale === "en" ? "Others" : "기타"}
+                categories={unmappedCategories}
+                eventName={eventName}
+                index={coverPagesCount + personas.length}
+                total={totalPages}
+                locale={locale}
+              />
+            )}
+          </>
         ) : (
           <AtAGlancePrintSlide
             persona={null}
@@ -517,6 +598,7 @@ function FullPrintContent() {
 
 function AtAGlancePrintSlide({
   persona,
+  othersLabel,
   categories,
   eventName,
   index,
@@ -524,6 +606,7 @@ function AtAGlancePrintSlide({
   locale,
 }: {
   persona: Persona | null;
+  othersLabel?: string;
   categories: Category[];
   eventName: string;
   index: number;
@@ -539,6 +622,19 @@ function AtAGlancePrintSlide({
             {locale === "en" ? "at a glance" : "스폰서십 한눈에 보기"}
           </span>
         </h2>
+
+        {!persona && othersLabel && (
+          <div className="text-center mb-6">
+            <div className="inline-flex items-baseline gap-2 text-[16px] font-bold text-ink-900 pb-1.5 border-b-2 border-ink-900">
+              {othersLabel}
+            </div>
+            <p className="text-[11.5px] text-ink-500 mt-2 leading-snug max-w-2xl mx-auto">
+              {locale === "en"
+                ? "Sponsorship items not mapped to any of the above personas."
+                : "위 페르소나에 매핑되지 않은 스폰서십 항목입니다."}
+            </p>
+          </div>
+        )}
 
         {persona && (
           <div className="text-center mb-6">
@@ -738,8 +834,15 @@ function PrintPackageCard({
               </p>
             ) : null;
           })()}
-          <div className="text-[16px] font-bold text-ink-900 leading-tight mb-2">
-            {localizedHelper(pkg.name, locale)}
+          <div className="flex items-center gap-1.5 flex-wrap mb-2">
+            <span className="text-[16px] font-bold text-ink-900 leading-tight">
+              {localizedHelper(pkg.name, locale)}
+            </span>
+            {pkg.soldOut && (
+              <span className="text-[9px] uppercase tracking-wider px-1.5 py-0.5 rounded font-bold bg-ink-300 text-white">
+                {locale === "en" ? "Sold out" : "매진"}
+              </span>
+            )}
           </div>
           {items.length > 0 && (
             <ul className="space-y-0.5 text-[10.5px] text-ink-700 leading-snug">
@@ -830,13 +933,12 @@ function ClosingSlide({
           )}
         </h2>
 
-        {/* PDF 인쇄용 — URL 직접 노출 (탭 동작 X, 종이에 URL 인쇄) */}
+        {/* PDF 인쇄용 — URL 직접 노출 (탭 동작 X, 종이에 URL 인쇄).
+            "PDF 다운로드" 버튼은 PDF 문서 안에서 클릭도 안 되고 URL 도 없는 죽은 요소라 제거.
+            "온라인 신청 바로가기" 버튼 + 아래 신청 URL 텍스트는 유지. */}
         <div className="flex items-center gap-3 mb-3">
           <div className="px-7 py-3 rounded-btn bg-brand-500 text-white text-[14px] font-bold inline-flex items-center gap-2">
             {locale === "en" ? "Apply online" : "온라인 신청 바로가기"}
-          </div>
-          <div className="px-7 py-3 rounded-btn bg-ink-900 text-white text-[14px] font-bold inline-flex items-center gap-2">
-            {locale === "en" ? "Full PDF" : "PDF 다운로드"}
           </div>
         </div>
         <div className="text-[10.5px] text-ink-500 font-mono mb-12">

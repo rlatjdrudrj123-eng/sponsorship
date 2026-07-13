@@ -25,6 +25,7 @@ const config: Config = {
           50: "var(--brand-50)",
           100: "var(--brand-100)",
           200: "var(--brand-200)",
+          300: "var(--brand-300)",
           400: "var(--brand-400)",
           500: "var(--brand-500)",
           600: "var(--brand-600)",
@@ -46,7 +47,9 @@ const config: Config = {
         ink: {
           50: "#F6F6F6",
           100: "#EBEBEB",
+          200: "#E2E2E2",
           300: "#D9D9D9",
+          400: "#ACACAC",
           500: "#808080",
           700: "#515151",
           900: "#0A0A0A",

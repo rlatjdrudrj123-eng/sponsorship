@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import {
@@ -41,72 +41,85 @@ export default function CategoryDetailPage() {
   const [settings, setSettings] = useState<SiteSettings | null>(null);
   const [loaded, setLoaded] = useState(false);
   const [notFound, setNotFound] = useState(false);
+  const [error, setError] = useState(false);
+
+  const load = useCallback(async () => {
+    if (!eventId || !slug) return;
+    // 재시도 시 이전 상태 초기화.
+    setLoaded(false);
+    setNotFound(false);
+    setError(false);
+    try {
+      const db = getDb();
+
+      // 전체 카테고리 / settings 는 같은 이벤트 안에서 카테고리 페이지마다 동일 →
+      // /sponsorships 등 다른 페이지와 같은 key 로 공유 캐싱.
+      const [allCatList, settingsData] = await Promise.all([
+        cachedFetch(`pub:cat:${eventId}`, async () => {
+          const s = await getDocs(
+            query(
+              collection(db, "categories"),
+              where("eventId", "==", eventId),
+              where("isPublished", "==", true)
+            )
+          );
+          return s.docs.map((d) => ({ ...(d.data() as Category), id: d.id }));
+        }),
+        cachedFetch(`pub:settings:${eventId}`, async () => {
+          const s = await getDoc(doc(db, "siteSettings", eventId));
+          return s.exists() ? (s.data() as SiteSettings) : null;
+        }),
+      ]);
+
+      const cat = allCatList.find((c) => c.slug === slug);
+      if (!cat) {
+        // slug 불일치 → 진짜 존재하지 않음.
+        setNotFound(true);
+        setLoaded(true);
+        return;
+      }
+      setCategory(cat);
+      setAllCategories(allCatList);
+      if (settingsData) setSettings(settingsData);
+
+      // 이 카테고리에 속한 sub/slot 은 카테고리별 별도 캐시.
+      const [subList, slotList] = await Promise.all([
+        cachedFetch(`pub:sub:cat:${cat.id}`, async () => {
+          const s = await getDocs(
+            query(
+              collection(db, "subcategories"),
+              where("categoryId", "==", cat.id)
+            )
+          );
+          return s.docs.map((d) => ({ ...(d.data() as Subcategory), id: d.id }));
+        }),
+        cachedFetch(`pub:slot:cat:${cat.id}`, async () => {
+          const s = await getDocs(
+            query(collection(db, "slots"), where("categoryId", "==", cat.id))
+          );
+          return s.docs.map((d) => ({ ...(d.data() as Slot), id: d.id }));
+        }),
+      ]);
+      setSubcategories(subList);
+      setSlots(slotList);
+      setLoaded(true);
+    } catch (e) {
+      // 네트워크/권한/일시 장애 → notFound 와 구분되는 에러 상태.
+      console.error(e);
+      setError(true);
+      setLoaded(true);
+    }
+  }, [slug, eventId]);
 
   useEffect(() => {
-    if (!eventId || !slug) return;
-    (async () => {
-      try {
-        const db = getDb();
-
-        // 전체 카테고리 / settings 는 같은 이벤트 안에서 카테고리 페이지마다 동일 →
-        // /sponsorships 등 다른 페이지와 같은 key 로 공유 캐싱.
-        const [allCatList, settingsData] = await Promise.all([
-          cachedFetch(`pub:cat:${eventId}`, async () => {
-            const s = await getDocs(
-              query(
-                collection(db, "categories"),
-                where("eventId", "==", eventId),
-                where("isPublished", "==", true)
-              )
-            );
-            return s.docs.map((d) => ({ ...(d.data() as Category), id: d.id }));
-          }),
-          cachedFetch(`pub:settings:${eventId}`, async () => {
-            const s = await getDoc(doc(db, "siteSettings", eventId));
-            return s.exists() ? (s.data() as SiteSettings) : null;
-          }),
-        ]);
-
-        const cat = allCatList.find((c) => c.slug === slug);
-        if (!cat) {
-          setNotFound(true);
-          setLoaded(true);
-          return;
-        }
-        setCategory(cat);
-        setAllCategories(allCatList);
-        if (settingsData) setSettings(settingsData);
-
-        // 이 카테고리에 속한 sub/slot 은 카테고리별 별도 캐시.
-        const [subList, slotList] = await Promise.all([
-          cachedFetch(`pub:sub:cat:${cat.id}`, async () => {
-            const s = await getDocs(
-              query(
-                collection(db, "subcategories"),
-                where("categoryId", "==", cat.id)
-              )
-            );
-            return s.docs.map((d) => ({ ...(d.data() as Subcategory), id: d.id }));
-          }),
-          cachedFetch(`pub:slot:cat:${cat.id}`, async () => {
-            const s = await getDocs(
-              query(collection(db, "slots"), where("categoryId", "==", cat.id))
-            );
-            return s.docs.map((d) => ({ ...(d.data() as Slot), id: d.id }));
-          }),
-        ]);
-        setSubcategories(subList);
-        setSlots(slotList);
-        setLoaded(true);
-      } catch (e) {
-        console.error(e);
-        setLoaded(true);
-      }
-    })();
-  }, [slug, eventId]);
+    void load();
+  }, [load]);
 
   if (!loaded) {
     return <PageStatus />;
+  }
+  if (error) {
+    return <PageStatus error onRetry={load} />;
   }
   if (notFound || !category) {
     return <PageStatus eventId={eventId} notFound />;
@@ -148,9 +161,38 @@ export default function CategoryDetailPage() {
 function PageStatus({
   eventId,
   notFound,
-}: { eventId?: string; notFound?: boolean } = {}) {
+  error,
+  onRetry,
+}: {
+  eventId?: string;
+  notFound?: boolean;
+  error?: boolean;
+  onRetry?: () => void;
+} = {}) {
   const locale = useLocale((s) => s.locale);
   const isEn = locale === "en";
+  if (error) {
+    return (
+      <div className="min-h-screen grid place-items-center px-6">
+        <div className="text-center">
+          <p className="text-sm text-ink-700">
+            {isEn
+              ? "A temporary error occurred. Please try again."
+              : "일시적인 오류가 발생했습니다. 다시 시도해 주세요."}
+          </p>
+          <button
+            type="button"
+            onClick={() =>
+              onRetry ? onRetry() : window.location.reload()
+            }
+            className="text-brand-700 font-semibold mt-3 inline-block hover:underline"
+          >
+            {isEn ? "Try again" : "다시 시도"}
+          </button>
+        </div>
+      </div>
+    );
+  }
   if (!notFound) {
     return (
       <div className="min-h-screen grid place-items-center text-sm text-ink-500">

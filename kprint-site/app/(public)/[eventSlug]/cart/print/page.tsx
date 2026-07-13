@@ -101,7 +101,9 @@ function CartPrintContent() {
   // 지원하는 ID 형식: slot:{slotId} / pkg:{pkgId} / slot-cat:{categoryId} / cat:{categoryId}
   // (compare 페이지의 비교 항목은 cart 에 없을 수 있음 — 직접 fetch 한 데이터에서 매핑)
   const selected = useMemo<CartItem[]>(() => {
-    if (!idsParam) return items;
+    // idsParam 없는 직접 진입 경로: store 전체가 아니라 현재 행사 항목만 출력
+    // (다중 행사 카트에서 타 행사 항목이 PDF 에 섞이는 것 방지)
+    if (!idsParam) return items.filter((it) => it.eventId === eventId);
     const ids = idsParam.split(",");
     const result: CartItem[] = [];
     for (const raw of ids) {
@@ -500,6 +502,11 @@ function PackageSlide({
               {pkg.name.ko}
             </h2>
             <span className="text-[15px] text-ink-300 font-mono">#{pkg.code}</span>
+            {pkg.soldOut && (
+              <span className="text-[10px] uppercase tracking-wider px-2 py-0.5 rounded font-bold bg-ink-300 text-white self-center">
+                매진
+              </span>
+            )}
           </div>
 
           {pkg.tagline && (

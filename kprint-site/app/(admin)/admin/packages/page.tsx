@@ -142,6 +142,11 @@ export default function PackagesListPage() {
                     <Link href={`/admin/packages/${pkg.id}`} className="text-ink-900 font-semibold hover:text-brand-700">
                       {pkg.name.ko}
                     </Link>
+                    {pkg.soldOut && (
+                      <span className="ml-1.5 align-middle text-[10px] px-1.5 py-0.5 rounded font-bold bg-ink-300 text-white">
+                        매진
+                      </span>
+                    )}
                     {pkg.tagline && (
                       <div className="text-[11px] text-ink-500 mt-0.5 truncate max-w-md">
                         {pkg.tagline}

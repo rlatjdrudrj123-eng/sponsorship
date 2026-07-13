@@ -249,8 +249,8 @@ export const STRINGS = {
     en: "Korea E&EX Co., Ltd.",
   },
   "footer.companyMeta": {
-    ko: "사업자등록번호 220-87-30068 · 대표이사 김응식",
-    en: "Biz reg. 220-87-30068 · CEO Eung-Sik Kim",
+    ko: "사업자등록번호 120-81-81311 · 대표이사 김충한·김정조",
+    en: "Biz reg. 120-81-81311 · CEOs Chung-han Kim, Jeong-jo Kim",
   },
   "footer.companyAddress": {
     ko: "서울특별시 강남구 영동대로 511 트레이드타워 7층",

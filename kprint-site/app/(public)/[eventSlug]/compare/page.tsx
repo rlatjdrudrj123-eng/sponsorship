@@ -176,6 +176,7 @@ function CompareContent() {
     location: string[];
     href: string;
     lastYearBuyers?: string[];
+    soldOut?: boolean;
   };
 
   const columns = useMemo<Column[]>(() => {
@@ -262,6 +263,7 @@ function CompareContent() {
           timing: [],
           location: [],
           href: `/${eventId}/packages/${pkg.id}`,
+          soldOut: !!pkg.soldOut,
         });
       }
     }
@@ -453,6 +455,11 @@ function CompareContent() {
                             : "슬롯"}{" "}
                         · {col.code}
                       </div>
+                      {col.soldOut && (
+                        <div className="absolute top-3 right-3 px-2 py-0.5 rounded text-[10px] uppercase tracking-wider font-bold bg-ink-300 text-white">
+                          {locale === "en" ? "Sold out" : "매진"}
+                        </div>
+                      )}
                     </div>
                     <div className="p-4 flex-1 flex flex-col gap-3 text-[12.5px]">
                       <div>

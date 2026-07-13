@@ -121,7 +121,7 @@ export default function QuotePrintPage() {
             string,
             { line: QuoteLine; count: number; codes: string[] }
           >();
-          inq.cartItems.forEach((ci) => {
+          (inq.cartItems ?? []).forEach((ci) => {
             if (ci.type === "slot") {
               const cat = catMap.get(ci.categoryId);
               const sb = subMap.get(ci.subcategoryId);
@@ -166,14 +166,15 @@ export default function QuotePrintPage() {
             })
           );
 
-          // 활성 행사를 brand로 사용
-          const activeEvent = events.find((e) => e.isActive) ?? events[0];
+          // inquiry 소속 행사(sourceEventId = inq.eventId)를 brand로 사용.
+          // (현재 활성 행사가 아니라 이 문의가 실제로 속한 행사여야 함 — 다중 행사 환경 버그 수정)
+          const inqEvent = events.find((e) => e.id === sourceEventId);
           setTarget({
             receiver: inq.companyName,
             items,
             extraItems: defaultExtras,
-            eventName: activeEvent?.name,
-            eventBrand: activeEvent ? `${activeEvent.shortName} ${activeEvent.year}` : undefined,
+            eventName: inqEvent?.name,
+            eventBrand: inqEvent ? `${inqEvent.shortName} ${inqEvent.year}` : undefined,
           });
         } else if (source === "sponsor") {
           const spSnap = await getDoc(doc(db, "sponsors", id));
@@ -225,6 +226,14 @@ export default function QuotePrintPage() {
               // 자유 입력 — 묶지 않음
               key = `free:${it.label}:${aggregated.size}`;
               unit = it.note ? "" : "구좌";
+            }
+
+            // 스폰서 품목에 수기 단가(it.price)가 있으면 정가 조회보다 우선 사용.
+            // (협상 단가·자유 입력 품목 반영) 같은 정가 라인과 섞이지 않도록
+            // 묶음 키에 단가를 포함 — 수기 단가가 다른 품목은 별도 라인.
+            if (typeof it.price === "number" && it.price > 0) {
+              unitPrice = it.price;
+              key += `:p${it.price}`;
             }
 
             const existing = aggregated.get(key);
@@ -279,16 +288,22 @@ export default function QuotePrintPage() {
     return () => clearTimeout(t);
   }, [loading, target, settings]);
 
-  // 합계 계산: items의 amount 합 (수량 × 단가) 또는 totalOverride
+  // 합계 계산 — subtotal 은 "공급가액(VAT 별도)" 으로 통일하고, vat 를 가산한다.
+  //   vat = round(subtotal * 0.1), total = subtotal + vat  (contact/page.tsx:256-257 동일 컨벤션)
+  //
+  // 우선순위:
+  // - 협상가 경로(우선): sponsor.amount(= totalOverride)가 입력돼 있으면 그것을 공급가액으로 사용한다.
+  //   'amount'(비용)는 할인·협상된 실제 계약 공급가액이며, inquiry→sponsor 전환 시에도
+  //   amount = round(cartTotal / 1.1) 즉 "공급가액(VAT 별도)" 로 저장된다(sponsors/new). 따라서
+  //   여기서도 공급가액으로 해석해 vat 를 가산해야 시스템 전체가 일관된다.
+  //   (과거: 라인합이 있으면 협상가를 무시 + 협상가를 VAT포함으로 보고 /1.1 역산 → 이중 모순. 수정함.)
+  // - 라인합 경로(폴백): 협상가가 없으면 라인별 (수량 × 단가) 합을 공급가액으로 사용.
   const subtotal = useMemo(() => {
     if (!target) return 0;
-    const itemsTotal = target.items.reduce((sum, it) => sum + (it.amount ?? 0), 0);
-    if (itemsTotal > 0) return itemsTotal;
-    // sponsor의 amount만 명시되어 있고 단가 합산이 0이면 totalOverride를 소계로 사용 (VAT 별도)
-    if (target.totalOverride !== undefined) {
-      return Math.round(target.totalOverride / 1.1);
+    if (target.totalOverride !== undefined && target.totalOverride > 0) {
+      return target.totalOverride; // 협상 공급가액 우선
     }
-    return 0;
+    return target.items.reduce((sum, it) => sum + (it.amount ?? 0), 0);
   }, [target]);
   const vat = Math.round(subtotal * 0.1);
   const total = subtotal + vat;

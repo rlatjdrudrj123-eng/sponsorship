@@ -7,6 +7,7 @@ import {
   collection,
   deleteDoc,
   doc,
+  getDoc,
   getDocs,
   onSnapshot,
   orderBy,
@@ -14,6 +15,7 @@ import {
   Timestamp,
   updateDoc,
   where,
+  writeBatch,
 } from "firebase/firestore";
 import { ArrowLeft, FileText, Mail } from "lucide-react";
 import { getDb } from "@/lib/firebase/firestore";
@@ -23,7 +25,15 @@ import {
   type SponsorFormValues,
   type SponsorItemLibraryEntry,
 } from "@/components/admin/SponsorForm";
-import type { Category, Event, Package, Slot, Sponsor } from "@/lib/types";
+import type {
+  Category,
+  Event,
+  Package,
+  Slot,
+  Sponsor,
+  SponsorItem,
+  Subcategory,
+} from "@/lib/types";
 
 export default function SponsorDetailPage() {
   const params = useParams<{ id: string }>();
@@ -35,6 +45,7 @@ export default function SponsorDetailPage() {
   const [categories, setCategories] = useState<Category[]>([]);
   const [packages, setPackages] = useState<Package[]>([]);
   const [slots, setSlots] = useState<Slot[]>([]);
+  const [subcategories, setSubcategories] = useState<Subcategory[]>([]);
   const [notFound, setNotFound] = useState(false);
 
   useEffect(() => {
@@ -66,14 +77,16 @@ export default function SponsorDetailPage() {
     (async () => {
       try {
         const db = getDb();
-        const [c, p, s] = await Promise.all([
+        const [c, p, s, sub] = await Promise.all([
           getDocs(query(collection(db, "categories"), where("eventId", "==", eventId))),
           getDocs(query(collection(db, "packages"), where("eventId", "==", eventId))),
           getDocs(query(collection(db, "slots"), where("eventId", "==", eventId))),
+          getDocs(query(collection(db, "subcategories"), where("eventId", "==", eventId))),
         ]);
         setCategories(c.docs.map((d) => ({ ...(d.data() as Category), id: d.id })));
         setPackages(p.docs.map((d) => ({ ...(d.data() as Package), id: d.id })));
         setSlots(s.docs.map((d) => ({ ...(d.data() as Slot), id: d.id })));
+        setSubcategories(sub.docs.map((d) => ({ ...(d.data() as Subcategory), id: d.id })));
       } catch (e) {
         console.error("library load failed", e);
       }
@@ -83,6 +96,7 @@ export default function SponsorDetailPage() {
   const library = useMemo<SponsorItemLibraryEntry[]>(() => {
     const entries: SponsorItemLibraryEntry[] = [];
     const catMap = new Map(categories.map((c) => [c.id, c]));
+    const subMap = new Map(subcategories.map((s) => [s.id, s]));
     packages
       .slice()
       .sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
@@ -93,6 +107,7 @@ export default function SponsorDetailPage() {
           group: "패키지",
           packageId: p.id,
           hint: p.code,
+          price: p.discountPrice || p.originalPrice,
         })
       );
     categories
@@ -105,6 +120,7 @@ export default function SponsorDetailPage() {
           group: "카테고리",
           categoryId: c.id,
           hint: c.code,
+          // 카테고리는 단가 자동 채움 없음 (수기)
         })
       );
     slots.forEach((s) => {
@@ -118,10 +134,11 @@ export default function SponsorDetailPage() {
         categoryId: s.categoryId,
         subcategoryId: s.subcategoryId,
         hint: s.code,
+        price: subMap.get(s.subcategoryId)?.priceKRW,
       });
     });
     return entries;
-  }, [categories, packages, slots]);
+  }, [categories, packages, slots, subcategories]);
 
   const initial = useMemo<SponsorFormValues | null>(() => {
     if (!sponsor) return null;
@@ -143,6 +160,9 @@ export default function SponsorDetailPage() {
   }, [sponsor]);
 
   const handleSubmit = async (v: SponsorFormValues) => {
+    // 저장 전 기존 문서의 슬롯 집합/행사를 미리 캡처 (onSnapshot 이 저장 직후 갱신하므로)
+    const prevSlotIds = collectSlotIds(sponsor?.items ?? []);
+    const prevEventId = sponsor?.eventId ?? v.eventId;
     try {
       await updateDoc(doc(getDb(), "sponsors", id), {
         ...v,
@@ -152,6 +172,36 @@ export default function SponsorDetailPage() {
         notes: v.notes || undefined,
         updatedAt: Timestamp.fromDate(new Date()),
       });
+
+      // 슬롯 상태 동기화 — 기존/신규 슬롯 집합 diff:
+      //   새로 참조된 슬롯 → sold, 더 이상 참조하지 않는 슬롯 → available 복귀.
+      // 실패해도 sponsor 저장은 유지.
+      const nextSlotIds = collectSlotIds(v.items);
+      const toSold = Array.from(nextSlotIds).filter((sid) => !prevSlotIds.has(sid));
+      const toAvailable = Array.from(prevSlotIds).filter((sid) => !nextSlotIds.has(sid));
+      if (toSold.length > 0 || toAvailable.length > 0) {
+        try {
+          const db = getDb();
+          // sold 처리 — 존재하는 슬롯 문서만 배치에 포함.
+          // (batch.update 는 문서가 없으면 commit 전체가 원자적으로 실패하므로,
+          //  삭제된 슬롯을 참조하는 고아 ID 가 정상 슬롯 갱신까지 무산시키는 것 방지)
+          const soldTargets = await filterExistingSlotIds(toSold);
+          if (soldTargets.length > 0) {
+            const batch = writeBatch(db);
+            soldTargets.forEach((sid) =>
+              batch.update(doc(db, "slots", sid), { status: "sold" })
+            );
+            await batch.commit();
+          }
+          // available 복귀 — 같은 행사의 다른 스폰서가 아직 참조 중인 슬롯은
+          // 스킵(이중판매 방지) + 고아 ID 스킵.
+          await releaseSlotsToAvailable(toAvailable, prevEventId, id);
+        } catch (err) {
+          console.error("slot sync failed", err);
+          alert("스폰서는 저장됐지만 슬롯 상태 업데이트에 실패했습니다 — 슬롯 관리에서 수동 확인해주세요.");
+        }
+      }
+
       // 시각적 피드백
       const el = document.createElement("div");
       el.textContent = "저장됨";
@@ -165,6 +215,20 @@ export default function SponsorDetailPage() {
   };
 
   const handleDelete = async () => {
+    // 삭제 전 이 스폰서가 참조하던 슬롯(slotId + allocatedSlotIds)을 available 로 복귀.
+    // 타 스폰서가 참조 중인 슬롯/고아 ID 는 스킵. 복귀가 실패해도 삭제는 진행.
+    const heldSlotIds = Array.from(collectSlotIds(sponsor?.items ?? []));
+    const eventId = sponsor?.eventId;
+    if (heldSlotIds.length > 0 && eventId) {
+      try {
+        await releaseSlotsToAvailable(heldSlotIds, eventId, id);
+      } catch (e) {
+        console.error("slot release on delete failed", e);
+        alert(
+          "이 스폰서가 확보했던 구좌를 되돌리지 못했습니다 — 슬롯 관리에서 수동으로 확인해주세요. 삭제는 계속 진행합니다."
+        );
+      }
+    }
     try {
       await deleteDoc(doc(getDb(), "sponsors", id));
       router.push("/admin/sponsors");
@@ -238,12 +302,90 @@ export default function SponsorDetailPage() {
         initial={initial}
         events={events}
         library={library}
+        packages={packages}
+        slots={slots}
+        categories={categories}
         onSubmit={handleSubmit}
         onDelete={handleDelete}
         submitLabel="변경사항 저장"
       />
     </div>
   );
+}
+
+/** 품목들이 참조하는 슬롯 ID 집합 — 직접 연결(slotId) + 패키지 확보(allocatedSlotIds) */
+function collectSlotIds(items: SponsorItem[]): Set<string> {
+  return new Set(
+    items
+      .flatMap((it) => [it.slotId, ...(it.allocatedSlotIds ?? [])])
+      .filter((sid): sid is string => Boolean(sid))
+  );
+}
+
+/**
+ * 존재하는 슬롯 문서만 남긴다 — batch.update 는 문서가 없으면 commit 전체가
+ * 원자적으로 실패하므로, 고아 ID 를 배치에서 제외해 정상 슬롯 갱신을 보호.
+ * (스폰서당 슬롯 수가 적어 getDoc N+1 비용 무해)
+ */
+async function filterExistingSlotIds(slotIds: string[]): Promise<string[]> {
+  if (slotIds.length === 0) return [];
+  const db = getDb();
+  const snaps = await Promise.all(slotIds.map((sid) => getDoc(doc(db, "slots", sid))));
+  const existing: string[] = [];
+  snaps.forEach((snap, i) => {
+    if (snap.exists()) existing.push(slotIds[i]);
+    else console.warn(`slot sync: 슬롯 문서 없음 — 배치에서 제외: ${slotIds[i]}`);
+  });
+  return existing;
+}
+
+/**
+ * 같은 행사(eventId)의 다른 스폰서들(excludeSponsorId 제외)이 참조 중인
+ * 슬롯 ID 집합 — available 복귀 시 참조 카운트 확인용 (이중판매 방지).
+ */
+async function getSlotIdsHeldByOtherSponsors(
+  eventId: string,
+  excludeSponsorId: string
+): Promise<Set<string>> {
+  const db = getDb();
+  const snap = await getDocs(
+    query(collection(db, "sponsors"), where("eventId", "==", eventId))
+  );
+  const held = new Set<string>();
+  snap.docs.forEach((d) => {
+    if (d.id === excludeSponsorId) return;
+    const sp = d.data() as Sponsor;
+    collectSlotIds(sp.items ?? []).forEach((sid) => held.add(sid));
+  });
+  return held;
+}
+
+/**
+ * 슬롯 available 복귀 배치 — 두 단계 필터 후 실행:
+ * 1) 같은 행사 타 스폰서가 참조 중인 슬롯 스킵 (되돌리면 이중판매 위험)
+ * 2) 존재하지 않는(삭제된) 슬롯 문서 스킵 (배치 원자성 보호)
+ * handleSubmit(저장 diff)과 handleDelete(스폰서 삭제) 양쪽에서 재사용.
+ */
+async function releaseSlotsToAvailable(
+  slotIds: string[],
+  eventId: string,
+  excludeSponsorId: string
+): Promise<void> {
+  if (slotIds.length === 0) return;
+  const heldByOthers = await getSlotIdsHeldByOtherSponsors(eventId, excludeSponsorId);
+  const candidates = slotIds.filter((sid) => {
+    if (heldByOthers.has(sid)) {
+      console.warn(`slot sync: 다른 스폰서가 참조 중 — available 복귀 스킵: ${sid}`);
+      return false;
+    }
+    return true;
+  });
+  const targets = await filterExistingSlotIds(candidates);
+  if (targets.length === 0) return;
+  const db = getDb();
+  const batch = writeBatch(db);
+  targets.forEach((sid) => batch.update(doc(db, "slots", sid), { status: "available" }));
+  await batch.commit();
 }
 
 function fmtDate(ts: Timestamp | undefined): string {

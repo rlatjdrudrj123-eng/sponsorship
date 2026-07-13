@@ -45,6 +45,8 @@ type FormValues = {
   unit: string;
   priceNote: string;
   isPublished: boolean;
+  /** 매진 — 노출은 유지하되 공개 사이트에서 카트 담기만 차단 */
+  soldOut: boolean;
   order: number;
   /** 자동 구성: 카테고리/소분류/수량 선택 → label·가격·composition 자동 */
   includedItems: Array<{
@@ -82,6 +84,7 @@ export default function PackageEditPage() {
       unit: "패키지",
       priceNote: "",
       isPublished: false,
+      soldOut: false,
       order: 0,
       includedItems: [],
     },
@@ -128,6 +131,7 @@ export default function PackageEditPage() {
       unit: pkg.unit ?? "패키지",
       priceNote: pkg.priceNote ?? "",
       isPublished: pkg.isPublished,
+      soldOut: pkg.soldOut ?? false,
       order: pkg.order ?? 0,
       includedItems: (pkg.includedItems ?? [])
         .filter((it) => it.categoryId)
@@ -259,6 +263,7 @@ export default function PackageEditPage() {
             unit: v.unit || undefined,
             priceNote: v.priceNote || undefined,
             isPublished: !!v.isPublished,
+            soldOut: !!v.soldOut,
             order: Number(v.order) || 0,
             includedItems: resolved,
             composition,
@@ -605,14 +610,27 @@ export default function PackageEditPage() {
 
         <Section title="게시 / 순서">
           <div className="grid grid-cols-2 gap-3 items-center">
-            <label className="flex items-center gap-2 text-sm">
-              <input
-                type="checkbox"
-                {...form.register("isPublished")}
-                className="accent-brand-500 w-4 h-4"
-              />
-              공개 사이트에 게시
-            </label>
+            <div className="space-y-2.5">
+              <label className="flex items-center gap-2 text-sm">
+                <input
+                  type="checkbox"
+                  {...form.register("isPublished")}
+                  className="accent-brand-500 w-4 h-4"
+                />
+                공개 사이트에 게시
+              </label>
+              <label className="flex items-center gap-2 text-sm">
+                <input
+                  type="checkbox"
+                  {...form.register("soldOut")}
+                  className="accent-brand-500 w-4 h-4"
+                />
+                매진 처리
+                <span className="text-[11px] text-ink-500">
+                  (노출은 유지, 카트 담기만 차단)
+                </span>
+              </label>
+            </div>
             <Field label="순서">
               <input
                 type="number"

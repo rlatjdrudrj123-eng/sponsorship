@@ -1,6 +1,15 @@
 "use client";
 
-import { Suspense, useEffect, useMemo, useState } from "react";
+import {
+  cloneElement,
+  isValidElement,
+  Suspense,
+  useEffect,
+  useId,
+  useMemo,
+  useState,
+  type ReactElement,
+} from "react";
 import Link from "next/link";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useForm } from "react-hook-form";
@@ -170,6 +179,9 @@ function ContactPageInner() {
           const pkgId = id.slice(4);
           const pkg = packages.get(pkgId);
           if (!pkg) continue;
+          // 매진 패키지는 URL 로 직접 넘어와도 견적 요청에서 제외.
+          // (카트 store 경로는 매진 전에 담은 항목이므로 그대로 허용 — 의도된 정책)
+          if (pkg.soldOut) continue;
           result.push({
             type: "package",
             eventId,
@@ -181,13 +193,23 @@ function ContactPageInner() {
       }
       return result;
     }
-    return allItems.filter((it) => it.eventId === eventId);
+    return (allItems ?? []).filter((it) => it.eventId === eventId);
   }, [idsParam, allItems, eventId, slots, subcategories, categories, packages]);
 
   const subtotal = useMemo(
-    () => items.reduce((sum, it) => sum + it.price, 0),
+    () => (items ?? []).reduce((sum, it) => sum + it.price, 0),
     [items]
   );
+
+  // idsParam 모드에서 매진으로 제외된 패키지 수 — 안내 배너용.
+  const soldOutExcludedCount = useMemo(() => {
+    if (!idsParam) return 0;
+    return idsParam.split(",").filter((raw) => {
+      if (!raw.startsWith("pkg:")) return false;
+      const pkg = packages.get(raw.slice(4));
+      return !!pkg?.soldOut;
+    }).length;
+  }, [idsParam, packages]);
 
   const schema = useMemo(() => buildSchema(locale), [locale]);
   const {
@@ -419,7 +441,10 @@ function ContactPageInner() {
             </Field>
 
             {submitError && (
-              <div className="bg-red-50 border border-red-100 rounded-btn p-3 text-sm text-red-700">
+              <div
+                role="alert"
+                className="bg-red-50 border border-red-100 rounded-btn p-3 text-sm text-red-700"
+              >
                 {submitError}
               </div>
             )}
@@ -455,6 +480,16 @@ function ContactPageInner() {
                 ? `Attached items (${items.length})`
                 : `첨부될 관심 항목 (${items.length}건)`}
             </div>
+            {soldOutExcludedCount > 0 && (
+              <p
+                role="status"
+                className="mb-3 px-2.5 py-2 rounded-btn bg-ink-50 border border-ink-100 text-[11px] text-ink-700 leading-snug"
+              >
+                {locale === "en"
+                  ? "Sold-out packages were removed from this request."
+                  : "매진된 패키지는 견적 요청에서 제외되었습니다."}
+              </p>
+            )}
             {!hydrated ? (
               <div className="text-[12px] text-ink-500">
                 {t("common.loading", locale)}
@@ -513,6 +548,11 @@ function ContactPageInner() {
                             : locale === "en"
                               ? "(removed)"
                               : "(삭제됨)"}
+                          {pkg?.soldOut && (
+                            <span className="ml-1.5 text-[9px] uppercase tracking-wider px-1.5 py-0.5 rounded font-bold bg-ink-300 text-white align-middle">
+                              {locale === "en" ? "Sold out" : "매진"}
+                            </span>
+                          )}
                         </div>
                         <div className="text-ink-500 font-mono text-[11px]">
                           {item.code} · {locale === "en" ? "Package" : "패키지"}
@@ -555,14 +595,39 @@ function Field({
   error?: string;
   children: React.ReactNode;
 }) {
+  const inputId = useId();
+  const errorId = `${inputId}-error`;
+
+  // 단일 입력 엘리먼트(input/textarea)에 접근성 속성을 주입.
+  // react-hook-form register 의 props 는 그대로 유지하고 id/aria-* 만 덧붙인다.
+  const control = isValidElement(children)
+    ? cloneElement(children as ReactElement<Record<string, unknown>>, {
+        id: inputId,
+        "aria-required": required || undefined,
+        "aria-invalid": error ? true : undefined,
+        "aria-describedby": error ? errorId : undefined,
+      })
+    : children;
+
   return (
     <div>
-      <label className="block text-[12px] font-semibold text-ink-700 mb-1.5">
+      <label
+        htmlFor={inputId}
+        className="block text-[12px] font-semibold text-ink-700 mb-1.5"
+      >
         {label}
-        {required && <span className="text-brand-700 ml-1">*</span>}
+        {required && (
+          <span className="text-brand-700 ml-1" aria-hidden="true">
+            *
+          </span>
+        )}
       </label>
-      {children}
-      {error && <p className="text-[11px] text-red-700 mt-1">{error}</p>}
+      {control}
+      {error && (
+        <p id={errorId} className="text-[11px] text-red-700 mt-1">
+          {error}
+        </p>
+      )}
     </div>
   );
 }

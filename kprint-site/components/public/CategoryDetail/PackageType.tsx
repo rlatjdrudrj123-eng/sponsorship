@@ -41,6 +41,8 @@ export function PackageType({
   const locale = useLocale((s) => s.locale);
   const price = getDisplayPackagePrice(pkg, locale);
   const inCart = hydrated && hasPackage(pkg.id);
+  // 매진 — 노출은 유지하되 카트 담기만 차단 (이미 담긴 경우 빼기는 허용)
+  const soldOut = !!pkg.soldOut;
   const discount =
     pkg.originalPrice > 0
       ? Math.round((1 - pkg.discountPrice / pkg.originalPrice) * 100)
@@ -72,6 +74,11 @@ export function PackageType({
                   <span>{pkg.tier === "signature" ? "Signature" : "Standard"}</span>
                   <span className="text-ink-300">·</span>
                   <span className="text-ink-500">{pkg.code}</span>
+                  {soldOut && (
+                    <span className="text-[10px] uppercase tracking-wider px-2 py-0.5 rounded font-bold bg-ink-300 text-white">
+                      {locale === "en" ? "Sold out" : "매진"}
+                    </span>
+                  )}
                 </div>
                 <h1 className="text-[24px] md:text-[28px] font-bold tracking-tight leading-[1.2] text-ink-900 break-keep mt-2">
                   {locale === "en"
@@ -143,30 +150,40 @@ export function PackageType({
                 <button
                   type="button"
                   aria-pressed={inCart}
+                  disabled={soldOut && !inCart}
                   onClick={(e) => {
                     e.preventDefault();
                     e.stopPropagation();
+                    if (soldOut && !inCart) return;
                     setConfirming(true);
                   }}
                   className={
                     "px-6 h-11 rounded-pill font-bold text-[13.5px] flex items-center justify-center gap-2 transition-colors " +
-                    (inCart
-                      ? "bg-ink-900 text-white hover:bg-ink-700"
-                      : "bg-ink-900 text-white hover:bg-brand-500 hover:text-ink-900")
+                    (soldOut && !inCart
+                      ? "bg-ink-300 text-white cursor-not-allowed"
+                      : inCart
+                        ? "bg-ink-900 text-white hover:bg-ink-700"
+                        : "bg-ink-900 text-white hover:bg-brand-500 hover:text-ink-900")
                   }
                 >
-                  {inCart ? (
-                    <BookmarkCheck className="w-4 h-4" />
+                  {soldOut && !inCart ? (
+                    locale === "en" ? "Sold out" : "매진"
                   ) : (
-                    <Bookmark className="w-4 h-4" />
+                    <>
+                      {inCart ? (
+                        <BookmarkCheck className="w-4 h-4" />
+                      ) : (
+                        <Bookmark className="w-4 h-4" />
+                      )}
+                      {locale === "en"
+                        ? inCart
+                          ? "Added · Remove"
+                          : "Add to cart"
+                        : inCart
+                          ? "담김 · 빼기"
+                          : "담기"}
+                    </>
                   )}
-                  {locale === "en"
-                    ? inCart
-                      ? "Added · Remove"
-                      : "Add to cart"
-                    : inCart
-                      ? "담김 · 빼기"
-                      : "담기"}
                 </button>
               </div>
             </div>
@@ -180,6 +197,7 @@ export function PackageType({
             discount={discount}
             onClose={() => setConfirming(false)}
             onAdd={() => {
+              if (pkg.soldOut) return; // 매진 — 담기 차단
               addPackage({
                 type: "package",
                 eventId: pkg.eventId,
@@ -217,6 +235,11 @@ export function PackageType({
               <span>{pkg.tier === "signature" ? "Signature" : "Standard"}</span>
               <span className="text-ink-300">·</span>
               <span className="text-ink-500">{pkg.code}</span>
+              {soldOut && (
+                <span className="text-[10px] uppercase tracking-wider px-2 py-0.5 rounded font-bold bg-ink-300 text-white">
+                  {locale === "en" ? "Sold out" : "매진"}
+                </span>
+              )}
             </div>
             <h1 className="text-[32px] md:text-[56px] font-bold tracking-tight leading-[1.15] text-ink-900 break-keep">
               {locale === "en" ? (pkg.name.en?.trim() || pkg.name.ko) : pkg.name.ko}
@@ -301,30 +324,40 @@ export function PackageType({
               <button
                 type="button"
                 aria-pressed={inCart}
+                disabled={soldOut && !inCart}
                 onClick={(e) => {
                   e.preventDefault();
                   e.stopPropagation();
+                  if (soldOut && !inCart) return;
                   setConfirming(true);
                 }}
                 className={
                   "mt-5 w-full py-3.5 rounded-pill font-bold flex items-center justify-center gap-2 transition-colors " +
-                  (inCart
-                    ? "bg-ink-900 text-white hover:bg-ink-700"
-                    : "bg-ink-900 text-white hover:bg-brand-500 hover:text-ink-900")
+                  (soldOut && !inCart
+                    ? "bg-ink-300 text-white cursor-not-allowed"
+                    : inCart
+                      ? "bg-ink-900 text-white hover:bg-ink-700"
+                      : "bg-ink-900 text-white hover:bg-brand-500 hover:text-ink-900")
                 }
               >
-                {inCart ? (
-                  <BookmarkCheck className="w-4 h-4" />
+                {soldOut && !inCart ? (
+                  locale === "en" ? "Sold out" : "매진"
                 ) : (
-                  <Bookmark className="w-4 h-4" />
+                  <>
+                    {inCart ? (
+                      <BookmarkCheck className="w-4 h-4" />
+                    ) : (
+                      <Bookmark className="w-4 h-4" />
+                    )}
+                    {locale === "en"
+                      ? inCart
+                        ? "Added · Remove"
+                        : "Add to cart"
+                      : inCart
+                        ? "담김 · 빼기"
+                        : "담기"}
+                  </>
                 )}
-                {locale === "en"
-                  ? inCart
-                    ? "Added · Remove"
-                    : "Add to cart"
-                  : inCart
-                    ? "담김 · 빼기"
-                    : "담기"}
               </button>
             </div>
           </div>
@@ -339,6 +372,7 @@ export function PackageType({
           discount={discount}
           onClose={() => setConfirming(false)}
           onAdd={() => {
+            if (pkg.soldOut) return; // 매진 — 담기 차단
             addPackage({
               type: "package",
               eventId: pkg.eventId,
@@ -663,6 +697,11 @@ function PackageConfirmModal({
                     ? "Standard"
                     : "스탠다드"}
               </span>
+              {pkg.soldOut && (
+                <span className="text-[10px] uppercase tracking-wider px-2 py-0.5 rounded font-bold bg-ink-300 text-white">
+                  {isEn ? "Sold out" : "매진"}
+                </span>
+              )}
             </div>
             <span className="text-[10px] text-ink-500 font-mono mt-0.5 block">{pkg.code}</span>
           </div>
@@ -738,6 +777,14 @@ function PackageConfirmModal({
             >
               <BookmarkCheck className="w-4 h-4" />
               {isEn ? "Remove" : "빼기"}
+            </button>
+          ) : pkg.soldOut ? (
+            <button
+              type="button"
+              disabled
+              className="px-4 py-2.5 rounded-btn bg-ink-300 text-white text-[13px] font-bold cursor-not-allowed"
+            >
+              {isEn ? "Sold out" : "매진"}
             </button>
           ) : (
             <button

@@ -169,7 +169,7 @@ export default function InquiryDetailPage() {
             견적서 추출
           </Link>
           <Link
-            href={`/admin/sponsors/new?inquiryId=${inquiry.id}`}
+            href={`/admin/sponsors/new?inquiryId=${encodeURIComponent(inquiry.id)}${inquiry.eventId ? `&event=${encodeURIComponent(inquiry.eventId)}` : ""}`}
             className="px-3.5 py-2 rounded-btn bg-brand-500 text-ink-900 text-[13px] font-bold hover:bg-brand-700 hover:text-white flex items-center gap-1.5"
           >
             <Handshake className="w-4 h-4" />
@@ -208,8 +208,8 @@ export default function InquiryDetailPage() {
           )}
 
           {/* Cart — 항목 있을 때만 노출. 0건이면 섹션 전체 숨김 (빈 박스가 시선 분산). */}
-          {inquiry.cartItems.length > 0 && (
-            <Section title={`카트 항목 (${inquiry.cartItems.length}건)`}>
+          {(inquiry.cartItems ?? []).length > 0 && (
+            <Section title={`카트 항목 (${(inquiry.cartItems ?? []).length}건)`}>
               <div className="overflow-hidden border border-ink-100 rounded-btn">
                 <table className="w-full text-[12px]">
                   <thead>
@@ -221,7 +221,7 @@ export default function InquiryDetailPage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {inquiry.cartItems.map((item, i) => {
+                    {(inquiry.cartItems ?? []).map((item, i) => {
                       if (item.type === "slot") {
                         const cat = catById.get(item.categoryId);
                         const sub = subById.get(item.subcategoryId);

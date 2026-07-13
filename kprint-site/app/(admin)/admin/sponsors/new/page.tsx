@@ -16,6 +16,7 @@ import {
   Timestamp,
   updateDoc,
   where,
+  writeBatch,
 } from "firebase/firestore";
 import { ArrowLeft } from "lucide-react";
 import { getDb } from "@/lib/firebase/firestore";
@@ -26,22 +27,34 @@ import {
   type SponsorFormValues,
   type SponsorItemLibraryEntry,
 } from "@/components/admin/SponsorForm";
-import type { Category, Event, Inquiry, Package, Slot, Sponsor } from "@/lib/types";
+import type {
+  Category,
+  Event,
+  Inquiry,
+  Package,
+  Slot,
+  Sponsor,
+  Subcategory,
+} from "@/lib/types";
 
 export default function NewSponsorPage() {
   const router = useRouter();
   const search = useSearchParams();
   const inquiryId = search.get("inquiryId");
   const presetEvent = search.get("event");
-  // 라이브러리 fetch 용 — preset query param 우선, 없으면 헤더 행사 셀렉터.
+  // 라이브러리 fetch 용 — preset query param 우선 → 문의의 행사(inquiry 로드 후 채워짐)
+  // → 헤더 행사 셀렉터 폴백. 전환 플로우에서 헤더 셀렉터가 다른 행사여도
+  // 문의가 속한 행사의 패키지/슬롯이 로드되어 구좌 확보 패널이 정상 표시됨.
   const headerEventId = useEventFilter().eventId;
-  const libraryEventId = presetEvent || headerEventId || "";
+  const [inqEventId, setInqEventId] = useState<string>("");
+  const libraryEventId = presetEvent || inqEventId || headerEventId || "";
 
   const [events, setEvents] = useState<Event[]>([]);
   const [initial, setInitial] = useState<SponsorFormValues | null>(null);
   const [categories, setCategories] = useState<Category[]>([]);
   const [packages, setPackages] = useState<Package[]>([]);
   const [slots, setSlots] = useState<Slot[]>([]);
+  const [subcategories, setSubcategories] = useState<Subcategory[]>([]);
 
   useEffect(() => {
     const u = onSnapshot(
@@ -60,19 +73,22 @@ export default function NewSponsorPage() {
       setCategories([]);
       setPackages([]);
       setSlots([]);
+      setSubcategories([]);
       return;
     }
     (async () => {
       try {
         const db = getDb();
-        const [c, p, s] = await Promise.all([
+        const [c, p, s, sub] = await Promise.all([
           getDocs(query(collection(db, "categories"), where("eventId", "==", libraryEventId))),
           getDocs(query(collection(db, "packages"), where("eventId", "==", libraryEventId))),
           getDocs(query(collection(db, "slots"), where("eventId", "==", libraryEventId))),
+          getDocs(query(collection(db, "subcategories"), where("eventId", "==", libraryEventId))),
         ]);
         setCategories(c.docs.map((d) => ({ ...(d.data() as Category), id: d.id })));
         setPackages(p.docs.map((d) => ({ ...(d.data() as Package), id: d.id })));
         setSlots(s.docs.map((d) => ({ ...(d.data() as Slot), id: d.id })));
+        setSubcategories(sub.docs.map((d) => ({ ...(d.data() as Subcategory), id: d.id })));
       } catch (e) {
         console.error("library load failed", e);
       }
@@ -80,8 +96,8 @@ export default function NewSponsorPage() {
   }, [libraryEventId]);
 
   const library = useMemo<SponsorItemLibraryEntry[]>(
-    () => buildLibrary(categories, packages, slots),
-    [categories, packages, slots]
+    () => buildLibrary(categories, packages, slots, subcategories),
+    [categories, packages, slots, subcategories]
   );
 
   // 초기값 설정 — inquiry로부터 변환 또는 빈값
@@ -101,10 +117,12 @@ export default function NewSponsorPage() {
           return;
         }
         const inq = { ...(inqSnap.data() as Inquiry), id: inqSnap.id };
+        // 문의의 행사를 라이브러리 로드 폴백에 반영 (libraryEventId 계산에 사용)
+        setInqEventId(inq.eventId ?? "");
 
         // cart items → sponsor items 매핑 (코드 + 카테고리/패키지 명)
         const items = await Promise.all(
-          inq.cartItems.map(async (ci) => {
+          (inq.cartItems ?? []).map(async (ci) => {
             if (ci.type === "slot") {
               const cat = await getDoc(doc(getDb(), "categories", ci.categoryId));
               const catName = cat.exists() ? (cat.data() as { name: { ko: string } }).name.ko : "";
@@ -112,6 +130,7 @@ export default function NewSponsorPage() {
                 label: `${catName} ${ci.code}`.trim(),
                 slotId: ci.slotId,
                 categoryId: ci.categoryId,
+                price: ci.price,
               };
             }
             const pkg = await getDoc(doc(getDb(), "packages", ci.packageId));
@@ -119,13 +138,16 @@ export default function NewSponsorPage() {
             return {
               label: pkgName || ci.code,
               packageId: ci.packageId,
+              price: ci.price,
             };
           })
         );
 
         setInitial({
           ...EMPTY_FORM_VALUES,
-          eventId: presetEvent ?? "",
+          // preset query param 우선, 없으면 inquiry 자신의 eventId 사용.
+          // (inquiry 가 자기 행사를 알고 있으므로 빈 값으로 두지 않음 — SponsorForm 저장 차단 방지)
+          eventId: presetEvent ?? inq.eventId ?? "",
           companyName: inq.companyName,
           amount: Math.round((inq.cartTotal ?? 0) / 1.1), // VAT 제외 (소계 기준)
           currency: "KRW",
@@ -173,6 +195,43 @@ export default function NewSponsorPage() {
         }
       }
 
+      // 품목이 참조하는 슬롯(직접 연결 slotId + 패키지 확보 allocatedSlotIds)을
+      // 'sold' 처리 — 공개 사이트 매진 뱃지(슬롯 기반 자동 계산)에 반영.
+      // 실패해도 sponsor 저장은 유지.
+      const slotIds = Array.from(
+        new Set(
+          v.items
+            .flatMap((it) => [it.slotId, ...(it.allocatedSlotIds ?? [])])
+            .filter((sid): sid is string => Boolean(sid))
+        )
+      );
+      if (slotIds.length > 0) {
+        try {
+          const db = getDb();
+          // 존재하는 슬롯 문서만 배치에 포함 — batch.update 는 문서가 없으면
+          // commit 전체가 원자적으로 실패하므로, 삭제된 슬롯의 고아 ID 가
+          // 정상 슬롯 갱신까지 무산시키는 것 방지. (슬롯 수가 적어 N+1 무해)
+          const snaps = await Promise.all(
+            slotIds.map((sid) => getDoc(doc(db, "slots", sid)))
+          );
+          const existing = slotIds.filter((sid, i) => {
+            if (snaps[i].exists()) return true;
+            console.warn(`slot sync: 슬롯 문서 없음 — 배치에서 제외: ${sid}`);
+            return false;
+          });
+          if (existing.length > 0) {
+            const batch = writeBatch(db);
+            existing.forEach((sid) =>
+              batch.update(doc(db, "slots", sid), { status: "sold" })
+            );
+            await batch.commit();
+          }
+        } catch (e) {
+          console.error("slot sync failed", e);
+          alert("스폰서는 저장됐지만 슬롯 상태 업데이트에 실패했습니다 — 슬롯 관리에서 수동 확인해주세요.");
+        }
+      }
+
       router.push(`/admin/sponsors/${id}`);
     } catch (e) {
       alert(`저장 실패: ${e instanceof Error ? e.message : String(e)}`);
@@ -207,6 +266,9 @@ export default function NewSponsorPage() {
           initial={initial}
           events={events}
           library={library}
+          packages={packages}
+          slots={slots}
+          categories={categories}
           onSubmit={handleSubmit}
           submitLabel="스폰서 등록"
         />
@@ -218,10 +280,12 @@ export default function NewSponsorPage() {
 function buildLibrary(
   categories: Category[],
   packages: Package[],
-  slots: Slot[]
+  slots: Slot[],
+  subcategories: Subcategory[]
 ): SponsorItemLibraryEntry[] {
   const entries: SponsorItemLibraryEntry[] = [];
   const catMap = new Map(categories.map((c) => [c.id, c]));
+  const subMap = new Map(subcategories.map((s) => [s.id, s]));
   packages
     .slice()
     .sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
@@ -232,6 +296,7 @@ function buildLibrary(
         group: "패키지",
         packageId: p.id,
         hint: p.code,
+        price: p.discountPrice || p.originalPrice,
       })
     );
   categories
@@ -244,6 +309,7 @@ function buildLibrary(
         group: "카테고리",
         categoryId: c.id,
         hint: c.code,
+        // 카테고리는 단가 자동 채움 없음 (수기)
       })
     );
   slots.forEach((s) => {
@@ -257,6 +323,7 @@ function buildLibrary(
       categoryId: s.categoryId,
       subcategoryId: s.subcategoryId,
       hint: s.code,
+      price: subMap.get(s.subcategoryId)?.priceKRW,
     });
   });
   return entries;

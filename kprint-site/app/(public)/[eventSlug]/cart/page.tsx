@@ -41,6 +41,9 @@ export default function CartPage() {
   const [packages, setPackages] = useState<Map<string, Package>>(new Map());
   const [settings, setSettings] = useState<SiteSettings | null>(null);
   const [dataLoaded, setDataLoaded] = useState(false);
+  // fetch 부분 실패 여부 — true면 자동 정리(없어진 항목 제거)를 건너뛴다.
+  // (부분 로드로 비어버린 카테고리/패키지 맵 때문에 멀쩡한 항목을 지우는 사고 방지)
+  const [loadError, setLoadError] = useState(false);
   const [cleanedCount, setCleanedCount] = useState(0);
 
   // 선택된 항목 (PDF 출력용) — 기본 전체 선택
@@ -48,6 +51,7 @@ export default function CartPage() {
 
   useEffect(() => {
     if (!eventId) return;
+    setLoadError(false);
     (async () => {
       try {
         const db = getDb();
@@ -91,6 +95,7 @@ export default function CartPage() {
           setSettings(settingsSnap.data() as SiteSettings);
       } catch (e) {
         console.error(e);
+        setLoadError(true);
       } finally {
         setDataLoaded(true);
       }
@@ -100,6 +105,8 @@ export default function CartPage() {
   // 데이터 로드 후 더 이상 존재하지 않는 카트 항목 자동 정리
   useEffect(() => {
     if (!hydrated || !dataLoaded) return;
+    // fetch 실패 시 맵이 비어있을 수 있으므로 자동 정리를 건너뛴다 (오삭제 방지).
+    if (loadError) return;
     if (items.length === 0) return;
 
     let removed = 0;
@@ -119,7 +126,7 @@ export default function CartPage() {
     });
     if (removed > 0) setCleanedCount(removed);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [hydrated, dataLoaded, categories, packages]);
+  }, [hydrated, dataLoaded, loadError, categories, packages]);
 
   // 카트 변경 시 선택을 전체로 동기화
   useEffect(() => {
@@ -177,6 +184,16 @@ export default function CartPage() {
         </header>
 
         <div className="max-w-4xl mx-auto px-6 md:px-12 py-10">
+          {loadError && (
+            <div
+              role="alert"
+              className="bg-red-50 border border-red-200 rounded-card p-3 mb-4 text-[12.5px] text-red-700"
+            >
+              {locale === "en"
+                ? "Some details couldn't be loaded, so item titles may be missing. Your saved items are kept as-is."
+                : "일부 항목 정보를 불러오지 못해 제목이 비어 보일 수 있어요. 담아둔 항목은 그대로 유지됩니다."}
+            </div>
+          )}
           {cleanedCount > 0 && (
             <div className="bg-amber-50 border border-amber-200 rounded-card p-3 mb-4 flex items-center justify-between gap-3">
               <p className="text-[12.5px] text-amber-800">
@@ -359,6 +376,11 @@ export default function CartPage() {
                               : locale === "en"
                                 ? "(removed)"
                                 : "(삭제됨)"}
+                            {pkg?.soldOut && (
+                              <span className="ml-1.5 text-[9px] uppercase tracking-wider px-1.5 py-0.5 rounded font-bold bg-ink-300 text-white align-middle">
+                                {locale === "en" ? "Sold out" : "매진"}
+                              </span>
+                            )}
                           </div>
                           <div className="text-[11px] font-mono text-ink-500 mt-0.5">
                             {item.code}
@@ -386,7 +408,7 @@ export default function CartPage() {
                       locale === "en"
                         ? "Clear all items?"
                         : "관심 항목을 모두 비울까요?";
-                    if (confirm(msg)) clear();
+                    if (confirm(msg)) clear(eventId);
                   }}
                   className="text-[13px] text-ink-500 hover:text-red-700 flex items-center gap-1.5"
                 >

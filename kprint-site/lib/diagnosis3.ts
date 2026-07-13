@@ -587,6 +587,8 @@ export function findUpgradeOffers(args: {
   const candidates: UpgradeOffer[] = [];
 
   for (const pkg of packages) {
+    // 매진 패키지는 업그레이드 제안에서 제외 — 담을 수 없는 걸 추천하는 모순 방지.
+    if (pkg.soldOut) continue;
     const pkgCatIds = new Set(
       (pkg.includedItems ?? [])
         .map((it) => it.categoryId)

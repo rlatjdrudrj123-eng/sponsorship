@@ -1,25 +1,33 @@
 rules_version = '2';
+// ⚠️ 어드민 이메일 화이트리스트는 앱의 NEXT_PUBLIC_ADMIN_EMAILS(.env.local) 및
+//    firestore.rules 의 isKprintAdmin() 와 반드시 동일하게 유지할 것.
+//    현재 값: admin@kprint.kr (배포 전 실제 운영 어드민 이메일인지 재검증 필요)
+//    email_verified == true 를 AND 로 걸어 미인증 이메일 위조를 방지함.
 service firebase.storage {
   match /b/{bucket}/o {
     match /categories/{categoryId}/{allPaths=**} {
       allow read: if true;
       allow write: if request.auth != null
+        && request.auth.token.email_verified == true
         && request.auth.token.email in ['admin@kprint.kr'];
     }
     match /packages/{packageId}/{allPaths=**} {
       allow read: if true;
       allow write: if request.auth != null
+        && request.auth.token.email_verified == true
         && request.auth.token.email in ['admin@kprint.kr'];
     }
     match /settings/{allPaths=**} {
       allow read: if true;
       allow write: if request.auth != null
+        && request.auth.token.email_verified == true
         && request.auth.token.email in ['admin@kprint.kr'];
     }
     // 랜딩 빌더 캔버스 업로드 (canvas-upload / canvas-paste / canvas-page-bg / canvas-multi 등)
     match /landing/{allPaths=**} {
       allow read: if true;
       allow write: if request.auth != null
+        && request.auth.token.email_verified == true
         && request.auth.token.email in ['admin@kprint.kr'];
     }
   }

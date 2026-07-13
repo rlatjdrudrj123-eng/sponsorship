@@ -288,6 +288,12 @@ export type Package = {
   heroImages?: ImageSlot;
 
   isPublished: boolean;
+  /**
+   * 매진 여부 — 단독구좌 패키지(예: A to Z)가 판매되면 true.
+   * 공개 사이트에서 노출은 유지하되 '매진' 뱃지를 표시하고 카트 담기를 차단한다.
+   * (게시 여부 isPublished 와 별개 — 매진돼도 계속 노출)
+   */
+  soldOut?: boolean;
   order: number;
 };
 
@@ -1057,6 +1063,18 @@ export type SponsorItem = {
   categoryId?: string;    // 옵션 — 카테고리 연결
   subcategoryId?: string; // 옵션 — 소분류 연결 (단가 조회용)
   packageId?: string;     // 옵션 — 패키지 연결
+  /**
+   * 품목 단가 (KRW, VAT 별도 공급가액). 라이브러리에서 선택 시 자동 채움
+   * (슬롯→소분류 priceKRW, 패키지→discountPrice||originalPrice). 수기 조정 가능.
+   * 비용(amount)은 이 단가들의 합계를 기반으로 계산한다.
+   */
+  price?: number;
+  /**
+   * 패키지 품목 전용 — 패키지에 포함된 단품들에 대해 어드민이 직접 확보한
+   * 구좌(slot) ID 목록. 저장 시 해당 슬롯들이 'sold' 처리되어 공개 사이트의
+   * 카테고리 매진 뱃지(슬롯 기반 자동 계산)에 반영된다.
+   */
+  allocatedSlotIds?: string[];
   note?: string;
 };
 

@@ -197,6 +197,9 @@ export default function SponsorshipsPage() {
   const [packages, setPackages] = useState<Package[]>([]);
   const [settings, setSettings] = useState<SiteSettings | null>(null);
   const [taxonomy, setTaxonomy] = useState<Taxonomy | null>(null);
+  // 데이터 로드 완료 플래그 — [slug]/page.tsx 의 검증된 loaded 패턴을 차용.
+  // false 동안은 빈 상태("결과 0개") 대신 로딩 표시를 보여준다.
+  const [loaded, setLoaded] = useState(false);
 
   const [budget, setBudget] = useState<number>(0); // 0 = 필터 X
   // 페르소나 — 필터 사이드바에서 직접 선택. 선택 시 그 페르소나 매칭 매체만 노출.
@@ -319,6 +322,8 @@ export default function SponsorshipsPage() {
         setPersonas(personasAll);
       } catch (e) {
         console.error(e);
+      } finally {
+        setLoaded(true);
       }
     })();
   }, [eventId]);
@@ -439,6 +444,7 @@ export default function SponsorshipsPage() {
       {viewMode === "slide" ? (
         <SlideStream
           items={filtered}
+          loaded={loaded}
           subcategories={subcategories}
           slots={slots}
           totalCount={totalCount}
@@ -576,7 +582,13 @@ export default function SponsorshipsPage() {
 
               {/* Grid */}
               <section>
-                {filtered.length === 0 ? (
+                {!loaded ? (
+                  <div className="bg-ink-50 rounded-card py-16 px-6 text-center">
+                    <p className="text-[15px] md:text-[16px] text-ink-500 font-semibold leading-snug">
+                      {locale === "en" ? "Loading…" : "불러오는 중…"}
+                    </p>
+                  </div>
+                ) : filtered.length === 0 ? (
                   <div className="bg-ink-50 rounded-card py-16 px-6 text-center">
                     <div className="font-num text-[11px] uppercase tracking-[0.3em] text-ink-300 font-bold mb-3">
                       0 / {totalCount}
@@ -1356,24 +1368,25 @@ function CheckboxList<T extends string>({
 // BadgePill — 카드 뱃지 (인기/마감임박/단독/한정/매진)
 // ============================================================================
 
-function BadgePill({ badge }: { badge: Badge }) {
+function BadgePill({ badge, locale }: { badge: Badge; locale: Locale }) {
   const config: Record<
     Badge,
-    { label: string; bg: string; text: string }
+    { label: string; labelEn: string; bg: string; text: string }
   > = {
-    popular: { label: "인기", bg: "bg-brand-500", text: "text-ink-900" },
-    closing: { label: "마감 임박", bg: "bg-amber-500", text: "text-white" },
-    solo: { label: "단독", bg: "bg-ink-900", text: "text-brand-500" },
-    limited: { label: "1석 남음", bg: "bg-red-600", text: "text-white" },
-    sold_out: { label: "매진", bg: "bg-ink-300", text: "text-white" },
-    new: { label: "신규", bg: "bg-emerald-600", text: "text-white" },
+    popular: { label: "인기", labelEn: "Popular", bg: "bg-brand-500", text: "text-ink-900" },
+    closing: { label: "마감 임박", labelEn: "Closing soon", bg: "bg-amber-500", text: "text-white" },
+    solo: { label: "단독", labelEn: "Exclusive", bg: "bg-ink-900", text: "text-brand-500" },
+    limited: { label: "1석 남음", labelEn: "1 left", bg: "bg-red-600", text: "text-white" },
+    sold_out: { label: "매진", labelEn: "Sold out", bg: "bg-ink-300", text: "text-white" },
+    new: { label: "신규", labelEn: "New", bg: "bg-emerald-600", text: "text-white" },
   };
   const c = config[badge];
+  const label = locale === "en" ? c.labelEn : c.label;
   return (
     <span
       className={`text-[10px] uppercase tracking-wider px-2 py-0.5 rounded font-bold ${c.bg} ${c.text}`}
     >
-      {c.label}
+      {label}
     </span>
   );
 }
@@ -1545,8 +1558,11 @@ function PackageCard({
             </div>
           ) : null;
         })()}
-        <div className="text-[22px] md:text-[26px] font-bold text-ink-900 group-hover:text-brand-500 tracking-tight leading-tight">
-          {localized(pkg.name, locale)}
+        <div className="flex items-center gap-2 flex-wrap">
+          <span className="text-[22px] md:text-[26px] font-bold text-ink-900 group-hover:text-brand-500 tracking-tight leading-tight">
+            {localized(pkg.name, locale)}
+          </span>
+          {pkg.soldOut && <BadgePill badge="sold_out" locale={locale} />}
         </div>
 
         {pkg.includedItems && pkg.includedItems.length > 0 && (
@@ -1681,7 +1697,7 @@ function CardGrid({
                   {channelLabel(c.channel, locale)}
                 </span>
                 {c.badges.map((b) => (
-                  <BadgePill key={b} badge={b} />
+                  <BadgePill key={b} badge={b} locale={locale} />
                 ))}
               </div>
               {/* 비교 체크박스 — 우상단 */}
@@ -1846,6 +1862,7 @@ function CardGrid({
 
 function SlideStream({
   items,
+  loaded,
   subcategories,
   slots,
   totalCount,
@@ -1863,6 +1880,7 @@ function SlideStream({
   bundledPerks,
 }: {
   items: EnrichedCategory[];
+  loaded: boolean;
   subcategories: Subcategory[];
   slots: Slot[];
   totalCount: number;
@@ -1976,7 +1994,13 @@ function SlideStream({
         </div>
       </div>
 
-      {items.length === 0 ? (
+      {!loaded ? (
+        <main className="h-dvh pt-14 grid place-items-center bg-canvas px-6">
+          <p className="text-[15px] md:text-[16px] text-ink-500 font-semibold leading-snug">
+            {locale === "en" ? "Loading…" : "불러오는 중…"}
+          </p>
+        </main>
+      ) : items.length === 0 ? (
         <main className="h-dvh pt-14 grid place-items-center bg-canvas px-6">
           <div className="text-center max-w-md">
             <div className="font-num text-[11px] uppercase tracking-[0.3em] text-ink-300 font-bold mb-3">
@@ -2155,6 +2179,15 @@ function AtAGlanceSlide({
   const [activePersonaId, setActivePersonaId] = useState<string | null>(
     personas[0]?.id ?? null
   );
+
+  // personas 가 비동기로 늦게 도착하면 초기값이 null 로 굳어 첫 탭이 자동 선택되지
+  // 않는다. activePersonaId 가 아직 null 일 때만 첫 페르소나로 보정한다.
+  // (사용자가 명시적으로 탭을 바꾼 경우는 null 이 아니므로 덮어쓰지 않는다.)
+  useEffect(() => {
+    if (activePersonaId === null && personas.length > 0) {
+      setActivePersonaId(personas[0].id);
+    }
+  }, [personas, activePersonaId]);
 
   // 페르소나별 카테고리 매핑 (category.personas 기반).
   const filteredByPersona = useMemo(() => {
@@ -2436,8 +2469,11 @@ function PackageOverviewCard({
               </p>
             ) : null;
           })()}
-          <div className="text-[18px] md:text-[22px] font-bold text-ink-900 group-hover:text-brand-500 transition-colors leading-tight mb-3">
-            {localized(pkg.name, locale)}
+          <div className="flex items-center gap-2 flex-wrap mb-3">
+            <span className="text-[18px] md:text-[22px] font-bold text-ink-900 group-hover:text-brand-500 transition-colors leading-tight">
+              {localized(pkg.name, locale)}
+            </span>
+            {pkg.soldOut && <BadgePill badge="sold_out" locale={locale} />}
           </div>
           {items.length > 0 && (
             <ul className="space-y-1 text-[11.5px] md:text-[12.5px] text-ink-700 leading-snug">
@@ -2591,7 +2627,9 @@ function SlideSection({
           {item.slotTotal > 0 && item.slotAvailable > 0 && (
             <div className="absolute bottom-3 left-3">
               <span className="px-2 py-1 rounded-pill bg-ink-900 text-white text-[10.5px] font-num font-bold shadow-card">
-                잔여 {item.slotAvailable}/{item.slotTotal}
+                {locale === "en"
+                  ? `${item.slotAvailable}/${item.slotTotal} left`
+                  : `잔여 ${item.slotAvailable}/${item.slotTotal}`}
               </span>
             </div>
           )}

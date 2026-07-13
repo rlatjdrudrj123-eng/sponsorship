@@ -154,6 +154,11 @@ export default function PackagesListPage() {
                             ? t("pkg.signature", locale)
                             : t("pkg.standard", locale)}
                         </span>
+                        {pkg.soldOut && (
+                          <span className="text-[9px] uppercase tracking-wider bg-ink-300 text-white px-1.5 py-0.5 rounded font-bold">
+                            {locale === "en" ? "Sold out" : "매진"}
+                          </span>
+                        )}
                       </div>
                       {discount > 0 && (
                         <div className="absolute top-3 right-3 bg-ink-900 text-brand-500 text-[11px] font-bold px-2 py-1 rounded">
