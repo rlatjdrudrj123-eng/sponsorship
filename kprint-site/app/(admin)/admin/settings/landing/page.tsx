@@ -88,14 +88,19 @@ export default function LandingBuilderPage() {
 
   // settings 변경 / locale 탭 전환 시 blocks 재동기화. setBlocks 후 사용자 편집은
   // 즉시 persist 로 Firestore 에 반영되므로 외부 변경 충돌 우려 없음.
+  // 단, 로컬 편집이 persist → onSnapshot 으로 되돌아오는 echo 는 내용이 같으므로
+  // 재동기화하지 않는다 — 같은 내용을 새 객체로 갈아끼우면 캔버스 에디터의
+  // undo 히스토리가 복제본으로 오염되고 편집 모달이 닫히는 부작용이 있다.
   useEffect(() => {
     if (!settings) {
       setBlocks([]);
       return;
     }
-    const src = editingLocale === "en" ? settings.landingEn : settings.landing;
-    setBlocks(src ?? []);
+    const src = (editingLocale === "en" ? settings.landingEn : settings.landing) ?? [];
+    if (JSON.stringify(blocks) === JSON.stringify(src)) return; // 로컬 편집 echo
+    setBlocks(src);
     setEditingBlockIdx(null);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- blocks 는 echo 비교용으로만 읽음
   }, [settings, editingLocale]);
 
   const persist = async (next: LandingBlock[]) => {

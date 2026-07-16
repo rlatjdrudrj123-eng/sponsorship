@@ -611,7 +611,13 @@ export function CanvasEditor({
     if (prevPageRef.current !== page) {
       if (skipHistoryRef.current) {
         skipHistoryRef.current = false;
-      } else {
+      } else if (
+        // 내용이 실제로 바뀐 경우에만 히스토리에 push.
+        // persist → Firestore 스냅샷 echo 가 같은 내용을 새 객체로 되돌려주는데,
+        // 참조 비교만 하면 그 echo 가 현재 상태의 복제본을 스택에 쌓아
+        // Ctrl+Z 가 "지금과 같은 상태"로 되돌아가 무반응처럼 보인다.
+        JSON.stringify(prevPageRef.current) !== JSON.stringify(page)
+      ) {
         setPast((p) => [...p, prevPageRef.current].slice(-50));
         setFuture([]);
       }
