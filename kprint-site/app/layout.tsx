@@ -2,9 +2,11 @@ import type { Metadata } from "next";
 import Script from "next/script";
 import "./globals.css";
 
+// 기본(폴백) 메타데이터 — 행사 페이지(/[eventSlug]*)는 각 레이아웃의
+// generateMetadata 가 행사명으로 덮어쓴다. 여기는 루트/어드민 등 공통 폴백.
 export const metadata: Metadata = {
-  title: "K-PRINT 2026 — 스폰서십",
-  description: "K-PRINT 2026 스폰서십 안내 및 견적 문의",
+  title: "스폰서십 — Korea E&EX",
+  description: "전시회 스폰서십 안내 및 견적 문의",
 };
 
 // 첫 페인트 전 (React 하이드레이션 전) 동기적으로 캐시된 브랜드 색상을 주입.
