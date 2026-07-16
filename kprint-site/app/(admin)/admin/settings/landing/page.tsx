@@ -14,10 +14,20 @@ import {
   Trash2,
   X,
 } from "lucide-react";
-import { doc, onSnapshot, setDoc, Timestamp } from "firebase/firestore";
+import {
+  collection,
+  doc,
+  getDoc,
+  onSnapshot,
+  orderBy,
+  query,
+  setDoc,
+  Timestamp,
+} from "firebase/firestore";
 import { getDb } from "@/lib/firebase/firestore";
 import { useEventFilter } from "@/lib/admin/useEventFilter";
 import type {
+  Event,
   LandingBlock,
   LandingBlockType,
   SiteSettings,
@@ -48,6 +58,16 @@ export default function LandingBuilderPage() {
   const [editingBlockIdx, setEditingBlockIdx] = useState<number | null>(null);
   // ko/en 탭 — 한국어 페이지(/[eventSlug]) vs 영문 페이지(/[eventSlug]/en) 각각 별도 편집
   const [editingLocale, setEditingLocale] = useState<"ko" | "en">("ko");
+  // 행사 간 복사용 — 다른 행사 목록 (예: K-PRINT 메인을 KIMES 부산으로 복사)
+  const [events, setEvents] = useState<Event[]>([]);
+
+  useEffect(() => {
+    const u = onSnapshot(
+      query(collection(getDb(), "events"), orderBy("order", "asc")),
+      (s) => setEvents(s.docs.map((d) => ({ ...(d.data() as Event), id: d.id })))
+    );
+    return u;
+  }, []);
 
   // settings 만 onSnapshot 으로 받고, 표시될 blocks 는 editingLocale 에 따라 분기.
   // locale 탭 전환 시 즉시 새 데이터로 갱신.
@@ -139,10 +159,15 @@ export default function LandingBuilderPage() {
   };
 
   const seedDefault = async () => {
+    // 주의: 기본 시퀀스는 구형(레거시) 컴포넌트 기반이라 캔버스 에디터에서
+    // 개별 텍스트 편집이 안 된다. 다른 행사 메인을 복사하는 쪽을 권장.
+    const legacyWarning =
+      "⚠️ 기본 시퀀스는 구형 컴포넌트로 채워져서 캔버스에서 텍스트 편집이 어렵습니다.\n다른 행사의 메인 페이지를 복사해서 수정하는 방법을 권장해요. (📋 다른 행사에서 복사)\n\n";
     if (
-      blocks.length > 0 &&
       !confirm(
-        `현재 ${blocks.length}개 블록을 모두 지우고 기본 시퀀스로 새로 채울까요?`
+        blocks.length > 0
+          ? `${legacyWarning}그래도 현재 ${blocks.length}개 블록을 모두 지우고 기본 시퀀스로 새로 채울까요?`
+          : `${legacyWarning}그래도 기본 시퀀스로 채울까요?`
       )
     )
       return;
@@ -179,6 +204,44 @@ export default function LandingBuilderPage() {
     const next = JSON.parse(JSON.stringify(source)) as LandingBlock[];
     setBlocks(next);
     await persist(next);
+  };
+
+  // 다른 행사의 메인 페이지 시퀀스를 그대로 복사해와서 템플릿으로 사용.
+  // 예: KIMES 부산을 새로 만들 때 K-PRINT 메인을 복사한 뒤 텍스트·이미지만 교체.
+  // 현재 편집 중인 언어 탭(ko/en)의 시퀀스를 소스 행사의 같은 언어에서 가져온다.
+  const copyFromEvent = async (sourceEventId: string) => {
+    const sourceEvent = events.find((e) => e.id === sourceEventId);
+    if (!sourceEvent) return;
+    try {
+      const snap = await getDoc(doc(getDb(), "siteSettings", sourceEventId));
+      const sourceSettings = snap.exists() ? (snap.data() as SiteSettings) : null;
+      const source =
+        editingLocale === "en"
+          ? sourceSettings?.landingEn
+          : sourceSettings?.landing;
+      if (!source || source.length === 0) {
+        alert(
+          `「${sourceEvent.name}」의 ${
+            editingLocale === "en" ? "영문" : "한국어"
+          } 메인 페이지가 비어있어 복사할 게 없어요.`
+        );
+        return;
+      }
+      if (
+        blocks.length > 0 &&
+        !confirm(
+          `현재 ${blocks.length}개 블록을 모두 지우고 「${sourceEvent.name}」의 ${
+            editingLocale === "en" ? "영문" : "한국어"
+          } 메인 페이지(${source.length}개 블록)를 그대로 복사할까요?\n\n복사 후 텍스트·이미지를 이 행사에 맞게 수정하세요.`
+        )
+      )
+        return;
+      const next = JSON.parse(JSON.stringify(source)) as LandingBlock[];
+      setBlocks(next);
+      await persist(next);
+    } catch (e) {
+      alert(`복사 실패: ${e instanceof Error ? e.message : String(e)}`);
+    }
   };
 
   if (!ready) {
@@ -284,6 +347,29 @@ export default function LandingBuilderPage() {
           >
             {editingLocale === "en" ? "🇰🇷 → 🇬🇧" : "🇬🇧 → 🇰🇷"} 불러오기
           </button>
+          {events.filter((e) => e.id !== eventId).length > 0 && (
+            <select
+              value=""
+              onChange={(e) => {
+                const v = e.target.value;
+                if (v) void copyFromEvent(v);
+                e.target.value = "";
+              }}
+              className="px-3 py-2 rounded-btn border border-ink-200 bg-white text-[12.5px] font-semibold text-ink-900 hover:bg-ink-50 cursor-pointer"
+              title="다른 행사의 메인 페이지를 그대로 복사해와서 템플릿으로 사용 (복사 후 텍스트·이미지만 교체)"
+            >
+              <option value="" disabled>
+                📋 다른 행사에서 복사…
+              </option>
+              {events
+                .filter((e) => e.id !== eventId)
+                .map((e) => (
+                  <option key={e.id} value={e.id}>
+                    {e.name}
+                  </option>
+                ))}
+            </select>
+          )}
           <button
             type="button"
             onClick={seedDefault}
