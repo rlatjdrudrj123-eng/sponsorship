@@ -10,7 +10,7 @@ import {
 } from "lucide-react";
 import {
   buildStoragePath,
-  deleteFile,
+  deleteFileIfOwned,
   uploadFile,
 } from "@/lib/firebase/storage";
 import type { ImageDisplayMode, ImageItem, ImageSlot as ImageSlotType } from "@/lib/types";
@@ -132,7 +132,8 @@ export function ImageSlot({
     };
     try {
       await onChange(next);
-      await deleteFile(target.storagePath).catch(() => undefined); // Storage 실패는 swallow
+      // 내 소유 경로의 파일만 실제 삭제 — 행사 복제로 공유된 타 문서 파일은 참조만 제거
+      await deleteFileIfOwned(target.storagePath, storagePathPrefix).catch(() => undefined); // Storage 실패는 swallow
     } catch (e) {
       alert(`삭제 실패: ${e instanceof Error ? e.message : String(e)}`);
     }

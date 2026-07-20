@@ -4,7 +4,7 @@ import { useRef, useState } from "react";
 import { MapPin, Upload, X } from "lucide-react";
 import {
   buildStoragePath,
-  deleteFile,
+  deleteFileIfOwned,
   uploadFile,
 } from "@/lib/firebase/storage";
 import type { FloorImage, Subcategory } from "@/lib/types";
@@ -95,9 +95,12 @@ function FloorTile({
         file.name
       );
       const result = await uploadFile(file, path, (p) => setPct(p));
-      // 기존 도면 storage 삭제 (replace)
+      // 기존 도면 storage 삭제 (replace) — 내 소유 경로일 때만 (복제 참조 보호)
       if (floorImage?.storagePath) {
-        await deleteFile(floorImage.storagePath).catch(() => undefined);
+        await deleteFileIfOwned(
+          floorImage.storagePath,
+          `categories/${categoryId}/floor`
+        ).catch(() => undefined);
       }
       await onChange({
         subcategoryId: subcategory.id,
@@ -117,7 +120,10 @@ function FloorTile({
     if (!confirm(`${subcategory.name.ko} 도면을 삭제할까요? (핀 ${floorImage.pins.length}개도 함께)`)) return;
     try {
       await onChange(null);
-      await deleteFile(floorImage.storagePath).catch(() => undefined);
+      await deleteFileIfOwned(
+        floorImage.storagePath,
+        `categories/${categoryId}/floor`
+      ).catch(() => undefined);
     } catch (e) {
       alert(`삭제 실패: ${e instanceof Error ? e.message : String(e)}`);
     }

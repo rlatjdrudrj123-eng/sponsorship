@@ -160,6 +160,31 @@ export async function deleteFile(storagePath: string | null | undefined): Promis
   }
 }
 
+/**
+ * 소유 경로 확인 후 삭제 — storagePath 가 이 문서/행사의 소유 prefix 로 시작할 때만
+ * 실제 파일을 지운다.
+ *
+ * 왜 필요한가: 행사 복제(시드)로 만들어진 문서는 원본 행사의 파일 URL/경로를
+ * 그대로 참조한다. 그 상태에서 "이미지 교체/삭제"가 참조된 경로를 무조건 지우면
+ * **원본 행사의 실제 파일이 삭제**되어 원본 사이트가 엑스박스가 된다
+ * (실사고: KIMES 부산에서 이미지 교체 → K-PRINT 이미지 소실).
+ * 내 prefix 밖의 파일은 문서 참조만 끊고 파일은 남긴다.
+ */
+export async function deleteFileIfOwned(
+  storagePath: string | null | undefined,
+  ownedPrefix: string
+): Promise<void> {
+  if (!storagePath) return;
+  const prefix = ownedPrefix.replace(/\/+$/, "") + "/";
+  if (!storagePath.startsWith(prefix)) {
+    console.warn(
+      `[storage] 다른 문서/행사 소유 파일이라 삭제 건너뜀: ${storagePath} (소유 prefix: ${prefix})`
+    );
+    return;
+  }
+  await deleteFile(storagePath);
+}
+
 function uuid(): string {
   if (typeof crypto !== "undefined" && "randomUUID" in crypto) {
     return crypto.randomUUID();

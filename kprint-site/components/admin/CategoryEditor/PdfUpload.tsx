@@ -10,7 +10,7 @@ import {
 } from "lucide-react";
 import {
   buildStoragePath,
-  deleteFile,
+  deleteFileIfOwned,
   uploadFile,
 } from "@/lib/firebase/storage";
 
@@ -44,7 +44,11 @@ export function PdfUpload({ categoryId, fileUrl, filePath, onChange }: Props) {
         file.name
       );
       const result = await uploadFile(file, path, (p) => setPct(p));
-      if (filePath) await deleteFile(filePath).catch(() => undefined);
+      // 내 소유 경로일 때만 실제 삭제 — 행사 복제로 공유된 파일 보호
+      if (filePath)
+        await deleteFileIfOwned(filePath, `categories/${categoryId}/guide`).catch(
+          () => undefined
+        );
       await onChange({ url: result.url, path: result.storagePath });
       setPct(null);
     } catch (e) {
@@ -62,7 +66,10 @@ export function PdfUpload({ categoryId, fileUrl, filePath, onChange }: Props) {
     }
     setError(null);
     try {
-      if (filePath) await deleteFile(filePath).catch(() => undefined);
+      if (filePath)
+        await deleteFileIfOwned(filePath, `categories/${categoryId}/guide`).catch(
+          () => undefined
+        );
       await onChange({ url: v });
       setUrlInput("");
     } catch (e) {
@@ -74,7 +81,10 @@ export function PdfUpload({ categoryId, fileUrl, filePath, onChange }: Props) {
     if (!confirm("가이드 PDF를 제거할까요?")) return;
     try {
       await onChange(null);
-      if (filePath) await deleteFile(filePath).catch(() => undefined);
+      if (filePath)
+        await deleteFileIfOwned(filePath, `categories/${categoryId}/guide`).catch(
+          () => undefined
+        );
     } catch (e) {
       alert(`삭제 실패: ${e instanceof Error ? e.message : String(e)}`);
     }

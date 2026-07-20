@@ -5,7 +5,7 @@ import { doc, onSnapshot, setDoc, Timestamp } from "firebase/firestore";
 import { useForm } from "react-hook-form";
 import { AlertCircle, Check, FileDown, Save, Trash2, Upload } from "lucide-react";
 import { getDb } from "@/lib/firebase/firestore";
-import { uploadFile, deleteFile } from "@/lib/firebase/storage";
+import { uploadFile, deleteFileIfOwned } from "@/lib/firebase/storage";
 import { useEventFilter } from "@/lib/admin/useEventFilter";
 import type { SiteSettings } from "@/lib/types";
 
@@ -191,7 +191,8 @@ export default function SettingsPage() {
           };
       await setDoc(doc(getDb(), "siteSettings", eventId), update, { merge: true });
       if (oldPath && oldPath !== result.storagePath) {
-        await deleteFile(oldPath).catch(() => {});
+        // 내 행사 소유 경로일 때만 실제 삭제 — 행사 복제로 공유된 파일 보호
+        await deleteFileIfOwned(oldPath, `settings/${eventId}`).catch(() => {});
       }
       setPct(null);
     } catch (e) {
@@ -220,7 +221,7 @@ export default function SettingsPage() {
         };
     await setDoc(doc(getDb(), "siteSettings", eventId), update, { merge: true });
     if (oldPath) {
-      await deleteFile(oldPath).catch(() => {});
+      await deleteFileIfOwned(oldPath, `settings/${eventId}`).catch(() => {});
     }
   };
 
