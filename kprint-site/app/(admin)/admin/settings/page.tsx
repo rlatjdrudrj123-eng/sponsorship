@@ -39,6 +39,13 @@ type FormValues = {
     email: string;
     address: string;
   };
+  /** 클로징 슬라이드 — 헤드라인·온라인 신청 URL (행사별). 비우면 기본 폴백. */
+  closing: {
+    headline: string;   // 줄바꿈 = 줄 나눔
+    headlineEn: string;
+    applyUrl: string;
+    applyUrlEn: string;
+  };
   applicationSteps: Array<{ title: string; desc: string }>;
 };
 
@@ -83,6 +90,7 @@ export default function SettingsPage() {
       kv: { desktopUrl: "", mobileUrl: "", overlayText: "" },
       why: { headline: "", stats: [], chartData: [] },
       contact: { phone: "", email: "", address: "" },
+      closing: { headline: "", headlineEn: "", applyUrl: "", applyUrlEn: "" },
       applicationSteps: [],
     },
   });
@@ -147,6 +155,12 @@ export default function SettingsPage() {
           phone: data.contact?.phone ?? "",
           email: data.contact?.email ?? "",
           address: data.contact?.address ?? "",
+        },
+        closing: {
+          headline: data.closingHeadline ?? "",
+          headlineEn: data.closingHeadlineEn ?? "",
+          applyUrl: data.applyUrl ?? "",
+          applyUrlEn: data.applyUrlEn ?? "",
         },
         applicationSteps: (data.applicationSteps ?? []).map((s) => ({
           title: s.title,
@@ -262,6 +276,13 @@ export default function SettingsPage() {
           chartData: v.why.chartData.filter((c) => c.year),
         },
         contact: v.contact,
+        // 클로징 — 항상 문자열로 저장 (빈 문자열 = 기본 폴백 사용).
+        // undefined 로 두면 ignoreUndefinedProperties + merge 조합에서
+        // 기존 값이 지워지지 않아 "비우기"가 불가능해짐.
+        closingHeadline: v.closing.headline.trim(),
+        closingHeadlineEn: v.closing.headlineEn.trim(),
+        applyUrl: v.closing.applyUrl.trim(),
+        applyUrlEn: v.closing.applyUrlEn.trim(),
         applicationSteps: v.applicationSteps.filter((s) => s.title),
       };
       await setDoc(doc(getDb(), "siteSettings", eventId), data, { merge: true });
@@ -296,6 +317,7 @@ export default function SettingsPage() {
     { id: "event", num: "02", title: "이벤트 정보", desc: "행사명·일정·장소" },
     { id: "contact", num: "03", title: "연락처", desc: "사무국 정보" },
     { id: "pdf", num: "04", title: "전체 패키지 PDF", desc: "사용자 0초 다운로드" },
+    { id: "closing", num: "05", title: "클로징 슬라이드", desc: "헤드라인·신청 URL" },
   ];
 
   return (
@@ -469,6 +491,48 @@ export default function SettingsPage() {
             onUpload={(f) => void handlePdfUpload(f, "en")}
             onDelete={() => void handlePdfDelete("en")}
           />
+        </div>
+      </Section>
+
+      <Section title="클로징 슬라이드" id="sec-closing" num="05">
+        <p className="text-[12px] text-ink-500 leading-relaxed mb-4">
+          랜딩·슬라이드 끝과 전체 PDF 마지막 페이지에 나오는 마무리 화면입니다.
+          <br />
+          비워두면 기본 문구가 나갑니다 — K-PRINT 행사는 기존 인쇄업 문구,
+          그 외 행사는 <span className="font-semibold text-ink-700">행사명 기반 문구 + 이 사이트의 문의 페이지 링크</span>로
+          자동 폴백됩니다.
+        </p>
+        <div className="grid grid-cols-2 gap-3">
+          <Field label="헤드라인 (한글) — 줄바꿈으로 줄 나눔">
+            <textarea
+              {...form.register("closing.headline")}
+              rows={2}
+              placeholder={"KIMES BUSAN 2026 참관객이 모이는 자리,\n지금 바로 브랜드를 알리세요!"}
+              className={inputCls() + " resize-y"}
+            />
+          </Field>
+          <Field label="헤드라인 (영문)">
+            <textarea
+              {...form.register("closing.headlineEn")}
+              rows={2}
+              placeholder={"Meet your buyers at KIMES BUSAN 2026 —\npromote your brand now."}
+              className={inputCls() + " resize-y"}
+            />
+          </Field>
+          <Field label="온라인 신청 URL (한글 사이트)">
+            <input
+              {...form.register("closing.applyUrl")}
+              placeholder="https://... (비우면 문의 페이지로 연결)"
+              className={inputCls() + " font-mono"}
+            />
+          </Field>
+          <Field label="온라인 신청 URL (영문 사이트)">
+            <input
+              {...form.register("closing.applyUrlEn")}
+              placeholder="https://... (비우면 한글 URL → 문의 페이지 순 폴백)"
+              className={inputCls() + " font-mono"}
+            />
+          </Field>
         </div>
       </Section>
         </div>

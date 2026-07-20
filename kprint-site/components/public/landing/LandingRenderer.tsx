@@ -7,6 +7,7 @@ import type { LandingBlock, SiteSettings } from "@/lib/types";
 import { BlockSection } from "./blocks";
 import { useLocale, localizedField } from "@/lib/i18n/locale";
 import { getFullPdfHref, isDirectPdfHref } from "@/lib/pdf";
+import { getClosingContent } from "@/lib/closing";
 import { LocaleSwitch } from "@/components/public/LocaleSwitch";
 
 /**
@@ -120,41 +121,35 @@ export function ClosingSlide({
   );
   const pdfHref = getFullPdfHref(eventId, settings, locale);
   const pdfDirect = isDirectPdfHref(settings, locale);
+  // 행사별 클로징 콘텐츠 — 브랜드/헤드라인/신청 URL (K-PRINT 하드코딩 제거)
+  const closing = getClosingContent(eventId, settings, locale);
   return (
     <section className="h-dvh snap-start snap-always relative overflow-hidden flex flex-col items-center justify-center bg-canvas text-ink-900 px-8 md:px-16 pt-14">
       <div className="max-w-3xl w-full text-center flex flex-col items-center break-keep">
-        {/* 브랜드 — K·print */}
-        <div className="font-bold text-[34px] md:text-[44px] tracking-tight text-brand-500 leading-none mb-10 md:mb-14">
-          K·print
-        </div>
+        {/* 브랜드 — 행사별 (K-PRINT 는 로고타입, 그 외 행사명) */}
+        {closing.brand && (
+          <div className="font-bold text-[34px] md:text-[44px] tracking-tight text-brand-500 leading-none mb-10 md:mb-14">
+            {closing.brand}
+          </div>
+        )}
 
-        {/* 메인 카피 — break-keep 으로 단어 단위 줄바꿈 보장. 카피 자체도 짧게 정리. */}
+        {/* 메인 카피 — break-keep 으로 단어 단위 줄바꿈 보장. 행사별 설정/폴백. */}
         <h2 className="text-[24px] md:text-[40px] font-bold tracking-tight text-ink-900 leading-[1.3] mb-10 md:mb-14 break-keep">
-          {locale === "en" ? (
-            <>
-              Reach decision-makers in the
-              <br />
-              print &amp; digital industry — start now.
-            </>
-          ) : (
-            <>
-              인쇄·디지털프린팅 전문가가 모이는 자리,
-              <br />
-              지금 바로 브랜드를 알리세요!
-            </>
-          )}
+          {closing.headlineLines.map((line, i) => (
+            <span key={i}>
+              {i > 0 && <br />}
+              {line}
+            </span>
+          ))}
         </h2>
 
         {/* CTA 두 버튼 */}
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 md:gap-3 w-full sm:w-auto">
           <a
-            href={
-              locale === "en"
-                ? "https://kprint.kr/en/auth/login/exhibitor"
-                : "https://kprint.kr/ko/mypage/exhibitor/advertise"
-            }
-            target="_blank"
-            rel="noopener noreferrer"
+            href={closing.applyHref}
+            {...(closing.applyExternal
+              ? { target: "_blank", rel: "noopener noreferrer" }
+              : {})}
             className="px-7 md:px-9 py-3.5 md:py-4 rounded-btn bg-brand-500 text-white hover:bg-brand-700 text-[14px] md:text-[15px] font-bold transition-colors inline-flex items-center justify-center gap-2"
           >
             {locale === "en" ? "Apply online" : "온라인 신청 바로가기"}

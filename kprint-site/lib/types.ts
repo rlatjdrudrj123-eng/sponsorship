@@ -429,6 +429,20 @@ export type SiteSettings = {
   pdfFullStoragePathEn?: string;
   pdfFullUploadedAtEn?: Timestamp;
 
+  /** 클로징 슬라이드(랜딩/슬라이드 끝 + 인쇄 PDF)의 "온라인 신청" 외부 URL.
+   *  행사별 신청 시스템 주소. 비어있으면: K-PRINT 는 kprint.kr 신청 페이지(하위호환),
+   *  그 외 행사는 이 사이트의 문의(/contact) 페이지로 폴백. */
+  applyUrl?: string;
+  /** 영문 사이트용 신청 URL. 비어있으면 applyUrl → 폴백 체인. */
+  applyUrlEn?: string;
+
+  /** 클로징 슬라이드 헤드라인 (여러 줄은 줄바꿈으로 구분).
+   *  비어있으면: K-PRINT 는 기존 인쇄업 문구(하위호환), 그 외 행사는
+   *  행사명 기반 기본 문구로 폴백. */
+  closingHeadline?: string;
+  /** 영문 클로징 헤드라인. 비어있으면 영문 기본 폴백 체인. */
+  closingHeadlineEn?: string;
+
 };
 
 /** 진단 로그 한 건 — diagnostic_logs 컬렉션에 저장 (v3 형식) */

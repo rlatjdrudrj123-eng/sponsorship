@@ -6,6 +6,7 @@ import { collection, doc, getDoc, getDocs, query, where } from "firebase/firesto
 import { Printer } from "lucide-react";
 import { getDb } from "@/lib/firebase/firestore";
 import { cachedFetch } from "@/lib/firebase/cache";
+import { getClosingContent } from "@/lib/closing";
 
 // Reveal/Lazy 이미지가 viewport 밖 슬라이드에서 발화 안 되는 이슈 회피 —
 // 이 파일을 import 한 클라이언트에서만 IntersectionObserver 를 즉시 발화 mock 으로 교체.
@@ -554,6 +555,7 @@ function FullPrintContent() {
 
         {/* 5) 클로징 — 외부 신청 링크 + Contact (랜딩 페이지와 동일 흐름) */}
         <ClosingSlide
+          eventId={eventId}
           settings={settings}
           index={
             coverPagesCount +
@@ -885,18 +887,18 @@ function PrintPackageCard({
 
 // ============================================================================
 // ClosingSlide — PDF 마지막 페이지. 랜딩 ClosingSlide 와 동일 흐름.
-// 외부 신청 링크(인쇄해도 URL 보이도록 노출) + Contact + K·print 브랜드.
+// 외부 신청 링크(인쇄해도 URL 보이도록 노출) + Contact + 행사별 브랜드.
+// 브랜드/헤드라인/신청 URL 은 getClosingContent 로 행사별 분기 (K-PRINT 하드코딩 제거).
 // ============================================================================
 
-const APPLY_URL_KO = "https://kprint.kr/ko/mypage/exhibitor/advertise";
-const APPLY_URL_EN = "https://kprint.kr/en/auth/login/exhibitor";
-
 function ClosingSlide({
+  eventId,
   settings,
   index,
   total,
   locale,
 }: {
+  eventId: string;
   settings: SiteSettings | null;
   index: number;
   total: number;
@@ -909,28 +911,28 @@ function ClosingSlide({
     settings?.contact?.addressEn,
     locale
   );
-  const applyUrl = locale === "en" ? APPLY_URL_EN : APPLY_URL_KO;
+  const closing = getClosingContent(eventId, settings, locale);
+  // 종이에 인쇄되는 URL — 내부 경로(문의 페이지 폴백)면 도메인을 붙여 절대 URL 로
+  const applyUrlText = closing.applyExternal
+    ? closing.applyHref
+    : (typeof window !== "undefined" ? window.location.origin : "") +
+      closing.applyHref;
   return (
     <section className="a4-page bg-white shadow print:shadow-none mx-auto print:mx-0 my-4 print:my-0 w-[297mm] h-[210mm] relative overflow-hidden">
       <div className="h-full px-20 py-14 flex flex-col items-center justify-center text-center break-keep">
-        <div className="font-bold text-[44px] tracking-tight text-brand-500 leading-none mb-10">
-          K·print
-        </div>
+        {closing.brand && (
+          <div className="font-bold text-[44px] tracking-tight text-brand-500 leading-none mb-10">
+            {closing.brand}
+          </div>
+        )}
 
         <h2 className="text-[30px] font-bold tracking-tight text-ink-900 leading-[1.3] mb-10 break-keep">
-          {locale === "en" ? (
-            <>
-              Reach decision-makers in the
-              <br />
-              print &amp; digital industry — start now.
-            </>
-          ) : (
-            <>
-              인쇄·디지털프린팅 전문가가 모이는 자리,
-              <br />
-              지금 바로 브랜드를 알리세요!
-            </>
-          )}
+          {closing.headlineLines.map((line, i) => (
+            <span key={i}>
+              {i > 0 && <br />}
+              {line}
+            </span>
+          ))}
         </h2>
 
         {/* PDF 인쇄용 — URL 직접 노출 (탭 동작 X, 종이에 URL 인쇄).
@@ -942,7 +944,7 @@ function ClosingSlide({
           </div>
         </div>
         <div className="text-[10.5px] text-ink-500 font-mono mb-12">
-          {applyUrl}
+          {applyUrlText}
         </div>
 
         <div className="mt-2">
