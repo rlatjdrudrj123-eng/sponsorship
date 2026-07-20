@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef, useState } from "react";
-import { MapPin, Upload, X } from "lucide-react";
+import { AlertTriangle, MapPin, Trash2, Upload, X } from "lucide-react";
 import {
   buildStoragePath,
   deleteFileIfOwned,
@@ -44,23 +44,99 @@ export function FloorImages({
     }
   };
 
+  // 고아 도면 — subcategoryId 가 현재 소분류 중 어디에도 없는 도면.
+  // 엑셀 임포트(소분류 재생성)·행사 복제 등으로 발생하며, 위 타일 그리드에는
+  // 렌더되지 않아 삭제 버튼도 없다. 아래 별도 섹션에서 삭제만 가능하게 노출.
+  const subIds = new Set(sortedSubs.map((s) => s.id));
+  const orphans = list.filter((fi) => !subIds.has(fi.subcategoryId));
+
+  const removeOrphan = async (fi: FloorImage) => {
+    if (
+      !confirm(
+        `연결이 끊긴 도면을 삭제할까요? (핀 ${fi.pins?.length ?? 0}개 포함)\n` +
+          `현재 소분류에 연결되지 않아 공개 사이트 "위치보기"에 잘못 노출되던 도면입니다.`
+      )
+    )
+      return;
+    await onChange(list.filter((x) => x !== fi));
+    // 내 소유 경로일 때만 파일 삭제 — 복제로 공유된 타 행사 파일은 참조만 제거
+    await deleteFileIfOwned(
+      fi.storagePath,
+      `categories/${categoryId}/floor`
+    ).catch(() => undefined);
+  };
+
   return (
-    <div className="grid grid-cols-2 gap-3">
-      {sortedSubs.map((sub) => {
-        const existing = list.find((fi) => fi.subcategoryId === sub.id);
-        return (
-          <FloorTile
-            key={sub.id}
-            categoryId={categoryId}
-            subcategory={sub}
-            floorImage={existing}
-            onChange={(fi) => updateOne(sub.id, fi)}
-            onOpenPinEditor={
-              onOpenPinEditor ? () => onOpenPinEditor(sub.id) : undefined
-            }
-          />
-        );
-      })}
+    <div className="space-y-4">
+      <div className="grid grid-cols-2 gap-3">
+        {sortedSubs.map((sub) => {
+          const existing = list.find((fi) => fi.subcategoryId === sub.id);
+          return (
+            <FloorTile
+              key={sub.id}
+              categoryId={categoryId}
+              subcategory={sub}
+              floorImage={existing}
+              onChange={(fi) => updateOne(sub.id, fi)}
+              onOpenPinEditor={
+                onOpenPinEditor ? () => onOpenPinEditor(sub.id) : undefined
+              }
+            />
+          );
+        })}
+      </div>
+
+      {orphans.length > 0 && (
+        <div className="rounded-btn border border-amber-300 bg-amber-50 p-3">
+          <div className="flex items-center gap-2 mb-2">
+            <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0" />
+            <span className="text-[12.5px] font-bold text-amber-800">
+              연결이 끊긴 도면 {orphans.length}개
+            </span>
+          </div>
+          <p className="text-[11px] text-amber-700 mb-3 leading-relaxed">
+            엑셀 임포트나 행사 복제로 소분류가 바뀌어, 현재 소분류에 연결되지
+            않은 도면입니다. 공개 사이트 &quot;위치보기&quot;에 잘못 노출될 수
+            있으니 삭제하세요.
+          </p>
+          <div className="grid grid-cols-2 gap-2">
+            {orphans.map((fi, i) => (
+              <div
+                key={fi.storagePath || i}
+                className="bg-white border border-amber-200 rounded-btn p-2 flex items-center gap-2"
+              >
+                <div className="w-14 h-10 bg-ink-100 rounded overflow-hidden shrink-0 grid place-items-center">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={fi.url}
+                    alt=""
+                    className="w-full h-full object-cover"
+                    onError={(e) => {
+                      (e.currentTarget as HTMLImageElement).style.display = "none";
+                    }}
+                  />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="text-[11px] text-ink-700 font-semibold">
+                    핀 {fi.pins?.length ?? 0}개
+                  </div>
+                  <div className="text-[10px] text-ink-400 truncate font-mono">
+                    {fi.subcategoryId}
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => void removeOrphan(fi)}
+                  className="px-2 py-1.5 rounded text-red-700 hover:bg-red-50 shrink-0"
+                  title="삭제"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
