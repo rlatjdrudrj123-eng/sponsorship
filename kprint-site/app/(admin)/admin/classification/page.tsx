@@ -191,9 +191,10 @@ export default function ClassificationPage() {
     }
   };
 
-  // 다른 행사의 추천 매핑(페르소나 연결·시너지·노출 시점)을 코드 기준으로 이식.
-  // 배경: 엑셀 덮어쓰기 임포트는 카테고리를 재생성하면서 personas/synergyTargets 를
-  // 담지 못해 추천 로직(한눈에 보기 탭·추천코스·함께 보면 좋은)이 초기화된다.
+  // 다른 행사의 추천 매핑을 코드 기준으로 이식.
+  // 배경: 엑셀 덮어쓰기 임포트는 카테고리를 재생성하면서 아래 추천 필드를
+  // 담지 못해 추천 로직(한눈에 보기 탭·추천코스·1분 진단·함께 보면 좋은)이 초기화된다.
+  // 복사 대상: goalAffinity(진단 0~3점) · recommendBoost · personas · synergyTargets · timingOverride
   // - 카테고리 매칭: code 동일 (예: CBA ↔ CBA)
   // - 페르소나 ID 변환: 소스 페르소나 title ↔ 타깃 페르소나 title 매칭
   // - 시너지 ID 변환: 소스 카테고리 id → code → 타깃의 같은 code 카테고리 id
@@ -222,6 +223,7 @@ export default function ClassificationPage() {
       let matched = 0;
       let personaLinks = 0;
       let synergyLinks = 0;
+      let affinityFilled = 0;
       const updates: Array<{ id: string; data: Record<string, unknown> }> = [];
 
       for (const target of categories) {
@@ -236,11 +238,16 @@ export default function ClassificationPage() {
           .filter((v): v is string => Boolean(v) && v !== target.id);
         personaLinks += mappedPersonas.length;
         synergyLinks += mappedSynergy.length;
+        const srcAffinity = src.goalAffinity ?? {};
+        if (Object.keys(srcAffinity).length > 0) affinityFilled++;
         const data: Record<string, unknown> = {
+          // 1분 진단 점수(0~3) — 진단 챗봇 추천의 핵심. 비어있으면 {} 로 명시 저장.
+          goalAffinity: srcAffinity,
           personas: mappedPersonas,
           synergyTargets: mappedSynergy,
           updatedAt: Timestamp.fromDate(new Date()),
         };
+        if (src.recommendBoost != null) data.recommendBoost = src.recommendBoost;
         if (src.timingOverride) data.timingOverride = src.timingOverride;
         updates.push({ id: target.id, data });
       }
@@ -253,9 +260,10 @@ export default function ClassificationPage() {
         !confirm(
           `「${sourceEvent.name}」의 추천 매핑을 복사할까요?\n\n` +
             `· 코드 일치 카테고리: ${matched}개 (이 행사 ${categories.length}개 중)\n` +
+            `· 1분 진단 점수(0~3): ${affinityFilled}개 카테고리\n` +
             `· 페르소나 연결: ${personaLinks}건 (페르소나는 이름으로 자동 변환)\n` +
             `· 함께 보면 좋은(시너지) 연결: ${synergyLinks}건\n\n` +
-            `일치하는 카테고리의 기존 페르소나·시너지 연결은 덮어씁니다.\n` +
+            `일치하는 카테고리의 기존 진단 점수·페르소나·시너지 연결은 덮어씁니다.\n` +
             `(위치 분류는 행사장이 달라 복사하지 않습니다)`
         )
       )
@@ -265,7 +273,7 @@ export default function ClassificationPage() {
       updates.forEach((u) => batch.update(doc(db, "categories", u.id), u.data));
       await batch.commit();
       alert(
-        `복사 완료 — 카테고리 ${updates.length}개에 페르소나 ${personaLinks}건 · 시너지 ${synergyLinks}건 연결.\n"참가 상황" 탭에서 결과를 확인하세요.`
+        `복사 완료 — 카테고리 ${updates.length}개에 진단점수 ${affinityFilled}개 · 페르소나 ${personaLinks}건 · 시너지 ${synergyLinks}건 적용.\n"참가 상황" 탭 및 각 카테고리 편집에서 결과를 확인하세요.`
       );
     } catch (e) {
       alert(`복사 실패: ${e instanceof Error ? e.message : String(e)}`);
@@ -304,7 +312,7 @@ export default function ClassificationPage() {
               e.target.value = "";
             }}
             className="px-3 py-2 rounded-btn border border-ink-200 bg-white text-[12.5px] font-semibold text-ink-900 hover:bg-ink-50 cursor-pointer disabled:opacity-50"
-            title="다른 행사의 페르소나 연결·시너지(함께 보면 좋은)·노출 시점을 카테고리 코드 기준으로 복사 (엑셀 임포트 후 추천 로직 복원용)"
+            title="다른 행사의 1분 진단 점수·페르소나 연결·시너지(함께 보면 좋은)·노출 시점을 카테고리 코드 기준으로 복사 (엑셀 임포트 후 추천 로직 복원용)"
           >
             <option value="" disabled>
               {copying ? "복사 중…" : "📋 다른 행사에서 추천 매핑 복사…"}
