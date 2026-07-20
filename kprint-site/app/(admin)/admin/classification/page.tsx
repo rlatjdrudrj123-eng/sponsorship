@@ -5,12 +5,15 @@ import {
   collection,
   deleteDoc,
   doc,
+  getDocs,
   onSnapshot,
+  orderBy,
   query,
   setDoc,
   Timestamp,
   updateDoc,
   where,
+  writeBatch,
 } from "firebase/firestore";
 import {
   AlertCircle,
@@ -27,7 +30,7 @@ import {
 import { getDb } from "@/lib/firebase/firestore";
 import { useEventFilter } from "@/lib/admin/useEventFilter";
 import { PersonaEditModal } from "@/components/admin/PersonaEditModal";
-import type { Category, CategoryType, Persona, Taxonomy } from "@/lib/types";
+import type { Category, CategoryType, Event, Persona, Taxonomy } from "@/lib/types";
 import { CATEGORY_TYPE_LABELS } from "@/lib/categoryTypeLabels";
 
 type Tab = "persona" | "media" | "timing" | "location";
@@ -79,6 +82,17 @@ export default function ClassificationPage() {
   const [editPersona, setEditPersona] = useState<Persona | null>(null);
   const [addingPersona, setAddingPersona] = useState(false);
   const [editingBuckets, setEditingBuckets] = useState(false);
+  // 행사 간 추천 매핑 복사용 — 다른 행사 목록
+  const [events, setEvents] = useState<Event[]>([]);
+  const [copying, setCopying] = useState(false);
+
+  useEffect(() => {
+    const u = onSnapshot(
+      query(collection(getDb(), "events"), orderBy("order", "asc")),
+      (s) => setEvents(s.docs.map((d) => ({ ...(d.data() as Event), id: d.id })))
+    );
+    return u;
+  }, []);
 
   useEffect(() => {
     if (!ready || !eventId) return;
@@ -177,6 +191,89 @@ export default function ClassificationPage() {
     }
   };
 
+  // 다른 행사의 추천 매핑(페르소나 연결·시너지·노출 시점)을 코드 기준으로 이식.
+  // 배경: 엑셀 덮어쓰기 임포트는 카테고리를 재생성하면서 personas/synergyTargets 를
+  // 담지 못해 추천 로직(한눈에 보기 탭·추천코스·함께 보면 좋은)이 초기화된다.
+  // - 카테고리 매칭: code 동일 (예: CBA ↔ CBA)
+  // - 페르소나 ID 변환: 소스 페르소나 title ↔ 타깃 페르소나 title 매칭
+  // - 시너지 ID 변환: 소스 카테고리 id → code → 타깃의 같은 code 카테고리 id
+  // - locationOverride 는 행사장(홀 배치)이 다르므로 복사하지 않음
+  const copyRecoFromEvent = async (sourceEventId: string) => {
+    const sourceEvent = events.find((e) => e.id === sourceEventId);
+    if (!sourceEvent || !eventId || copying) return;
+    setCopying(true);
+    try {
+      const db = getDb();
+      const [srcCatSnap, srcPerSnap] = await Promise.all([
+        getDocs(query(collection(db, "categories"), where("eventId", "==", sourceEventId))),
+        getDocs(query(collection(db, "personas"), where("eventId", "==", sourceEventId))),
+      ]);
+      const srcCats = srcCatSnap.docs.map((d) => ({ ...(d.data() as Category), id: d.id }));
+      const srcPersonas = srcPerSnap.docs.map((d) => ({ ...(d.data() as Persona), id: d.id }));
+
+      // 페르소나 ID 변환표 — title(trim) 매칭
+      const srcPersonaTitle = new Map(srcPersonas.map((p) => [p.id, p.title.trim()]));
+      const targetPersonaByTitle = new Map(personas.map((p) => [p.title.trim(), p.id]));
+      // 시너지 변환표 — 소스 id → code, 타깃 code → id
+      const srcCodeById = new Map(srcCats.map((c) => [c.id, c.code]));
+      const targetIdByCode = new Map(categories.map((c) => [c.code, c.id]));
+      const srcByCode = new Map(srcCats.map((c) => [c.code, c]));
+
+      let matched = 0;
+      let personaLinks = 0;
+      let synergyLinks = 0;
+      const updates: Array<{ id: string; data: Record<string, unknown> }> = [];
+
+      for (const target of categories) {
+        const src = srcByCode.get(target.code);
+        if (!src) continue;
+        matched++;
+        const mappedPersonas = (src.personas ?? [])
+          .map((pid) => targetPersonaByTitle.get(srcPersonaTitle.get(pid) ?? ""))
+          .filter((v): v is string => Boolean(v));
+        const mappedSynergy = (src.synergyTargets ?? [])
+          .map((cid) => targetIdByCode.get(srcCodeById.get(cid) ?? ""))
+          .filter((v): v is string => Boolean(v) && v !== target.id);
+        personaLinks += mappedPersonas.length;
+        synergyLinks += mappedSynergy.length;
+        const data: Record<string, unknown> = {
+          personas: mappedPersonas,
+          synergyTargets: mappedSynergy,
+          updatedAt: Timestamp.fromDate(new Date()),
+        };
+        if (src.timingOverride) data.timingOverride = src.timingOverride;
+        updates.push({ id: target.id, data });
+      }
+
+      if (updates.length === 0) {
+        alert(`「${sourceEvent.name}」와 코드가 일치하는 카테고리가 없습니다.`);
+        return;
+      }
+      if (
+        !confirm(
+          `「${sourceEvent.name}」의 추천 매핑을 복사할까요?\n\n` +
+            `· 코드 일치 카테고리: ${matched}개 (이 행사 ${categories.length}개 중)\n` +
+            `· 페르소나 연결: ${personaLinks}건 (페르소나는 이름으로 자동 변환)\n` +
+            `· 함께 보면 좋은(시너지) 연결: ${synergyLinks}건\n\n` +
+            `일치하는 카테고리의 기존 페르소나·시너지 연결은 덮어씁니다.\n` +
+            `(위치 분류는 행사장이 달라 복사하지 않습니다)`
+        )
+      )
+        return;
+
+      const batch = writeBatch(db);
+      updates.forEach((u) => batch.update(doc(db, "categories", u.id), u.data));
+      await batch.commit();
+      alert(
+        `복사 완료 — 카테고리 ${updates.length}개에 페르소나 ${personaLinks}건 · 시너지 ${synergyLinks}건 연결.\n"참가 상황" 탭에서 결과를 확인하세요.`
+      );
+    } catch (e) {
+      alert(`복사 실패: ${e instanceof Error ? e.message : String(e)}`);
+    } finally {
+      setCopying(false);
+    }
+  };
+
   if (!ready || !eventId) {
     return (
       <div className="bg-white border border-ink-100 rounded-card p-8 text-center">
@@ -197,6 +294,30 @@ export default function ClassificationPage() {
             참가 상황·매체 유형·시점·위치를 그룹별로 보고 드래그로 스폰서십 매체를 이동하세요.
           </p>
         </div>
+        {events.filter((e) => e.id !== eventId).length > 0 && (
+          <select
+            value=""
+            disabled={copying}
+            onChange={(e) => {
+              const v = e.target.value;
+              if (v) void copyRecoFromEvent(v);
+              e.target.value = "";
+            }}
+            className="px-3 py-2 rounded-btn border border-ink-200 bg-white text-[12.5px] font-semibold text-ink-900 hover:bg-ink-50 cursor-pointer disabled:opacity-50"
+            title="다른 행사의 페르소나 연결·시너지(함께 보면 좋은)·노출 시점을 카테고리 코드 기준으로 복사 (엑셀 임포트 후 추천 로직 복원용)"
+          >
+            <option value="" disabled>
+              {copying ? "복사 중…" : "📋 다른 행사에서 추천 매핑 복사…"}
+            </option>
+            {events
+              .filter((e) => e.id !== eventId)
+              .map((e) => (
+                <option key={e.id} value={e.id}>
+                  {e.name}
+                </option>
+              ))}
+          </select>
+        )}
       </header>
 
       <div className="flex items-center gap-1 bg-white border border-ink-100 rounded-btn p-1 w-fit">
