@@ -67,17 +67,28 @@ export default function SponsorsListPage() {
       return;
     }
     setLoading(true);
+    // ⚠️ orderBy 는 Firestore 쿼리가 아니라 클라이언트에서 정렬한다.
+    //   where(eventId) + orderBy(createdAt) 는 복합 인덱스가 필요한데, 이 Firebase
+    //   프로젝트를 공유하는 다른 앱(주차)이 인덱스를 배포하며 스폰서 인덱스를 밀어내
+    //   쿼리가 통째로 실패 → 목록이 비는 사고가 있었다. 등식 필터만 쓰면 단일 인덱스로
+    //   충분해 이런 인덱스 프루닝에 영향받지 않는다.
     const u = onSnapshot(
-      query(
-        collection(getDb(), "sponsors"),
-        where("eventId", "==", eventId),
-        orderBy("createdAt", "desc")
-      ),
+      query(collection(getDb(), "sponsors"), where("eventId", "==", eventId)),
       (s) => {
-        setSponsors(s.docs.map((d) => ({ ...(d.data() as Sponsor), id: d.id })));
+        const rows = s.docs.map((d) => ({ ...(d.data() as Sponsor), id: d.id }));
+        rows.sort((a, b) => {
+          // 방금 추가된(서버 타임스탬프 미확정) 문서는 최신으로 보고 맨 위에.
+          const ta = a.createdAt?.toMillis?.() ?? Number.MAX_SAFE_INTEGER;
+          const tb = b.createdAt?.toMillis?.() ?? Number.MAX_SAFE_INTEGER;
+          return tb - ta;
+        });
+        setSponsors(rows);
         setLoading(false);
       },
-      () => setLoading(false)
+      (err) => {
+        console.error("sponsors load failed", err);
+        setLoading(false);
+      }
     );
     return () => u();
   }, [ready, eventId]);
