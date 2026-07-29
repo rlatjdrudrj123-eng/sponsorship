@@ -4,30 +4,11 @@ service cloud.firestore {
   match /databases/{database}/documents {
 
     // ============================================================
-    //  공통 헬퍼 (주차관리 시스템 — 기존 그대로)
-    // ============================================================
-    function isAuthed() {
-      return request.auth != null;
-    }
-    function isAdmin() {
-      return isAuthed()
-        && exists(/databases/$(database)/documents/admins/$(request.auth.uid))
-        && get(/databases/$(database)/documents/admins/$(request.auth.uid)).data.active == true;
-    }
-    function isValidCarNoStr(s) {
-      return s is string && s.size() >= 4 && s.size() <= 12;
-    }
-    function isValidPeriod(p) {
-      return p is map
-        && p.start is string && p.end is string
-        && p.days is int && p.days >= 3 && p.days <= 5;
-    }
-
-    // ============================================================
-    //  K-PRINT 어드민 헬퍼 (이메일 화이트리스트)
+    //  어드민 헬퍼 (이메일 화이트리스트)
     //  ⚠️ 이 목록은 앱의 NEXT_PUBLIC_ADMIN_EMAILS(.env.local) 와 반드시 일치해야 함.
     //     현재 값: admin@kprint.kr (배포 전 실제 운영 어드민 이메일인지 재검증 필요)
     //     email_verified == true 를 AND 로 걸어 미인증 이메일 위조를 방지함.
+    //  NOTE: 주차관리 시스템은 별도 Firebase 프로젝트로 이전됨 → 관련 규칙 전부 제거(2026-07).
     // ============================================================
     function isKprintAdmin() {
       return request.auth != null
@@ -36,59 +17,7 @@ service cloud.firestore {
     }
 
     // ============================================================
-    //  주차관리 시스템 (기존 그대로)
-    // ============================================================
-    match /companies/{companyId} {
-      allow read: if true;
-      allow create, update, delete: if isAdmin();
-    }
-
-    match /registrations/{regId} {
-      allow read: if true;
-      allow create: if isAdmin() || (
-        request.resource.data.status == 'pending'
-        && request.resource.data.source == 'user'
-        && request.resource.data.deletedAt == null
-        && isValidCarNoStr(request.resource.data.carNo)
-        && isValidCarNoStr(request.resource.data.carNoNormalized)
-        && isValidPeriod(request.resource.data.period)
-        && request.resource.data.companyId is string
-        && request.resource.data.bizNo is string
-        && request.resource.data.companyName is string
-        && request.resource.data.boothNo is string
-      );
-      allow update, delete: if isAdmin();
-    }
-
-    match /carNoIndex/{normalizedCarNo} {
-      allow read: if true;
-      allow create: if true;
-      allow update, delete: if isAdmin();
-    }
-
-    match /admins/{uid} {
-      allow read: if (isAuthed() && request.auth.uid == uid) || isAdmin();
-      allow create, update: if isAdmin();
-      allow delete: if false;
-    }
-
-    match /auditLog/{logId} {
-      allow read: if isAdmin();
-      allow create: if isAdmin();
-      allow update, delete: if false;
-    }
-
-    match /settings/{docId} {
-      allow read: if true;
-      allow write: if isAdmin();
-    }
-
-    match /rateLimits/{id} {
-      allow read, write: if false;
-    }
-
-    // ============================================================
-    //  K-PRINT 시스템
+    //  스폰서십 시스템
     // ============================================================
     match /categories/{id} {
       allow read: if resource.data.isPublished == true || isKprintAdmin();
