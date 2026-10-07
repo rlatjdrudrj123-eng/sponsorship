@@ -224,11 +224,13 @@ export default function ImportPage() {
 
           {parseResult && (
             <>
-              <ParsedSummary
-                result={parseResult}
-                mode={mode}
-                onModeChange={setMode}
-              />
+              <div data-tour="import-summary">
+                <ParsedSummary
+                  result={parseResult}
+                  mode={mode}
+                  onModeChange={setMode}
+                />
+              </div>
 
               {parseResult.errors.length > 0 && (
                 <IssueList
@@ -288,6 +290,7 @@ export default function ImportPage() {
                   <button
                     type="button"
                     onClick={handleUpload}
+                    data-tour="import-run"
                     disabled={!canUpload}
                     className={
                       "px-4 py-2 rounded-btn font-semibold text-[13px] flex items-center gap-1.5 transition-colors " +

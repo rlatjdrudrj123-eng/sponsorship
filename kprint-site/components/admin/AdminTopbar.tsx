@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { BookOpen, HelpCircle, ListChecks, LogOut, MousePointerClick, PlayCircle, RefreshCw } from "lucide-react";
+import { BookOpen, GraduationCap, HelpCircle, ListChecks, LogOut, MousePointerClick, PlayCircle, RefreshCw } from "lucide-react";
 import { MAIN_TOUR, pageTourFor, useOnboarding } from "@/lib/admin/onboarding";
 import { signOut, type User } from "@/lib/firebase/auth";
 import { displayName, isAdminAccess, useAccess } from "@/lib/admin/access";
@@ -114,6 +114,7 @@ function HelpMenu({ pathname }: { pathname: string }) {
   const startTour = useOnboarding((s) => s.startTour);
   const setHidden = useOnboarding((s) => s.setHidden);
   const setCollapsed = useOnboarding((s) => s.setCollapsed);
+  const setPickerOpen = useOnboarding((s) => s.setPickerOpen);
   const pageTour = pageTourFor(pathname);
   const item =
     "w-full text-left px-3 py-2 text-[13px] text-ink-900 hover:bg-ink-50 flex items-center gap-2";
@@ -137,7 +138,7 @@ function HelpMenu({ pathname }: { pathname: string }) {
             aria-label="닫기"
             onClick={() => setOpen(false)}
           />
-          <div className="absolute right-0 top-full mt-1 z-40 bg-white border border-ink-100 rounded-card shadow-xl min-w-[220px] py-1">
+          <div className="absolute right-0 top-full mt-1 z-40 bg-white border border-ink-100 rounded-card shadow-xl min-w-[260px] py-1">
             {pageTour && (
               <button
                 type="button"
@@ -151,6 +152,17 @@ function HelpMenu({ pathname }: { pathname: string }) {
                 {pageTour.label}
               </button>
             )}
+            <button
+              type="button"
+              className={item}
+              onClick={() => {
+                setOpen(false);
+                setPickerOpen(true);
+              }}
+            >
+              <GraduationCap className="w-4 h-4 text-brand-700" />
+              업무 따라하기 (매체·패키지·스폰서 등)
+            </button>
             <button
               type="button"
               className={item}

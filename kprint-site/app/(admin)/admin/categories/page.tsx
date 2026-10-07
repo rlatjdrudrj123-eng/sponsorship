@@ -312,6 +312,7 @@ export default function CategoriesListPage() {
           <button
             type="button"
             onClick={() => setShowAdd(true)}
+            data-tour="cat-new"
             className="px-3.5 py-2 rounded-btn bg-brand-500 text-white text-[13px] font-bold hover:bg-brand-700 flex items-center gap-1.5"
           >
             <Plus className="w-4 h-4" />
@@ -681,7 +682,7 @@ function AddCategoryModal({
         if (e.target === e.currentTarget) onClose();
       }}
     >
-      <div className="bg-white rounded-card w-full max-w-lg p-5 shadow-xl">
+      <div data-tour="cat-new-form" className="bg-white rounded-card w-full max-w-lg p-5 shadow-xl">
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-[16px] font-bold text-ink-900">새 매체 추가</h2>
           <button onClick={onClose} className="p-1 rounded hover:bg-ink-100" type="button">
@@ -691,7 +692,7 @@ function AddCategoryModal({
         <p className="text-[12px] text-ink-500 mb-4 leading-relaxed">
           기본 정보만 입력 → 저장 후 상세 페이지로 이동. 거기서 가격·이미지·
           소분류·구좌 등을 채우세요. 신규 매체는 <strong>비공개</strong>로
-          저장되며, 상단의 [게시] 토글로 사이트에 노출.
+          저장되며, 상세 화면 오른쪽 위 [공개하기]로 사이트에 노출.
         </p>
         <div className="space-y-3">
           <div className="grid grid-cols-2 gap-3">
@@ -774,6 +775,7 @@ function AddCategoryModal({
             type="button"
             onClick={submit}
             disabled={saving}
+            data-tour="cat-new-save"
             className="px-3.5 py-2 rounded-btn bg-brand-500 text-white text-[13px] font-bold hover:bg-brand-700 disabled:opacity-50"
           >
             {saving ? "생성 중…" : "생성 후 상세 편집"}

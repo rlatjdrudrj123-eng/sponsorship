@@ -119,7 +119,7 @@ export default function InquiriesListPage() {
         </select>
       </div>
 
-      <div className="bg-white border border-ink-100 rounded-card overflow-hidden">
+      <div data-tour="inq-list" className="bg-white border border-ink-100 rounded-card overflow-hidden">
         <table className="w-full text-sm">
           <thead>
             <tr className="bg-ink-50 text-[11px] uppercase tracking-wide text-ink-700">

@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { BookOpen, ListChecks, PlayCircle } from "lucide-react";
+import { BookOpen, GraduationCap, ListChecks, PlayCircle } from "lucide-react";
+import { GuideList } from "@/components/admin/Onboarding";
 import { BOOTSTRAP_ADMIN_EMAILS } from "@/lib/firebase/config";
 import { MAIN_TOUR, useOnboarding } from "@/lib/admin/onboarding";
 
@@ -138,6 +139,22 @@ export default function HelpPage() {
         </div>
       </header>
 
+      <section className="space-y-2">
+        <div>
+          <h2 className="text-[15px] font-bold text-ink-900 flex items-center gap-2">
+            <GraduationCap className="w-4 h-4 text-brand-700" />
+            업무 따라하기
+          </h2>
+          <p className="text-[12.5px] text-ink-500 mt-0.5 break-keep leading-relaxed">
+            실제 화면에서 한 단계씩 짚어 드립니다. 강조된 곳을 직접 누르고 입력하면 다음 단계로 넘어갑니다.
+            말풍선이 화면을 가리면 접어 두세요. 실제 데이터로 저장되니, 연습이라면 행사 관리에서 연습용 전시회를
+            만들어 고른 뒤 하세요.
+          </p>
+        </div>
+        <GuideList />
+      </section>
+
+      <h2 className="text-[15px] font-bold text-ink-900 pt-2">업무 요약</h2>
       <ol className="space-y-3">
         {STEPS.map((s, i) => (
           <li key={s.title} className="bg-white border border-ink-100 rounded-card p-4">

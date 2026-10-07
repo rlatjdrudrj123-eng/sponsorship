@@ -177,7 +177,7 @@ export function AdminSidebar() {
           alsoActive: SETTINGS_TAB_PATHS,
           tour: "nav-site",
         },
-        { href: "/admin/settings/landing", label: "메인 페이지 디자인", Icon: Layout },
+        { href: "/admin/settings/landing", label: "메인 페이지 디자인", Icon: Layout, tour: "nav-landing" },
         { href: "/admin/settings/quote", label: "견적서 설정", Icon: FileText },
       ],
     },

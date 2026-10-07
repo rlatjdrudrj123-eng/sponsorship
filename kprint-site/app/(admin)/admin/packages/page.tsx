@@ -63,6 +63,7 @@ export default function PackagesListPage() {
         </div>
         <Link
           href="/admin/packages/new"
+          data-tour="pkg-new"
           className="px-3.5 py-2 rounded-btn bg-brand-500 text-ink-900 font-semibold text-[13px] hover:bg-brand-700 hover:text-white flex items-center gap-1.5"
         >
           <Plus className="w-4 h-4" />

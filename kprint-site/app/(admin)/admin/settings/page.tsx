@@ -338,6 +338,7 @@ export default function SettingsPage() {
           <button
             type="button"
             onClick={handleSave}
+            data-tour="settings-save"
             disabled={saveStatus === "saving"}
             className="px-4 py-2 rounded-btn bg-brand-500 text-white font-bold text-[12.5px] hover:bg-brand-700 flex items-center gap-1.5 disabled:opacity-50 shadow-sm"
           >
@@ -386,7 +387,7 @@ export default function SettingsPage() {
         />
       </Section>
 
-      <Section title="이벤트 정보" id="sec-event" num="02">
+      <Section title="이벤트 정보" id="sec-event" num="02" tour="settings-event">
         <EventCardPreview
           nameKo={form.watch("event.nameKo")}
           dateRange={form.watch("event.dateRange")}
@@ -499,7 +500,7 @@ export default function SettingsPage() {
         </div>
       </Section>
 
-      <Section title="클로징 슬라이드" id="sec-closing" num="05">
+      <Section title="클로징 슬라이드" id="sec-closing" num="05" tour="settings-closing">
         <p className="text-[12px] text-ink-500 leading-relaxed mb-4">
           랜딩·슬라이드 끝과 전체 PDF 마지막 페이지에 나오는 마무리 화면입니다.
           <br />
@@ -638,15 +639,19 @@ function Section({
   children,
   id,
   num,
+  tour,
 }: {
   title: string;
   children: React.ReactNode;
   id?: string;
   num?: string;
+  /** 따라하기가 짚는 대상 (data-tour) */
+  tour?: string;
 }) {
   return (
     <section
       id={id}
+      data-tour={tour}
       className="bg-white border border-ink-100 rounded-card p-5 scroll-mt-[100px]"
     >
       <h2 className="text-[15px] font-bold text-ink-900 mb-4 flex items-baseline gap-2">

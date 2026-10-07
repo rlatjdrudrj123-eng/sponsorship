@@ -61,6 +61,23 @@ export default function EventsPage() {
   };
   const events = useMemo(() => filterAccessibleEvents(access, allEvents), [access, allEvents]);
   const isOwner = (e: EventRow) => !!myUid && (e.ownerUids ?? []).includes(myUid);
+  const selectedEventId = useAdminEvent((s) => s.selectedEventId);
+  // 따라하기가 짚을 [담당자] — 내가 가장 최근에 만든 행사 → 지금 고른 행사 → 첫 줄
+  const assignTourId = (() => {
+    const canAssign = (e: EventRow) => admin || isOwner(e);
+    const newestMine = events
+      .filter(isOwner)
+      .sort(
+        (a, b) =>
+          (b.createdAt?.toMillis?.() ?? Number.MAX_SAFE_INTEGER) -
+          (a.createdAt?.toMillis?.() ?? Number.MAX_SAFE_INTEGER)
+      )[0];
+    return (
+      newestMine?.id ??
+      events.find((e) => e.id === selectedEventId && canAssign(e))?.id ??
+      events.find(canAssign)?.id
+    );
+  })();
 
   useEffect(() => {
     const u = onSnapshot(
@@ -286,7 +303,7 @@ export default function EventsPage() {
                   {(admin || isOwner(e)) && (
                     <button
                       type="button"
-                      data-tour="events-assign"
+                      data-tour={e.id === assignTourId ? "events-assign" : undefined}
                       onClick={() => setAssignFor(e)}
                       className="px-2 py-1 rounded text-[12px] font-semibold text-ink-700 hover:bg-ink-50 inline-flex items-center gap-1"
                       title="이 행사 담당자 지정"
@@ -479,7 +496,7 @@ function AddEventModal({
 
   return (
     <div className="fixed inset-0 z-50 bg-ink-900/40 grid place-items-center p-4">
-      <div className="bg-white rounded-card w-full max-w-md p-5 shadow-xl">
+      <div data-tour="event-form" className="bg-white rounded-card w-full max-w-md p-5 shadow-xl">
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-[16px] font-bold text-ink-900">새 행사 추가</h2>
           <button onClick={onClose} className="p-1 rounded hover:bg-ink-100" type="button">
@@ -621,6 +638,7 @@ function AddEventModal({
           <button
             type="button"
             onClick={submit}
+            data-tour="event-submit"
             disabled={saving || !effectiveSlug || !slugValid || slugDuplicate}
             className="px-3.5 py-2 rounded-btn bg-brand-500 text-ink-900 text-[13px] font-semibold hover:bg-brand-700 disabled:opacity-50"
           >

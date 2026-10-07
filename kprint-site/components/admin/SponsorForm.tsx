@@ -179,7 +179,7 @@ export function SponsorForm({
     <div className="grid grid-cols-1 xl:grid-cols-[1fr_360px] gap-5 items-start">
       {/* LEFT */}
       <div className="space-y-4 min-w-0">
-        <Section title="기본 정보">
+        <Section title="기본 정보" tour="sponsor-basic">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
             <FieldText
               label="기업명 *"
@@ -215,6 +215,7 @@ export function SponsorForm({
         </Section>
 
         <Section
+          tour="sponsor-items"
           title="품목"
           right={<AddButton onClick={() => update("items", [...v.items, { label: "" }])} />}
         >
@@ -447,7 +448,7 @@ export function SponsorForm({
 
       {/* RIGHT */}
       <div className="space-y-4 xl:sticky xl:top-[72px]">
-        <Section title="상태 / 행사">
+        <Section title="상태 / 행사" tour="sponsor-status">
           <div className="space-y-2">
             <div>
               <span className="text-[11px] text-ink-700 font-semibold mb-1 block">상태</span>
@@ -608,6 +609,7 @@ export function SponsorForm({
             type="button"
             onClick={submit}
             disabled={saving}
+            data-tour="sponsor-save"
             className="w-full px-4 py-2.5 rounded-btn bg-brand-500 text-ink-900 text-sm font-bold hover:bg-brand-700 hover:text-white disabled:opacity-50"
           >
             {saving ? "저장 중…" : submitLabel}
@@ -1079,13 +1081,16 @@ function Section({
   title,
   right,
   children,
+  tour,
 }: {
   title: string;
   right?: React.ReactNode;
   children: React.ReactNode;
+  /** 따라하기가 짚는 대상 (data-tour) */
+  tour?: string;
 }) {
   return (
-    <section className="bg-white border border-ink-100 rounded-card p-5">
+    <section data-tour={tour} className="bg-white border border-ink-100 rounded-card p-5">
       <div className="flex items-center justify-between mb-3">
         <h2 className="text-[14px] font-bold text-ink-900">{title}</h2>
         {right}

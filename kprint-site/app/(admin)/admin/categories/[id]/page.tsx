@@ -421,13 +421,39 @@ export default function CategoryEditPage() {
             </div>
           </div>
         </div>
-        <SaveStatusBadge status={saveStatus} lastSaved={lastSaved} error={saveError} />
+        <div className="flex items-center gap-3">
+          <SaveStatusBadge status={saveStatus} lastSaved={lastSaved} error={saveError} />
+          {/* 공개 사이트 노출 — 목록의 게시 토글과 같은 값 */}
+          <button
+            type="button"
+            data-tour="cat-publish"
+            onClick={async () => {
+              try {
+                await updateDoc(doc(getDb(), "categories", category.id), {
+                  isPublished: !category.isPublished,
+                  updatedAt: Timestamp.fromDate(new Date()),
+                });
+              } catch (e) {
+                alert(`공개 상태 변경 실패: ${e instanceof Error ? e.message : String(e)}`);
+              }
+            }}
+            title={category.isPublished ? "누르면 비공개로 바뀝니다" : "누르면 공개 사이트에 보입니다"}
+            className={
+              "px-3.5 py-2 rounded-btn text-[13px] font-bold border " +
+              (category.isPublished
+                ? "bg-brand-50 border-brand-200 text-brand-700 hover:bg-brand-100"
+                : "bg-ink-900 border-ink-900 text-white hover:bg-ink-700")
+            }
+          >
+            {category.isPublished ? "공개 중" : "공개하기"}
+          </button>
+        </div>
       </header>
 
       <div className="grid grid-cols-[1fr_320px] gap-5 items-start">
         <div className="space-y-4 min-w-0">
           {/* 기본 정보 */}
-          <Section title="기본 정보">
+          <Section title="기본 정보" tour="cat-basic">
             <div className="grid grid-cols-2 gap-3">
               <Field
                 label="이름 (한글)"
@@ -769,7 +795,7 @@ export default function CategoryEditPage() {
           )}
 
           {/* 이미지 슬롯 */}
-          <Section title="이미지·영상">
+          <Section title="이미지·영상" tour="cat-images">
             <div className="mb-3 flex items-center gap-1.5 flex-wrap text-[11.5px] text-ink-500">
               <WhereBadges where={["slide-hero", "card", "modal", "pdf"]} />
               <span>슬라이드 우측 메인 영역 · 카탈로그 카드 썸네일 · PDF 우측에 노출됩니다.</span>
@@ -855,7 +881,7 @@ export default function CategoryEditPage() {
           </Section>
 
           {/* 소분류·구좌 */}
-          <Section title={`소분류·구좌 (${subcategories.length}개)`}>
+          <Section title={`소분류·구좌 (${subcategories.length}개)`} tour="cat-subs">
             <SubcategoryTable
               categoryId={id}
               eventId={category?.eventId ?? ""}
@@ -1044,12 +1070,15 @@ function inputCls(locked: boolean): string {
 function Section({
   title,
   children,
+  tour,
 }: {
   title: string;
   children: React.ReactNode;
+  /** 따라하기가 짚는 대상 (data-tour) */
+  tour?: string;
 }) {
   return (
-    <section className="bg-white border border-ink-100 rounded-card p-5">
+    <section data-tour={tour} className="bg-white border border-ink-100 rounded-card p-5">
       <h2 className="text-[15px] font-bold text-ink-900 mb-3">{title}</h2>
       {children}
     </section>

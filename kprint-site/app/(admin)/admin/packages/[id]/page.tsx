@@ -347,7 +347,7 @@ export default function PackageEditPage() {
       </header>
 
       <div className="space-y-4">
-        <Section title="기본 정보">
+        <Section title="기본 정보" tour="pkg-basic">
           <div className="grid grid-cols-2 gap-3">
             <Field label="이름 (한글)">
               <input {...form.register("nameKo")} className={inputCls()} />
@@ -370,7 +370,7 @@ export default function PackageEditPage() {
           </div>
         </Section>
 
-        <Section title="포함 항목 (단품 선택 → 자동 구성)">
+        <Section title="포함 항목 (단품 선택 → 자동 구성)" tour="pkg-items">
           <p className="text-[12px] text-ink-500 mb-3 leading-relaxed">
             카테고리·수량을 고르면 원가·라벨·연결 슬롯·매트릭스 composition 이 자동 계산됩니다.
           </p>
@@ -550,7 +550,7 @@ export default function PackageEditPage() {
           })()}
         </Section>
 
-        <Section title="가격">
+        <Section title="가격" tour="pkg-price">
           <div className="grid grid-cols-3 gap-3">
             <Field label="원가 (자동 계산)">
               <div className="px-3 py-2 text-sm bg-ink-50 rounded-btn border border-ink-100 text-ink-900 font-mono font-bold text-right">
@@ -598,7 +598,7 @@ export default function PackageEditPage() {
           </div>
         </Section>
 
-        <Section title="히어로 이미지">
+        <Section title="히어로 이미지" tour="pkg-image">
           <ImageSlot
             label="패키지 대표 이미지"
             storagePathPrefix={`packages/${id}/hero`}
@@ -609,7 +609,7 @@ export default function PackageEditPage() {
           />
         </Section>
 
-        <Section title="게시 / 순서">
+        <Section title="게시 / 순서" tour="pkg-publish">
           <div className="grid grid-cols-2 gap-3 items-center">
             <div className="space-y-2.5">
               <label className="flex items-center gap-2 text-sm">
@@ -652,9 +652,18 @@ function inputCls(): string {
   return "w-full px-3 py-2 text-sm border border-ink-100 rounded-btn focus:outline-none focus:border-brand-500 bg-white";
 }
 
-function Section({ title, children }: { title: string; children: React.ReactNode }) {
+function Section({
+  title,
+  children,
+  tour,
+}: {
+  title: string;
+  children: React.ReactNode;
+  /** 따라하기가 짚는 대상 (data-tour) */
+  tour?: string;
+}) {
   return (
-    <section className="bg-white border border-ink-100 rounded-card p-5">
+    <section data-tour={tour} className="bg-white border border-ink-100 rounded-card p-5">
       <h2 className="text-[15px] font-bold text-ink-900 mb-3">{title}</h2>
       {children}
     </section>
