@@ -21,6 +21,7 @@ import {
 import { ArrowLeft } from "lucide-react";
 import { getDb } from "@/lib/firebase/firestore";
 import { useEventFilter } from "@/lib/admin/useEventFilter";
+import { filterAccessibleEvents, useAccess } from "@/lib/admin/access";
 import {
   EMPTY_FORM_VALUES,
   SponsorForm,
@@ -49,18 +50,21 @@ export default function NewSponsorPage() {
   const [inqEventId, setInqEventId] = useState<string>("");
   const libraryEventId = presetEvent || inqEventId || headerEventId || "";
 
-  const [events, setEvents] = useState<Event[]>([]);
+  const [allEvents, setAllEvents] = useState<Event[]>([]);
   const [initial, setInitial] = useState<SponsorFormValues | null>(null);
   const [categories, setCategories] = useState<Category[]>([]);
   const [packages, setPackages] = useState<Package[]>([]);
   const [slots, setSlots] = useState<Slot[]>([]);
   const [subcategories, setSubcategories] = useState<Subcategory[]>([]);
+  const access = useAccess();
+  // 담당자는 배정된 행사에만 스폰서를 등록할 수 있다 (보안 규칙과 동일 기준)
+  const events = useMemo(() => filterAccessibleEvents(access, allEvents), [access, allEvents]);
 
   useEffect(() => {
     const u = onSnapshot(
       query(collection(getDb(), "events"), orderBy("order", "asc")),
       (s) => {
-        setEvents(s.docs.map((d) => ({ ...(d.data() as Event), id: d.id })));
+        setAllEvents(s.docs.map((d) => ({ ...(d.data() as Event), id: d.id })));
       }
     );
     return () => u();

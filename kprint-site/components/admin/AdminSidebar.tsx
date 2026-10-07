@@ -24,6 +24,7 @@ import {
   Settings,
   Tags,
   Upload,
+  Users,
 } from "lucide-react";
 import {
   collection,
@@ -35,6 +36,7 @@ import {
 } from "firebase/firestore";
 import { getDb } from "@/lib/firebase/firestore";
 import { useAdminEvent } from "@/lib/admin/adminEventStore";
+import { isAdminAccess, useAccess } from "@/lib/admin/access";
 import type { Event as EventDoc } from "@/lib/types";
 
 // 과거 시드 버그로 event.name 이 { ko, en } 객체로 저장된 데이터 호환.
@@ -85,13 +87,25 @@ export function AdminSidebar() {
     return () => u();
   }, [selectedEventId]);
 
-  // 신규 문의 배지
+  const access = useAccess();
+  const isAdmin = isAdminAccess(access);
+  const [pendingMembers, setPendingMembers] = useState<number>(0);
+
+  // 신규 문의 배지 — 선택한 행사 기준 (담당자는 배정된 행사 문의만 볼 수 있음)
   useEffect(() => {
+    if (!selectedEventId) {
+      setNewInquiries(0);
+      return;
+    }
     let cancelled = false;
     (async () => {
       try {
         const snap = await getCountFromServer(
-          query(collection(getDb(), "inquiries"), where("status", "==", "new"))
+          query(
+            collection(getDb(), "inquiries"),
+            where("eventId", "==", selectedEventId),
+            where("status", "==", "new")
+          )
         );
         if (!cancelled) setNewInquiries(snap.data().count);
       } catch {
@@ -101,7 +115,29 @@ export function AdminSidebar() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [selectedEventId]);
+
+  // 승인 대기 멤버 배지 — 관리자만
+  useEffect(() => {
+    if (!isAdmin) {
+      setPendingMembers(0);
+      return;
+    }
+    let cancelled = false;
+    (async () => {
+      try {
+        const snap = await getCountFromServer(
+          query(collection(getDb(), "members"), where("status", "==", "pending"))
+        );
+        if (!cancelled) setPendingMembers(snap.data().count);
+      } catch {
+        // 보안 규칙 배포 전 등 권한 미준비 — 조용히 무시
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [isAdmin, pathname]);
 
   const sections: Section[] = [
     {
@@ -109,6 +145,16 @@ export function AdminSidebar() {
       items: [
         { href: "/admin", label: "대시보드", Icon: LayoutDashboard, exact: true },
         { href: "/admin/events", label: "행사 관리", Icon: CalendarDays },
+        ...(isAdmin
+          ? [
+              {
+                href: "/admin/members",
+                label: "멤버 관리",
+                Icon: Users,
+                badge: pendingMembers > 0 ? pendingMembers : undefined,
+              },
+            ]
+          : []),
       ],
     },
     {

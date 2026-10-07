@@ -3,10 +3,12 @@
 import { usePathname, useRouter } from "next/navigation";
 import { HelpCircle, LogOut, RefreshCw } from "lucide-react";
 import { signOut, type User } from "@/lib/firebase/auth";
+import { displayName, isAdminAccess, useAccess } from "@/lib/admin/access";
 import { EventSelector } from "./EventSelector";
 
 const PATH_LABELS: Record<string, string> = {
   "/admin": "대시보드",
+  "/admin/members": "멤버 관리",
   "/admin/import": "엑셀 업로드",
   "/admin/categories": "카테고리",
   "/admin/packages": "패키지",
@@ -32,7 +34,10 @@ function pageLabel(pathname: string): string {
 export function AdminTopbar({ user }: { user: User | null }) {
   const router = useRouter();
   const pathname = usePathname();
-  const initial = (user?.email?.[0] ?? "A").toUpperCase();
+  const access = useAccess();
+  const name = displayName(access);
+  const roleLabel = isAdminAccess(access) ? "관리자" : "담당자";
+  const initial = (name?.[0] ?? user?.email?.[0] ?? "A").toUpperCase();
 
   const handleLogout = async () => {
     await signOut();
@@ -74,10 +79,16 @@ export function AdminTopbar({ user }: { user: User | null }) {
 
       <div className="flex items-center gap-2 pl-3 ml-1 border-l border-ink-100">
         <div
-          className="w-8 h-8 rounded-full bg-brand-500 text-ink-900 grid place-items-center font-bold text-[13px]"
+          className="w-8 h-8 rounded-full bg-brand-500 text-white grid place-items-center font-bold text-[13px]"
           title={user?.email ?? ""}
         >
           {initial}
+        </div>
+        <div className="hidden md:block leading-tight min-w-0">
+          <div className="text-[12.5px] font-semibold text-ink-900 truncate max-w-[140px]">
+            {name}
+          </div>
+          <div className="text-[11px] text-ink-500">{roleLabel}</div>
         </div>
         <button
           type="button"

@@ -2,9 +2,11 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { collection, onSnapshot, orderBy, query } from "firebase/firestore";
+import { collection, onSnapshot, query, where } from "firebase/firestore";
 import { ChevronRight, Search } from "lucide-react";
 import { getDb } from "@/lib/firebase/firestore";
+import { useEventFilter } from "@/lib/admin/useEventFilter";
+import { receiptNo } from "@/lib/receiptNo";
 import type { Inquiry } from "@/lib/types";
 
 type StatusFilter = "all" | "new" | "in_progress" | "closed";
@@ -22,24 +24,33 @@ export default function InquiriesListPage() {
   const [filterPeriod, setFilterPeriod] = useState<PeriodFilter>("all");
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
+  const { eventId, ready } = useEventFilter();
 
-  // 문의는 행사와 무관하게 전체를 보여줌 (사이드바 카운트와 항상 일치).
-  // inquiry.eventId 는 row 내 라벨로 노출 — 어느 행사 문의인지 운영자가 직접 확인.
+  // 선택한 행사의 문의만 — 담당자는 배정된 행사 문의만 읽을 수 있고(보안 규칙),
+  // 사이드바 '새 문의' 숫자도 같은 기준. 정렬은 클라이언트에서 (복합 인덱스 불필요).
   useEffect(() => {
-    const q = query(
-      collection(getDb(), "inquiries"),
-      orderBy("createdAt", "desc")
-    );
+    if (!ready || !eventId) {
+      setInquiries([]);
+      setLoading(false);
+      return;
+    }
+    setLoading(true);
     const u = onSnapshot(
-      q,
+      query(collection(getDb(), "inquiries"), where("eventId", "==", eventId)),
       (s) => {
-        setInquiries(s.docs.map((d) => ({ ...(d.data() as Inquiry), id: d.id })));
+        const rows = s.docs.map((d) => ({ ...(d.data() as Inquiry), id: d.id }));
+        rows.sort(
+          (a, b) =>
+            (b.createdAt?.toMillis?.() ?? Number.MAX_SAFE_INTEGER) -
+            (a.createdAt?.toMillis?.() ?? Number.MAX_SAFE_INTEGER)
+        );
+        setInquiries(rows);
         setLoading(false);
       },
       () => setLoading(false)
     );
     return () => u();
-  }, []);
+  }, [ready, eventId]);
 
   const filtered = useMemo(() => {
     let rows = inquiries;
@@ -54,11 +65,14 @@ export default function InquiriesListPage() {
     }
     if (search.trim()) {
       const q = search.toLowerCase().trim();
+      const qNo = q.replace(/^#/, "");
       rows = rows.filter(
         (r) =>
           r.companyName.toLowerCase().includes(q) ||
           r.contactName.toLowerCase().includes(q) ||
-          r.email.toLowerCase().includes(q)
+          r.email.toLowerCase().includes(q) ||
+          // 고객이 받은 접수번호(문서 ID 앞 8자리, 대문자 표기)로도 찾기
+          (qNo.length >= 4 && r.id.toLowerCase().startsWith(qNo))
       );
     }
     return rows;
@@ -80,7 +94,7 @@ export default function InquiriesListPage() {
             type="text"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="회사·담당자·이메일 검색"
+            placeholder="회사·담당자·이메일·접수번호 검색"
             className="w-full pl-9 pr-3 py-2 text-sm border border-ink-100 rounded-btn focus:outline-none focus:border-brand-500"
           />
         </div>
@@ -153,8 +167,8 @@ export default function InquiriesListPage() {
                   >
                     {inq.companyName}
                   </Link>
-                  <div className="text-[10px] text-ink-300 font-mono mt-0.5">
-                    {inq.eventId || "(event 없음)"}
+                  <div className="text-[10.5px] text-ink-500 font-mono mt-0.5">
+                    접수번호 {receiptNo(inq.id)}
                   </div>
                 </td>
                 <td className="px-4 py-2.5">

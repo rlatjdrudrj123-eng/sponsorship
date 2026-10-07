@@ -224,7 +224,7 @@ export async function generateExportBuffer(
   const rows = rowsFromFirestore(categories, subcategories, slots);
 
   const wb = new ExcelJS.Workbook();
-  wb.creator = "K-PRINT Admin";
+  wb.creator = "Sponsorship Admin";
   wb.created = new Date();
 
   buildExportDataSheet(wb, rows);

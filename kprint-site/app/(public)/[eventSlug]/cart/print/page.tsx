@@ -15,18 +15,30 @@ import type {
   Slot,
   Subcategory,
 } from "@/lib/types";
+import {
+  useLocale,
+  localized,
+  localizedField,
+  type Locale,
+} from "@/lib/i18n/locale";
+import { t } from "@/lib/i18n/strings";
+import { getDisplayPackagePrice, getDisplayPrice } from "@/lib/price";
 
-const CHANNEL_LABELS: Record<Channel, string> = {
-  offline: "오프라인",
-  online: "온라인",
-  package: "패키지",
+// 영문 PDF 는 /[eventSlug]/en/cart/print (이 페이지 re-export).
+// 가격은 사이트 화면과 같은 기준 — 국문 KRW, 영문은 사무국이 따로 정한 USD(lib/price).
+const CHANNEL_LABELS: Record<Locale, Record<Channel, string>> = {
+  ko: { offline: "오프라인", online: "온라인", package: "패키지" },
+  en: { offline: "Offline", online: "Online", package: "Package" },
 };
 
 export default function CartPrintPage() {
+  const locale = useLocale((s) => s.locale);
   return (
     <Suspense
       fallback={
-        <div className="p-12 text-center text-sm text-ink-500">불러오는 중…</div>
+        <div className="p-12 text-center text-sm text-ink-500">
+          {t("common.loading", locale)}
+        </div>
       }
     >
       <CartPrintContent />
@@ -41,6 +53,8 @@ function CartPrintContent() {
   const idsParam = search.get("ids") ?? "";
   const items = useCartStore((s) => s.items);
   const hydrated = useCartStore((s) => s.hasHydrated);
+  const locale = useLocale((s) => s.locale);
+  const isEn = locale === "en";
 
   const [categories, setCategories] = useState<Map<string, Category>>(new Map());
   const [subcategories, setSubcategories] = useState<Map<string, Subcategory>>(new Map());
@@ -215,13 +229,13 @@ function CartPrintContent() {
     if (missingSlotCodes.length > 0) {
       result.push({
         kind: "missing",
-        label: "기타 항목",
+        label: isEn ? "Other items" : "기타 항목",
         codes: missingSlotCodes,
       });
     }
 
     return result;
-  }, [selected, slots, packages, categories, subcategories]);
+  }, [selected, slots, packages, categories, subcategories, isEn]);
 
   // 데이터 로드 + 카트 hydrate 완료 후 자동 인쇄 다이얼로그
   useEffect(() => {
@@ -230,10 +244,16 @@ function CartPrintContent() {
     return () => clearTimeout(t);
   }, [ready, hydrated]);
 
-  const eventName = settings?.event?.nameKo ?? eventId ?? "행사";
+  const eventName = isEn
+    ? settings?.event?.nameEn?.trim() || settings?.event?.nameKo || eventId || "Event"
+    : settings?.event?.nameKo ?? eventId ?? "행사";
 
   if (!ready || !hydrated) {
-    return <div className="p-12 text-center text-sm text-ink-500">불러오는 중…</div>;
+    return (
+      <div className="p-12 text-center text-sm text-ink-500">
+        {t("common.loading", locale)}
+      </div>
+    );
   }
 
   return (
@@ -241,7 +261,9 @@ function CartPrintContent() {
       {/* 인쇄 안내 */}
       <div className="print:hidden bg-white border-b border-ink-100 px-6 py-3 flex items-center justify-between sticky top-0 z-20">
         <p className="text-[13px] text-ink-700">
-          관심 항목 {pages.length}페이지 미리보기 — 자동으로 인쇄 다이얼로그가 열립니다. PDF로 저장하려면 [PDF로 저장]을 선택하세요.
+          {isEn
+            ? `Preview of ${pages.length} page${pages.length === 1 ? "" : "s"} — the print dialog opens automatically. To save a PDF, choose "Save as PDF".`
+            : `관심 항목 ${pages.length}페이지 미리보기 — 자동으로 인쇄 다이얼로그가 열립니다. PDF로 저장하려면 [PDF로 저장]을 선택하세요.`}
         </p>
         <button
           type="button"
@@ -249,14 +271,14 @@ function CartPrintContent() {
           className="px-3.5 py-2 rounded-btn bg-ink-900 text-white text-[12px] font-semibold hover:bg-ink-700 flex items-center gap-1.5"
         >
           <Printer className="w-3.5 h-3.5" />
-          인쇄 / PDF
+          {isEn ? "Print / PDF" : "인쇄 / PDF"}
         </button>
       </div>
 
       <div className="print:m-0">
         {pages.length === 0 && (
           <div className="bg-white mx-auto my-6 w-[297mm] min-h-[210mm] p-12 grid place-items-center text-sm text-ink-500">
-            출력할 항목이 없습니다.
+            {isEn ? "No items to print." : "출력할 항목이 없습니다."}
           </div>
         )}
 
@@ -271,6 +293,7 @@ function CartPrintContent() {
                 index={i}
                 total={pages.length}
                 eventName={eventName}
+                locale={locale}
               />
             );
           }
@@ -282,6 +305,7 @@ function CartPrintContent() {
                 index={i}
                 total={pages.length}
                 eventName={eventName}
+                locale={locale}
               />
             );
           }
@@ -292,6 +316,7 @@ function CartPrintContent() {
               index={i}
               total={pages.length}
               eventName={eventName}
+              locale={locale}
             />
           );
         })}
@@ -333,6 +358,7 @@ function CategorySlide({
   index,
   total,
   eventName,
+  locale,
 }: {
   category: Category;
   pickedSlots: Slot[];
@@ -340,10 +366,16 @@ function CategorySlide({
   index: number;
   total: number;
   eventName: string;
+  locale: Locale;
 }) {
+  const isEn = locale === "en";
   const hero = category.heroImages?.images?.[0]?.url;
+  const name = localized(category.name, locale);
+  const shortDesc = localizedField(category.shortDesc, category.shortDescEn, locale);
+  const size = localizedField(category.size, category.sizeEn, locale);
+  const fileFormat = localizedField(category.fileFormat, category.fileFormatEn, locale);
   const deadlineStr = category.deadline
-    ? category.deadline.toDate().toLocaleDateString("ko-KR", {
+    ? category.deadline.toDate().toLocaleDateString(isEn ? "en-US" : "ko-KR", {
         year: "numeric",
         month: "long",
         day: "numeric",
@@ -356,12 +388,14 @@ function CategorySlide({
     .map((id) => subcategoryById.get(id))
     .filter((s): s is Subcategory => !!s)
     .sort((a, b) => a.order - b.order);
-  const minPrice = pickedSubs.length > 0
-    ? Math.min(...pickedSubs.map((s) => s.priceKRW).filter((p) => p > 0))
-    : 0;
+  // 가격이 모두 0(별도 문의)이면 Math.min() 이 Infinity 가 되어 "∞원" 이 찍히던 문제 — 양수만 대상
+  const positivePrices = pickedSubs
+    .map((s) => getDisplayPrice(s, locale).value)
+    .filter((p) => p > 0);
+  const minPrice = positivePrices.length > 0 ? Math.min(...positivePrices) : 0;
 
   const hashTags: string[] = [
-    CHANNEL_LABELS[category.channel],
+    CHANNEL_LABELS[locale][category.channel],
     ...(category.tags ?? []).slice(0, 2),
   ];
 
@@ -372,7 +406,7 @@ function CategorySlide({
         <div className="flex flex-col min-w-0">
           {/* 행사명 (작게, 상단) */}
           <div className="text-[10px] uppercase tracking-[0.2em] text-brand-700 font-bold mb-1">
-            {eventName} · 관심 항목
+            {eventName} · {t("cart.title", locale)}
           </div>
 
           {/* 해시태그 */}
@@ -385,15 +419,15 @@ function CategorySlide({
           {/* 거대한 카테고리 명 + 코드 */}
           <div className="flex items-baseline gap-3 flex-wrap">
             <h2 className="text-[48px] font-bold leading-[0.95] tracking-tight text-ink-900">
-              {category.name.ko}
+              {name}
             </h2>
             <span className="text-[15px] text-ink-300 font-mono">#{category.code}</span>
           </div>
 
           {/* 한 줄 설명 */}
-          {category.shortDesc && (
+          {shortDesc && (
             <p className="text-[13px] text-ink-700 mt-3 leading-relaxed">
-              {category.shortDesc}
+              {shortDesc}
             </p>
           )}
 
@@ -401,36 +435,47 @@ function CategorySlide({
 
           {/* 스펙 표 */}
           <dl className="space-y-2.5">
-            {category.size && <SpecRow label="규격" value={category.size} />}
-            {category.fileFormat && <SpecRow label="파일 형식" value={category.fileFormat} />}
-            {deadlineStr && <SpecRow label="제출 마감" value={deadlineStr} />}
+            {size && <SpecRow label={t("spons.size", locale)} value={size} />}
+            {fileFormat && (
+              <SpecRow label={t("spons.fileFormat", locale)} value={fileFormat} />
+            )}
+            {deadlineStr && (
+              <SpecRow label={t("spons.submitDeadline", locale)} value={deadlineStr} />
+            )}
             <SpecRow
-              label="선택한 구좌"
+              label={isEn ? "Selected slots" : "선택한 구좌"}
               value={
                 <span className="font-mono">
                   {pickedSlots.map((s) => s.code).join(", ")}{" "}
-                  <span className="text-ink-500">({pickedSlots.length}개)</span>
+                  <span className="text-ink-500">
+                    ({isEn ? pickedSlots.length : `${pickedSlots.length}개`})
+                  </span>
                 </span>
               }
             />
           </dl>
 
-          {/* 가격 */}
+          {/* 가격 — 국문 KRW / 영문 USD (사이트 화면과 같은 값) */}
           <div className="mt-auto pt-4">
             <hr className="border-ink-100 mb-4" />
             <div className="flex items-baseline justify-end gap-2">
               <div className="text-right">
                 {minPrice > 0 ? (
                   <>
-                    <div className="text-[14px] text-ink-500 mb-1">최저가</div>
-                    <div className="text-[34px] font-bold text-ink-900 leading-none tracking-tight">
-                      {minPrice.toLocaleString()}
-                      <span className="text-[16px] ml-1 font-semibold">원</span>
+                    <div className="text-[14px] text-ink-500 mb-1">
+                      {t("spons.minPrice", locale)}
                     </div>
-                    <div className="text-[10.5px] text-ink-500 mt-1">(부가세 별도)</div>
+                    <div className="text-[34px] font-bold text-ink-900 leading-none tracking-tight">
+                      <PriceFigure value={minPrice} isEn={isEn} />
+                    </div>
+                    <div className="text-[10.5px] text-ink-500 mt-1">
+                      {t("common.priceVatExcluded", locale)}
+                    </div>
                   </>
                 ) : (
-                  <div className="text-[14px] text-ink-500">가격 협의</div>
+                  <div className="text-[14px] text-ink-500">
+                    {isEn ? "Price on request" : "가격 협의"}
+                  </div>
                 )}
               </div>
             </div>
@@ -444,12 +489,12 @@ function CategorySlide({
               // eslint-disable-next-line @next/next/no-img-element
               <img
                 src={hero}
-                alt={category.name.ko}
+                alt={name}
                 className="absolute inset-0 w-full h-full object-cover"
               />
             ) : (
               <div className="w-full h-full grid place-items-center text-ink-300 text-sm">
-                이미지 준비 중
+                {isEn ? "Image coming soon" : "이미지 준비 중"}
               </div>
             )}
           </div>
@@ -475,43 +520,53 @@ function PackageSlide({
   index,
   total,
   eventName,
+  locale,
 }: {
   pkg: Package;
   index: number;
   total: number;
   eventName: string;
+  locale: Locale;
 }) {
+  const isEn = locale === "en";
   const hero = pkg.heroImages?.images?.[0]?.url;
-  const hasDiscount = pkg.originalPrice > pkg.discountPrice && pkg.originalPrice > 0;
+  const price = getDisplayPackagePrice(pkg, locale);
+  const hasDiscount =
+    price.original.value > price.discount.value && price.original.value > 0;
+  const name = localized(pkg.name, locale);
+  const tagline = localizedField(pkg.tagline, pkg.taglineEn, locale);
+  const priceNote = localizedField(pkg.priceNote, pkg.priceNoteEn, locale);
+  const tierLabel =
+    pkg.tier === "signature" ? t("pkg.signature", locale) : t("pkg.standard", locale);
 
   return (
     <section className="a4-page bg-white shadow print:shadow-none mx-auto print:mx-0 my-4 print:my-0 w-[297mm] h-[210mm] relative overflow-hidden">
       <div className="h-full px-12 py-10 grid grid-cols-[1.1fr_1fr] gap-10 items-stretch">
         <div className="flex flex-col min-w-0">
           <div className="text-[10px] uppercase tracking-[0.2em] text-brand-700 font-bold mb-1">
-            {eventName} · 관심 항목
+            {eventName} · {t("cart.title", locale)}
           </div>
 
           <div className="flex flex-wrap gap-x-4 gap-y-1 text-[13px] tracking-wide text-brand-700 font-semibold mb-4">
-            <span>#패키지</span>
-            <span>#{pkg.tier === "signature" ? "시그니처" : "스탠다드"}</span>
+            <span>#{CHANNEL_LABELS[locale].package}</span>
+            <span>#{tierLabel}</span>
           </div>
 
           <div className="flex items-baseline gap-3 flex-wrap">
             <h2 className="text-[48px] font-bold leading-[0.95] tracking-tight text-ink-900">
-              {pkg.name.ko}
+              {name}
             </h2>
             <span className="text-[15px] text-ink-300 font-mono">#{pkg.code}</span>
             {pkg.soldOut && (
               <span className="text-[10px] uppercase tracking-wider px-2 py-0.5 rounded font-bold bg-ink-300 text-white self-center">
-                매진
+                {isEn ? "Sold out" : "매진"}
               </span>
             )}
           </div>
 
-          {pkg.tagline && (
+          {tagline && (
             <p className="text-[13px] text-ink-700 mt-3 leading-relaxed">
-              {pkg.tagline}
+              {tagline}
             </p>
           )}
 
@@ -520,41 +575,48 @@ function PackageSlide({
           {/* 포함 항목 */}
           {pkg.includedItems && pkg.includedItems.length > 0 && (
             <div>
-              <div className="text-[12px] font-bold text-ink-900 mb-2">포함 항목</div>
+              <div className="text-[12px] font-bold text-ink-900 mb-2">
+                {isEn ? "Included items" : "포함 항목"}
+              </div>
               <ul className="space-y-1 text-[12.5px] text-ink-700">
                 {pkg.includedItems.map((it, i) => (
-                  <li key={i}>· {it.label}</li>
+                  <li key={i}>· {localizedField(it.label, it.labelEn, locale)}</li>
                 ))}
               </ul>
             </div>
           )}
 
-          {pkg.priceNote && (
+          {priceNote && (
             <p className="text-[11px] text-ink-500 mt-3 leading-relaxed whitespace-pre-line">
-              {pkg.priceNote}
+              {priceNote}
             </p>
           )}
 
-          {/* 가격 */}
+          {/* 가격 — 국문 KRW / 영문 USD (사이트 화면과 같은 값) */}
           <div className="mt-auto pt-4">
             <hr className="border-ink-100 mb-4" />
             <div className="flex items-baseline justify-end gap-2">
               <div className="text-right">
                 {hasDiscount && (
                   <div className="text-[14px] text-ink-500 line-through font-mono mb-1">
-                    {pkg.originalPrice.toLocaleString()}원
+                    {isEn
+                      ? `$${price.original.value.toLocaleString()}`
+                      : `${price.original.value.toLocaleString()}원`}
                   </div>
                 )}
-                {pkg.discountPrice > 0 ? (
+                {price.discount.value > 0 ? (
                   <>
                     <div className="text-[34px] font-bold text-brand-700 leading-none tracking-tight">
-                      {pkg.discountPrice.toLocaleString()}
-                      <span className="text-[16px] ml-1 font-semibold text-ink-900">원</span>
+                      <PriceFigure value={price.discount.value} isEn={isEn} unitClass="text-ink-900" />
                     </div>
-                    <div className="text-[10.5px] text-ink-500 mt-1">(부가세 별도)</div>
+                    <div className="text-[10.5px] text-ink-500 mt-1">
+                      {t("common.priceVatExcluded", locale)}
+                    </div>
                   </>
                 ) : (
-                  <div className="text-[14px] text-ink-500">가격 협의</div>
+                  <div className="text-[14px] text-ink-500">
+                    {isEn ? "Price on request" : "가격 협의"}
+                  </div>
                 )}
               </div>
             </div>
@@ -567,12 +629,12 @@ function PackageSlide({
               // eslint-disable-next-line @next/next/no-img-element
               <img
                 src={hero}
-                alt={pkg.name.ko}
+                alt={name}
                 className="absolute inset-0 w-full h-full object-cover"
               />
             ) : (
               <div className="w-full h-full grid place-items-center text-ink-300 text-sm">
-                이미지 준비 중
+                {isEn ? "Image coming soon" : "이미지 준비 중"}
               </div>
             )}
           </div>
@@ -597,23 +659,28 @@ function MissingSlide({
   index,
   total,
   eventName,
+  locale,
 }: {
   codes: string[];
   index: number;
   total: number;
   eventName: string;
+  locale: Locale;
 }) {
+  const isEn = locale === "en";
   return (
     <section className="a4-page bg-white shadow print:shadow-none mx-auto print:mx-0 my-4 print:my-0 w-[297mm] h-[210mm] relative overflow-hidden">
       <div className="h-full px-12 py-10 flex flex-col">
         <div className="text-[10px] uppercase tracking-[0.2em] text-ink-500 font-bold mb-1">
-          {eventName} · 관심 항목
+          {eventName} · {t("cart.title", locale)}
         </div>
         <h2 className="text-[36px] font-bold tracking-tight text-ink-900">
-          데이터 미연결 항목
+          {isEn ? "Items without details" : "데이터 미연결 항목"}
         </h2>
         <p className="text-[13px] text-ink-500 mt-2">
-          상세 정보를 불러오지 못한 항목들입니다. 사무국에 문의하시면 안내드립니다.
+          {isEn
+            ? "Details for these items couldn't be loaded. Contact the secretariat for more information."
+            : "상세 정보를 불러오지 못한 항목들입니다. 사무국에 문의하시면 안내드립니다."}
         </p>
         <ul className="mt-6 grid grid-cols-3 gap-2 text-[13px] font-mono text-ink-700">
           {codes.map((c, i) => (
@@ -642,5 +709,31 @@ function SpecRow({ label, value }: { label: string; value: React.ReactNode }) {
       <dt className="text-[13px] font-bold text-ink-900 w-24 shrink-0">{label}</dt>
       <dd className="text-[13px] text-ink-700 flex-1 min-w-0 break-words">{value}</dd>
     </div>
+  );
+}
+
+// 큰 가격 숫자 — 국문 "1,000,000원", 영문 "$1,000"
+function PriceFigure({
+  value,
+  isEn,
+  unitClass = "",
+}: {
+  value: number;
+  isEn: boolean;
+  unitClass?: string;
+}) {
+  if (isEn) {
+    return (
+      <>
+        <span className={`text-[22px] mr-0.5 font-semibold align-top ${unitClass}`}>$</span>
+        {value.toLocaleString()}
+      </>
+    );
+  }
+  return (
+    <>
+      {value.toLocaleString()}
+      <span className={`text-[16px] ml-1 font-semibold ${unitClass}`}>원</span>
+    </>
   );
 }

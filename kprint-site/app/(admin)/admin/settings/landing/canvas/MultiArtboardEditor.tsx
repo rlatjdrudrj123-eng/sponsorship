@@ -22,6 +22,7 @@ import type {
 } from "@/lib/types";
 import { CanvasEditor, NodePreview, resolveBg } from "./CanvasEditor";
 import { buildStoragePath, uploadFile } from "@/lib/firebase/storage";
+import { landingUploadPrefix } from "@/lib/admin/adminEventStore";
 
 /**
  * Figma 식 멀티 아트보드 에디터.
@@ -975,7 +976,7 @@ export function MultiArtboardEditor({
               setUploading(true);
               try {
                 const path = buildStoragePath(
-                  "landing/canvas-multi",
+                  landingUploadPrefix("canvas-multi"),
                   file.name
                 );
                 const { url } = await uploadFile(file, path);

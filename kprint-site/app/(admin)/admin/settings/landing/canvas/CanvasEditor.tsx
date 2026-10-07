@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState, type CSSProperties } from "react";
 import { buildStoragePath, uploadFile } from "@/lib/firebase/storage";
+import { landingUploadPrefix } from "@/lib/admin/adminEventStore";
 import {
   AlignLeft,
   AlignCenter,
@@ -509,7 +510,7 @@ export function CanvasEditor({
           blob instanceof File
             ? blob
             : new File([blob], suggestedName, { type: blob.type || "image/png" });
-        const path = buildStoragePath("landing/canvas-paste", file.name);
+        const path = buildStoragePath(landingUploadPrefix("canvas-paste"), file.name);
         const result = await uploadFile(file, path);
 
         // 이미지 본래 크기로 노드 만들고 캔버스 안에서 80% 이내로 맞춤
@@ -1710,7 +1711,7 @@ function PageBgUploader({
           setUploading(true);
           setProgress(0);
           try {
-            const path = buildStoragePath("landing/canvas-page-bg", file.name);
+            const path = buildStoragePath(landingUploadPrefix("canvas-page-bg"), file.name);
             const { url } = await uploadFile(file, path, (p) => setProgress(p));
             onChange(url);
           } catch (err) {
@@ -2123,7 +2124,7 @@ function ImageNodeInspector({
               setProgress(0);
               try {
                 const path = buildStoragePath(
-                  "landing/canvas-upload",
+                  landingUploadPrefix("canvas-upload"),
                   file.name
                 );
                 const { url } = await uploadFile(file, path, (p) =>

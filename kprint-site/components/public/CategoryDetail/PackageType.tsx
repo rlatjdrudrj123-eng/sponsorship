@@ -6,7 +6,9 @@ import { useParams } from "next/navigation";
 import { ArrowLeft, Bookmark, BookmarkCheck, Check, Gift, X } from "lucide-react";
 import type { Category, Package, SiteSettings, Slot } from "@/lib/types";
 import { useCartStore } from "@/lib/cart/cartStore";
+import { showCartToast } from "@/lib/cart/cartToast";
 import { Footer } from "@/components/public/Footer";
+import { CartToast } from "@/components/public/CartToast";
 import { useLocale, localized, localizedField } from "@/lib/i18n/locale";
 import { getDisplayPackagePrice, formatPrice } from "@/lib/price";
 import {
@@ -206,6 +208,7 @@ export function PackageType({
                 price: pkg.discountPrice,
               });
               setConfirming(false);
+              showCartToast();
             }}
             onRemove={() => {
               removePackage(pkg.id);
@@ -213,6 +216,9 @@ export function PackageType({
             }}
           />
         )}
+
+        {/* 담기 완료 알림 — body 포털 */}
+        <CartToast />
       </>
     );
   }
@@ -381,6 +387,7 @@ export function PackageType({
               price: pkg.discountPrice,
             });
             setConfirming(false);
+            showCartToast();
           }}
           onRemove={() => {
             removePackage(pkg.id);
@@ -388,6 +395,9 @@ export function PackageType({
           }}
         />
       )}
+
+      {/* 담기 완료 알림 — body 포털 */}
+      <CartToast />
     </>
   );
 }

@@ -1,7 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Monitor, Smartphone } from "lucide-react";
+import { doc, getDoc } from "firebase/firestore";
+import { getDb } from "@/lib/firebase/firestore";
 import type { Category } from "@/lib/types";
 
 type Props = {
@@ -10,6 +12,22 @@ type Props = {
 
 export function LivePreview({ category }: Props) {
   const [device, setDevice] = useState<"desktop" | "mobile">("desktop");
+  // 상단 작은 라벨 — 이 카테고리가 속한 행사 이름 (K-PRINT 고정 표기 제거)
+  const [eventName, setEventName] = useState("");
+  const eventId = category?.eventId;
+  useEffect(() => {
+    if (!eventId) return;
+    let cancelled = false;
+    getDoc(doc(getDb(), "events", eventId))
+      .then((s) => {
+        const n = s.data()?.name;
+        if (!cancelled) setEventName(typeof n === "string" ? n : "");
+      })
+      .catch(() => undefined);
+    return () => {
+      cancelled = true;
+    };
+  }, [eventId]);
 
   return (
     <div className="bg-white border border-ink-100 rounded-card overflow-hidden">
@@ -50,7 +68,7 @@ export function LivePreview({ category }: Props) {
           <div className="absolute inset-0 bg-gradient-to-br from-brand-500/20 via-transparent to-transparent" />
           <div className="relative p-4">
             <div className="text-[10px] uppercase tracking-widest text-brand-500 mb-1.5">
-              K-PRINT 2026
+              {eventName}
             </div>
             <div className="text-[16px] font-bold leading-tight">
               {category?.name.ko ?? "카테고리 이름"}

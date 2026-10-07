@@ -3,6 +3,8 @@
 import { useEffect, useState } from "react";
 import { Bookmark, BookmarkCheck, Check, MapPin, X } from "lucide-react";
 import { useCartStore } from "@/lib/cart/cartStore";
+import { showCartToast } from "@/lib/cart/cartToast";
+import { CartToast } from "@/components/public/CartToast";
 import type { Slot, Subcategory } from "@/lib/types";
 import { localized, localizedField, useLocale } from "@/lib/i18n/locale";
 import { getDisplayPrice, formatPrice } from "@/lib/price";
@@ -148,6 +150,7 @@ export function SlotPicker({ categoryId, eventId, subcategories, slots }: Props)
               price: picked.sub.priceKRW,
             });
             setPicked(null);
+            showCartToast();
           }}
           onRemove={() => {
             removeSlot(picked.slot.id);
@@ -155,6 +158,9 @@ export function SlotPicker({ categoryId, eventId, subcategories, slots }: Props)
           }}
         />
       )}
+
+      {/* 담기 완료 알림 — body 포털 */}
+      <CartToast />
     </>
   );
 }

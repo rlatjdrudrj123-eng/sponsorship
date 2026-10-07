@@ -1194,7 +1194,7 @@ function buildGuideSheet(wb: ExcelJS.Workbook): ExcelJS.Worksheet {
   ];
 
   // ─── 타이틀 ───
-  const titleRow = ws.addRow(["K-PRINT 스폰서십 엑셀 양식 안내"]);
+  const titleRow = ws.addRow(["스폰서십 엑셀 양식 안내"]);
   titleRow.font = { bold: true, size: 16, name: "Pretendard" };
   titleRow.height = 28;
   ws.addRow([]);
@@ -1284,7 +1284,7 @@ function buildGuideSheet(wb: ExcelJS.Workbook): ExcelJS.Worksheet {
 
 export async function generateTemplateBuffer(): Promise<Uint8Array> {
   const wb = new ExcelJS.Workbook();
-  wb.creator = "K-PRINT Admin";
+  wb.creator = "Sponsorship Admin";
   wb.created = new Date();
   buildDataSheet(wb);
   buildGuideSheet(wb);

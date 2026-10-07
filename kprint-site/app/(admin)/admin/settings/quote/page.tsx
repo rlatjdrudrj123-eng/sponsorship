@@ -1,72 +1,166 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
+  collection,
   doc,
   getDoc,
+  getDocs,
   serverTimestamp,
   setDoc,
 } from "firebase/firestore";
-import { Check, FileText, Plus, Trash2 } from "lucide-react";
+import { AlertTriangle, Check, FileText, Plus, Trash2 } from "lucide-react";
 import { getDb } from "@/lib/firebase/firestore";
 import { useEventFilter } from "@/lib/admin/useEventFilter";
-import type { QuoteSettings } from "@/lib/types";
+import type { Event as EventDoc, QuoteSettings } from "@/lib/types";
 
-const DEFAULT_SETTINGS: QuoteSettings = {
+// 회사 확정 정보 (사업자등록번호·대표이사 — 대표 확인, 사이트 푸터와 같은 값)
+const CONFIRMED_BIZ_NO = "120-81-81311";
+const CONFIRMED_REPRESENTATIVE = "김충한·김정조";
+// 예전 기본값에 들어 있던 잘못된 번호 (끝자리 1 추가)
+const KNOWN_WRONG_BIZ_NO = "120-81-813111";
+
+// 회사 공통 기본값 — 행사와 무관한 항목만
+const COMPANY_DEFAULTS: Pick<
+  QuoteSettings,
+  "issuer" | "bank" | "defaultPaymentTerms" | "footerSlogan"
+> = {
   issuer: {
     companyName: "㈜한국이앤엑스",
-    businessNumber: "120-81-813111",
-    representative: "김정조",
+    businessNumber: CONFIRMED_BIZ_NO,
+    representative: CONFIRMED_REPRESENTATIVE,
     address: "서울시 강남구 영동대로 511 트레이드타워 2001호",
     businessType: "서비스",
     industry: "전시회장",
     phone: "02)551-0102",
     fax: "02)551-0103",
     contactDept: "전시사업부",
-    contactName: "조준현 대리",
+    contactName: "",
   },
   bank: {
     bankName: "우리은행",
     accountNumber: "424-04-132799",
     accountHolder: "(주)한국이앤엑스",
   },
-  eventSubtitle: "K-PRINT 2026 — 국제 인쇄·디지털 프린팅 전시회",
-  eventIntro:
-    "오는 2026년 8월 19일부터 22일까지 킨텍스 제2전시장 7·8홀에서 개최되는 K-PRINT 2026 전시회의 스폰서십 참가에 관하여, 다음과 같이 제안하오니 검토해주시기 바랍니다.",
-  serialPrefix: "KPR26-",
-  serialNextNumber: 1,
   defaultPaymentTerms: "전액 현금 완납",
-  defaultBenefitItems: [
-    { label: "상위 고정", note: "참가업체 검색 페이지 내 상위 고정" },
-    { label: "뱃지 표기", note: "주요 참가기업 뱃지 표기" },
-    { label: "도면 내 로고 표기" },
-    { label: "홍보자료 노출", note: "K-PRINT 뉴스레터 및 SNS 추가 노출" },
-  ],
   footerSlogan: "한국의 전시문화를 선도하는 ㈜한국이앤엑스가 되겠습니다.",
 };
+
+function nameOf(n: unknown): string {
+  if (typeof n === "string") return n;
+  if (n && typeof n === "object") {
+    const o = n as { ko?: unknown };
+    if (typeof o.ko === "string") return o.ko;
+  }
+  return "";
+}
+
+// 행사별 기본 문구 — 행사명만 넣고 일정·장소는 담당자가 채운다 (다른 행사 문구 복사 방지)
+function eventDefaults(
+  ev: EventDoc | undefined
+): Pick<
+  QuoteSettings,
+  "eventSubtitle" | "eventIntro" | "serialPrefix" | "serialNextNumber" | "defaultBenefitItems"
+> {
+  const name = nameOf(ev?.name) || "전시회";
+  const short = (ev?.shortName || name).toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 3) || "SPN";
+  const yy = String(ev?.year ?? new Date().getFullYear()).slice(-2);
+  return {
+    eventSubtitle: name,
+    eventIntro: `${name} 전시회의 스폰서십 참가에 관하여, 다음과 같이 제안하오니 검토해주시기 바랍니다.`,
+    serialPrefix: `${short}${yy}-`,
+    serialNextNumber: 1,
+    defaultBenefitItems: [
+      { label: "상위 고정", note: "참가업체 검색 페이지 내 상위 고정" },
+      { label: "뱃지 표기", note: "주요 참가기업 뱃지 표기" },
+      { label: "도면 내 로고 표기" },
+      { label: "홍보자료 노출", note: "뉴스레터 및 SNS 추가 노출" },
+    ],
+  };
+}
 
 export default function QuoteSettingsPage() {
   const { eventId, ready } = useEventFilter();
   const [v, setV] = useState<QuoteSettings | null>(null);
   const [loading, setLoading] = useState(true);
   const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
+  const [events, setEvents] = useState<EventDoc[]>([]);
+  // 저장된 설정이 없어 기본값을 채운 상태
+  const [isDraft, setIsDraft] = useState(false);
 
   useEffect(() => {
     if (!ready || !eventId) return;
     setLoading(true);
     (async () => {
       try {
-        const snap = await getDoc(doc(getDb(), "quoteSettings", eventId));
+        const db = getDb();
+        const [snap, evSnap] = await Promise.all([
+          getDoc(doc(db, "quoteSettings", eventId)),
+          getDocs(collection(db, "events")),
+        ]);
+        const evList = evSnap.docs.map((d) => ({ ...(d.data() as EventDoc), id: d.id }));
+        setEvents(evList);
+        const ev = evList.find((e) => e.id === eventId);
         if (snap.exists()) {
-          setV({ ...DEFAULT_SETTINGS, ...(snap.data() as QuoteSettings) });
+          setV({
+            ...COMPANY_DEFAULTS,
+            ...eventDefaults(ev),
+            ...(snap.data() as QuoteSettings),
+          });
+          setIsDraft(false);
         } else {
-          setV(DEFAULT_SETTINGS);
+          // 회사 정보는 공용(main) 설정이 있으면 그 값, 행사 문구는 이 행사 이름으로
+          let company = COMPANY_DEFAULTS;
+          try {
+            const main = await getDoc(doc(db, "quoteSettings", "main"));
+            if (main.exists()) {
+              const m = main.data() as QuoteSettings;
+              company = {
+                issuer: { ...COMPANY_DEFAULTS.issuer, ...m.issuer },
+                bank: { ...COMPANY_DEFAULTS.bank, ...m.bank },
+                defaultPaymentTerms: m.defaultPaymentTerms ?? COMPANY_DEFAULTS.defaultPaymentTerms,
+                footerSlogan: m.footerSlogan ?? COMPANY_DEFAULTS.footerSlogan,
+              };
+            }
+          } catch {
+            // 읽기 권한 없음 — 회사 기본값 사용
+          }
+          // 담당자 이름은 행사(팀)마다 달라 비워 둔다
+          setV({
+            ...company,
+            issuer: { ...company.issuer, contactName: "" },
+            ...eventDefaults(ev),
+          } as QuoteSettings);
+          setIsDraft(true);
         }
       } finally {
         setLoading(false);
       }
     })();
   }, [ready, eventId]);
+
+  // 확인할 사항 — 잘못된 사업자번호, 대표이사 누락, 다른 행사 문구
+  const issues = useMemo(() => {
+    if (!v || !eventId) return null;
+    const cur = events.find((e) => e.id === eventId);
+    const text = `${v.eventSubtitle ?? ""} ${v.eventIntro ?? ""}`.toUpperCase();
+    const curShort = (cur?.shortName ?? "").toUpperCase();
+    const otherMentioned = events
+      .filter((e) => e.id !== eventId && e.shortName)
+      .map((e) => e.shortName)
+      .filter(
+        (s) =>
+          text.includes(s.toUpperCase()) &&
+          // 이 행사 단축명이 다른 행사 단축명을 포함하는 경우(KIMES ⊂ KIMES 부산) 오탐 방지
+          !(curShort && curShort.includes(s.toUpperCase()))
+      );
+    return {
+      bizWrong: v.issuer.businessNumber.replace(/\s/g, "") === KNOWN_WRONG_BIZ_NO,
+      repSingle: v.issuer.representative.trim() === "김정조",
+      otherMentioned,
+      eventName: nameOf(cur?.name),
+    };
+  }, [v, events, eventId]);
 
   const update = (updater: (prev: QuoteSettings) => QuoteSettings) => {
     setV((p) => (p ? updater(p) : p));
@@ -81,6 +175,7 @@ export default function QuoteSettingsPage() {
         eventId,
         updatedAt: serverTimestamp(),
       });
+      setIsDraft(false);
       setSaveStatus("saved");
       setTimeout(() => setSaveStatus("idle"), 2000);
     } catch (e) {
@@ -127,6 +222,62 @@ export default function QuoteSettingsPage() {
           </button>
         </div>
       </header>
+
+      {isDraft && (
+        <div className="bg-brand-50 border border-brand-100 rounded-card px-4 py-3 text-[13px] text-ink-900 break-keep">
+          이 행사는 저장된 견적서 설정이 없어 기본값을 채웠습니다. 행사 일정·장소와 담당자를 확인한 뒤
+          저장하세요. 저장 전에는 견적서를 뽑을 수 없습니다.
+        </div>
+      )}
+
+      {issues && (issues.bizWrong || issues.repSingle || issues.otherMentioned.length > 0) && (
+        <div className="bg-amber-50 border border-amber-200 rounded-card px-4 py-3 space-y-2.5">
+          <div className="flex items-center gap-2 text-[13px] font-bold text-amber-800">
+            <AlertTriangle className="w-4 h-4" />
+            확인할 사항 — 고친 뒤 [저장]을 눌러야 반영됩니다
+          </div>
+          {issues.bizWrong && (
+            <IssueRow
+              text={`사업자번호가 ${KNOWN_WRONG_BIZ_NO} 로 저장돼 있습니다. 확정값은 ${CONFIRMED_BIZ_NO} 입니다.`}
+              action="확정값으로 고치기"
+              onFix={() =>
+                update((p) => ({ ...p, issuer: { ...p.issuer, businessNumber: CONFIRMED_BIZ_NO } }))
+              }
+            />
+          )}
+          {issues.repSingle && (
+            <IssueRow
+              text={`대표이사가 김정조 한 명만 있습니다. 확정값은 ${CONFIRMED_REPRESENTATIVE} 입니다.`}
+              action="확정값으로 고치기"
+              onFix={() =>
+                update((p) => ({
+                  ...p,
+                  issuer: { ...p.issuer, representative: CONFIRMED_REPRESENTATIVE },
+                }))
+              }
+            />
+          )}
+          {issues.otherMentioned.length > 0 && (
+            <IssueRow
+              text={`견적서 문구에 다른 행사(${issues.otherMentioned.join(", ")}) 이름이 들어 있습니다. ${
+                issues.eventName || "이 행사"
+              }의 부제·안내 문구·일련번호 접두어를 확인하세요.`}
+              action="이 행사 기본 문구로 바꾸기"
+              onFix={() =>
+                update((p) => {
+                  const d = eventDefaults(events.find((e) => e.id === eventId));
+                  return {
+                    ...p,
+                    eventSubtitle: d.eventSubtitle,
+                    eventIntro: d.eventIntro,
+                    serialPrefix: d.serialPrefix,
+                  };
+                })
+              }
+            />
+          )}
+        </div>
+      )}
 
       {/* 발행자 정보 */}
       <Section title="사무국(발행자) 정보">
@@ -417,6 +568,29 @@ function FieldNumber({
         className="px-3 py-2 text-sm border border-ink-100 rounded-btn focus:outline-none focus:border-brand-500 bg-white text-right font-mono"
       />
     </label>
+  );
+}
+
+function IssueRow({
+  text,
+  action,
+  onFix,
+}: {
+  text: string;
+  action: string;
+  onFix: () => void;
+}) {
+  return (
+    <div className="flex items-start justify-between gap-3 text-[12.5px] text-amber-900">
+      <span className="break-keep leading-relaxed">{text}</span>
+      <button
+        type="button"
+        onClick={onFix}
+        className="shrink-0 px-2.5 py-1 rounded-btn border border-amber-300 bg-white text-[12px] font-semibold text-amber-800 hover:bg-amber-100"
+      >
+        {action}
+      </button>
+    </div>
   );
 }
 

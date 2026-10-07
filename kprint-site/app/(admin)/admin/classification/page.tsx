@@ -29,6 +29,7 @@ import {
 } from "lucide-react";
 import { getDb } from "@/lib/firebase/firestore";
 import { useEventFilter } from "@/lib/admin/useEventFilter";
+import { filterAccessibleEvents, useAccess } from "@/lib/admin/access";
 import { PersonaEditModal } from "@/components/admin/PersonaEditModal";
 import type { Category, CategoryType, Event, Persona, Taxonomy } from "@/lib/types";
 import { CATEGORY_TYPE_LABELS } from "@/lib/categoryTypeLabels";
@@ -83,13 +84,16 @@ export default function ClassificationPage() {
   const [addingPersona, setAddingPersona] = useState(false);
   const [editingBuckets, setEditingBuckets] = useState(false);
   // 행사 간 추천 매핑 복사용 — 다른 행사 목록
-  const [events, setEvents] = useState<Event[]>([]);
+  const [allEvents, setAllEvents] = useState<Event[]>([]);
   const [copying, setCopying] = useState(false);
+  const access = useAccess();
+  // 담당자는 배정된 행사끼리만 복사 (미공개 카테고리는 다른 행사 담당자가 읽을 수 없음)
+  const events = useMemo(() => filterAccessibleEvents(access, allEvents), [access, allEvents]);
 
   useEffect(() => {
     const u = onSnapshot(
       query(collection(getDb(), "events"), orderBy("order", "asc")),
-      (s) => setEvents(s.docs.map((d) => ({ ...(d.data() as Event), id: d.id })))
+      (s) => setAllEvents(s.docs.map((d) => ({ ...(d.data() as Event), id: d.id })))
     );
     return u;
   }, []);

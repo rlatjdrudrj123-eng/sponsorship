@@ -245,6 +245,21 @@ type WriteOp =
   | { kind: "update"; ref: DocumentReference; data: Record<string, unknown> }
   | { kind: "delete"; ref: DocumentReference };
 
+// 담당자 권한 규칙은 쓰기마다 members 문서를 get() 한다. 일괄 쓰기 1건당 문서 조회
+// 한도(20)는 같은 문서 재조회가 캐시되면 문제없지만, 혹시 한도에 걸려 거부되면
+// (실패한 batch 는 하나도 반영되지 않으므로) 작은 묶음으로 나눠 다시 시도한다.
+const FALLBACK_BATCH_SIZE = 15;
+
+async function commitChunk(chunk: WriteOp[]): Promise<void> {
+  const batch: WriteBatch = writeBatch(getDb());
+  for (const op of chunk) {
+    if (op.kind === "set") batch.set(op.ref, op.data);
+    else if (op.kind === "update") batch.update(op.ref, op.data);
+    else batch.delete(op.ref);
+  }
+  await batch.commit();
+}
+
 async function commitOps(
   ops: WriteOp[],
   onProgress?: (current: number, total: number) => void
@@ -254,13 +269,15 @@ async function commitOps(
   let done = 0;
   for (let i = 0; i < ops.length; i += FIRESTORE_BATCH_LIMIT) {
     const chunk = ops.slice(i, i + FIRESTORE_BATCH_LIMIT);
-    const batch: WriteBatch = writeBatch(getDb());
-    for (const op of chunk) {
-      if (op.kind === "set") batch.set(op.ref, op.data);
-      else if (op.kind === "update") batch.update(op.ref, op.data);
-      else batch.delete(op.ref);
+    try {
+      await commitChunk(chunk);
+    } catch (e) {
+      const code = (e as { code?: string })?.code;
+      if (code !== "permission-denied" || chunk.length <= FALLBACK_BATCH_SIZE) throw e;
+      for (let j = 0; j < chunk.length; j += FALLBACK_BATCH_SIZE) {
+        await commitChunk(chunk.slice(j, j + FALLBACK_BATCH_SIZE));
+      }
     }
-    await batch.commit();
     done += chunk.length;
     onProgress?.(done, total);
   }

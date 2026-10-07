@@ -1,7 +1,12 @@
 "use client";
 
-import { Suspense, useEffect, useMemo, useState } from "react";
-import { useParams, useSearchParams } from "next/navigation";
+import { Suspense, useEffect, useMemo, useRef, useState } from "react";
+import {
+  useParams,
+  usePathname,
+  useRouter,
+  useSearchParams,
+} from "next/navigation";
 import Link from "next/link";
 import {
   collection,
@@ -13,11 +18,16 @@ import {
 } from "firebase/firestore";
 import {
   ArrowLeft,
+  ArrowRight,
+  Bookmark,
+  BookmarkCheck,
   Copy,
   FileDown,
   MessageSquare,
+  X,
 } from "lucide-react";
 import { getDb } from "@/lib/firebase/firestore";
+import { useCartStore } from "@/lib/cart/cartStore";
 import type {
   Category,
   Package,
@@ -41,14 +51,17 @@ import {
  *
  * URL 패턴:
  *   /[eventSlug]/compare                 → 현재 카트 항목 비교
- *   /[eventSlug]/compare?ids=slot:abc,pkg:xyz  → 공유 URL (로그인 불요, read-only)
+ *   /[eventSlug]/compare?ids=slot:abc,pkg:xyz  → 공유 URL (로그인 불요)
  *
  * 보여주는 것:
- *   - 컬럼별 카드 (이미지·이름·가격·잔여·목적·시점·위치)
+ *   - 컬럼별 카드 (이미지·이름·가격·신청 마감·목적·시점·위치)
  *   - 예산 합계
  *   - 노출 시점 타임라인
  *   - 위치 분포
  *   - 작년 구매사 (있는 경우)
+ *
+ * 열마다: 비교에서 빼기(ids 쿼리에서 제거 → router.replace, 공유 URL 유지),
+ *   패키지는 카트 담기/빼기(매진이면 담기 차단), 카테고리·구좌는 구좌 선택 링크.
  *
  * 결재용 도구: 복사 가능한 URL · PDF 출력 · 정식 견적 요청.
  */
@@ -70,6 +83,23 @@ function CompareContent() {
   const search = useSearchParams();
   const idsParam = search.get("ids") ?? "";
   const locale = useLocale((s) => s.locale);
+  const router = useRouter();
+  const pathname = usePathname();
+
+  // 패키지 열 카트 담기/빼기 — items 를 구독해야 토글 직후 버튼 상태가 바뀐다
+  const cartItems = useCartStore((s) => s.items);
+  const cartHydrated = useCartStore((s) => s.hasHydrated);
+  const addPackage = useCartStore((s) => s.addPackage);
+  const removePackage = useCartStore((s) => s.removePackage);
+  const cartPackageIds = useMemo(() => {
+    const ids = new Set<string>();
+    for (const it of cartItems) if (it.type === "package") ids.add(it.packageId);
+    return ids;
+  }, [cartItems]);
+
+  const headingRef = useRef<HTMLHeadingElement>(null);
+  // 비교에서 뺀 뒤 포커스 이동 대상 — 다음 열의 '빼기' 버튼 key, "" 면 제목, null 이면 없음
+  const focusAfterRemove = useRef<string | null>(null);
 
   const [categories, setCategories] = useState<Map<string, Category>>(new Map());
   const [subcategories, setSubcategories] = useState<Map<string, Subcategory>>(
@@ -177,6 +207,10 @@ function CompareContent() {
     href: string;
     lastYearBuyers?: string[];
     soldOut?: boolean;
+    /** 신청 마감일 "YYYY.MM.DD" — 없으면 "-" (패키지는 항상 "-") */
+    deadlineLabel: string;
+    /** 패키지 열만 — 카트 담기용 원본 */
+    pkg?: Package;
   };
 
   const columns = useMemo<Column[]>(() => {
@@ -221,8 +255,13 @@ function CompareContent() {
           ),
           timing: cat.timingOverride ?? [],
           location: cat.locationOverride ?? [],
-          href: `/${eventId}/sponsorships?view=card&detail=${cat.slug}`,
+          href: localeHref(
+            eventId,
+            `/sponsorships?view=card&detail=${cat.slug}`,
+            locale
+          ),
           lastYearBuyers: cat.lastYear?.buyers,
+          deadlineLabel: formatDeadline(cat.deadline),
         });
       } else if (it.kind === "cat") {
         const cat = categories.get(it.id);
@@ -245,8 +284,13 @@ function CompareContent() {
           ),
           timing: cat.timingOverride ?? [],
           location: cat.locationOverride ?? [],
-          href: `/${eventId}/sponsorships?view=card&detail=${cat.slug}`,
+          href: localeHref(
+            eventId,
+            `/sponsorships?view=card&detail=${cat.slug}`,
+            locale
+          ),
           lastYearBuyers: cat.lastYear?.buyers,
+          deadlineLabel: formatDeadline(cat.deadline),
         });
       } else {
         const pkg = packages.get(it.id);
@@ -262,8 +306,10 @@ function CompareContent() {
           purposeLabels: [pkg.tier === "signature" ? "Signature" : "Standard"],
           timing: [],
           location: [],
-          href: `/${eventId}/packages/${pkg.id}`,
+          href: localeHref(eventId, `/packages/${pkg.id}`, locale),
           soldOut: !!pkg.soldOut,
+          deadlineLabel: "-",
+          pkg,
         });
       }
     }
@@ -271,6 +317,56 @@ function CompareContent() {
   }, [loaded, items, categories, subcategories, slots, packages, eventId, locale]);
 
   const totalKRW = columns.reduce((sum, c) => sum + c.priceKRW, 0);
+
+  // 비교에서 빼기 — ids 쿼리에서 해당 항목만 제거하고 URL 교체 (공유 URL 그대로 유지).
+  // 0개가 되면 ids 를 지워 빈 상태로.
+  const removeFromCompare = (key: string) => {
+    const idx = columns.findIndex((c) => c.key === key);
+    const remaining = columns.filter((c) => c.key !== key);
+    focusAfterRemove.current =
+      remaining.length > 0
+        ? remaining[Math.max(0, Math.min(idx, remaining.length - 1))].key
+        : "";
+
+    const nextIds = items
+      .map((it) => `${it.kind}:${it.id}`)
+      .filter((k) => k !== key);
+    const sp = new URLSearchParams(search.toString());
+    if (nextIds.length > 0) sp.set("ids", nextIds.join(","));
+    else sp.delete("ids");
+    const qs = sp.toString();
+    router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
+  };
+
+  // 뺀 열 자리로 포커스 이동 (키보드 사용자가 맨 위로 튕기지 않게)
+  useEffect(() => {
+    const target = focusAfterRemove.current;
+    if (target === null) return;
+    focusAfterRemove.current = null;
+    const btn = target
+      ? document.querySelector<HTMLButtonElement>(
+          `[data-compare-remove="${target}"]`
+        )
+      : null;
+    if (btn) btn.focus();
+    else headingRef.current?.focus({ preventScroll: true });
+  }, [columns]);
+
+  // 패키지 열 카트 토글 — PackageType 의 담기와 같은 값. 매진이면 담기만 차단(빼기는 허용).
+  const togglePackageInCart = (pkg: Package) => {
+    if (cartPackageIds.has(pkg.id)) {
+      removePackage(pkg.id);
+      return;
+    }
+    if (pkg.soldOut) return;
+    addPackage({
+      type: "package",
+      eventId: pkg.eventId,
+      packageId: pkg.id,
+      code: pkg.code,
+      price: pkg.discountPrice,
+    });
+  };
 
   const copyShareUrl = async () => {
     if (typeof window === "undefined") return;
@@ -292,8 +388,13 @@ function CompareContent() {
   const printPdf = () => {
     if (typeof window === "undefined") return;
     if (!compareIdsAsString) return;
+    // 영문 비교 화면에서는 /en/cart/print 로 (영문 PDF)
     window.open(
-      `/${eventId}/cart/print?ids=${encodeURIComponent(compareIdsAsString)}`,
+      localeHref(
+        eventId,
+        `/cart/print?ids=${encodeURIComponent(compareIdsAsString)}`,
+        locale
+      ),
       "_blank"
     );
   };
@@ -322,7 +423,11 @@ function CompareContent() {
               <span className="w-6 h-px bg-brand-500" />
               compare
             </div>
-            <h1 className="text-[32px] md:text-[48px] font-bold tracking-tight leading-[1.15] text-ink-900 break-keep">
+            <h1
+              ref={headingRef}
+              tabIndex={-1}
+              className="text-[32px] md:text-[48px] font-bold tracking-tight leading-[1.15] text-ink-900 break-keep outline-none"
+            >
               {locale === "en"
                 ? `Comparing ${columns.length} items`
                 : `${columns.length}개 항목 비교`}
@@ -357,11 +462,13 @@ function CompareContent() {
                 {t("cart.print", locale)}
               </button>
               <Link
-                href={
+                href={localeHref(
+                  eventId,
                   compareIdsAsString
-                    ? `/${eventId}/contact?ids=${encodeURIComponent(compareIdsAsString)}`
-                    : `/${eventId}/contact`
-                }
+                    ? `/contact?ids=${encodeURIComponent(compareIdsAsString)}`
+                    : "/contact",
+                  locale
+                )}
                 className="px-4 py-2 rounded-pill bg-brand-500 text-white text-[12.5px] font-bold hover:bg-brand-700 hover:shadow-glow-sm flex items-center gap-1.5 transition-all"
               >
                 <MessageSquare className="w-3.5 h-3.5" />
@@ -427,25 +534,32 @@ function CompareContent() {
                 }}
               >
                 {columns.map((col) => (
-                  <Link
+                  <article
                     key={col.key}
-                    href={col.href}
                     className="bg-surface border border-ink-100 rounded-card overflow-hidden hover:border-brand-500 hover:shadow-card transition-all flex flex-col"
                   >
                     <div className="aspect-[4/3] bg-ink-100 relative shrink-0">
-                      {col.imageUrl ? (
-                        // eslint-disable-next-line @next/next/no-img-element
-                        <img
-                          src={col.imageUrl}
-                          alt={col.title}
-                          className="absolute inset-0 w-full h-full object-cover"
-                        />
-                      ) : (
-                        <div className="w-full h-full grid place-items-center text-ink-300 text-xs">
-                          {locale === "en" ? "No image" : "이미지 없음"}
-                        </div>
-                      )}
-                      <div className="absolute top-3 left-3 px-2 py-0.5 rounded-pill bg-white/95 text-[10px] font-num font-bold text-ink-900">
+                      {/* 이미지 클릭 → 상세 (키보드·스크린리더는 제목 링크 사용) */}
+                      <Link
+                        href={col.href}
+                        tabIndex={-1}
+                        aria-hidden="true"
+                        className="absolute inset-0 block"
+                      >
+                        {col.imageUrl ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img
+                            src={col.imageUrl}
+                            alt={col.title}
+                            className="absolute inset-0 w-full h-full object-cover"
+                          />
+                        ) : (
+                          <div className="w-full h-full grid place-items-center text-ink-300 text-xs">
+                            {locale === "en" ? "No image" : "이미지 없음"}
+                          </div>
+                        )}
+                      </Link>
+                      <div className="absolute top-3 left-3 px-2 py-0.5 rounded-pill bg-white/95 text-[10px] font-num font-bold text-ink-900 pointer-events-none">
                         {col.kind === "pkg"
                           ? locale === "en"
                             ? "Package"
@@ -456,21 +570,30 @@ function CompareContent() {
                         · {col.code}
                       </div>
                       {col.soldOut && (
-                        <div className="absolute top-3 right-3 px-2 py-0.5 rounded text-[10px] uppercase tracking-wider font-bold bg-ink-300 text-white">
+                        <div className="absolute top-3 right-3 px-2 py-0.5 rounded text-[10px] uppercase tracking-wider font-bold bg-ink-300 text-white pointer-events-none">
                           {locale === "en" ? "Sold out" : "매진"}
                         </div>
                       )}
                     </div>
                     <div className="p-4 flex-1 flex flex-col gap-3 text-[12.5px]">
-                      <div>
-                        <div className="font-bold text-[15px] text-ink-900 leading-tight tracking-tight">
+                      <h2 className="font-bold text-[15px] text-ink-900 leading-tight tracking-tight">
+                        <Link
+                          href={col.href}
+                          className="hover:text-brand-500 transition-colors"
+                        >
                           {col.title}
-                        </div>
-                      </div>
+                        </Link>
+                      </h2>
 
                       <Row label={locale === "en" ? "Price" : "가격"}>
                         <span className="font-num font-bold text-ink-900">
                           {col.priceLabel}
+                        </span>
+                      </Row>
+
+                      <Row label={locale === "en" ? "Deadline" : "신청 마감"}>
+                        <span className="font-num text-ink-700">
+                          {col.deadlineLabel}
                         </span>
                       </Row>
 
@@ -553,7 +676,42 @@ function CompareContent() {
                         </Row>
                       )}
                     </div>
-                  </Link>
+
+                    {/* 열 액션 — 패키지: 카트 담기/빼기 · 카테고리/구좌: 구좌 선택 */}
+                    <div className="px-4 pb-4 flex flex-col gap-2">
+                      {col.pkg ? (
+                        <PackageCartToggle
+                          title={col.title}
+                          inCart={cartHydrated && cartPackageIds.has(col.pkg.id)}
+                          soldOut={!!col.pkg.soldOut}
+                          ready={cartHydrated}
+                          isEn={locale === "en"}
+                          onToggle={() => {
+                            if (col.pkg) togglePackageInCart(col.pkg);
+                          }}
+                        />
+                      ) : (
+                        <Link
+                          href={col.href}
+                          className="w-full py-2.5 rounded-pill bg-brand-500 text-white text-[12.5px] font-bold hover:bg-brand-700 hover:shadow-glow-sm flex items-center justify-center gap-1.5 transition-all"
+                        >
+                          <span className="sr-only">{col.title} </span>
+                          {locale === "en" ? "Select slots" : "구좌 선택"}
+                          <ArrowRight className="w-3.5 h-3.5" aria-hidden="true" />
+                        </Link>
+                      )}
+                      <button
+                        type="button"
+                        data-compare-remove={col.key}
+                        onClick={() => removeFromCompare(col.key)}
+                        className="w-full py-2 rounded-pill border border-ink-100 text-[12px] font-semibold text-ink-700 hover:border-ink-900 hover:text-ink-900 flex items-center justify-center gap-1.5 transition-colors"
+                      >
+                        <X className="w-3.5 h-3.5" aria-hidden="true" />
+                        <span className="sr-only">{col.title} </span>
+                        {locale === "en" ? "Remove from compare" : "비교에서 빼기"}
+                      </button>
+                    </div>
+                  </article>
                 ))}
               </div>
             </>
@@ -563,6 +721,71 @@ function CompareContent() {
       <Footer settings={settings} />
     </>
   );
+}
+
+/** 패키지 열 카트 담기/빼기 — 매진이면 담기만 막고, 이미 담긴 건 빼기 허용 (PackageType 과 동일) */
+function PackageCartToggle({
+  title,
+  inCart,
+  soldOut,
+  ready,
+  isEn,
+  onToggle,
+}: {
+  title: string;
+  inCart: boolean;
+  soldOut: boolean;
+  /** 카트 hydrate 전에는 비활성 (저장된 카트를 덮어쓰지 않도록) */
+  ready: boolean;
+  isEn: boolean;
+  onToggle: () => void;
+}) {
+  const blocked = soldOut && !inCart;
+  return (
+    <button
+      type="button"
+      aria-pressed={inCart}
+      disabled={!ready || blocked}
+      onClick={onToggle}
+      className={
+        "w-full py-2.5 rounded-pill text-[12.5px] font-bold flex items-center justify-center gap-1.5 transition-colors disabled:cursor-not-allowed " +
+        (blocked
+          ? "bg-ink-300 text-white"
+          : inCart
+            ? "bg-ink-900 text-white hover:bg-ink-700"
+            : "bg-ink-900 text-white hover:bg-brand-500 hover:text-ink-900")
+      }
+    >
+      <span className="sr-only">{title} </span>
+      {blocked ? (
+        isEn ? "Sold out" : "매진"
+      ) : (
+        <>
+          {inCart ? (
+            <BookmarkCheck className="w-4 h-4" aria-hidden="true" />
+          ) : (
+            <Bookmark className="w-4 h-4" aria-hidden="true" />
+          )}
+          {isEn
+            ? inCart
+              ? "Added · Remove"
+              : "Add to cart"
+            : inCart
+              ? "담김 · 빼기"
+              : "담기"}
+        </>
+      )}
+    </button>
+  );
+}
+
+/** 카테고리 신청 마감일 → "YYYY.MM.DD" (없으면 "-") */
+function formatDeadline(deadline: Category["deadline"]): string {
+  const d = deadline?.toDate?.();
+  if (!d || Number.isNaN(d.getTime())) return "-";
+  const mm = String(d.getMonth() + 1).padStart(2, "0");
+  const dd = String(d.getDate()).padStart(2, "0");
+  return `${d.getFullYear()}.${mm}.${dd}`;
 }
 
 function Row({

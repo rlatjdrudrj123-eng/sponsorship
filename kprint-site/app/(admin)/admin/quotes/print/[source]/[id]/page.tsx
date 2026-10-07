@@ -7,6 +7,8 @@ import {
   doc,
   getDoc,
   getDocs,
+  query,
+  where,
 } from "firebase/firestore";
 import { Printer } from "lucide-react";
 import { getDb } from "@/lib/firebase/firestore";
@@ -64,29 +66,40 @@ export default function QuotePrintPage() {
           if (s.exists()) sourceEventId = (s.data() as Sponsor).eventId ?? null;
         }
 
-        // 2) 행사별 quoteSettings (없으면 main 폴백 — 레거시 보호)
-        let settingsSnap = sourceEventId
-          ? await getDoc(doc(db, "quoteSettings", sourceEventId))
-          : null;
-        if (!settingsSnap || !settingsSnap.exists()) {
-          settingsSnap = await getDoc(doc(db, "quoteSettings", "main"));
-        }
-        if (!settingsSnap.exists()) {
-          alert("견적서 설정이 없습니다. /admin/settings/quote 에서 먼저 설정해주세요.");
+        if (!sourceEventId) {
+          alert("행사 정보가 없는 문서라 견적서를 만들 수 없습니다.");
           return;
         }
-        const s = settingsSnap.data() as QuoteSettings;
+
+        // 2) 행사별 quoteSettings 만 사용. 공용 main 으로 폴백하면 다른 행사의
+        //    부제·일정·장소 문구가 견적서에 찍힌다 (main 에는 KIMES 서울 문구가 있음).
+        let settingsData: QuoteSettings | null = null;
+        const eventSettings = await getDoc(doc(db, "quoteSettings", sourceEventId));
+        if (eventSettings.exists()) {
+          settingsData = eventSettings.data() as QuoteSettings;
+        }
+        if (!settingsData) {
+          alert(
+            "이 행사의 견적서 설정이 아직 저장되지 않았습니다.\n" +
+              "어드민 > 견적서 설정에서 이 행사를 선택해 내용을 확인하고 저장한 뒤 다시 시도하세요."
+          );
+          return;
+        }
+        const s = settingsData;
         setSettings(s);
 
         // 일련번호 (간단히 prefix + nextNumber, 발급 시 admin이 직접 증가)
         setSerial(`${s.serialPrefix ?? ""}${String(s.serialNextNumber ?? 1).padStart(3, "0")}`);
 
-        // 카테고리/소분류/슬롯/패키지/이벤트 일괄 로드 (단가 조회용)
+        // 카테고리/소분류/슬롯/패키지 — 이 문서의 행사만 (단가 조회용).
+        // 전체를 읽으면 담당자는 다른 행사 비공개 문서 때문에 권한 오류가 난다.
+        const byEvent = (col: string) =>
+          getDocs(query(collection(db, col), where("eventId", "==", sourceEventId)));
         const [catSnap, subSnap, slotSnap, pkgSnap, evSnap] = await Promise.all([
-          getDocs(collection(db, "categories")),
-          getDocs(collection(db, "subcategories")),
-          getDocs(collection(db, "slots")),
-          getDocs(collection(db, "packages")),
+          byEvent("categories"),
+          byEvent("subcategories"),
+          byEvent("slots"),
+          byEvent("packages"),
           getDocs(collection(db, "events")),
         ]);
         const catMap = new Map<string, Category>();

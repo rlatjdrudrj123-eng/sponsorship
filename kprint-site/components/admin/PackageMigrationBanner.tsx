@@ -13,9 +13,17 @@ import {
 } from "firebase/firestore";
 import { ArrowDownToLine, Check, X } from "lucide-react";
 import { getDb } from "@/lib/firebase/firestore";
+import { useEventFilter } from "@/lib/admin/useEventFilter";
 import type { Category, Package, Subcategory } from "@/lib/types";
 
+// 패키지 문서 ID 는 전 행사 공용 네임스페이스 — 행사 ID 를 넣어야 다른 행사의
+// 같은 코드 패키지를 덮어쓰지 않는다. (예전 이동분은 pkg-{code} 형식)
+const legacyPackageId = (cat: Category) => `pkg-${cat.code.toLowerCase()}`;
+const migratedPackageId = (cat: Category) =>
+  `pkg-${cat.eventId}-${cat.code.toLowerCase()}`;
+
 export function PackageMigrationBanner() {
+  const { eventId, ready } = useEventFilter();
   const [candidates, setCandidates] = useState<Category[]>([]);
   const [subsByCategory, setSubsByCategory] = useState<Map<string, Subcategory[]>>(
     new Map()
@@ -25,21 +33,46 @@ export function PackageMigrationBanner() {
   const [done, setDone] = useState(false);
   const [dismissed, setDismissed] = useState(false);
 
+  // 선택한 행사만 — 담당자는 다른 행사 카테고리를 읽을 수 없고(보안 규칙),
+  // 이미 옮긴 항목(같은 ID 패키지 존재 / 이동 메모)은 제외 — 다시 누르면
+  // 그동안 고친 패키지를 옛 카테고리 내용으로 덮어쓰던 문제 방지.
   useEffect(() => {
+    if (!ready || !eventId) {
+      setCandidates([]);
+      setLoading(false);
+      return;
+    }
+    let cancelled = false;
+    setLoading(true);
     (async () => {
       try {
         const db = getDb();
-        const catSnap = await getDocs(
-          query(collection(db, "categories"), where("type", "==", "package"))
-        );
-        const cats = catSnap.docs.map((d) => ({
-          ...(d.data() as Category),
-          id: d.id,
-        }));
+        const [catSnap, pkgSnap] = await Promise.all([
+          getDocs(
+            query(
+              collection(db, "categories"),
+              where("eventId", "==", eventId),
+              where("type", "==", "package")
+            )
+          ),
+          getDocs(query(collection(db, "packages"), where("eventId", "==", eventId))),
+        ]);
+        const existingPkgIds = new Set(pkgSnap.docs.map((d) => d.id));
+        const cats = catSnap.docs
+          .map((d) => ({ ...(d.data() as Category), id: d.id }))
+          .filter(
+            (c) =>
+              !existingPkgIds.has(migratedPackageId(c)) &&
+              !existingPkgIds.has(legacyPackageId(c)) &&
+              !(c.longDesc ?? "").includes("[마이그레이션됨")
+          );
+        if (cancelled) return;
         setCandidates(cats);
 
         if (cats.length > 0) {
-          const subSnap = await getDocs(collection(db, "subcategories"));
+          const subSnap = await getDocs(
+            query(collection(db, "subcategories"), where("eventId", "==", eventId))
+          );
           const map = new Map<string, Subcategory[]>();
           subSnap.docs.forEach((d) => {
             const sub = { ...(d.data() as Subcategory), id: d.id };
@@ -47,15 +80,18 @@ export function PackageMigrationBanner() {
             arr.push(sub);
             map.set(sub.categoryId, arr);
           });
-          setSubsByCategory(map);
+          if (!cancelled) setSubsByCategory(map);
         }
       } catch (e) {
         console.error(e);
       } finally {
-        setLoading(false);
+        if (!cancelled) setLoading(false);
       }
     })();
-  }, []);
+    return () => {
+      cancelled = true;
+    };
+  }, [ready, eventId]);
 
   const migrate = async () => {
     if (!confirm(
@@ -77,7 +113,7 @@ export function PackageMigrationBanner() {
         const prices = sortedSubs.map((s) => s.priceKRW).filter((p) => p > 0);
         const minPrice = prices.length > 0 ? Math.min(...prices) : 0;
 
-        const newPkgId = `pkg-${cat.code.toLowerCase()}`;
+        const newPkgId = migratedPackageId(cat);
         const pkgDoc: Omit<Package, "id"> & { id: string; createdAt: unknown; updatedAt: unknown } = {
           id: newPkgId,
           eventId: cat.eventId,

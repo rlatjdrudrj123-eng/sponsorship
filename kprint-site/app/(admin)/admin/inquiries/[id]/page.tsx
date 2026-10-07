@@ -6,6 +6,7 @@ import Link from "next/link";
 import {
   collection,
   doc,
+  getDoc,
   getDocs,
   onSnapshot,
   query,
@@ -24,6 +25,7 @@ import {
   User,
 } from "lucide-react";
 import { getDb } from "@/lib/firebase/firestore";
+import { receiptNo } from "@/lib/receiptNo";
 import {
   MUST_HAVE_LABEL_KO,
   PURPOSE_LABEL_KO,
@@ -52,17 +54,23 @@ export default function InquiryDetailPage() {
   const [adminNote, setAdminNote] = useState("");
   const [noteSaveStatus, setNoteSaveStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
   const [notFound, setNotFound] = useState(false);
+  const [eventName, setEventName] = useState("");
 
   useEffect(() => {
-    const u = onSnapshot(doc(getDb(), "inquiries", id), (s) => {
-      if (!s.exists()) {
-        setNotFound(true);
-        return;
-      }
-      const data = { ...(s.data() as Inquiry), id: s.id };
-      setInquiry(data);
-      setAdminNote(data.adminNote ?? "");
-    });
+    const u = onSnapshot(
+      doc(getDb(), "inquiries", id),
+      (s) => {
+        if (!s.exists()) {
+          setNotFound(true);
+          return;
+        }
+        const data = { ...(s.data() as Inquiry), id: s.id };
+        setInquiry(data);
+        setAdminNote(data.adminNote ?? "");
+      },
+      // 권한 없는 행사의 문의(담당자) — 무한 로딩 대신 '없음' 화면
+      () => setNotFound(true)
+    );
     return () => u();
   }, [id]);
 
@@ -74,14 +82,17 @@ export default function InquiryDetailPage() {
     (async () => {
       try {
         const db = getDb();
-        const [c, s, p] = await Promise.all([
+        const [c, s, p, ev] = await Promise.all([
           getDocs(query(collection(db, "categories"), where("eventId", "==", eventId))),
           getDocs(query(collection(db, "subcategories"), where("eventId", "==", eventId))),
           getDocs(query(collection(db, "packages"), where("eventId", "==", eventId))),
+          getDoc(doc(db, "events", eventId)),
         ]);
         setCategories(c.docs.map((d) => ({ ...(d.data() as Category), id: d.id })));
         setSubcategories(s.docs.map((d) => ({ ...(d.data() as Subcategory), id: d.id })));
         setPackages(p.docs.map((d) => ({ ...(d.data() as Package), id: d.id })));
+        const n = ev.data()?.name;
+        setEventName(typeof n === "string" ? n : "");
       } catch {
         // ignore
       }
@@ -151,6 +162,8 @@ export default function InquiryDetailPage() {
               {inquiry.companyName}
             </h1>
             <div className="text-[12px] text-ink-500 mt-0.5">
+              <span className="font-mono text-ink-700">접수번호 {receiptNo(inquiry.id)}</span>
+              {" · "}
               {fmtDate(inquiry.createdAt)} 접수
               {inquiry.updatedAt &&
                 inquiry.updatedAt.toMillis() !== inquiry.createdAt.toMillis() && (
@@ -176,7 +189,9 @@ export default function InquiryDetailPage() {
             스폰서로 전환
           </Link>
           <a
-            href={`mailto:${inquiry.email}?subject=K-PRINT 2026 문의 답변 (${inquiry.companyName})`}
+            href={`mailto:${inquiry.email}?subject=${encodeURIComponent(
+              `${eventName || "스폰서십"} 문의 답변 (${inquiry.companyName})`
+            )}`}
             className="px-3.5 py-2 rounded-btn border border-ink-100 text-[13px] font-semibold text-ink-900 hover:bg-ink-50 flex items-center gap-1.5"
           >
             <Mail className="w-4 h-4" />

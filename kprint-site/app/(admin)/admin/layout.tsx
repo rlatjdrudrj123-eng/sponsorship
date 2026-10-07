@@ -1,55 +1,96 @@
 "use client";
 
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, type ReactNode } from "react";
 import { usePathname, useRouter } from "next/navigation";
-import {
-  isAdminEmail,
-  onAuthChange,
-  signOut,
-  type User,
-} from "@/lib/firebase/auth";
+import { doc, onSnapshot } from "firebase/firestore";
+import { isBootstrapAdmin, onAuthChange } from "@/lib/firebase/auth";
+import { getDb } from "@/lib/firebase/firestore";
+import { useAccess, useAccessStore } from "@/lib/admin/access";
+import type { Member } from "@/lib/types";
 import { AdminSidebar } from "@/components/admin/AdminSidebar";
 import { AdminTopbar } from "@/components/admin/AdminTopbar";
-
-type GuardState = "loading" | "authed" | "unauthed";
+import { AccountGate } from "@/components/admin/AccountGate";
 
 /**
- * 클라이언트 사이드 어드민 가드 + 사이드바/topbar 크롬.
+ * 어드민 가드 + 사이드바/topbar 크롬.
  *
- * - /admin/login 은 가드 바깥 (pathname 체크) + 사이드바·topbar 없이 풀스크린 렌더
- * - 그 외 /admin/* 은 onAuthStateChanged + 화이트리스트 검사 후 chrome으로 감쌈
+ * - /admin/login 은 가드 바깥 (사이드바·topbar 없이 풀스크린)
+ * - 그 외 /admin/* 은 로그인 계정 + members/{uid} 로 접근 상태를 정한다 (lib/admin/access).
+ *   최초 관리자(lib/firebase/config BOOTSTRAP_ADMIN_*)는 members 문서 없이 관리자.
+ * - 화면 가드는 안내용이고, 실제 데이터 차단은 보안 규칙이 한다.
  */
 export default function AdminLayout({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
   const isLoginPage = pathname === "/admin/login";
-
-  const [state, setState] = useState<GuardState>("loading");
-  const [user, setUser] = useState<User | null>(null);
+  const access = useAccess();
+  const setAccess = useAccessStore((s) => s.setAccess);
 
   useEffect(() => {
     if (isLoginPage) return;
 
-    const unsub = onAuthChange(async (u) => {
-      if (u && isAdminEmail(u.email)) {
-        setUser(u);
-        setState("authed");
+    let unsubMember: (() => void) | null = null;
+    const unsubAuth = onAuthChange((u) => {
+      unsubMember?.();
+      unsubMember = null;
+
+      if (!u) {
+        setAccess({ state: "signedOut" });
+        router.replace("/admin/login");
         return;
       }
-      if (u) await signOut();
-      setUser(null);
-      setState("unauthed");
-      router.replace("/admin/login");
+      // 최초 관리자 — 보안 규칙의 isBootstrapAdmin() 과 같은 기준
+      if (isBootstrapAdmin(u)) {
+        setAccess({ state: "active", user: u, isAdmin: true, events: "all" });
+        return;
+      }
+      if (!u.emailVerified) {
+        setAccess({ state: "unverified", user: u });
+        return;
+      }
+      unsubMember = onSnapshot(
+        doc(getDb(), "members", u.uid),
+        (snap) => {
+          if (!snap.exists()) {
+            setAccess({ state: "noMember", user: u });
+            return;
+          }
+          const m = { ...(snap.data() as Member), uid: snap.id };
+          if (m.status === "pending") setAccess({ state: "pending", user: u, member: m });
+          else if (m.status === "disabled") setAccess({ state: "disabled", user: u, member: m });
+          else
+            setAccess({
+              state: "active",
+              user: u,
+              member: m,
+              isAdmin: m.role === "admin",
+              events: m.role === "admin" ? "all" : m.events ?? [],
+            });
+        },
+        () => setAccess({ state: "noMember", user: u })
+      );
     });
 
-    return unsub;
-  }, [isLoginPage, router]);
+    return () => {
+      unsubAuth();
+      unsubMember?.();
+    };
+  }, [isLoginPage, router, setAccess]);
 
   if (isLoginPage) {
     return <>{children}</>;
   }
 
-  if (state !== "authed") {
+  if (
+    access.state === "unverified" ||
+    access.state === "noMember" ||
+    access.state === "pending" ||
+    access.state === "disabled"
+  ) {
+    return <AccountGate access={access} />;
+  }
+
+  if (access.state !== "active") {
     return (
       <div className="min-h-screen flex items-center justify-center bg-ink-50">
         <div className="flex items-center gap-3 text-sm text-ink-500">
@@ -73,7 +114,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
               strokeLinecap="round"
             />
           </svg>
-          {state === "loading" ? "인증 확인 중…" : "로그인 페이지로 이동 중…"}
+          {access.state === "loading" ? "인증 확인 중…" : "로그인 페이지로 이동 중…"}
         </div>
       </div>
     );
@@ -83,7 +124,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
     <div className="min-h-screen bg-ink-50 flex">
       <AdminSidebar />
       <div className="flex-1 min-w-0 flex flex-col">
-        <AdminTopbar user={user} />
+        <AdminTopbar user={access.user} />
         <main className="flex-1 px-7 py-6">{children}</main>
       </div>
     </div>

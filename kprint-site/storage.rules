@@ -1,34 +1,64 @@
 rules_version = '2';
-// ⚠️ 어드민 이메일 화이트리스트는 앱의 NEXT_PUBLIC_ADMIN_EMAILS(.env.local) 및
-//    firestore.rules 의 isKprintAdmin() 와 반드시 동일하게 유지할 것.
-//    현재 값: admin@kprint.kr (배포 전 실제 운영 어드민 이메일인지 재검증 필요)
-//    email_verified == true 를 AND 로 걸어 미인증 이메일 위조를 방지함.
+// 권한 모델은 firestore.rules 와 같다 (최초 관리자 / members 문서의 관리자·담당자).
+// Firestore 교차 조회는 평가 1회당 문서 2개까지 — 멤버 문서 + (카테고리 또는 패키지 문서).
 service firebase.storage {
   match /b/{bucket}/o {
+
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function emailVerified() {
+      return request.auth.token.get('email_verified', false) == true;
+    }
+
+    // ⚠️ lib/firebase/config.ts · firestore.rules 의 최초 관리자와 같은 값
+    function isBootstrapAdmin() {
+      return signedIn()
+        && (request.auth.uid in ['EwckwTGAmBh9kLnBRQd2qCvVQ1e2']
+            || (emailVerified()
+                && request.auth.token.get('email', '') in ['tom@eandex.co.kr']));
+    }
+
+    function member() {
+      return firestore.get(/databases/(default)/documents/members/$(request.auth.uid)).data;
+    }
+
+    function isActiveMember() {
+      return signedIn() && emailVerified() && member().status == 'active';
+    }
+
+    function isAdmin() {
+      return isBootstrapAdmin() || (isActiveMember() && member().role == 'admin');
+    }
+
+    function isAssigned(eventId) {
+      return isActiveMember() && eventId in member().events;
+    }
+
+    // 파일 경로의 문서(카테고리·패키지)가 속한 행사
+    function eventOf(col, docId) {
+      return firestore.get(/databases/(default)/documents/$(col)/$(docId)).data.eventId;
+    }
+
     match /categories/{categoryId}/{allPaths=**} {
       allow read: if true;
-      allow write: if request.auth != null
-        && request.auth.token.email_verified == true
-        && request.auth.token.email in ['admin@kprint.kr'];
+      allow write: if isAdmin() || isAssigned(eventOf('categories', categoryId));
     }
     match /packages/{packageId}/{allPaths=**} {
       allow read: if true;
-      allow write: if request.auth != null
-        && request.auth.token.email_verified == true
-        && request.auth.token.email in ['admin@kprint.kr'];
+      allow write: if isAdmin() || isAssigned(eventOf('packages', packageId));
     }
-    match /settings/{allPaths=**} {
+    // 행사별 설정 파일 — settings/{eventId}/…
+    match /settings/{eventId}/{allPaths=**} {
       allow read: if true;
-      allow write: if request.auth != null
-        && request.auth.token.email_verified == true
-        && request.auth.token.email in ['admin@kprint.kr'];
+      allow write: if isAdmin() || isAssigned(eventId);
     }
-    // 랜딩 빌더 캔버스 업로드 (canvas-upload / canvas-paste / canvas-page-bg / canvas-multi 등)
-    match /landing/{allPaths=**} {
+    // 랜딩 캔버스 업로드 — 새 업로드는 landing/{eventId}/{종류}/…
+    // (예전 업로드 landing/{종류}/… 는 행사 ID 와 겹치지 않아 관리자만 쓰기)
+    match /landing/{folder}/{allPaths=**} {
       allow read: if true;
-      allow write: if request.auth != null
-        && request.auth.token.email_verified == true
-        && request.auth.token.email in ['admin@kprint.kr'];
+      allow write: if isAdmin() || isAssigned(folder);
     }
   }
 }

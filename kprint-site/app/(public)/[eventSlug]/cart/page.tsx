@@ -152,7 +152,11 @@ export default function CartPage() {
   const printPdf = () => {
     if (noneSelected) return;
     const ids = Array.from(selected).join(",");
-    window.open(`/${eventId}/cart/print?ids=${encodeURIComponent(ids)}`, "_blank");
+    // 영문 카트에서는 /en/cart/print 로 (영문 PDF)
+    window.open(
+      localeHref(eventId, `/cart/print?ids=${encodeURIComponent(ids)}`, locale),
+      "_blank"
+    );
   };
 
   return (

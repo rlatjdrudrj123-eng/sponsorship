@@ -5,12 +5,12 @@ import { Clock } from "lucide-react";
 import {
   collection,
   getDocs,
-  limit,
-  orderBy,
   query,
   Timestamp,
+  where,
 } from "firebase/firestore";
 import { getDb } from "@/lib/firebase/firestore";
+import { useEventFilter } from "@/lib/admin/useEventFilter";
 import type { ImportHistory } from "@/lib/types";
 
 type Props = { reloadKey?: number };
@@ -23,25 +23,30 @@ const MODE_LABEL: Record<ImportHistory["mode"], string> = {
 
 export function RecentImports({ reloadKey }: Props) {
   const [items, setItems] = useState<ImportHistory[] | null>(null);
+  const { eventId, ready } = useEventFilter();
 
+  // 선택한 행사의 업로드 이력만 — 담당자는 다른 행사 이력을 읽을 수 없다(보안 규칙).
+  // (eventId 가 기록되기 전의 예전 이력은 표시되지 않음)
   useEffect(() => {
+    if (!ready || !eventId) {
+      setItems([]);
+      return;
+    }
     let cancelled = false;
     (async () => {
       try {
         const snap = await getDocs(
-          query(
-            collection(getDb(), "importHistory"),
-            orderBy("createdAt", "desc"),
-            limit(3)
-          )
+          query(collection(getDb(), "importHistory"), where("eventId", "==", eventId))
         );
         if (cancelled) return;
-        setItems(
-          snap.docs.map((d) => ({
-            ...(d.data() as ImportHistory),
-            id: d.id,
-          }))
+        const rows = snap.docs.map((d) => ({
+          ...(d.data() as ImportHistory),
+          id: d.id,
+        }));
+        rows.sort(
+          (a, b) => (b.createdAt?.toMillis?.() ?? 0) - (a.createdAt?.toMillis?.() ?? 0)
         );
+        setItems(rows.slice(0, 3));
       } catch {
         if (!cancelled) setItems([]);
       }
@@ -49,7 +54,7 @@ export function RecentImports({ reloadKey }: Props) {
     return () => {
       cancelled = true;
     };
-  }, [reloadKey]);
+  }, [reloadKey, ready, eventId]);
 
   return (
     <div className="bg-white border border-ink-100 rounded-card p-5">

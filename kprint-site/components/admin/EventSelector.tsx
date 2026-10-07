@@ -1,10 +1,11 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { collection, onSnapshot, orderBy, query } from "firebase/firestore";
 import { CalendarDays, ChevronDown } from "lucide-react";
 import { getDb } from "@/lib/firebase/firestore";
 import { useAdminEvent } from "@/lib/admin/adminEventStore";
+import { filterAccessibleEvents, useAccess } from "@/lib/admin/access";
 import type { Event as EventDoc } from "@/lib/types";
 
 // 과거 시드 버그로 name 이 { ko, en } 객체로 저장된 데이터 호환.
@@ -30,7 +31,8 @@ export function EventSelector() {
   const setSelectedEventId = useAdminEvent((s) => s.setSelectedEventId);
   const hydrated = useAdminEvent((s) => s.hasHydrated);
 
-  const [events, setEvents] = useState<EventDoc[]>([]);
+  const access = useAccess();
+  const [allEvents, setAllEvents] = useState<EventDoc[]>([]);
   const [open, setOpen] = useState(false);
 
   useEffect(() => {
@@ -38,11 +40,17 @@ export function EventSelector() {
       query(collection(getDb(), "events"), orderBy("order", "asc")),
       (s) => {
         const list = s.docs.map((d) => ({ ...(d.data() as EventDoc), id: d.id }));
-        setEvents(list);
+        setAllEvents(list);
       }
     );
     return () => u();
   }, []);
+
+  // 담당자는 배정된 전시회만 — 관리자는 전체
+  const events = useMemo(
+    () => filterAccessibleEvents(access, allEvents),
+    [access, allEvents]
+  );
 
   // 선택 자동 교체 — 없거나 비활성화된 행사면 활성 행사로
   useEffect(() => {
@@ -53,7 +61,23 @@ export function EventSelector() {
     if (fallback) setSelectedEventId(fallback.id);
   }, [hydrated, events, selectedEventId, setSelectedEventId]);
 
+  // 배정된 전시회가 하나도 없는 담당자 — 이전 선택값(다른 사람이 쓰던 브라우저 등)도 비움
+  useEffect(() => {
+    if (allEvents.length > 0 && events.length === 0 && selectedEventId) {
+      setSelectedEventId(null);
+    }
+  }, [allEvents.length, events.length, selectedEventId, setSelectedEventId]);
+
   const current = events.find((e) => e.id === selectedEventId);
+
+  if (allEvents.length > 0 && events.length === 0) {
+    return (
+      <div className="flex items-center gap-2 px-3 py-1.5 rounded-btn border border-amber-200 bg-amber-50 text-amber-700 text-[12px]">
+        <CalendarDays className="w-3.5 h-3.5" />
+        <span>배정된 전시회가 없습니다 — 관리자에게 배정을 요청하세요</span>
+      </div>
+    );
+  }
 
   if (events.length === 0) {
     return (

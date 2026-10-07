@@ -331,6 +331,9 @@ export type Inquiry = {
 
   message: string;
 
+  /** 개인정보 수집·이용 동의 (문의 폼 필수 체크). 동의 시각은 createdAt 과 같다. */
+  privacyConsent?: boolean;
+
   /** 1분 진단을 거쳐 문의한 경우의 컨텍스트 — 어드민에 답·추천 매체 그대로 보여줌 */
   diagnosisContext?: {
     primaryGoal: string;
@@ -1058,6 +1061,30 @@ export type Event = {
   note?: string;
   createdAt: Timestamp;
   updatedAt: Timestamp;
+};
+
+// ============= MEMBER (어드민 사용자·권한) =============
+/**
+ * 관리자: 모든 전시회 + 멤버 관리. 담당자: 배정된 전시회(events)만 보고 수정.
+ * 공용 계정(NEXT_PUBLIC_ADMIN_EMAILS, 보안 규칙의 비상용 관리자)은 members 문서 없이도 관리자.
+ */
+export type MemberRole = "admin" | "manager";
+/** pending: 가입 신청(승인 대기) / active: 사용 중 / disabled: 비활성(퇴사 등) */
+export type MemberStatus = "pending" | "active" | "disabled";
+
+export type Member = {
+  uid: string;
+  email: string;
+  name: string;
+  role: MemberRole;
+  /** 담당자가 접근할 수 있는 행사 ID. 관리자는 무시(전체 접근). */
+  events: string[];
+  status: MemberStatus;
+  createdAt: Timestamp;
+  updatedAt: Timestamp;
+  /** 승인·변경한 관리자 이메일 */
+  approvedBy?: string;
+  approvedAt?: Timestamp;
 };
 
 // ============= SPONSOR =============

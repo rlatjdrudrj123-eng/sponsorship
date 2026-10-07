@@ -57,6 +57,13 @@ function buildSchema(locale: "ko" | "en") {
       .string()
       .min(7, isEn ? "Please enter your phone number" : "전화번호를 입력하세요"),
     message: z.string().optional(),
+    // 개인정보 수집·이용 동의 (필수) — 체크 안 하면 제출 불가
+    privacyConsent: z.literal(
+      true,
+      isEn
+        ? "Please agree to the collection and use of your personal information"
+        : "개인정보 수집·이용에 동의해 주세요"
+    ),
   });
 }
 
@@ -294,7 +301,7 @@ function ContactPageInner() {
       values.companyName
     );
     try {
-      await addDoc(collection(getDb(), "inquiries"), {
+      const ref = await addDoc(collection(getDb(), "inquiries"), {
         eventId,
         companyName: values.companyName,
         contactName: values.contactName,
@@ -306,6 +313,8 @@ function ContactPageInner() {
         cartVat: vat,
         cartTotal: total,
         ...(diagnosisContext ? { diagnosisContext } : {}),
+        // 개인정보 수집·이용 동의 — 스키마에서 true 만 통과. (규칙 허용 필드 — 이름 변경 금지)
+        privacyConsent: true,
         status: "new",
         createdAt: Timestamp.fromDate(new Date()),
         updatedAt: Timestamp.fromDate(new Date()),
@@ -318,7 +327,14 @@ function ContactPageInner() {
         });
       }
       // diagnosisContext sessionStorage 는 mount 시점에 이미 read-and-clear 완료
-      router.push(`/${eventId}/contact/done`);
+      // 접수번호 표시용으로 문서 id 전달. 영문 폼이면 영문 완료 화면으로.
+      router.push(
+        localeHref(
+          eventId,
+          `/contact/done?no=${encodeURIComponent(ref.id)}`,
+          locale
+        )
+      );
     } catch (e) {
       setSubmitError(
         e instanceof Error
@@ -439,6 +455,50 @@ function ContactPageInner() {
                 className="w-full px-3.5 py-2.5 text-[14px] border border-ink-100 rounded-btn focus:outline-none focus:border-brand-500 bg-white resize-y"
               />
             </Field>
+
+            <ConsentField
+              label={
+                <>
+                  {locale === "en"
+                    ? "I agree to the collection and use of my personal information"
+                    : "개인정보 수집·이용에 동의합니다"}{" "}
+                  <span className="text-brand-700">
+                    {locale === "en" ? "(required)" : "(필수)"}
+                  </span>
+                </>
+              }
+              detail={
+                <ul className="space-y-0.5">
+                  <li>
+                    {locale === "en"
+                      ? "Collected: company name, contact name, email, phone, message"
+                      : "수집 항목: 회사명·담당자명·이메일·연락처·문의 내용"}
+                  </li>
+                  <li>
+                    {locale === "en"
+                      ? "Purpose: sponsorship consultation and quote reply"
+                      : "이용 목적: 스폰서십 상담·견적 회신"}
+                  </li>
+                  <li>
+                    {locale === "en"
+                      ? "Retention: 1 year after the consultation ends"
+                      : "보유 기간: 상담 종료 후 1년"}
+                  </li>
+                  <li>
+                    {locale === "en"
+                      ? "You may decline; without consent we cannot accept the inquiry."
+                      : "동의를 거부할 수 있으며, 거부 시 문의 접수가 제한됩니다."}
+                  </li>
+                </ul>
+              }
+              error={errors.privacyConsent?.message}
+            >
+              <input
+                type="checkbox"
+                {...register("privacyConsent")}
+                className="accent-brand-500 w-4 h-4 mt-0.5 shrink-0 cursor-pointer"
+              />
+            </ConsentField>
 
             {submitError && (
               <div
@@ -625,6 +685,60 @@ function Field({
       {control}
       {error && (
         <p id={errorId} className="text-[11px] text-red-700 mt-1">
+          {error}
+        </p>
+      )}
+    </div>
+  );
+}
+
+/**
+ * 필수 동의 체크박스 — Field 와 같은 방식으로 체크박스에 id·aria-* 를 주입하고
+ * label htmlFor 로 연결. 안내 문구(수집 항목·목적·보유 기간)는 aria-describedby 로 묶는다.
+ */
+function ConsentField({
+  label,
+  detail,
+  error,
+  children,
+}: {
+  label: React.ReactNode;
+  detail: React.ReactNode;
+  error?: string;
+  children: React.ReactNode;
+}) {
+  const inputId = useId();
+  const detailId = `${inputId}-detail`;
+  const errorId = `${inputId}-error`;
+
+  const control = isValidElement(children)
+    ? cloneElement(children as ReactElement<Record<string, unknown>>, {
+        id: inputId,
+        "aria-required": true,
+        "aria-invalid": error ? true : undefined,
+        "aria-describedby": error ? `${detailId} ${errorId}` : detailId,
+      })
+    : children;
+
+  return (
+    <div className="bg-surface border border-ink-100 rounded-btn px-4 py-3.5">
+      <div className="flex items-start gap-2.5">
+        {control}
+        <label
+          htmlFor={inputId}
+          className="text-[13px] font-semibold text-ink-900 leading-snug cursor-pointer"
+        >
+          {label}
+        </label>
+      </div>
+      <div
+        id={detailId}
+        className="mt-2 pl-[26px] text-[11.5px] text-ink-700 leading-relaxed"
+      >
+        {detail}
+      </div>
+      {error && (
+        <p id={errorId} className="pl-[26px] text-[11px] text-red-700 mt-1.5">
           {error}
         </p>
       )}

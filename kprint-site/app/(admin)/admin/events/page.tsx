@@ -17,6 +17,7 @@ import {
 } from "firebase/firestore";
 import { CalendarDays, Plus, Trash2, X } from "lucide-react";
 import { getDb } from "@/lib/firebase/firestore";
+import { filterAccessibleEvents, isAdminAccess, useAccess } from "@/lib/admin/access";
 import type { Event } from "@/lib/types";
 
 const DEFAULT_EVENTS: Array<Omit<Event, "createdAt" | "updatedAt">> = [
@@ -32,16 +33,21 @@ const DEFAULT_EVENTS: Array<Omit<Event, "createdAt" | "updatedAt">> = [
 ];
 
 export default function EventsPage() {
-  const [events, setEvents] = useState<Event[]>([]);
+  const [allEvents, setAllEvents] = useState<Event[]>([]);
   const [loading, setLoading] = useState(true);
   const [seeded, setSeeded] = useState(false);
   const [showAdd, setShowAdd] = useState(false);
+  const access = useAccess();
+  // 행사 추가·삭제·순서·노출(활성)은 공개 사이트 전체에 영향 → 관리자만.
+  // 담당자는 배정된 행사의 이름·연도 등 기본 정보만 고칠 수 있다.
+  const admin = isAdminAccess(access);
+  const events = useMemo(() => filterAccessibleEvents(access, allEvents), [access, allEvents]);
 
   useEffect(() => {
     const u = onSnapshot(
       query(collection(getDb(), "events"), orderBy("order", "asc")),
       (s) => {
-        setEvents(s.docs.map((d) => ({ ...(d.data() as Event), id: d.id })));
+        setAllEvents(s.docs.map((d) => ({ ...(d.data() as Event), id: d.id })));
         setLoading(false);
       },
       () => setLoading(false)
@@ -51,8 +57,8 @@ export default function EventsPage() {
 
   // Auto-seed default events if collection is empty
   useEffect(() => {
-    if (loading || seeded) return;
-    if (events.length > 0) return;
+    if (!admin || loading || seeded) return;
+    if (allEvents.length > 0) return;
     setSeeded(true);
     (async () => {
       try {
@@ -68,7 +74,7 @@ export default function EventsPage() {
         console.error("event seed failed", err);
       }
     })();
-  }, [events, loading, seeded]);
+  }, [admin, allEvents, loading, seeded]);
 
   const updateField = async <K extends keyof Event>(id: string, field: K, value: Event[K]) => {
     try {
@@ -112,29 +118,33 @@ export default function EventsPage() {
             행사 관리
           </h1>
           <p className="text-[13px] text-ink-700 mt-1">
-            연도·행사별로 스폰서를 분리해 관리합니다 (예: K-PRINT 2026, K-PRINT 2027).
+            {admin
+              ? "연도·행사별로 스폰서를 분리해 관리합니다 (예: K-PRINT 2026, K-PRINT 2027)."
+              : "배정된 행사만 표시됩니다. 행사 추가·삭제·공개 여부는 관리자에게 요청하세요."}
           </p>
         </div>
-        <button
-          type="button"
-          onClick={() => setShowAdd(true)}
-          className="px-3.5 py-2 rounded-btn bg-ink-900 text-white text-[13px] font-semibold hover:bg-ink-700 flex items-center gap-1.5"
-        >
-          <Plus className="w-4 h-4" />새 행사
-        </button>
+        {admin && (
+          <button
+            type="button"
+            onClick={() => setShowAdd(true)}
+            className="px-3.5 py-2 rounded-btn bg-ink-900 text-white text-[13px] font-semibold hover:bg-ink-700 flex items-center gap-1.5"
+          >
+            <Plus className="w-4 h-4" />새 행사
+          </button>
+        )}
       </header>
 
       <div className="bg-white border border-ink-100 rounded-card overflow-hidden">
         <table className="w-full text-sm">
           <thead>
             <tr className="bg-ink-50 text-[11px] uppercase tracking-wide text-ink-700">
-              <th className="text-center px-2 py-2.5 font-semibold w-16">순서</th>
+              {admin && <th className="text-center px-2 py-2.5 font-semibold w-16">순서</th>}
               <th className="text-left px-4 py-2.5 font-semibold">행사명</th>
               <th className="text-left px-4 py-2.5 font-semibold">단축명</th>
               <th className="text-right px-4 py-2.5 font-semibold w-24">연도</th>
               <th className="text-right px-4 py-2.5 font-semibold w-40">작년 합계</th>
               <th className="text-center px-4 py-2.5 font-semibold w-20">활성</th>
-              <th className="px-4 py-2.5 w-20"></th>
+              {admin && <th className="px-4 py-2.5 w-20"></th>}
             </tr>
           </thead>
           <tbody>
@@ -148,32 +158,34 @@ export default function EventsPage() {
             {!loading && events.length === 0 && (
               <tr>
                 <td colSpan={7} className="px-4 py-12 text-center text-sm text-ink-500">
-                  등록된 행사가 없습니다.
+                  {admin ? "등록된 행사가 없습니다." : "배정된 행사가 없습니다."}
                 </td>
               </tr>
             )}
             {events.map((e, i) => (
               <tr key={e.id} className="border-t border-ink-100">
-                <td className="px-2 py-2 text-center">
-                  <div className="flex flex-col items-center gap-0.5">
-                    <button
-                      type="button"
-                      onClick={() => moveBy(e.id, -1)}
-                      disabled={i === 0}
-                      className="w-6 h-5 rounded text-[10px] text-ink-700 hover:bg-ink-100 disabled:opacity-30 disabled:cursor-not-allowed"
-                    >
-                      ▲
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => moveBy(e.id, 1)}
-                      disabled={i === events.length - 1}
-                      className="w-6 h-5 rounded text-[10px] text-ink-700 hover:bg-ink-100 disabled:opacity-30 disabled:cursor-not-allowed"
-                    >
-                      ▼
-                    </button>
-                  </div>
-                </td>
+                {admin && (
+                  <td className="px-2 py-2 text-center">
+                    <div className="flex flex-col items-center gap-0.5">
+                      <button
+                        type="button"
+                        onClick={() => moveBy(e.id, -1)}
+                        disabled={i === 0}
+                        className="w-6 h-5 rounded text-[10px] text-ink-700 hover:bg-ink-100 disabled:opacity-30 disabled:cursor-not-allowed"
+                      >
+                        ▲
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => moveBy(e.id, 1)}
+                        disabled={i === events.length - 1}
+                        className="w-6 h-5 rounded text-[10px] text-ink-700 hover:bg-ink-100 disabled:opacity-30 disabled:cursor-not-allowed"
+                      >
+                        ▼
+                      </button>
+                    </div>
+                  </td>
+                )}
                 <td className="px-4 py-2">
                   <input
                     type="text"
@@ -235,8 +247,10 @@ export default function EventsPage() {
                   <button
                     type="button"
                     onClick={() => updateField(e.id, "isActive", !e.isActive)}
+                    disabled={!admin}
+                    title={admin ? undefined : "공개 여부는 관리자만 바꿀 수 있습니다"}
                     className={
-                      "px-2.5 py-1 rounded-full text-[11px] font-semibold border " +
+                      "px-2.5 py-1 rounded-full text-[11px] font-semibold border disabled:cursor-default " +
                       (e.isActive
                         ? "bg-brand-500 text-ink-900 border-brand-500"
                         : "bg-ink-100 text-ink-500 border-ink-100")
@@ -245,16 +259,18 @@ export default function EventsPage() {
                     {e.isActive ? "활성" : "숨김"}
                   </button>
                 </td>
-                <td className="px-4 py-2 text-right">
-                  <button
-                    type="button"
-                    onClick={() => removeEvent(e)}
-                    className="p-1.5 rounded text-ink-500 hover:text-red-700 hover:bg-red-50"
-                    title="삭제"
-                  >
-                    <Trash2 className="w-3.5 h-3.5" />
-                  </button>
-                </td>
+                {admin && (
+                  <td className="px-4 py-2 text-right">
+                    <button
+                      type="button"
+                      onClick={() => removeEvent(e)}
+                      className="p-1.5 rounded text-ink-500 hover:text-red-700 hover:bg-red-50"
+                      title="삭제"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  </td>
+                )}
               </tr>
             ))}
           </tbody>
@@ -262,10 +278,13 @@ export default function EventsPage() {
       </div>
 
       <p className="text-[11px] text-ink-500">
-        팁: 셀을 클릭해 직접 수정하면 자동으로 저장됩니다. 활성 토글은 사이드바·스폰서 페이지의 기본 행사 후보에 영향을 줍니다.
+        팁: 셀을 클릭해 직접 수정하면 자동으로 저장됩니다.
+        {admin && " 활성 토글은 사이드바·스폰서 페이지의 기본 행사 후보에 영향을 줍니다."}
       </p>
 
-      {showAdd && <AddEventModal events={events} onClose={() => setShowAdd(false)} />}
+      {showAdd && admin && (
+        <AddEventModal events={allEvents} onClose={() => setShowAdd(false)} />
+      )}
     </div>
   );
 }
