@@ -1,8 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { BookOpen } from "lucide-react";
+import { BookOpen, ListChecks, PlayCircle } from "lucide-react";
 import { BOOTSTRAP_ADMIN_EMAILS } from "@/lib/firebase/config";
+import { MAIN_TOUR, useOnboarding } from "@/lib/admin/onboarding";
 
 /**
  * 사용 안내 — 처음 쓰는 담당자(옆팀 포함)용 한 장 요약. 상단 도움말(?) 버튼에서 연결.
@@ -101,14 +102,40 @@ const STEPS: Step[] = [
 ];
 
 export default function HelpPage() {
+  const startTour = useOnboarding((s) => s.startTour);
+  const setHidden = useOnboarding((s) => s.setHidden);
+  const setCollapsed = useOnboarding((s) => s.setCollapsed);
   return (
     <div className="space-y-5 max-w-3xl">
-      <header>
-        <h1 className="text-[22px] font-bold text-ink-900 leading-tight flex items-center gap-2">
-          <BookOpen className="w-5 h-5 text-brand-700" />
-          사용 안내
-        </h1>
-        <p className="text-[13px] text-ink-700 mt-1">처음 쓰는 담당자용 요약입니다.</p>
+      <header className="flex items-start justify-between gap-4 flex-wrap">
+        <div>
+          <h1 className="text-[22px] font-bold text-ink-900 leading-tight flex items-center gap-2">
+            <BookOpen className="w-5 h-5 text-brand-700" />
+            사용 안내
+          </h1>
+          <p className="text-[13px] text-ink-700 mt-1">처음 쓰는 담당자용 요약입니다.</p>
+        </div>
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => startTour(MAIN_TOUR)}
+            className="px-3.5 py-2 rounded-btn bg-ink-900 text-white text-[13px] font-semibold hover:bg-ink-700 flex items-center gap-1.5"
+          >
+            <PlayCircle className="w-4 h-4" />
+            화면 투어 시작
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setHidden(false);
+              setCollapsed(false);
+            }}
+            className="px-3.5 py-2 rounded-btn border border-ink-100 text-[13px] font-semibold text-ink-900 hover:bg-ink-50 flex items-center gap-1.5"
+          >
+            <ListChecks className="w-4 h-4" />
+            시작하기 목록
+          </button>
+        </div>
       </header>
 
       <ol className="space-y-3">

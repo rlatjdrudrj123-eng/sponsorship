@@ -145,6 +145,7 @@ export default function EventsPage() {
         {canCreate && (
           <button
             type="button"
+            data-tour="events-add"
             onClick={() => setShowAdd(true)}
             className="px-3.5 py-2 rounded-btn bg-ink-900 text-white text-[13px] font-semibold hover:bg-ink-700 flex items-center gap-1.5"
           >
@@ -285,6 +286,7 @@ export default function EventsPage() {
                   {(admin || isOwner(e)) && (
                     <button
                       type="button"
+                      data-tour="events-assign"
                       onClick={() => setAssignFor(e)}
                       className="px-2 py-1 rounded text-[12px] font-semibold text-ink-700 hover:bg-ink-50 inline-flex items-center gap-1"
                       title="이 행사 담당자 지정"

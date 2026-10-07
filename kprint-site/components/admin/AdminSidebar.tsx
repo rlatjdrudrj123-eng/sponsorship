@@ -58,6 +58,8 @@ type MenuItem = {
   exact?: boolean; // /admin 처럼 정확히 일치할 때만 active
   /** 이 경로들에서도 선택 표시 (사이트 설정의 탭 화면들) */
   alsoActive?: string[];
+  /** 첫 사용 투어가 짚는 대상 (data-tour) */
+  tour?: string;
 };
 
 type Section = { label: string; items: MenuItem[] };
@@ -150,15 +152,16 @@ export function AdminSidebar() {
           label: "문의",
           Icon: MessageSquare,
           badge: newInquiries > 0 ? newInquiries : undefined,
+          tour: "nav-inquiries",
         },
-        { href: "/admin/sponsors", label: "스폰서 관리", Icon: Handshake },
-        { href: "/admin/slots", label: "판매 현황", Icon: BarChart3 },
+        { href: "/admin/sponsors", label: "스폰서 관리", Icon: Handshake, tour: "nav-sponsors" },
+        { href: "/admin/slots", label: "판매 현황", Icon: BarChart3, tour: "nav-slots" },
       ],
     },
     {
       label: "콘텐츠",
       items: [
-        { href: "/admin/categories", label: "스폰서십 매체", Icon: FolderKanban },
+        { href: "/admin/categories", label: "스폰서십 매체", Icon: FolderKanban, tour: "nav-categories" },
         { href: "/admin/packages", label: "패키지", Icon: Package },
         { href: "/admin/classification", label: "매체 분류", Icon: Layers },
       ],
@@ -172,6 +175,7 @@ export function AdminSidebar() {
           Icon: Settings,
           exact: true,
           alsoActive: SETTINGS_TAB_PATHS,
+          tour: "nav-site",
         },
         { href: "/admin/settings/landing", label: "메인 페이지 디자인", Icon: Layout },
         { href: "/admin/settings/quote", label: "견적서 설정", Icon: FileText },
@@ -180,7 +184,7 @@ export function AdminSidebar() {
     {
       label: "관리",
       items: [
-        { href: "/admin/events", label: "행사 관리", Icon: CalendarDays },
+        { href: "/admin/events", label: "행사 관리", Icon: CalendarDays, tour: "nav-events" },
         ...(isAdmin
           ? [
               {
@@ -192,7 +196,7 @@ export function AdminSidebar() {
             ]
           : []),
         { href: "/admin/import", label: "엑셀 일괄 등록", Icon: Upload },
-        { href: "/admin/history", label: "변경 이력", Icon: History },
+        { href: "/admin/history", label: "변경 이력", Icon: History, tour: "nav-history" },
       ],
     },
   ];
@@ -228,6 +232,7 @@ export function AdminSidebar() {
                   <li key={item.href}>
                     <Link
                       href={item.href}
+                      data-tour={item.tour}
                       className={
                         "flex items-center gap-2.5 px-2.5 py-2 rounded-btn text-[13px] transition-colors " +
                         (active

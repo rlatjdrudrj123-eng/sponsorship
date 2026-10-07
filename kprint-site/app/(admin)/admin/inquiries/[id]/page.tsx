@@ -177,12 +177,14 @@ export default function InquiryDetailPage() {
           <Link
             href={`/admin/quotes/print/inquiry/${inquiry.id}`}
             target="_blank"
+            data-tour="inq-quote"
             className="px-3.5 py-2 rounded-btn border border-ink-100 text-[13px] font-semibold text-ink-900 hover:bg-ink-50 flex items-center gap-1.5"
           >
             <FileText className="w-4 h-4" />
             견적서 추출
           </Link>
           <Link
+            data-tour="inq-convert"
             href={`/admin/sponsors/new?inquiryId=${encodeURIComponent(inquiry.id)}${inquiry.eventId ? `&event=${encodeURIComponent(inquiry.eventId)}` : ""}`}
             className="px-3.5 py-2 rounded-btn bg-brand-500 text-ink-900 text-[13px] font-bold hover:bg-brand-700 hover:text-white flex items-center gap-1.5"
           >
@@ -300,6 +302,7 @@ export default function InquiryDetailPage() {
 
         {/* Right */}
         <div className="space-y-4 sticky top-[72px]">
+          <div data-tour="inq-status">
           <Section title="상태">
             <select
               value={inquiry.status}
@@ -317,6 +320,7 @@ export default function InquiryDetailPage() {
               </strong>
             </p>
           </Section>
+          </div>
 
           <Section title="어드민 메모 (내부)">
             <textarea

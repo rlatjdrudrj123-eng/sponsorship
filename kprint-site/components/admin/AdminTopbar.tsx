@@ -1,8 +1,10 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { HelpCircle, LogOut, RefreshCw } from "lucide-react";
+import { BookOpen, HelpCircle, ListChecks, LogOut, MousePointerClick, PlayCircle, RefreshCw } from "lucide-react";
+import { MAIN_TOUR, pageTourFor, useOnboarding } from "@/lib/admin/onboarding";
 import { signOut, type User } from "@/lib/firebase/auth";
 import { displayName, isAdminAccess, useAccess } from "@/lib/admin/access";
 import { EventSelector } from "./EventSelector";
@@ -65,7 +67,9 @@ export function AdminTopbar({ user }: { user: User | null }) {
 
       <div className="flex-1" />
 
-      <EventSelector />
+      <div data-tour="event-selector">
+        <EventSelector />
+      </div>
 
       <button
         type="button"
@@ -76,14 +80,7 @@ export function AdminTopbar({ user }: { user: User | null }) {
       >
         <RefreshCw className="w-4 h-4" />
       </button>
-      <Link
-        href="/admin/help"
-        className="w-8 h-8 rounded-btn border border-ink-100 grid place-items-center text-ink-700 hover:bg-ink-50"
-        title="사용 안내"
-        aria-label="사용 안내"
-      >
-        <HelpCircle className="w-4 h-4" />
-      </Link>
+      <HelpMenu pathname={pathname} />
 
       <div className="flex items-center gap-2 pl-3 ml-1 border-l border-ink-100">
         <div
@@ -108,5 +105,82 @@ export function AdminTopbar({ user }: { user: User | null }) {
         </button>
       </div>
     </header>
+  );
+}
+
+/** 도움말(?) — 투어 다시 보기·이 화면 둘러보기·시작하기 목록·사용 안내 */
+function HelpMenu({ pathname }: { pathname: string }) {
+  const [open, setOpen] = useState(false);
+  const startTour = useOnboarding((s) => s.startTour);
+  const setHidden = useOnboarding((s) => s.setHidden);
+  const setCollapsed = useOnboarding((s) => s.setCollapsed);
+  const pageTour = pageTourFor(pathname);
+  const item =
+    "w-full text-left px-3 py-2 text-[13px] text-ink-900 hover:bg-ink-50 flex items-center gap-2";
+  return (
+    <div className="relative" data-tour="help">
+      <button
+        type="button"
+        onClick={() => setOpen((p) => !p)}
+        className="w-8 h-8 rounded-btn border border-ink-100 grid place-items-center text-ink-700 hover:bg-ink-50"
+        title="도움말"
+        aria-label="도움말"
+        aria-expanded={open}
+      >
+        <HelpCircle className="w-4 h-4" />
+      </button>
+      {open && (
+        <>
+          <button
+            type="button"
+            className="fixed inset-0 z-30 cursor-default"
+            aria-label="닫기"
+            onClick={() => setOpen(false)}
+          />
+          <div className="absolute right-0 top-full mt-1 z-40 bg-white border border-ink-100 rounded-card shadow-xl min-w-[220px] py-1">
+            {pageTour && (
+              <button
+                type="button"
+                className={item}
+                onClick={() => {
+                  setOpen(false);
+                  startTour(pageTour);
+                }}
+              >
+                <MousePointerClick className="w-4 h-4 text-brand-700" />
+                {pageTour.label}
+              </button>
+            )}
+            <button
+              type="button"
+              className={item}
+              onClick={() => {
+                setOpen(false);
+                startTour(MAIN_TOUR);
+              }}
+            >
+              <PlayCircle className="w-4 h-4 text-ink-500" />
+              처음 화면 투어 다시 보기
+            </button>
+            <button
+              type="button"
+              className={item}
+              onClick={() => {
+                setOpen(false);
+                setHidden(false);
+                setCollapsed(false);
+              }}
+            >
+              <ListChecks className="w-4 h-4 text-ink-500" />
+              시작하기 목록 보기
+            </button>
+            <Link href="/admin/help" className={item} onClick={() => setOpen(false)}>
+              <BookOpen className="w-4 h-4 text-ink-500" />
+              사용 안내 (전체 설명)
+            </Link>
+          </div>
+        </>
+      )}
+    </div>
   );
 }

@@ -217,6 +217,7 @@ export default function SponsorsListPage() {
         <div className="flex items-center gap-2">
           <button
             type="button"
+            data-tour="sponsor-export"
             onClick={exportXlsx}
             className="px-3.5 py-2 rounded-btn border border-ink-100 text-ink-900 text-[13px] font-semibold hover:bg-ink-50 flex items-center gap-1.5"
             title="현재 필터 결과를 엑셀로 내보내기"
@@ -225,6 +226,7 @@ export default function SponsorsListPage() {
             엑셀 다운로드
           </button>
           <Link
+            data-tour="sponsor-new"
             href={`/admin/sponsors/new${eventId ? `?event=${eventId}` : ""}`}
             className="px-3.5 py-2 rounded-btn bg-ink-900 text-white text-[13px] font-semibold hover:bg-ink-700 flex items-center gap-1.5"
           >
@@ -248,7 +250,7 @@ export default function SponsorsListPage() {
       {eventId && (
         <>
           {/* 합계 카드 */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+          <div data-tour="sponsor-totals" className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
             <SumCard
               label="진행중 합계"
               value={totals.in_progress}

@@ -10,6 +10,7 @@ import type { Member } from "@/lib/types";
 import { AdminSidebar } from "@/components/admin/AdminSidebar";
 import { AdminTopbar } from "@/components/admin/AdminTopbar";
 import { AccountGate } from "@/components/admin/AccountGate";
+import { OnboardingController } from "@/components/admin/Onboarding";
 
 /**
  * 어드민 가드 + 사이드바/topbar 크롬.
@@ -127,6 +128,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
         <AdminTopbar user={access.user} />
         <main className="flex-1 px-7 py-6">{children}</main>
       </div>
+      <OnboardingController uid={access.user.uid} />
     </div>
   );
 }

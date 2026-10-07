@@ -194,6 +194,7 @@ export default function ImportPage() {
           </button>
           <button
             type="button"
+            data-tour="import-template"
             onClick={handleDownloadTemplate}
             disabled={downloadingTemplate}
             className="px-3.5 py-2 rounded-btn border border-ink-100 text-[13px] font-semibold text-ink-900 hover:bg-ink-50 flex items-center gap-1.5 disabled:opacity-50"
@@ -207,7 +208,9 @@ export default function ImportPage() {
       <div className="grid grid-cols-[1fr_320px] gap-5 items-start">
         {/* 좌측 메인 */}
         <div className="space-y-4 min-w-0">
-          <DropZone file={file} onFileSelect={setFile} disabled={uploading} />
+          <div data-tour="import-drop">
+            <DropZone file={file} onFileSelect={setFile} disabled={uploading} />
+          </div>
 
           {parseError && (
             <div className="bg-red-50 border border-red-100 rounded-btn p-3 text-sm text-red-700 flex items-start gap-2">

@@ -79,7 +79,7 @@ export function DocHistory({ col, docId, eventId, includeChildren = false }: Pro
   const groups = useMemo(() => groupLogs(logs ?? []), [logs]);
 
   return (
-    <section className="bg-white border border-ink-100 rounded-card overflow-hidden">
+    <section data-tour="doc-history" className="bg-white border border-ink-100 rounded-card overflow-hidden">
       <button
         type="button"
         onClick={() => setOpen((p) => !p)}
