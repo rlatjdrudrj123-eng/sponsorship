@@ -23,6 +23,7 @@ import { getDb } from "@/lib/firebase/firestore";
 import { useAdminEvent } from "@/lib/admin/adminEventStore";
 import type { BundledPerk, Category, Package, SiteSettings } from "@/lib/types";
 import { DEFAULT_BUNDLED_PERKS, calcPerksTotalValue } from "@/lib/perks";
+import { SettingsTabs } from "@/components/admin/SettingsTabs";
 
 /**
  * 동봉 혜택 관리 — 스폰서십 신청 시 모두에게 추가로 제공되는 매체 권리.
@@ -105,7 +106,8 @@ export default function PerksAdminPage() {
           setSettings(data);
           // 외부에서 갱신된 값을 가져오되, 작업 중(dirty)이면 덮어쓰지 않음
           if (!dirty) {
-            setPerks(data.bundledPerks ?? DEFAULT_BUNDLED_PERKS);
+            // 저장된 혜택이 없으면 빈 목록 — K-PRINT 기본 혜택이 다른 행사에 자동으로 실리지 않게
+            setPerks(data.bundledPerks ?? []);
           }
         }
       }
@@ -156,7 +158,12 @@ export default function PerksAdminPage() {
   };
 
   const resetToDefault = () => {
-    if (!confirm("기본 혜택 목록으로 되돌릴까요? 현재 편집 내용은 사라집니다.")) return;
+    if (
+      !confirm(
+        "K-PRINT 기준 예시 혜택으로 채울까요? 현재 편집 내용은 사라집니다.\n(금액·조건은 이 행사 기준으로 고쳐서 저장하세요)"
+      )
+    )
+      return;
     setPerks([...DEFAULT_BUNDLED_PERKS]);
     setDirty(true);
   };
@@ -195,6 +202,9 @@ export default function PerksAdminPage() {
 
   return (
     <div className="p-6 md:p-8 max-w-4xl mx-auto">
+      <div className="mb-5">
+        <SettingsTabs />
+      </div>
       <header className="mb-6 flex items-end justify-between gap-4">
         <div>
           <h1 className="text-[24px] font-bold text-ink-900 flex items-center gap-2">
@@ -312,7 +322,7 @@ export default function PerksAdminPage() {
 
         {perks.length === 0 && (
           <div className="bg-ink-50 border border-ink-100 rounded-card p-6 text-center text-[13px] text-ink-500">
-            동봉 혜택이 없습니다. 아래 [혜택 추가] 또는 [기본값으로 되돌리기]
+            동봉 혜택이 없습니다 — 공개 사이트에도 표시하지 않습니다. 아래 [혜택 추가] 또는 [예시로 채우기]
           </div>
         )}
       </div>
@@ -332,7 +342,7 @@ export default function PerksAdminPage() {
           className="px-3.5 py-2 rounded-btn border border-ink-100 hover:border-ink-900 text-[13px] font-semibold flex items-center gap-1.5 text-ink-700"
         >
           <RotateCcw className="w-3.5 h-3.5" />
-          기본값으로 되돌리기
+          예시로 채우기 (K-PRINT 기준)
         </button>
         <span className="ml-auto text-[11.5px] text-ink-500">
           {saving
@@ -343,7 +353,7 @@ export default function PerksAdminPage() {
                 ? `${savedAt.toLocaleTimeString()} 저장됨`
                 : settings?.bundledPerks
                   ? "현재 저장된 혜택"
-                  : "기본값 사용 중"}
+                  : "저장된 혜택 없음"}
         </span>
         <button
           type="button"

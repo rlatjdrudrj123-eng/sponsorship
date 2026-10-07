@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { HelpCircle, LogOut, RefreshCw } from "lucide-react";
 import { signOut, type User } from "@/lib/firebase/auth";
@@ -7,19 +8,25 @@ import { displayName, isAdminAccess, useAccess } from "@/lib/admin/access";
 import { EventSelector } from "./EventSelector";
 
 const PATH_LABELS: Record<string, string> = {
-  "/admin": "대시보드",
+  "/admin": "스폰서십 매체",
   "/admin/members": "멤버 관리",
   "/admin/history": "변경 이력",
-  "/admin/import": "엑셀 업로드",
-  "/admin/categories": "카테고리",
+  "/admin/help": "사용 안내",
+  "/admin/import": "엑셀 일괄 등록",
+  "/admin/categories": "스폰서십 매체",
+  "/admin/classification": "매체 분류",
   "/admin/packages": "패키지",
-  "/admin/slots": "슬롯 관리",
+  "/admin/slots": "판매 현황",
   "/admin/inquiries": "문의",
-  "/admin/sponsors": "스폰서",
+  "/admin/sponsors": "스폰서 관리",
   "/admin/events": "행사 관리",
   "/admin/seed": "데모 시드",
   "/admin/settings": "사이트 설정",
-  "/admin/settings/taxonomy": "분류·태그",
+  "/admin/settings/perks": "사이트 설정 · 추가 혜택",
+  "/admin/settings/type-layouts": "사이트 설정 · 유형별 표시",
+  "/admin/settings/diagnosis": "사이트 설정 · 1분 진단",
+  "/admin/settings/taxonomy": "사이트 설정 · 참가 상황·태그",
+  "/admin/settings/landing": "메인 페이지 디자인",
   "/admin/settings/quote": "견적서 설정",
 };
 
@@ -69,14 +76,14 @@ export function AdminTopbar({ user }: { user: User | null }) {
       >
         <RefreshCw className="w-4 h-4" />
       </button>
-      <button
-        type="button"
+      <Link
+        href="/admin/help"
         className="w-8 h-8 rounded-btn border border-ink-100 grid place-items-center text-ink-700 hover:bg-ink-50"
-        title="도움말"
-        aria-label="도움말"
+        title="사용 안내"
+        aria-label="사용 안내"
       >
         <HelpCircle className="w-4 h-4" />
-      </button>
+      </Link>
 
       <div className="flex items-center gap-2 pl-3 ml-1 border-l border-ink-100">
         <div

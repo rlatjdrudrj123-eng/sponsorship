@@ -9,10 +9,14 @@
  */
 import Link from "next/link";
 import { ArrowLeft, Brain, ArrowRight } from "lucide-react";
+import { SettingsTabs } from "@/components/admin/SettingsTabs";
 
 export default function DiagnosisSettingsPage() {
   return (
     <div className="p-6 md:p-8 max-w-3xl mx-auto">
+      <div className="mb-5">
+        <SettingsTabs />
+      </div>
       <Link
         href="/admin/settings"
         className="text-[12px] text-ink-500 hover:text-ink-900 inline-flex items-center gap-1 mb-3"

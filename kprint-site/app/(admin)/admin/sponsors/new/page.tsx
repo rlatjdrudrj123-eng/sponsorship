@@ -22,6 +22,7 @@ import { ArrowLeft } from "lucide-react";
 import { getDb } from "@/lib/firebase/firestore";
 import { useEventFilter } from "@/lib/admin/useEventFilter";
 import { filterAccessibleEvents, useAccess } from "@/lib/admin/access";
+import { packageIdsOf, syncPackageSoldOut } from "@/lib/admin/packageSoldOut";
 import {
   EMPTY_FORM_VALUES,
   SponsorForm,
@@ -235,6 +236,14 @@ export default function NewSponsorPage() {
           alert("스폰서는 저장됐지만 슬롯 상태 업데이트에 실패했습니다 — 슬롯 관리에서 수동 확인해주세요.");
         }
       }
+
+      // 단독 패키지면 매진 처리 (확인 후)
+      await syncPackageSoldOut({
+        eventId: v.eventId,
+        sponsorId: id,
+        prev: new Set(),
+        next: packageIdsOf(v.items),
+      });
 
       router.push(`/admin/sponsors/${id}`);
     } catch (e) {

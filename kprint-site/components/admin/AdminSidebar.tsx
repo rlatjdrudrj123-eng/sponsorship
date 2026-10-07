@@ -4,26 +4,22 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState, type ComponentType, type SVGProps } from "react";
 import {
-  Brain,
+  BarChart3,
   CalendarDays,
   ExternalLink,
   FileDown,
   FileText,
   FolderKanban,
-  Gift,
   Globe,
   Grid2x2,
   HelpCircle,
   Handshake,
   History,
   Layers,
-  LayoutDashboard,
   Layout,
-  LayoutTemplate,
   MessageSquare,
   Package,
   Settings,
-  Tags,
   Upload,
   Users,
 } from "lucide-react";
@@ -38,6 +34,7 @@ import {
 import { getDb } from "@/lib/firebase/firestore";
 import { useAdminEvent } from "@/lib/admin/adminEventStore";
 import { isAdminAccess, useAccess } from "@/lib/admin/access";
+import { SETTINGS_TAB_PATHS } from "@/components/admin/SettingsTabs";
 import type { Event as EventDoc } from "@/lib/types";
 
 // 과거 시드 버그로 event.name 이 { ko, en } 객체로 저장된 데이터 호환.
@@ -59,6 +56,8 @@ type MenuItem = {
   Icon: IconType;
   badge?: number;
   exact?: boolean; // /admin 처럼 정확히 일치할 때만 active
+  /** 이 경로들에서도 선택 표시 (사이트 설정의 탭 화면들) */
+  alsoActive?: string[];
 };
 
 type Section = { label: string; items: MenuItem[] };
@@ -140,11 +139,47 @@ export function AdminSidebar() {
     };
   }, [isAdmin, pathname]);
 
+  // 매일 쓰는 영업 → 상품(콘텐츠) → 사이트 → 관리 순.
+  // 사이트 설정의 세부 화면(추가 혜택·유형별 표시·1분 진단·참가 상황·태그)은 설정 안 탭으로.
   const sections: Section[] = [
     {
-      label: "메인",
+      label: "영업",
       items: [
-        { href: "/admin", label: "대시보드", Icon: LayoutDashboard, exact: true },
+        {
+          href: "/admin/inquiries",
+          label: "문의",
+          Icon: MessageSquare,
+          badge: newInquiries > 0 ? newInquiries : undefined,
+        },
+        { href: "/admin/sponsors", label: "스폰서 관리", Icon: Handshake },
+        { href: "/admin/slots", label: "판매 현황", Icon: BarChart3 },
+      ],
+    },
+    {
+      label: "콘텐츠",
+      items: [
+        { href: "/admin/categories", label: "스폰서십 매체", Icon: FolderKanban },
+        { href: "/admin/packages", label: "패키지", Icon: Package },
+        { href: "/admin/classification", label: "매체 분류", Icon: Layers },
+      ],
+    },
+    {
+      label: "사이트",
+      items: [
+        {
+          href: "/admin/settings",
+          label: "사이트 설정",
+          Icon: Settings,
+          exact: true,
+          alsoActive: SETTINGS_TAB_PATHS,
+        },
+        { href: "/admin/settings/landing", label: "메인 페이지 디자인", Icon: Layout },
+        { href: "/admin/settings/quote", label: "견적서 설정", Icon: FileText },
+      ],
+    },
+    {
+      label: "관리",
+      items: [
         { href: "/admin/events", label: "행사 관리", Icon: CalendarDays },
         ...(isAdmin
           ? [
@@ -156,44 +191,6 @@ export function AdminSidebar() {
               },
             ]
           : []),
-      ],
-    },
-    {
-      label: "콘텐츠",
-      items: [
-        { href: "/admin/categories", label: "스폰서십 매체", Icon: FolderKanban },
-        { href: "/admin/packages", label: "패키지", Icon: Package },
-        { href: "/admin/slots", label: "구좌 관리", Icon: Grid2x2 },
-        { href: "/admin/classification", label: "매체 분류", Icon: Layers },
-      ],
-    },
-    {
-      label: "영업",
-      items: [
-        {
-          href: "/admin/inquiries",
-          label: "문의",
-          Icon: MessageSquare,
-          badge: newInquiries > 0 ? newInquiries : undefined,
-        },
-        { href: "/admin/sponsors", label: "스폰서 관리", Icon: Handshake },
-      ],
-    },
-    {
-      label: "사이트",
-      items: [
-        { href: "/admin/settings", label: "사이트 설정", Icon: Settings, exact: true },
-        { href: "/admin/settings/landing", label: "메인 페이지 디자인", Icon: Layout },
-        { href: "/admin/settings/type-layouts", label: "유형별 표시 설정", Icon: LayoutTemplate },
-        { href: "/admin/settings/perks", label: "추가 혜택", Icon: Gift },
-        { href: "/admin/settings/diagnosis", label: "1분 진단 설정", Icon: Brain },
-        { href: "/admin/settings/taxonomy", label: "참가 상황·태그", Icon: Tags },
-        { href: "/admin/settings/quote", label: "견적서 설정", Icon: FileText },
-      ],
-    },
-    {
-      label: "도구",
-      items: [
         { href: "/admin/import", label: "엑셀 일괄 등록", Icon: Upload },
         { href: "/admin/history", label: "변경 이력", Icon: History },
       ],
@@ -201,6 +198,7 @@ export function AdminSidebar() {
   ];
 
   const isActive = (item: MenuItem) => {
+    if (item.alsoActive?.some((p) => pathname === p || pathname.startsWith(p + "/"))) return true;
     if (item.exact) return pathname === item.href;
     return pathname === item.href || pathname.startsWith(item.href + "/");
   };

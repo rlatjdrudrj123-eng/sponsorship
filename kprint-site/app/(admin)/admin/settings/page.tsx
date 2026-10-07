@@ -8,6 +8,7 @@ import { getDb } from "@/lib/firebase/firestore";
 import { uploadFile, deleteFileIfOwned } from "@/lib/firebase/storage";
 import { useEventFilter } from "@/lib/admin/useEventFilter";
 import type { SiteSettings } from "@/lib/types";
+import { SettingsTabs } from "@/components/admin/SettingsTabs";
 
 type FormValues = {
   theme: {
@@ -344,6 +345,10 @@ export default function SettingsPage() {
             저장
           </button>
         </div>
+      </div>
+
+      <div className="px-7 pt-5 max-w-[1280px] mx-auto">
+        <SettingsTabs />
       </div>
 
       <div className="px-7 py-6 grid grid-cols-[200px_1fr] gap-6 items-start max-w-[1280px] mx-auto">

@@ -30,6 +30,7 @@ import {
   SPEC_FIELD_LABEL,
 } from "@/lib/typeLayouts";
 import { buildDefaultMasterPage } from "@/lib/typeMasterDefaults";
+import { SettingsTabs } from "@/components/admin/SettingsTabs";
 
 /**
  * 유형별 슬라이드 레이아웃 설정.
@@ -255,6 +256,9 @@ export default function TypeLayoutsAdminPage() {
 
   return (
     <div className="p-6 md:p-8 max-w-5xl mx-auto">
+      <div className="mb-5">
+        <SettingsTabs />
+      </div>
       <header className="mb-6 flex items-end justify-between">
         <div>
           <h1 className="text-[24px] font-bold text-ink-900">

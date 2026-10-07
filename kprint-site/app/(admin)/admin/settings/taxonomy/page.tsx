@@ -25,6 +25,7 @@ import {
 import { getDb } from "@/lib/firebase/firestore";
 import { useEventFilter } from "@/lib/admin/useEventFilter";
 import type { Category, Tag, TagKind, Taxonomy } from "@/lib/types";
+import { SettingsTabs } from "@/components/admin/SettingsTabs";
 
 const FIXED_CHANNELS: Taxonomy["channels"] = [
   { id: "offline", label: "오프라인" },
@@ -310,6 +311,7 @@ export default function TaxonomyPage() {
 
   return (
     <div className="space-y-5">
+      <SettingsTabs />
       <header className="flex items-center justify-between gap-4">
         <div>
           <h1 className="text-[22px] font-bold text-ink-900 leading-tight">참가 상황·태그</h1>

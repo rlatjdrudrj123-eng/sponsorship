@@ -21,6 +21,7 @@ import { ArrowLeft, FileText, Mail } from "lucide-react";
 import { getDb } from "@/lib/firebase/firestore";
 import { filterAccessibleEvents, useAccess } from "@/lib/admin/access";
 import { DocHistory } from "@/components/admin/DocHistory";
+import { packageIdsOf, syncPackageSoldOut } from "@/lib/admin/packageSoldOut";
 import {
   EMPTY_FORM_VALUES,
   SponsorForm,
@@ -212,6 +213,15 @@ export default function SponsorDetailPage() {
         }
       }
 
+      // 패키지 매진 표시 — 새로 붙은 단독 패키지 매진 / 빠진 패키지 해제 (확인 후)
+      await syncPackageSoldOut({
+        eventId: v.eventId,
+        prevEventId,
+        sponsorId: id,
+        prev: packageIdsOf(sponsor?.items),
+        next: packageIdsOf(v.items),
+      });
+
       // 시각적 피드백
       const el = document.createElement("div");
       el.textContent = "저장됨";
@@ -241,6 +251,14 @@ export default function SponsorDetailPage() {
     }
     try {
       await deleteDoc(doc(getDb(), "sponsors", id));
+      if (eventId) {
+        await syncPackageSoldOut({
+          eventId,
+          sponsorId: id,
+          prev: packageIdsOf(sponsor?.items),
+          next: new Set(),
+        });
+      }
       router.push("/admin/sponsors");
     } catch (e) {
       alert(`삭제 실패: ${e instanceof Error ? e.message : String(e)}`);

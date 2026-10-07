@@ -337,6 +337,25 @@ export default function QuoteSettingsPage() {
       </Section>
 
       {/* 계좌 정보 */}
+      <Section title="문의 알림">
+        <label className="flex flex-col gap-1">
+          <span className="text-[12px] text-ink-700 font-semibold">
+            새 문의가 오면 메일 받을 주소 (쉼표로 구분)
+          </span>
+          <input
+            type="text"
+            value={(v as QuoteSettings & { notifyEmails?: string }).notifyEmails ?? ""}
+            onChange={(e) => update((p) => ({ ...p, notifyEmails: e.target.value }) as QuoteSettings)}
+            placeholder="sales@eandex.co.kr, kim@eandex.co.kr"
+            className="px-3 py-2 text-sm border border-ink-100 rounded-btn focus:outline-none focus:border-brand-500 bg-white"
+          />
+          <span className="text-[11.5px] text-ink-500 break-keep">
+            이 전시회에 배정된 담당자에게는 따로 적지 않아도 갑니다. 이 화면은 내부 전용이라 공개 사이트에
+            노출되지 않습니다.
+          </span>
+        </label>
+      </Section>
+
       <Section title="입금 계좌">
         <div className="grid grid-cols-3 gap-3">
           <Field

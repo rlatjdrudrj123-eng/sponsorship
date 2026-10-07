@@ -52,7 +52,6 @@ import { t } from "@/lib/i18n/strings";
 import { getTypeLayout } from "@/lib/typeLayouts";
 import { CATEGORY_TYPE_LABELS } from "@/lib/categoryTypeLabels";
 import {
-  DEFAULT_BUNDLED_PERKS,
   calcPerksTotalValue,
   filterPerksForContext,
 } from "@/lib/perks";
@@ -3136,7 +3135,8 @@ function SlideSection({
             {/* 동봉 혜택 미니 배너 — 클릭 시 7개 perks 리스트로 펼침. layout.showPerksBanner 가 false 면 숨김 */}
             {showPerksBanner &&
               (() => {
-              const allPerks = bundledPerks ?? DEFAULT_BUNDLED_PERKS;
+              // 행사에 저장된 혜택만 — 없으면 표시 안 함 (다른 행사 기본값 노출 방지)
+              const allPerks = bundledPerks ?? [];
               const perks = filterPerksForContext(allPerks, item.code);
               if (perks.length === 0) return null;
               const totalValue = calcPerksTotalValue(perks);

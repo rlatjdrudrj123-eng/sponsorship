@@ -1,8 +1,10 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState, type CSSProperties } from "react";
+import { doc, getDoc } from "firebase/firestore";
 import { buildStoragePath, uploadFile } from "@/lib/firebase/storage";
-import { landingUploadPrefix } from "@/lib/admin/adminEventStore";
+import { getDb } from "@/lib/firebase/firestore";
+import { landingUploadPrefix, useAdminEvent } from "@/lib/admin/adminEventStore";
 import {
   AlignLeft,
   AlignCenter,
@@ -219,6 +221,48 @@ const CANVAS_W = 1920;
 const CANVAS_H = 1080;
 const GRID = 8;
 
+/** 지금 편집 중인 행사 이름 — 예시 템플릿의 행사명 치환용 */
+function useSelectedEventMeta(): { name: string; shortName: string } | null {
+  const eventId = useAdminEvent((s) => s.selectedEventId);
+  const [meta, setMeta] = useState<{ name: string; shortName: string } | null>(null);
+  useEffect(() => {
+    if (!eventId) return;
+    let cancelled = false;
+    getDoc(doc(getDb(), "events", eventId))
+      .then((s) => {
+        const d = s.data();
+        if (cancelled || !d) return;
+        const name = typeof d.name === "string" ? d.name : "";
+        const shortName = typeof d.shortName === "string" ? d.shortName : "";
+        setMeta(name ? { name, shortName: shortName || name } : null);
+      })
+      .catch(() => undefined);
+    return () => {
+      cancelled = true;
+    };
+  }, [eventId]);
+  return meta;
+}
+
+/** 노드 안의 'K-PRINT 2026' / 'K-PRINT' 문구를 행사명으로 (K-PRINT 행사면 그대로) */
+function withEventName(
+  node: CanvasNode,
+  meta: { name: string; shortName: string } | null
+): CanvasNode {
+  if (!meta || /K-?PRINT/i.test(meta.shortName)) return node;
+  const swap = (v: unknown): unknown => {
+    if (typeof v === "string") {
+      return v.split("K-PRINT 2026").join(meta.name).split("K-PRINT").join(meta.shortName);
+    }
+    if (Array.isArray(v)) return v.map(swap);
+    if (v && typeof v === "object") {
+      return Object.fromEntries(Object.entries(v).map(([k, x]) => [k, swap(x)]));
+    }
+    return v;
+  };
+  return { ...node, data: swap(node.data) as CanvasNode["data"] } as CanvasNode;
+}
+
 export function CanvasEditor({
   page,
   onChange,
@@ -226,6 +270,7 @@ export function CanvasEditor({
   page: CanvasPage;
   onChange: (next: CanvasPage) => void;
 }) {
+  const eventMeta = useSelectedEventMeta();
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   // 마퀴(드래그 박스) 선택 — 캔버스 좌표계 기준
   const [marquee, setMarquee] = useState<{ x1: number; y1: number; x2: number; y2: number } | null>(null);
@@ -480,7 +525,8 @@ export function CanvasEditor({
   const insertTemplate = (key: SlideTemplateKey) => {
     const tpl = SLIDE_TEMPLATES.find((t) => t.key === key);
     if (!tpl) return;
-    const nodes = tpl.make();
+    // 예시 템플릿의 'K-PRINT' 행사명은 지금 편집 중인 행사 이름으로 바꿔 넣는다
+    const nodes = tpl.make().map((n) => withEventName(n, eventMeta));
     onChange({ ...page, nodes: [...page.nodes, ...nodes] });
     setSelectedIds(new Set(nodes.map((n) => n.id)));
   };
@@ -901,7 +947,7 @@ export function CanvasEditor({
                   >
                     {groupKey === "공통"
                       ? "공통 템플릿"
-                      : `${groupKey} 템플릿`}
+                      : "예시 슬라이드 (K-PRINT 사례)"}
                   </span>
                   <span className="text-ink-300 font-num">
                     ({groupItems.length})
