@@ -175,6 +175,8 @@ function TourOverlay() {
   // 지나온 화면 — 다른 화면으로 빠졌을 때 [돌아가기]
   const visited = useRef<string[]>([]);
   const prevPath = useRef(pathname);
+  // 안내보다 먼저 누른 '다음 동작 단계' — 지금 단계 화면이 사라지면(창 닫힘 등) 그 뒤로 넘어간다
+  const earlyClick = useRef<number | null>(null);
   const s = tour?.steps[step];
   const wrongPage = !!(s?.path && !s.path.test(pathname));
 
@@ -199,6 +201,7 @@ function TourOverlay() {
     let scrolled = false;
     let missing = 0;
     setMissingFor(0);
+    earlyClick.current = null;
     // 안내보다 먼저 해 버린 경우도 따라잡도록 다음 '동작 단계'까지 확인
     const j = firstAdvanceFrom(tour, step);
     const pending = j >= 0 ? tour.steps[j].advance : undefined;
@@ -225,6 +228,10 @@ function TourOverlay() {
         const r = targetRect(el, !!s.interactive);
         setRect((p) => (sameRect(p, r) ? p : r));
       } else {
+        if (earlyClick.current !== null && !wrongPage) {
+          advanceTo(earlyClick.current + 1);
+          return;
+        }
         setRect(null);
         if (s.target && !wrongPage && !overlay) {
           missing += 1;
@@ -253,7 +260,9 @@ function TourOverlay() {
     if (a?.on === "route" && a.path.test(pathname)) advanceTo(j + 1);
   }, [tour, step, s, pathname, advanceTo]);
 
-  // 'click' 조건 — 강조된 요소를 누르면 (누른 동작은 그대로 실행)
+  // 'click' 조건 — 강조된 요소를 누르면 (누른 동작은 그대로 실행).
+  // 안내보다 먼저 눌렀으면 바로 건너뛰지 않고, 지금 단계 화면이 사라질 때(창이 닫히는 등) 따라잡는다
+  // — 같은 화면의 저장 버튼을 먼저 눌렀다고 남은 확인 단계를 건너뛰지 않게.
   useEffect(() => {
     if (!tour || !s) return;
     const j = firstAdvanceFrom(tour, step);
@@ -262,7 +271,9 @@ function TourOverlay() {
     const target = w.target;
     const onClick = (e: MouseEvent) => {
       const el = document.querySelector(`[data-tour="${target}"]`);
-      if (el && e.target instanceof Node && el.contains(e.target)) setTimeout(() => advanceTo(j + 1), 150);
+      if (!el || !(e.target instanceof Node) || !el.contains(e.target)) return;
+      if (j === step) setTimeout(() => advanceTo(j + 1), 150);
+      else earlyClick.current = j;
     };
     document.addEventListener("click", onClick, true);
     return () => document.removeEventListener("click", onClick, true);
