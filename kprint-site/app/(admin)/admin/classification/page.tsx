@@ -309,6 +309,7 @@ export default function ClassificationPage() {
         {events.filter((e) => e.id !== eventId).length > 0 && (
           <select
             value=""
+            data-tour="cls-copy"
             disabled={copying}
             onChange={(e) => {
               const v = e.target.value;
@@ -332,7 +333,7 @@ export default function ClassificationPage() {
         )}
       </header>
 
-      <div className="flex items-center gap-1 bg-white border border-ink-100 rounded-btn p-1 w-fit">
+      <div data-tour="cls-tabs" className="flex items-center gap-1 bg-white border border-ink-100 rounded-btn p-1 w-fit">
         {(
           [
             { id: "persona", label: "참가 상황" },
@@ -358,12 +359,23 @@ export default function ClassificationPage() {
         ))}
       </div>
 
+      {/* 참가 상황이 하나도 없으면 아래 그룹 목록(새 페르소나 버튼 포함)이 안 그려지므로 여기서 첫 항목을 만든다 */}
       {tab === "persona" && personas.length === 0 && (
-        <div className="bg-amber-50 border border-amber-200 rounded-card p-4 flex items-center gap-3">
+        <div
+          data-tour="cls-groups"
+          className="bg-amber-50 border border-amber-200 rounded-card p-4 flex items-center gap-3 flex-wrap"
+        >
           <AlertCircle className="w-4 h-4 text-amber-700" />
-          <span className="text-[13px] text-amber-700 font-semibold">
-            등록된 페르소나가 없습니다 — /admin/classification 의 페르소나 탭에서 직접 추가하세요.
+          <span className="text-[13px] text-amber-700 font-semibold flex-1">
+            등록된 참가 상황(추천 코스)이 없습니다. 먼저 하나 만드세요.
           </span>
+          <button
+            type="button"
+            onClick={() => setAddingPersona(true)}
+            className="px-3 py-1.5 rounded-btn bg-ink-900 text-white text-[12px] font-semibold hover:bg-ink-700 flex items-center gap-1"
+          >
+            <Plus className="w-3.5 h-3.5" />새 페르소나
+          </button>
         </div>
       )}
 
@@ -405,9 +417,9 @@ export default function ClassificationPage() {
         )}
 
       {buckets.length > 0 && (
-        <div className="grid grid-cols-1 lg:grid-cols-[200px_1fr_280px] gap-4 items-start">
+        <div data-tour="cls-board" className="grid grid-cols-1 lg:grid-cols-[200px_1fr_280px] gap-4 items-start">
           {/* 좌: 버킷 목록 */}
-          <aside className="bg-white border border-ink-100 rounded-card overflow-hidden">
+          <aside data-tour="cls-groups" className="bg-white border border-ink-100 rounded-card overflow-hidden">
             <div className="px-3 py-2 text-[10px] uppercase tracking-wider text-ink-500 font-bold bg-ink-50">
               그룹
             </div>

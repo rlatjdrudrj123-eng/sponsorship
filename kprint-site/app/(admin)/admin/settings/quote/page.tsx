@@ -216,7 +216,6 @@ export default function QuoteSettingsPage() {
             type="button"
             onClick={save}
             disabled={saveStatus === "saving"}
-            data-tour="quote-save"
             className="px-4 py-2 rounded-btn bg-brand-500 text-ink-900 text-[13px] font-bold hover:bg-brand-700 hover:text-white disabled:opacity-50"
           >
             저장
@@ -281,7 +280,7 @@ export default function QuoteSettingsPage() {
       )}
 
       {/* 발행자 정보 */}
-      <Section title="사무국(발행자) 정보" tour="quote-issuer">
+      <Section title="사무국(발행자) 정보">
         <div className="grid grid-cols-2 gap-3">
           <Field
             label="상호"
@@ -378,7 +377,7 @@ export default function QuoteSettingsPage() {
       </Section>
 
       {/* 행사·일련번호 */}
-      <Section title="견적서 본문 기본값" tour="quote-body">
+      <Section title="견적서 본문 기본값">
         <FieldFull
           label="행사 부제 (제목 옆)"
           value={v.eventSubtitle}
@@ -506,16 +505,13 @@ function Section({
   title,
   right,
   children,
-  tour,
 }: {
   title: string;
   right?: React.ReactNode;
   children: React.ReactNode;
-  /** 따라하기가 짚는 대상 (data-tour) */
-  tour?: string;
 }) {
   return (
-    <section data-tour={tour} className="bg-white border border-ink-100 rounded-card p-5">
+    <section className="bg-white border border-ink-100 rounded-card p-5">
       <div className="flex items-center justify-between mb-3">
         <h2 className="text-[14px] font-bold text-ink-900">{title}</h2>
         {right}

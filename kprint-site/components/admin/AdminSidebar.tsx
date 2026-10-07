@@ -163,7 +163,7 @@ export function AdminSidebar() {
       items: [
         { href: "/admin/categories", label: "스폰서십 매체", Icon: FolderKanban, tour: "nav-categories" },
         { href: "/admin/packages", label: "패키지", Icon: Package },
-        { href: "/admin/classification", label: "매체 분류", Icon: Layers },
+        { href: "/admin/classification", label: "매체 분류", Icon: Layers, tour: "nav-classification" },
       ],
     },
     {

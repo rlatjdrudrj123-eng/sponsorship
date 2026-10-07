@@ -177,7 +177,6 @@ export default function InquiryDetailPage() {
           <Link
             href={`/admin/quotes/print/inquiry/${inquiry.id}`}
             target="_blank"
-            data-tour="inq-quote"
             className="px-3.5 py-2 rounded-btn border border-ink-100 text-[13px] font-semibold text-ink-900 hover:bg-ink-50 flex items-center gap-1.5"
           >
             <FileText className="w-4 h-4" />

@@ -317,7 +317,6 @@ export default function SponsorDetailPage() {
         <div className="flex items-center gap-2">
           <Link
             href={`/admin/quotes/print/sponsor/${sponsor.id}`}
-            data-tour="sponsor-quote"
             target="_blank"
             className="px-3 py-2 rounded-btn border border-ink-100 text-[12.5px] font-semibold text-ink-900 hover:bg-ink-50 flex items-center gap-1.5"
           >

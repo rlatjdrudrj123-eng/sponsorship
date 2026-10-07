@@ -48,6 +48,7 @@ const CAT_DETAIL = /^\/admin\/categories\/(?!new$)[^/]+$/;
 const PKG_DETAIL = /^\/admin\/packages\/(?!new$)[^/]+$/;
 const SPONSOR_DETAIL = /^\/admin\/sponsors\/(?!new$)[^/]+$/;
 const INQ_DETAIL = /^\/admin\/inquiries\/[^/]+$/;
+const CLASSIFICATION = /^\/admin\/classification$/;
 
 // 연습이면 실제 전시회 대신 '연습용 전시회'에서 — 따라하기 첫 단계 공통 안내
 const PRACTICE_NOTE =
@@ -75,7 +76,7 @@ export const MAIN_TOUR: TourDef = {
     {
       target: "nav-sponsors",
       title: "스폰서 관리",
-      body: "문의를 스폰서로 전환하고 구좌 확보·견적서까지 이어서 처리합니다.",
+      body: "문의를 스폰서로 전환하고 구좌를 확보합니다. 진행 상태·디자인물 수령도 여기서 관리합니다.",
     },
     {
       target: "nav-slots",
@@ -88,9 +89,14 @@ export const MAIN_TOUR: TourDef = {
       body: "판매할 매체와 구좌를 등록합니다. 엑셀로 한 번에 올릴 수도 있습니다.",
     },
     {
+      target: "nav-classification",
+      title: "매체 분류",
+      body: "매체를 참가 상황(추천 코스)·매체 유형·위치별로 묶습니다. 공개 사이트 '스폰서십 한눈에 보기'·전체 PDF·필터가 이대로 나뉩니다.",
+    },
+    {
       target: "nav-site",
       title: "사이트 설정",
-      body: "공개 사이트의 행사 정보·추가 혜택 등을 고칩니다. 메인 페이지 디자인·견적서 설정은 바로 아래 메뉴입니다.",
+      body: "공개 사이트의 행사 정보·추가 혜택 등을 고칩니다. 메인 페이지 디자인은 바로 아래 메뉴입니다.",
     },
     {
       target: "nav-events",
@@ -237,12 +243,63 @@ export const GUIDES: TourDef[] = [
     ],
   },
   {
-    id: "guide-inquiry",
-    label: "문의 → 스폰서 전환 → 견적서",
+    id: "guide-classification",
+    label: "매체 분류하기",
     kind: "guide",
-    summary: "문의 열기 → 상태 → 스폰서로 전환 → 구좌 확보 → 저장 → 견적서",
+    summary: "참가 상황(추천 코스)·매체 유형·위치별로 매체 묶기",
     steps: [
-      { title: "문의 처리를 시작합니다", body: "공개 사이트에서 들어온 문의를 스폰서로 전환하고 견적서까지 만듭니다. 처리할 문의가 하나 있어야 합니다." },
+      {
+        title: "매체 분류를 시작합니다",
+        body: "등록한 매체를 참가 상황(추천 코스)·매체 유형·위치별로 묶습니다. 공개 사이트 '스폰서십 한눈에 보기'·전체 PDF·스폰서십 리스트 필터가 이대로 나뉩니다. 매체를 먼저 등록해 두세요.",
+      },
+      {
+        target: "cls-tabs",
+        path: CLASSIFICATION,
+        goto: "/admin/classification",
+        title: "무엇으로 묶을지",
+        body: "참가 상황 = 공개 사이트 '추천 코스'(예: 처음 참가하는 회사), 매체 유형·위치 = 스폰서십 리스트 필터입니다. 노출 시점은 지금 공개 필터에 없어 비워 둬도 됩니다. 먼저 '참가 상황' 탭에서 시작하세요.",
+        interactive: true,
+      },
+      {
+        target: "cls-groups",
+        path: CLASSIFICATION,
+        title: "추천 코스 만들기·고르기",
+        body: "왼쪽이 그룹 목록입니다. 참가 상황 탭에서는 [새 페르소나]로 추천 코스를 만들고(제목·이모지·한 줄 설명·예산 안내), 연필 버튼으로 고칩니다. 작업할 그룹을 하나 누르세요.",
+        interactive: true,
+      },
+      {
+        target: "cls-board",
+        path: CLASSIFICATION,
+        title: "매체 끌어다 놓기",
+        body: "오른쪽 '아직 이 그룹에 없는 카테고리'에서 매체를 가운데로 끌어다 놓으면 바로 저장됩니다. 빼려면 가운데 매체의 X. 한 매체를 여러 그룹에 넣어도 됩니다.",
+        interactive: true,
+      },
+      {
+        target: "cls-tabs",
+        path: CLASSIFICATION,
+        title: "위치·매체 유형",
+        body: "위치 탭도 같은 방법으로 Hall·옥외·온라인에 넣습니다(지정 안 하면 매체 이름·코드로 자동 추정). 홀 이름이 다르면 [위치 항목 편집]에서 바꿉니다. 매체 유형 탭에서 옮기면 그 매체의 유형 자체가 바뀌어 공개 상세 화면 모양이 달라지니 주의하세요.",
+        interactive: true,
+      },
+      {
+        target: "cls-copy",
+        path: CLASSIFICATION,
+        title: "다른 전시회 분류 가져오기",
+        body: "다른 전시회에서 쓰던 추천 코스 연결·1분 진단 점수·함께 보면 좋은 연결을 매체 코드 기준으로 한 번에 가져옵니다. 기존 전시회를 복사해 만든 행사라면 이미 들어 있습니다.",
+      },
+      {
+        title: "매체 분류 끝",
+        body: "공개 사이트에 바로 반영됩니다. 어느 참가 상황에도 넣지 않은 매체는 전체 PDF '한눈에 보기'에서 '기타'로 묶입니다.",
+      },
+    ],
+  },
+  {
+    id: "guide-inquiry",
+    label: "문의 → 스폰서 전환",
+    kind: "guide",
+    summary: "문의 열기 → 상태 → 스폰서로 전환 → 구좌 확보 → 저장",
+    steps: [
+      { title: "문의 처리를 시작합니다", body: "공개 사이트에서 들어온 문의를 스폰서로 전환하고 구좌를 확보합니다. 처리할 문의가 하나 있어야 합니다." },
       {
         target: "inq-list",
         path: /^\/admin\/inquiries$/,
@@ -297,13 +354,9 @@ export const GUIDES: TourDef[] = [
         advance: { on: "route", path: SPONSOR_DETAIL },
       },
       {
-        target: "sponsor-quote",
-        path: SPONSOR_DETAIL,
-        title: "견적서 추출",
-        body: "여기서 견적서를 새 창으로 엽니다. 브라우저 인쇄(Ctrl+P)로 PDF 저장. 사무국 정보는 견적서 설정 화면 값이 들어갑니다.",
-        interactive: true,
+        title: "문의 처리 끝",
+        body: "상세 화면에서 담당자·디자인물 수령 체크리스트를 이어서 채웁니다. 판매 현황에서 구좌가 판매로 바뀐 것을 확인할 수 있고, 문의 상태도 '진행 중'·'종료'로 정리해 두세요.",
       },
-      { title: "문의 처리 끝", body: "판매 현황에서 구좌가 판매로 바뀐 것을 확인할 수 있습니다." },
     ],
   },
   {
@@ -351,7 +404,10 @@ export const GUIDES: TourDef[] = [
         interactive: true,
         advance: { on: "route", path: SPONSOR_DETAIL },
       },
-      { title: "스폰서 등록 끝", body: "상세 화면에서 담당자·디자인물 수령 체크리스트를 이어서 채울 수 있고, [견적서 추출]로 견적서를 만듭니다." },
+      {
+        title: "스폰서 등록 끝",
+        body: "상세 화면에서 담당자·디자인물 수령 체크리스트를 이어서 채웁니다. 판매 현황에서 구좌가 판매로 바뀐 것을 확인할 수 있습니다.",
+      },
     ],
   },
   {
@@ -392,38 +448,6 @@ export const GUIDES: TourDef[] = [
         advance: { on: "click" },
       },
       { title: "업로드 끝", body: "확인할 사항이 있으면 화면에 목록으로 보여 주고, 없으면 매체 목록으로 넘어갑니다." },
-    ],
-  },
-  {
-    id: "guide-quote",
-    label: "견적서 준비하기",
-    kind: "guide",
-    summary: "사무국 정보·계좌·행사 문구 확인 → 저장",
-    steps: [
-      {
-        target: "quote-issuer",
-        path: /^\/admin\/settings\/quote$/,
-        goto: "/admin/settings/quote",
-        title: "사무국 정보",
-        body: "견적서에 찍힐 회사 정보입니다. 사업자번호는 120-81-81311, 담당자 이름은 행사마다 다르니 확인하세요.",
-        interactive: true,
-      },
-      {
-        target: "quote-body",
-        path: /^\/admin\/settings\/quote$/,
-        title: "행사 문구·일련번호",
-        body: "행사 부제와 안내 문구(일정·장소)를 이 전시회에 맞게 고치세요. 다른 행사 문구가 남아 있으면 위에 경고가 뜹니다.",
-        interactive: true,
-      },
-      {
-        target: "quote-save",
-        path: /^\/admin\/settings\/quote$/,
-        title: "저장",
-        body: "[저장]을 눌러야 반영됩니다. 저장 전에는 이 전시회 견적서를 뽑을 수 없습니다.",
-        interactive: true,
-        advance: { on: "click" },
-      },
-      { title: "준비 끝", body: "이제 문의·스폰서 상세의 [견적서 추출]로 견적서를 만들 수 있습니다." },
     ],
   },
   {
@@ -512,8 +536,31 @@ export const PAGE_TOURS: Array<{ match: (path: string) => boolean; tour: TourDef
       steps: [
         { target: "inq-status", title: "상태 바꾸기", body: "연락을 시작하면 '진행 중', 마무리되면 '종료'로 바꿔 두세요. 사이드바 숫자는 '신규'만 셉니다." },
         { target: "inq-convert", title: "스폰서로 전환", body: "계약이 진행되면 누르세요. 회사·담당자·담은 품목이 채워진 스폰서 등록 화면이 열립니다." },
-        { target: "inq-quote", title: "견적서 추출", body: "담은 품목으로 견적서를 만듭니다. 사무국 정보·문구는 견적서 설정 화면 값이 들어갑니다." },
         { target: "doc-history", title: "변경 이력", body: "이 문의를 누가 언제 바꿨는지 볼 수 있습니다." },
+      ],
+    },
+  },
+  {
+    match: (p) => CLASSIFICATION.test(p),
+    tour: {
+      id: "classification",
+      label: "매체 분류 둘러보기",
+      steps: [
+        {
+          target: "cls-tabs",
+          title: "분류 기준",
+          body: "참가 상황 = 공개 사이트 '추천 코스'·'한눈에 보기', 매체 유형·위치 = 스폰서십 리스트 필터입니다. 노출 시점은 지금 공개 필터에 없습니다.",
+        },
+        {
+          target: "cls-board",
+          title: "끌어다 놓기",
+          body: "왼쪽에서 그룹을 고르고, 오른쪽 매체를 가운데로 끌어다 놓으면 바로 저장됩니다. 빼려면 가운데 매체의 X.",
+        },
+        {
+          target: "cls-copy",
+          title: "다른 전시회에서 가져오기",
+          body: "다른 전시회의 추천 코스 연결·1분 진단 점수·함께 보면 좋은 연결을 매체 코드 기준으로 복사합니다.",
+        },
       ],
     },
   },
@@ -585,8 +632,8 @@ export const TASKS: ChecklistTask[] = [
   { id: "history", label: "변경 이력 보기", href: "/admin/history", match: (p) => p === "/admin/history" },
   { id: "g-category", label: "매체 만들어 보기", guideId: "guide-category" },
   { id: "g-package", label: "패키지 만들어 보기", guideId: "guide-package" },
+  { id: "g-classification", label: "매체 분류해 보기", guideId: "guide-classification" },
   { id: "g-sponsor", label: "스폰서 등록해 보기", guideId: "guide-sponsor", alsoDoneBy: ["guide-inquiry"] },
-  { id: "g-quote", label: "견적서 준비하기", guideId: "guide-quote" },
 ];
 
 type Saved = {
