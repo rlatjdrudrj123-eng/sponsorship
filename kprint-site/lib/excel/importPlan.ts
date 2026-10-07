@@ -263,7 +263,8 @@ export function buildCategory(
     eventId: ctx.eventId,
     code: parsed.code,
     channel: parsed.channel,
-    type: parsed.type,
+    // 엑셀 유형이 구형 값(mailing_content)이면 이미 저장된 유형 유지 — SNS 콘텐츠를 발송형으로 되돌리지 않게
+    type: parsed.legacyType && preserved?.type ? preserved.type : parsed.type,
     slug: ctx.slug,
     name: { ko: parsed.nameKo, en: parsed.nameEn },
     shortDesc: nz(parsed.shortDesc) ?? preserved?.shortDesc,

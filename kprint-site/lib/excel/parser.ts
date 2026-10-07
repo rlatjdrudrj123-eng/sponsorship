@@ -99,6 +99,8 @@ export type ParsedRow = {
   categoryNameKo: string;
   categoryNameEn: string;
   categoryType: CategoryType;
+  /** 구형 유형값(mailing_content 등)을 바꿔 받은 행 — 기존 매체의 유형을 우선 */
+  legacyType?: boolean;
   subcategoryNameKo: string; // 비어있으면 "단일 기본 소분류"
   subcategoryNameEn: string;
   slotCode: string;
@@ -122,6 +124,8 @@ export type ParsedCategory = {
   code: string;
   channel: Channel;
   type: CategoryType;
+  /** 엑셀 유형이 구형 값이라 바꿔 받음 — 이미 있는 매체면 저장된 유형을 유지 */
+  legacyType?: boolean;
   nameKo: string;
   nameEn: string;
   size: string;
@@ -496,7 +500,7 @@ export function parseExcelBuffer(
         warnings.push({
           rowIndex,
           column: "category_type",
-          reason: `${catCode}: 구형 유형값 "${rawType}" 을 "${aliasedType}"(발송형)으로 바꿔 받았습니다. 인터뷰·카드뉴스 같은 콘텐츠형이면 "content" 로 고쳐서 다시 올리세요.`,
+          reason: `${catCode}: 구형 유형값 "${rawType}" — 이미 있는 매체는 저장된 유형을 유지하고, 새 매체는 "${aliasedType}"(발송형)으로 받습니다. 인터뷰·카드뉴스 같은 콘텐츠형이면 "content" 로 고쳐 주세요.`,
         });
       }
     }
@@ -509,6 +513,7 @@ export function parseExcelBuffer(
       categoryNameKo: s(get("category_name_ko")),
       categoryNameEn: s(get("category_name_en")),
       categoryType: (aliasedType ?? rawType) as CategoryType,
+      legacyType: aliasedType ? true : undefined,
       subcategoryNameKo: s(get("subcategory_name_ko")),
       subcategoryNameEn: s(get("subcategory_name_en")),
       slotCode: s(get("slot_code")),
@@ -573,6 +578,7 @@ export function parseExcelBuffer(
         code: row.categoryCode,
         channel: row.channel,
         type: row.categoryType,
+        legacyType: row.legacyType,
         nameKo: row.categoryNameKo,
         nameEn: row.categoryNameEn,
         size: row.size,
