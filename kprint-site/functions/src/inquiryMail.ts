@@ -96,7 +96,8 @@ export const inquiryMail = onDocumentCreated(
       host: SMTP_HOST.value(),
       port,
       secure: port === 465,
-      auth: { user: MAIL_FROM.value(), pass: SMTP_PASSWORD.value() },
+      // 클립보드로 넣으면 끝에 줄바꿈이 붙을 수 있어 앞뒤 공백 제거
+      auth: { user: MAIL_FROM.value().trim(), pass: SMTP_PASSWORD.value().trim() },
     });
     await transporter.sendMail({
       from: `"스폰서십 알림" <${MAIL_FROM.value()}>`,
