@@ -30,6 +30,7 @@ import type {
   Subcategory,
 } from "@/lib/types";
 import { ImageSlot } from "@/components/admin/CategoryEditor/ImageSlot";
+import { DocHistory } from "@/components/admin/DocHistory";
 
 type FormValues = {
   nameKo: string;
@@ -641,6 +642,8 @@ export default function PackageEditPage() {
           </div>
         </Section>
       </div>
+
+      {pkg && <DocHistory col="packages" docId={pkg.id} eventId={pkg.eventId} />}
     </div>
   );
 }

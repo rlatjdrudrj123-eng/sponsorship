@@ -26,6 +26,7 @@ import {
 } from "lucide-react";
 import { getDb } from "@/lib/firebase/firestore";
 import { receiptNo } from "@/lib/receiptNo";
+import { DocHistory } from "@/components/admin/DocHistory";
 import {
   MUST_HAVE_LABEL_KO,
   PURPOSE_LABEL_KO,
@@ -340,6 +341,8 @@ export default function InquiryDetailPage() {
           </Section>
         </div>
       </div>
+
+      <DocHistory col="inquiries" docId={inquiry.id} eventId={inquiry.eventId} />
     </div>
   );
 }

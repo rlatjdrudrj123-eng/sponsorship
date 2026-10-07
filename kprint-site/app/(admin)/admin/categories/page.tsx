@@ -60,6 +60,10 @@ const TYPE_LABELS: Record<CategoryType, string> = {
   package: "패키지",
 };
 
+// 예전 값으로 저장된 유형 → 현재 유형 (엑셀 파서 lib/excel/parser 의
+// LEGACY_CATEGORY_TYPE_ALIASES 와 같은 값 — 파서는 xlsx 를 품고 있어 여기서 import 하지 않음)
+const TYPE_FIXES: Record<string, CategoryType> = { mailing_content: "mailing" };
+
 type SortKey = "order" | "code" | "name";
 
 export default function CategoriesListPage() {
@@ -234,6 +238,33 @@ export default function CategoriesListPage() {
     }
   };
 
+  // 유형 값이 잘못 저장된 매체 — 유형 필터·분류·공개 화면 표시가 어긋난다
+  const badTypeCats = useMemo(
+    () => categories.filter((c) => !(c.type in TYPE_LABELS)),
+    [categories]
+  );
+  const fixableTypeCats = badTypeCats.filter((c) => TYPE_FIXES[c.type as string]);
+  const [fixingTypes, setFixingTypes] = useState(false);
+  const fixTypes = async () => {
+    if (fixableTypeCats.length === 0) return;
+    setFixingTypes(true);
+    try {
+      const batch = writeBatch(getDb());
+      const now = Timestamp.fromDate(new Date());
+      fixableTypeCats.forEach((c) =>
+        batch.update(doc(getDb(), "categories", c.id), {
+          type: TYPE_FIXES[c.type as string],
+          updatedAt: now,
+        })
+      );
+      await batch.commit();
+    } catch (e) {
+      alert(`유형 고치기 실패: ${e instanceof Error ? e.message : String(e)}`);
+    } finally {
+      setFixingTypes(false);
+    }
+  };
+
   const togglePublish = async (cat: EnrichedCategory) => {
     try {
       await updateDoc(doc(getDb(), "categories", cat.id), {
@@ -295,6 +326,34 @@ export default function CategoriesListPage() {
           </Link>
         </div>
       </header>
+
+      {badTypeCats.length > 0 && (
+        <div className="bg-amber-50 border border-amber-200 rounded-card px-4 py-3 flex items-start justify-between gap-3">
+          <div className="text-[13px] text-amber-900 break-keep">
+            <div className="font-bold">유형 값이 잘못 저장된 매체 {badTypeCats.length}개</div>
+            <div className="text-[12px] mt-0.5">
+              유형 필터·매체 분류·공개 화면 표시가 어긋날 수 있습니다.{" "}
+              {badTypeCats
+                .slice(0, 6)
+                .map((c) => `${c.code}(${c.type})`)
+                .join(", ")}
+              {badTypeCats.length > 6 && ` 외 ${badTypeCats.length - 6}개`}
+            </div>
+          </div>
+          {fixableTypeCats.length > 0 && (
+            <button
+              type="button"
+              onClick={fixTypes}
+              disabled={fixingTypes}
+              className="shrink-0 px-3 py-1.5 rounded-btn bg-amber-700 text-white text-[12px] font-bold hover:bg-amber-800 disabled:opacity-50"
+            >
+              {fixingTypes
+                ? "고치는 중…"
+                : `${fixableTypeCats.length}개 '${TYPE_LABELS[TYPE_FIXES[fixableTypeCats[0].type as string]]}'(으)로 고치기`}
+            </button>
+          )}
+        </div>
+      )}
 
       {showAdd && eventId && (
         <AddCategoryModal
@@ -432,7 +491,13 @@ export default function CategoriesListPage() {
                   <div className="text-[11px] text-ink-500 mt-0.5">{c.name.en}</div>
                 </td>
                 <td className="px-4 py-2.5 text-ink-700 text-[12px]">{CHANNEL_LABELS[c.channel]}</td>
-                <td className="px-4 py-2.5 text-ink-700 text-[12px]">{TYPE_LABELS[c.type]}</td>
+                <td className="px-4 py-2.5 text-ink-700 text-[12px]">
+                  {TYPE_LABELS[c.type] ?? (
+                    <span className="text-red-700 font-semibold" title={`저장된 값: ${c.type}`}>
+                      유형 오류
+                    </span>
+                  )}
+                </td>
                 <td className="px-4 py-2.5 text-right font-mono text-[12px] text-ink-700">{c.subcategoryCount}</td>
                 <td className="px-4 py-2.5 text-right font-mono text-[12px]">
                   <span className="text-brand-700 font-semibold">{c.slotAvailable}</span>

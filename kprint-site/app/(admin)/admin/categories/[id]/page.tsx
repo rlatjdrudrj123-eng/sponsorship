@@ -36,6 +36,7 @@ import type {
 } from "@/lib/types";
 import { LivePreview } from "@/components/admin/CategoryEditor/LivePreview";
 import { CompletenessCheck } from "@/components/admin/CategoryEditor/CompletenessCheck";
+import { DocHistory } from "@/components/admin/DocHistory";
 import { SubcategoryTable } from "@/components/admin/CategoryEditor/SubcategoryTable";
 import { ImageSlot } from "@/components/admin/CategoryEditor/ImageSlot";
 import { FloorImages } from "@/components/admin/CategoryEditor/FloorImages";
@@ -1012,6 +1013,8 @@ export default function CategoryEditPage() {
           <CompletenessCheck category={category} />
         </div>
       </div>
+
+      <DocHistory col="categories" docId={category.id} eventId={category.eventId} includeChildren />
 
       {pinEditorSubId && (
         <PinEditor

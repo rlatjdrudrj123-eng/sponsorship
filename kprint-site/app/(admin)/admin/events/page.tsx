@@ -18,6 +18,9 @@ import {
 import { CalendarDays, Plus, Trash2, X } from "lucide-react";
 import { getDb } from "@/lib/firebase/firestore";
 import { filterAccessibleEvents, isAdminAccess, useAccess } from "@/lib/admin/access";
+import { useAdminEvent } from "@/lib/admin/adminEventStore";
+import { cloneEvent } from "@/lib/admin/cloneEvent";
+import type { CloneInclude, ClonePlan } from "@/lib/admin/clonePlan";
 import type { Event } from "@/lib/types";
 
 const DEFAULT_EVENTS: Array<Omit<Event, "createdAt" | "updatedAt">> = [
@@ -289,6 +292,14 @@ export default function EventsPage() {
   );
 }
 
+const DEFAULT_INCLUDE: CloneInclude = {
+  catalog: true,
+  packages: true,
+  personas: true,
+  site: true,
+  quote: true,
+};
+
 function AddEventModal({ events, onClose }: { events: Event[]; onClose: () => void }) {
   const [name, setName] = useState("");
   const [shortName, setShortName] = useState("");
@@ -297,6 +308,12 @@ function AddEventModal({ events, onClose }: { events: Event[]; onClose: () => vo
   // 사용자가 slug 칸을 직접 손대면 자동 채움 중지 (사용자 의도 보존).
   const [slugTouched, setSlugTouched] = useState(false);
   const [saving, setSaving] = useState(false);
+  // 기존 행사 복사해서 시작 — 비어 있으면 빈 행사
+  const [sourceId, setSourceId] = useState("");
+  const [include, setInclude] = useState<CloneInclude>(DEFAULT_INCLUDE);
+  const [progress, setProgress] = useState<{ done: number; total: number } | null>(null);
+  const [cloned, setCloned] = useState<{ id: string; plan: ClonePlan } | null>(null);
+  const setSelectedEventId = useAdminEvent((s) => s.setSelectedEventId);
 
   const nextOrder = useMemo(() => {
     if (events.length === 0) return 0;
@@ -333,6 +350,17 @@ function AddEventModal({ events, onClose }: { events: Event[]; onClose: () => vo
     }
     setSaving(true);
     try {
+      if (sourceId) {
+        const plan = await cloneEvent({
+          sourceEventId: sourceId,
+          target: { id: effectiveSlug, name: n, shortName: s, year: y, order: nextOrder },
+          include,
+          onProgress: (done, total) => setProgress({ done, total }),
+        });
+        setCloned({ id: effectiveSlug, plan });
+        setSaving(false);
+        return;
+      }
       await setDoc(doc(getDb(), "events", effectiveSlug), {
         id: effectiveSlug,
         name: n,
@@ -345,10 +373,55 @@ function AddEventModal({ events, onClose }: { events: Event[]; onClose: () => vo
       });
       onClose();
     } catch (e) {
-      alert(`저장 실패: ${e instanceof Error ? e.message : String(e)}`);
+      alert(
+        `저장 실패: ${e instanceof Error ? e.message : String(e)}` +
+          (sourceId ? "\n\n일부만 복사됐을 수 있습니다. 행사 목록에서 확인 후 필요하면 삭제하고 다시 시도하세요." : "")
+      );
       setSaving(false);
     }
   };
+
+  if (cloned) {
+    const c = cloned.plan.counts;
+    return (
+      <div className="fixed inset-0 z-50 bg-ink-900/40 grid place-items-center p-4">
+        <div className="bg-white rounded-card w-full max-w-md p-5 shadow-xl">
+          <h2 className="text-[16px] font-bold text-ink-900 mb-1">복사 완료</h2>
+          <p className="text-[13px] text-ink-700 break-keep">
+            매체 {c.categories}개 · 소분류 {c.subcategories}개 · 구좌 {c.slots}개 · 패키지 {c.packages}개 ·
+            페르소나 {c.personas}개를 새 행사로 복사했습니다.
+          </p>
+          <div className="mt-4">
+            <div className="text-[12px] font-bold text-ink-900 mb-1.5">공개 전에 확인할 것</div>
+            <ul className="space-y-1 text-[12.5px] text-ink-700 list-disc pl-4 break-keep">
+              {cloned.plan.checklist.map((t) => (
+                <li key={t}>{t}</li>
+              ))}
+            </ul>
+          </div>
+          <div className="mt-5 flex justify-end gap-2">
+            <button
+              type="button"
+              onClick={onClose}
+              className="px-3.5 py-2 rounded-btn border border-ink-100 text-[13px] font-semibold text-ink-700 hover:bg-ink-50"
+            >
+              닫기
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setSelectedEventId(cloned.id);
+                onClose();
+              }}
+              className="px-3.5 py-2 rounded-btn bg-brand-500 text-ink-900 text-[13px] font-semibold hover:bg-brand-700"
+            >
+              새 행사로 전환
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="fixed inset-0 z-50 bg-ink-900/40 grid place-items-center p-4">
@@ -420,12 +493,74 @@ function AddEventModal({ events, onClose }: { events: Event[]; onClose: () => vo
               )}
             </div>
           </div>
+
+          {/* 시작 방법 — 빈 행사 / 기존 행사 복사 */}
+          <label className="block">
+            <span className="text-[12px] text-ink-700 font-semibold mb-1 block">시작 방법</span>
+            <select
+              value={sourceId}
+              onChange={(e) => setSourceId(e.target.value)}
+              disabled={saving}
+              className="w-full px-3 py-2 text-sm border border-ink-100 rounded-btn focus:outline-none focus:border-brand-500 bg-white"
+            >
+              <option value="">빈 행사로 시작</option>
+              {events.map((ev) => (
+                <option key={ev.id} value={ev.id}>
+                  {ev.name} 복사해서 시작
+                </option>
+              ))}
+            </select>
+          </label>
+
+          {sourceId && (
+            <div className="bg-ink-50 border border-ink-100 rounded-btn p-3 space-y-2">
+              {(
+                [
+                  ["catalog", "스폰서십 매체 (카테고리·소분류·구좌)", "구좌는 모두 '판매 중'으로"],
+                  ["packages", "패키지", "매진 표시는 해제"],
+                  ["personas", "페르소나·분류(태그)", ""],
+                  ["site", "사이트 설정·메인 디자인", "전체 PDF는 제외"],
+                  ["quote", "견적서 설정", "회사 정보만, 행사 문구는 새 행사명으로"],
+                ] as const
+              ).map(([key, label, note]) => {
+                const disabled = saving || (key === "packages" && !include.catalog);
+                return (
+                  <label
+                    key={key}
+                    className={"flex items-start gap-2 text-[12.5px] " + (disabled ? "opacity-50" : "")}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={include[key] && !(key === "packages" && !include.catalog)}
+                      disabled={disabled}
+                      onChange={(e) => setInclude((p) => ({ ...p, [key]: e.target.checked }))}
+                      className="accent-brand-500 w-4 h-4 mt-0.5"
+                    />
+                    <span>
+                      <span className="font-semibold text-ink-900">{label}</span>
+                      {note && <span className="text-ink-500"> — {note}</span>}
+                    </span>
+                  </label>
+                );
+              })}
+              <p className="text-[11.5px] text-ink-500 leading-relaxed break-keep pt-1">
+                스폰서·문의·업로드 이력은 복사하지 않습니다. 이미지·PDF 파일은 원본 파일을 함께 쓰며,
+                새 행사에서 교체해도 원본 행사는 바뀌지 않습니다.
+              </p>
+            </div>
+          )}
         </div>
-        <div className="mt-5 flex justify-end gap-2">
+        <div className="mt-5 flex justify-end items-center gap-2">
+          {progress && saving && (
+            <span className="text-[12px] text-ink-500 mr-auto">
+              복사 중 {progress.done}/{progress.total}
+            </span>
+          )}
           <button
             type="button"
             onClick={onClose}
-            className="px-3.5 py-2 rounded-btn border border-ink-100 text-[13px] font-semibold text-ink-700 hover:bg-ink-50"
+            disabled={saving}
+            className="px-3.5 py-2 rounded-btn border border-ink-100 text-[13px] font-semibold text-ink-700 hover:bg-ink-50 disabled:opacity-50"
           >
             취소
           </button>
@@ -435,7 +570,7 @@ function AddEventModal({ events, onClose }: { events: Event[]; onClose: () => vo
             disabled={saving || !effectiveSlug || !slugValid || slugDuplicate}
             className="px-3.5 py-2 rounded-btn bg-brand-500 text-ink-900 text-[13px] font-semibold hover:bg-brand-700 disabled:opacity-50"
           >
-            {saving ? "저장 중…" : "추가"}
+            {saving ? (sourceId ? "복사 중…" : "저장 중…") : sourceId ? "복사해서 추가" : "추가"}
           </button>
         </div>
       </div>

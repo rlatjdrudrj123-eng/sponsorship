@@ -9,6 +9,7 @@ import { EventSelector } from "./EventSelector";
 const PATH_LABELS: Record<string, string> = {
   "/admin": "대시보드",
   "/admin/members": "멤버 관리",
+  "/admin/history": "변경 이력",
   "/admin/import": "엑셀 업로드",
   "/admin/categories": "카테고리",
   "/admin/packages": "패키지",

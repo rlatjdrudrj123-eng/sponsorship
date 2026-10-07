@@ -247,6 +247,13 @@ service cloud.firestore {
       allow update, delete: if false;
     }
 
+    // 변경 이력 — Cloud Functions(functions/src/index.ts)만 기록, 화면은 읽기만.
+    // 담당자는 배정 행사 이력만 (쿼리에 eventId 등식 필터 필수). 멤버·권한 이력(eventId 없음)은 관리자.
+    match /auditLogs/{id} {
+      allow read: if isAdmin() || isAssigned(resource.data.eventId);
+      allow write: if false;
+    }
+
     // ============================================================
     //  그 외 모든 경로 차단
     // ============================================================

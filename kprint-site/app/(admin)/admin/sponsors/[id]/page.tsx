@@ -20,6 +20,7 @@ import {
 import { ArrowLeft, FileText, Mail } from "lucide-react";
 import { getDb } from "@/lib/firebase/firestore";
 import { filterAccessibleEvents, useAccess } from "@/lib/admin/access";
+import { DocHistory } from "@/components/admin/DocHistory";
 import {
   EMPTY_FORM_VALUES,
   SponsorForm,
@@ -318,6 +319,8 @@ export default function SponsorDetailPage() {
         onDelete={handleDelete}
         submitLabel="변경사항 저장"
       />
+
+      <DocHistory col="sponsors" docId={id} eventId={sponsor?.eventId} />
     </div>
   );
 }

@@ -15,6 +15,7 @@ import {
   Grid2x2,
   HelpCircle,
   Handshake,
+  History,
   Layers,
   LayoutDashboard,
   Layout,
@@ -194,6 +195,7 @@ export function AdminSidebar() {
       label: "도구",
       items: [
         { href: "/admin/import", label: "엑셀 일괄 등록", Icon: Upload },
+        { href: "/admin/history", label: "변경 이력", Icon: History },
       ],
     },
   ];
