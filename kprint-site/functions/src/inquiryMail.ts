@@ -2,6 +2,7 @@
  * 새 문의 메일 알림 — 공개 사이트에서 문의가 접수되면 그 행사 담당자에게 메일.
  *
  * 받는 사람: 그 행사에 배정된 '사용 중' 담당자 + 견적서 설정의 '문의 알림 받을 메일'
+ *            (둘 다 없으면 발송 계정 = 관리자에게)
  * 보내는 계정: 회사 메일(네이버웍스) SMTP — 비밀번호는 Secret Manager(SMTP_PASSWORD)에만 보관.
  *   설정: functions/.env 의 SMTP_HOST·SMTP_PORT·MAIL_FROM,
  *         `firebase functions:secrets:set SMTP_PASSWORD` (담당자가 직접 입력)
@@ -33,7 +34,8 @@ function parseEmails(v: unknown): string[] {
 }
 
 export const inquiryMail = onDocumentCreated(
-  { document: "inquiries/{id}", secrets: [SMTP_PASSWORD] },
+  // 리전은 Firestore 위치와 같게 명시 (index.ts 의 setGlobalOptions 보다 먼저 평가될 수 있음)
+  { document: "inquiries/{id}", region: "asia-northeast3", secrets: [SMTP_PASSWORD] },
   async (event) => {
     const inq = event.data?.data();
     if (!inq) return;
@@ -54,10 +56,8 @@ export const inquiryMail = onDocumentCreated(
       const m = d.data();
       if (m.status === "active" && typeof m.email === "string") to.add(m.email.toLowerCase());
     });
-    if (to.size === 0) {
-      logger.info("inquiryMail: 받는 사람 없음", { eventId, id });
-      return;
-    }
+    // 배정된 담당자도, 알림 메일도 없으면 발송 계정(관리자)에게라도 보낸다
+    if (to.size === 0) to.add(MAIL_FROM.value().toLowerCase());
 
     const no = receiptNo(id);
     const company = String(inq.companyName ?? "");

@@ -9,7 +9,6 @@ import {
   getDocs,
   query,
   serverTimestamp,
-  setDoc,
   Timestamp,
   where,
   writeBatch,
@@ -51,10 +50,45 @@ export async function loadCloneSource(sourceEventId: string): Promise<CloneSourc
   return { categories, subcategories, slots, packages, personas, taxonomy, siteSettings, quoteSettings };
 }
 
+/**
+ * 새 행사 문서 만들기 — 만든 사람이 소유자(ownerUids). 담당자(관리자가 아닌 멤버)는
+ * 같은 batch 로 본인 members 문서에 이 행사를 배정한다 (보안 규칙 isOwnerAssignment).
+ */
+export async function createEventDoc(opts: {
+  target: CloneTarget & { order: number };
+  creator: { uid: string; selfAssign: boolean; currentEvents: string[] };
+  note?: string;
+}): Promise<void> {
+  const db = getDb();
+  const batch = writeBatch(db);
+  batch.set(doc(db, "events", opts.target.id), {
+    id: opts.target.id,
+    name: opts.target.name,
+    shortName: opts.target.shortName,
+    year: opts.target.year,
+    isActive: true,
+    order: opts.target.order,
+    note: opts.note ?? "",
+    ownerUids: [opts.creator.uid],
+    createdBy: opts.creator.uid,
+    createdAt: serverTimestamp(),
+    updatedAt: serverTimestamp(),
+  });
+  if (opts.creator.selfAssign && !opts.creator.currentEvents.includes(opts.target.id)) {
+    batch.update(doc(db, "members", opts.creator.uid), {
+      events: [...opts.creator.currentEvents, opts.target.id],
+      lastAssign: { eventId: opts.target.id, op: "add", by: opts.creator.uid, at: serverTimestamp() },
+      updatedAt: serverTimestamp(),
+    });
+  }
+  await batch.commit();
+}
+
 export async function cloneEvent(opts: {
   sourceEventId: string;
   target: CloneTarget & { order: number };
   include: CloneInclude;
+  creator: { uid: string; selfAssign: boolean; currentEvents: string[] };
   onProgress?: (done: number, total: number) => void;
 }): Promise<ClonePlan> {
   const db = getDb();
@@ -67,17 +101,11 @@ export async function cloneEvent(opts: {
     () => Timestamp.fromDate(new Date())
   );
 
-  // 1) 행사 문서 먼저 — 이후 문서들이 이 행사에 속한다
-  await setDoc(doc(db, "events", opts.target.id), {
-    id: opts.target.id,
-    name: opts.target.name,
-    shortName: opts.target.shortName,
-    year: opts.target.year,
-    isActive: true,
-    order: opts.target.order,
+  // 1) 행사 문서 + (담당자면) 본인 배정 먼저 — 이후 문서들은 이 행사 권한으로 쓴다
+  await createEventDoc({
+    target: opts.target,
+    creator: opts.creator,
     note: `복사 원본: ${opts.sourceEventId}`,
-    createdAt: serverTimestamp(),
-    updatedAt: serverTimestamp(),
   });
 
   // 2) 나머지 — 400건씩

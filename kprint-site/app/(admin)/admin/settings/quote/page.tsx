@@ -350,8 +350,8 @@ export default function QuoteSettingsPage() {
             className="px-3 py-2 text-sm border border-ink-100 rounded-btn focus:outline-none focus:border-brand-500 bg-white"
           />
           <span className="text-[11.5px] text-ink-500 break-keep">
-            이 전시회에 배정된 담당자에게는 따로 적지 않아도 갑니다. 이 화면은 내부 전용이라 공개 사이트에
-            노출되지 않습니다.
+            이 전시회에 배정된 담당자에게는 따로 적지 않아도 갑니다. 둘 다 없으면 관리자 메일로 갑니다.
+            이 화면은 내부 전용이라 공개 사이트에 노출되지 않습니다.
           </span>
         </label>
       </Section>

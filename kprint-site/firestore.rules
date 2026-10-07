@@ -64,12 +64,42 @@ service cloud.firestore {
       return isAdmin() || isAssigned(resource.data.eventId);
     }
 
+    // 행사를 만든 사람(소유자) — 그 행사에 담당자를 지정할 수 있다 (사용자 승인 2026-10-07).
+    // getAfter: 행사 생성과 본인 배정을 한 번에(batch) 쓸 때도 새 행사 문서를 본다.
+    function isEventOwner(eventId) {
+      return isActiveMember()
+        && request.auth.uid in getAfter(/databases/$(database)/documents/events/$(eventId)).data.get('ownerUids', []);
+    }
+
+    // 소유자의 담당자 지정 — 대상의 events 에 그 행사 하나만 넣거나 빼고, lastAssign 에 기록
+    function isOwnerAssignment() {
+      let after = request.resource.data;
+      let before = resource.data;
+      let ev = after.lastAssign.eventId;
+      return isEventOwner(ev)
+        && after.diff(before).affectedKeys().hasOnly(['events', 'lastAssign', 'updatedAt'])
+        && before.status == 'active'
+        && after.lastAssign.by == request.auth.uid
+        && ((after.lastAssign.op == 'add'
+              && !(ev in before.events)
+              && after.events.size() == before.events.size() + 1
+              && after.events.toSet() == before.events.toSet().union([ev].toSet()))
+            || (after.lastAssign.op == 'remove'
+              && ev in before.events
+              && after.events.size() == before.events.size() - 1
+              && after.events.toSet() == before.events.toSet().difference([ev].toSet())));
+    }
+
     // ============================================================
     //  멤버 (어드민 사용자·권한)
     // ============================================================
     match /members/{uid} {
-      allow get: if signedIn() && (request.auth.uid == uid || isAdmin());
-      allow list: if isAdmin();
+      // 승인된 멤버는 다른 '사용 중' 멤버를 볼 수 있다 (담당자 지정용). 신청·중지 계정은 관리자만.
+      allow get: if signedIn()
+                 && (request.auth.uid == uid
+                     || isAdmin()
+                     || (isActiveMember() && resource.data.status == 'active'));
+      allow list: if isAdmin() || (isActiveMember() && resource.data.status == 'active');
       // 사용 신청 — 메일 인증을 마친 본인만, 담당자·대기·배정 없음으로만
       allow create: if signedIn()
                     && request.auth.uid == uid
@@ -86,25 +116,38 @@ service cloud.firestore {
                     && request.resource.data.status == 'pending'
                     && request.resource.data.events is list
                     && request.resource.data.events.size() == 0;
-      // 승인·역할·행사 배정 — 관리자만. 본인 역할·상태는 못 바꿈(실수로 자기 권한 잠금 방지)
-      allow update: if isAdmin()
-                    && request.resource.data.uid == resource.data.uid
-                    && request.resource.data.email == resource.data.email
-                    && request.resource.data.role in ['admin', 'manager']
-                    && request.resource.data.status in ['pending', 'active', 'disabled']
-                    && request.resource.data.events is list
-                    && (request.auth.uid != uid
-                        || (request.resource.data.role == resource.data.role
-                            && request.resource.data.status == resource.data.status));
+      // 승인·역할·행사 배정 — 관리자. 본인 역할·상태는 못 바꿈(실수로 자기 권한 잠금 방지)
+      // 행사 소유자는 자기 행사 배정만 (isOwnerAssignment)
+      allow update: if (isAdmin()
+                        && request.resource.data.uid == resource.data.uid
+                        && request.resource.data.email == resource.data.email
+                        && request.resource.data.role in ['admin', 'manager']
+                        && request.resource.data.status in ['pending', 'active', 'disabled']
+                        && request.resource.data.events is list
+                        && (request.auth.uid != uid
+                            || (request.resource.data.role == resource.data.role
+                                && request.resource.data.status == resource.data.status)))
+                    || isOwnerAssignment();
       allow delete: if isAdmin() && request.auth.uid != uid;
     }
 
     // ============================================================
-    //  행사 — 공개 읽기. 추가·삭제·순서·공개 여부는 관리자, 담당자는 이름·연도 등만
+    //  행사 — 공개 읽기.
+    //  만들기: 관리자 또는 승인된 멤버(만든 사람이 소유자). 삭제·순서·공개 여부: 관리자.
+    //  담당자: 이름·연도 등 기본 정보만.
     // ============================================================
     match /events/{eventId} {
       allow read: if true;
-      allow create, delete: if isAdmin();
+      allow create: if isAdmin()
+                    || (isActiveMember()
+                        && request.resource.data.keys().hasOnly([
+                             'id','name','shortName','year','isActive','order','note',
+                             'ownerUids','createdBy','createdAt','updatedAt'
+                           ])
+                        && request.resource.data.id == eventId
+                        && request.resource.data.ownerUids == [request.auth.uid]
+                        && request.resource.data.createdBy == request.auth.uid);
+      allow delete: if isAdmin();
       allow update: if isAdmin()
                     || (isAssigned(eventId)
                         && request.resource.data.diff(resource.data).affectedKeys()

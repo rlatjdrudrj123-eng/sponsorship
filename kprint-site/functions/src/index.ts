@@ -21,6 +21,9 @@ import {
 initializeApp();
 setGlobalOptions({ region: "asia-northeast3", maxInstances: 10 });
 
+// 새 문의 메일 알림 (발송 계정: functions/.env MAIL_FROM, 비밀번호: Secret SMTP_PASSWORD)
+export { inquiryMail } from "./inquiryMail";
+
 const db = getFirestore();
 
 type Actor = { uid: string | null; name: string; email: string | null };

@@ -2,6 +2,8 @@
 
 import { useEffect, useMemo, useState } from "react";
 import {
+  arrayRemove,
+  arrayUnion,
   collection,
   deleteDoc,
   doc,
@@ -10,18 +12,23 @@ import {
   orderBy,
   query,
   serverTimestamp,
-  setDoc,
   Timestamp,
   updateDoc,
+  where,
   writeBatch,
 } from "firebase/firestore";
-import { CalendarDays, Plus, Trash2, X } from "lucide-react";
+import { CalendarDays, Plus, Trash2, Users, X } from "lucide-react";
 import { getDb } from "@/lib/firebase/firestore";
 import { filterAccessibleEvents, isAdminAccess, useAccess } from "@/lib/admin/access";
 import { useAdminEvent } from "@/lib/admin/adminEventStore";
-import { cloneEvent } from "@/lib/admin/cloneEvent";
+import { cloneEvent, createEventDoc } from "@/lib/admin/cloneEvent";
 import type { CloneInclude, ClonePlan } from "@/lib/admin/clonePlan";
-import type { Event } from "@/lib/types";
+import type { Event, Member } from "@/lib/types";
+
+/** 행사 + 만든 사람(소유자) — 소유자는 그 행사에 담당자를 지정할 수 있다 */
+type EventRow = Event & { ownerUids?: string[]; createdBy?: string };
+
+type Creator = { uid: string; selfAssign: boolean; currentEvents: string[] };
 
 const DEFAULT_EVENTS: Array<Omit<Event, "createdAt" | "updatedAt">> = [
   {
@@ -36,21 +43,30 @@ const DEFAULT_EVENTS: Array<Omit<Event, "createdAt" | "updatedAt">> = [
 ];
 
 export default function EventsPage() {
-  const [allEvents, setAllEvents] = useState<Event[]>([]);
+  const [allEvents, setAllEvents] = useState<EventRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [seeded, setSeeded] = useState(false);
   const [showAdd, setShowAdd] = useState(false);
+  const [assignFor, setAssignFor] = useState<EventRow | null>(null);
   const access = useAccess();
-  // 행사 추가·삭제·순서·노출(활성)은 공개 사이트 전체에 영향 → 관리자만.
-  // 담당자는 배정된 행사의 이름·연도 등 기본 정보만 고칠 수 있다.
+  // 삭제·순서·노출(활성)은 공개 사이트 전체에 영향 → 관리자만.
+  // 승인된 멤버는 새 행사를 만들 수 있고(만든 사람 자동 배정), 만든 행사에는 담당자를 지정한다.
   const admin = isAdminAccess(access);
+  const myUid = access.state === "active" ? access.user.uid : "";
+  const canCreate = access.state === "active";
+  const creator: Creator = {
+    uid: myUid,
+    selfAssign: access.state === "active" && !access.isAdmin && !!access.member,
+    currentEvents: access.state === "active" ? access.member?.events ?? [] : [],
+  };
   const events = useMemo(() => filterAccessibleEvents(access, allEvents), [access, allEvents]);
+  const isOwner = (e: EventRow) => !!myUid && (e.ownerUids ?? []).includes(myUid);
 
   useEffect(() => {
     const u = onSnapshot(
       query(collection(getDb(), "events"), orderBy("order", "asc")),
       (s) => {
-        setAllEvents(s.docs.map((d) => ({ ...(d.data() as Event), id: d.id })));
+        setAllEvents(s.docs.map((d) => ({ ...(d.data() as EventRow), id: d.id })));
         setLoading(false);
       },
       () => setLoading(false)
@@ -123,10 +139,10 @@ export default function EventsPage() {
           <p className="text-[13px] text-ink-700 mt-1">
             {admin
               ? "연도·행사별로 스폰서를 분리해 관리합니다 (예: K-PRINT 2026, K-PRINT 2027)."
-              : "배정된 행사만 표시됩니다. 행사 추가·삭제·공개 여부는 관리자에게 요청하세요."}
+              : "배정된 행사만 표시됩니다. 새 행사를 만들면 자동으로 배정되고, 만든 행사에는 담당자를 지정할 수 있습니다. 삭제·공개 여부는 관리자에게 요청하세요."}
           </p>
         </div>
-        {admin && (
+        {canCreate && (
           <button
             type="button"
             onClick={() => setShowAdd(true)}
@@ -147,7 +163,7 @@ export default function EventsPage() {
               <th className="text-right px-4 py-2.5 font-semibold w-24">연도</th>
               <th className="text-right px-4 py-2.5 font-semibold w-40">작년 합계</th>
               <th className="text-center px-4 py-2.5 font-semibold w-20">활성</th>
-              {admin && <th className="px-4 py-2.5 w-20"></th>}
+              <th className="px-4 py-2.5 w-36"></th>
             </tr>
           </thead>
           <tbody>
@@ -201,6 +217,9 @@ export default function EventsPage() {
                   />
                   <div className="px-2 text-[10.5px] text-ink-400 font-mono mt-0.5">
                     /{e.id}
+                    {isOwner(e) && (
+                      <span className="ml-1.5 font-sans font-semibold text-brand-700">· 내가 만든 행사</span>
+                    )}
                   </div>
                 </td>
                 <td className="px-4 py-2">
@@ -262,8 +281,19 @@ export default function EventsPage() {
                     {e.isActive ? "활성" : "숨김"}
                   </button>
                 </td>
-                {admin && (
-                  <td className="px-4 py-2 text-right">
+                <td className="px-4 py-2 text-right whitespace-nowrap">
+                  {(admin || isOwner(e)) && (
+                    <button
+                      type="button"
+                      onClick={() => setAssignFor(e)}
+                      className="px-2 py-1 rounded text-[12px] font-semibold text-ink-700 hover:bg-ink-50 inline-flex items-center gap-1"
+                      title="이 행사 담당자 지정"
+                    >
+                      <Users className="w-3.5 h-3.5" />
+                      담당자
+                    </button>
+                  )}
+                  {admin && (
                     <button
                       type="button"
                       onClick={() => removeEvent(e)}
@@ -272,8 +302,8 @@ export default function EventsPage() {
                     >
                       <Trash2 className="w-3.5 h-3.5" />
                     </button>
-                  </td>
-                )}
+                  )}
+                </td>
               </tr>
             ))}
           </tbody>
@@ -285,8 +315,21 @@ export default function EventsPage() {
         {admin && " 활성 토글은 사이드바·스폰서 페이지의 기본 행사 후보에 영향을 줍니다."}
       </p>
 
-      {showAdd && admin && (
-        <AddEventModal events={allEvents} onClose={() => setShowAdd(false)} />
+      {showAdd && canCreate && (
+        <AddEventModal
+          events={allEvents}
+          sourceEvents={admin ? allEvents : events}
+          creator={creator}
+          onClose={() => setShowAdd(false)}
+        />
+      )}
+      {assignFor && (
+        <AssignModal
+          event={assignFor}
+          admin={admin}
+          myUid={myUid}
+          onClose={() => setAssignFor(null)}
+        />
       )}
     </div>
   );
@@ -300,7 +343,19 @@ const DEFAULT_INCLUDE: CloneInclude = {
   quote: true,
 };
 
-function AddEventModal({ events, onClose }: { events: Event[]; onClose: () => void }) {
+function AddEventModal({
+  events,
+  sourceEvents,
+  creator,
+  onClose,
+}: {
+  /** 전체 행사 — URL 중복 확인·순서용 */
+  events: Event[];
+  /** 복사해서 시작할 수 있는 행사 (담당자는 배정된 행사만) */
+  sourceEvents: Event[];
+  creator: Creator;
+  onClose: () => void;
+}) {
   const [name, setName] = useState("");
   const [shortName, setShortName] = useState("");
   const [year, setYear] = useState<string>(String(new Date().getFullYear() + 1));
@@ -355,22 +410,19 @@ function AddEventModal({ events, onClose }: { events: Event[]; onClose: () => vo
           sourceEventId: sourceId,
           target: { id: effectiveSlug, name: n, shortName: s, year: y, order: nextOrder },
           include,
+          creator,
           onProgress: (done, total) => setProgress({ done, total }),
         });
         setCloned({ id: effectiveSlug, plan });
         setSaving(false);
         return;
       }
-      await setDoc(doc(getDb(), "events", effectiveSlug), {
-        id: effectiveSlug,
-        name: n,
-        shortName: s,
-        year: y,
-        isActive: true,
-        order: nextOrder,
-        createdAt: serverTimestamp(),
-        updatedAt: serverTimestamp(),
+      // 만든 사람 = 소유자. 담당자면 같은 batch 로 본인 배정까지
+      await createEventDoc({
+        target: { id: effectiveSlug, name: n, shortName: s, year: y, order: nextOrder },
+        creator,
       });
+      if (creator.selfAssign) setSelectedEventId(effectiveSlug);
       onClose();
     } catch (e) {
       alert(
@@ -504,7 +556,7 @@ function AddEventModal({ events, onClose }: { events: Event[]; onClose: () => vo
               className="w-full px-3 py-2 text-sm border border-ink-100 rounded-btn focus:outline-none focus:border-brand-500 bg-white"
             >
               <option value="">빈 행사로 시작</option>
-              {events.map((ev) => (
+              {sourceEvents.map((ev) => (
                 <option key={ev.id} value={ev.id}>
                   {ev.name} 복사해서 시작
                 </option>
@@ -610,5 +662,166 @@ function Field({
         className="w-full px-3 py-2 text-sm border border-ink-100 rounded-btn focus:outline-none focus:border-brand-500 bg-white"
       />
     </label>
+  );
+}
+
+/**
+ * 담당자 지정 — 관리자 또는 이 행사를 만든 사람(소유자).
+ * '사용 중' 멤버만 보인다 (승인 대기 신청은 관리자가 멤버 관리에서 승인).
+ * 소유자의 변경은 보안 규칙(isOwnerAssignment)이 이 행사 한 건만 넣고 빼는지 확인한다.
+ */
+function AssignModal({
+  event,
+  admin,
+  myUid,
+  onClose,
+}: {
+  event: EventRow;
+  admin: boolean;
+  myUid: string;
+  onClose: () => void;
+}) {
+  const [members, setMembers] = useState<Member[] | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [busyUid, setBusyUid] = useState<string | null>(null);
+  const [search, setSearch] = useState("");
+  const [owners, setOwners] = useState<string[]>(event.ownerUids ?? []);
+
+  useEffect(() => {
+    const u = onSnapshot(
+      query(collection(getDb(), "members"), where("status", "==", "active")),
+      (s) => {
+        const rows = s.docs.map((d) => ({ ...(d.data() as Member), uid: d.id }));
+        rows.sort((a, b) => a.name.localeCompare(b.name, "ko"));
+        setMembers(rows);
+      },
+      (e) => setError(`멤버 목록을 불러오지 못했습니다: ${e.message}`)
+    );
+    return () => u();
+  }, []);
+
+  const toggleAssign = async (m: Member, on: boolean) => {
+    const evs = m.events ?? [];
+    if (on === evs.includes(event.id)) return;
+    if (!on && m.uid === myUid && !confirm("본인을 빼면 이 행사를 볼 수 없게 됩니다. 계속할까요?")) return;
+    setBusyUid(m.uid);
+    try {
+      await updateDoc(doc(getDb(), "members", m.uid), {
+        events: on ? [...evs, event.id] : evs.filter((x) => x !== event.id),
+        lastAssign: { eventId: event.id, op: on ? "add" : "remove", by: myUid, at: serverTimestamp() },
+        updatedAt: serverTimestamp(),
+      });
+    } catch (e) {
+      alert(`저장 실패: ${e instanceof Error ? e.message : String(e)}`);
+    } finally {
+      setBusyUid(null);
+    }
+  };
+
+  // 지정 권한(소유자) — 관리자만 바꾼다
+  const toggleOwner = async (m: Member, on: boolean) => {
+    setBusyUid(m.uid);
+    try {
+      await updateDoc(doc(getDb(), "events", event.id), {
+        ownerUids: on ? arrayUnion(m.uid) : arrayRemove(m.uid),
+        updatedAt: serverTimestamp(),
+      });
+      setOwners((p) => (on ? Array.from(new Set([...p, m.uid])) : p.filter((x) => x !== m.uid)));
+    } catch (e) {
+      alert(`저장 실패: ${e instanceof Error ? e.message : String(e)}`);
+    } finally {
+      setBusyUid(null);
+    }
+  };
+
+  const q = search.trim().toLowerCase();
+  const list = (members ?? []).filter(
+    (m) => !q || m.name.toLowerCase().includes(q) || m.email.toLowerCase().includes(q)
+  );
+
+  return (
+    <div className="fixed inset-0 z-50 bg-ink-900/40 grid place-items-center p-4">
+      <div className="bg-white rounded-card w-full max-w-lg p-5 shadow-xl max-h-[85vh] flex flex-col">
+        <div className="flex items-center justify-between mb-1">
+          <h2 className="text-[16px] font-bold text-ink-900">담당자 지정 — {event.name}</h2>
+          <button onClick={onClose} className="p-1 rounded hover:bg-ink-100" type="button" aria-label="닫기">
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+        <p className="text-[12px] text-ink-500 mb-3 break-keep">
+          체크하면 이 행사를 보고 수정할 수 있습니다. 목록에 없는 사람은 로그인 화면에서 [사용 신청] 후
+          관리자 승인이 필요합니다.
+          {admin && " '지정 권한'이 있으면 그 사람도 이 행사 담당자를 지정할 수 있습니다."}
+        </p>
+        <input
+          type="text"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder="이름·이메일 검색"
+          className="w-full px-3 py-2 text-sm border border-ink-100 rounded-btn focus:outline-none focus:border-brand-500 mb-2"
+        />
+        {error && <p className="text-[12px] text-red-700 mb-2 break-keep">{error}</p>}
+        <ul className="flex-1 overflow-y-auto divide-y divide-ink-100 border border-ink-100 rounded-btn">
+          {members === null && !error && (
+            <li className="px-3 py-4 text-[12px] text-ink-500 text-center">불러오는 중…</li>
+          )}
+          {members !== null && list.length === 0 && (
+            <li className="px-3 py-4 text-[12px] text-ink-500 text-center">해당하는 멤버가 없습니다.</li>
+          )}
+          {list.map((m) => {
+            const assigned = (m.events ?? []).includes(event.id);
+            const isOwnerM = owners.includes(m.uid);
+            return (
+              <li key={m.uid} className="px-3 py-2 flex items-center gap-3">
+                <div className="flex-1 min-w-0">
+                  <div className="text-[13px] font-semibold text-ink-900 truncate">
+                    {m.name}
+                    {m.uid === myUid && <span className="ml-1 text-[11px] text-ink-500">(나)</span>}
+                  </div>
+                  <div className="text-[11.5px] text-ink-500 truncate">{m.email}</div>
+                </div>
+                {m.role === "admin" ? (
+                  <span className="text-[11.5px] text-ink-500">관리자 — 모든 행사</span>
+                ) : (
+                  <>
+                    <label className="flex items-center gap-1.5 text-[12px] text-ink-700 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={assigned}
+                        disabled={busyUid === m.uid}
+                        onChange={(e) => toggleAssign(m, e.target.checked)}
+                        className="accent-brand-500 w-4 h-4"
+                      />
+                      담당
+                    </label>
+                    {admin && (
+                      <label className="flex items-center gap-1.5 text-[12px] text-ink-700 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={isOwnerM}
+                          disabled={busyUid === m.uid}
+                          onChange={(e) => toggleOwner(m, e.target.checked)}
+                          className="accent-brand-500 w-4 h-4"
+                        />
+                        지정 권한
+                      </label>
+                    )}
+                  </>
+                )}
+              </li>
+            );
+          })}
+        </ul>
+        <div className="mt-4 flex justify-end">
+          <button
+            type="button"
+            onClick={onClose}
+            className="px-3.5 py-2 rounded-btn border border-ink-100 text-[13px] font-semibold text-ink-700 hover:bg-ink-50"
+          >
+            닫기
+          </button>
+        </div>
+      </div>
+    </div>
   );
 }
