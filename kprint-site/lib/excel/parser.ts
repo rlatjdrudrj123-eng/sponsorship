@@ -31,6 +31,14 @@ export const CATEGORY_TYPES = [
   "package",
 ] as const satisfies readonly CategoryType[];
 
+/**
+ * 구형 유형값 → 현재 유형. DB 에 남아 있는 예전 값이 '엑셀 내보내기' 에 그대로 실려
+ * 나와서, 내보낸 파일을 다시 올리면 category_type 오류가 나던 문제 대응.
+ */
+export const LEGACY_CATEGORY_TYPE_ALIASES: Partial<Record<string, CategoryType>> = {
+  mailing_content: "mailing",
+};
+
 export const CHANNELS = ["offline", "online", "package"] as const satisfies readonly Channel[];
 
 export const REQUIRED_HEADERS = [
@@ -390,6 +398,7 @@ export function parseExcelBuffer(
   // 6) 행별 파싱
   const rows: ParsedRow[] = [];
   const seenSlotCodes = new Map<string, number>(); // slot_code → 처음 등장한 rowIndex
+  const legacyTypeWarned = new Set<string>(); // 구형 유형값 경고는 카테고리당 1번만
 
   for (let i = 1; i < aoa.length; i++) {
     const rawRow = aoa[i] ?? [];
@@ -476,6 +485,22 @@ export function parseExcelBuffer(
       }
     }
 
+    // 구형 유형값 — 예전 데이터에 남아 있어 '엑셀 내보내기' 파일에 그대로 실려 나오는 값.
+    // 그대로 두면 내보낸 파일을 다시 올릴 때 오류가 나므로 현재 유형으로 바꿔 받는다.
+    const rawType = s(get("category_type"));
+    const aliasedType = LEGACY_CATEGORY_TYPE_ALIASES[rawType];
+    if (aliasedType) {
+      const catCode = s(get("category_code"));
+      if (!legacyTypeWarned.has(catCode)) {
+        legacyTypeWarned.add(catCode);
+        warnings.push({
+          rowIndex,
+          column: "category_type",
+          reason: `${catCode}: 구형 유형값 "${rawType}" 을 "${aliasedType}"(발송형)으로 바꿔 받았습니다. 인터뷰·카드뉴스 같은 콘텐츠형이면 "content" 로 고쳐서 다시 올리세요.`,
+        });
+      }
+    }
+
     // 후보 객체 (실패한 필드는 안전한 기본값 — zod도 통과시키되 rowErrors로 막힘)
     const candidate: ParsedRow = {
       rowIndex,
@@ -483,7 +508,7 @@ export function parseExcelBuffer(
       categoryCode: s(get("category_code")),
       categoryNameKo: s(get("category_name_ko")),
       categoryNameEn: s(get("category_name_en")),
-      categoryType: s(get("category_type")) as CategoryType,
+      categoryType: (aliasedType ?? rawType) as CategoryType,
       subcategoryNameKo: s(get("subcategory_name_ko")),
       subcategoryNameEn: s(get("subcategory_name_en")),
       slotCode: s(get("slot_code")),

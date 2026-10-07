@@ -2,20 +2,26 @@
  * 엑셀 임포트 → Firestore 동기화.
  *
  * 모드 3종:
- *   - overwrite: 엑셀에 들어온 카테고리만 삭제·재생성. 이미지·도면·텍스트는 보존.
+ *   - overwrite: 엑셀에 들어온 카테고리를 엑셀 기준으로 맞춘다. 기존 카테고리·소분류·
+ *     구좌는 코드·이름으로 찾아 ID 를 그대로 쓰고(스폰서 확보 구좌·도면 핀·패키지
+ *     구성 연결 유지), 엑셀에 없는 필드(진단 점수·페르소나·시너지·이미지·도면 등)는
+ *     보존한다. 엑셀에서 빠진 소분류·구좌만 삭제하되, 스폰서·패키지·도면 핀에 연결된
+ *     구좌는 남기고 경고한다. 계산은 importPlan.planOverwrite (순수 함수) 가 한다.
  *   - merge: 같은 (cat_code, slot_code) 슬롯의 가격·마감·사이즈만 갱신. 신규는 추가.
  *   - add_only: 기존 코드 무시, 새 코드만 추가.
  *
  * 외부 API:
- *   importParsedData(parseResult, mode, uploadedBy, fileName, fileSize, onProgress)
+ *   importParsedData(parseResult, mode, uploadedBy, fileName, fileSize, eventId, onProgress)
  *
- * 정책 — STEP 5-3 사양 §"정책" 참고:
+ * 정책:
  *   1) slug = name_en kebab-case + 충돌 시 -2/-3
  *   2) order = 등장 순서. 기존은 보존, 신규는 max+1...
  *   3) isPublished 신규는 false. 기존은 보존.
  *   4) deadline 없으면 null.
  *   5) taxonomy에 없는 태그는 warning만 남기고 그대로 저장.
- *   6) overwrite는 엑셀에 있는 code만 손댐. 다른 카테고리는 안 건드림.
+ *   6) 모든 조회는 이 행사(eventId) 범위 — 행사 복제로 코드가 겹쳐도 다른 행사를 건드리지 않음.
+ *   7) 스폰서가 확보한 구좌는 엑셀이 '판매 가능' 이어도 매진을 풀지 않음 (이중판매 방지).
+ *   8) overwrite 는 쓰기를 먼저, 삭제를 나중에 커밋 — 중간 실패 시 데이터가 사라지지 않게.
  */
 
 import {
@@ -32,20 +38,26 @@ import {
   type WriteBatch,
 } from "firebase/firestore";
 import { getDb } from "../firebase/firestore";
-import type {
-  Category,
-  ImageSlot,
-  ImportHistory,
-  Slot,
-  Subcategory,
-  Taxonomy,
-} from "../types";
-import type {
-  ParsedCategory,
-  ParsedSlot,
-  ParsedSubcategory,
-  ParseResult,
-} from "./parser";
+import type { ImportHistory, Taxonomy } from "../types";
+import type { ParseResult } from "./parser";
+import {
+  buildCategory,
+  buildSlot,
+  buildSubcategory,
+  collectPackageSlotIds,
+  collectSponsorSlotIds,
+  nz,
+  pickUniqueSlug,
+  planOverwrite,
+  resolveSlotStatus,
+  unknownTagsWarning,
+  type BuildContext,
+  type ExistingCategory,
+  type ExistingSlot,
+  type ExistingSubcategory,
+  type PlanCollection,
+  type TimeDeps,
+} from "./importPlan";
 
 // ============================================================================
 // Public types
@@ -66,16 +78,26 @@ export type ImportError = {
   reason: string;
 };
 
+export type ImportCounts = {
+  categoriesCreated: number;
+  categoriesUpdated: number;
+  subcategoriesWritten: number;
+  slotsWritten: number;
+  slotsDeleted: number;
+  /** overwrite — 엑셀에서 빠진 소분류 삭제 수 */
+  subcategoriesDeleted?: number;
+  /** overwrite — 엑셀에서 빠졌지만 연결돼 있어 남겨둔 구좌 */
+  slotsKeptReferenced?: number;
+  /** 엑셀은 판매 가능이지만 스폰서 확보 구좌라 매진 유지 */
+  slotsSoldKept?: number;
+};
+
 export type ImportResult = {
   importHistoryId: string;
-  counts: {
-    categoriesCreated: number;
-    categoriesUpdated: number;
-    subcategoriesWritten: number;
-    slotsWritten: number;
-    slotsDeleted: number;
-  };
+  counts: ImportCounts;
   errors: ImportError[];
+  /** 진행은 됐지만 확인이 필요한 사항 (보호한 구좌, 이름 변경 처리, 태그 등) */
+  warnings: string[];
 };
 
 // ============================================================================
@@ -85,74 +107,38 @@ export type ImportResult = {
 const COL_CATEGORIES = "categories";
 const COL_SUBCATEGORIES = "subcategories";
 const COL_SLOTS = "slots";
+const COL_SPONSORS = "sponsors";
+const COL_PACKAGES = "packages";
 const COL_TAXONOMY = "taxonomy";
 const COL_IMPORT_HISTORY = "importHistory";
-const TAXONOMY_DOC_ID = "main";
+const TAXONOMY_FALLBACK_DOC_ID = "main";
 
 const FIRESTORE_BATCH_LIMIT = 500;
 
-/** overwrite 시 신규 카테고리에 자동 부여될 lockedFields (잠금 가능한 화이트리스트). */
-const LOCKABLE_CATEGORY_FIELDS: string[] = [
-  "code",
-  "channel",
-  "type",
-  "name.ko",
-  "name.en",
-  "size",
-  "fileFormat",
-  "deadline",
-];
+const TIME: TimeDeps = {
+  now: () => Timestamp.fromDate(new Date()),
+  fromDate: (d: Date) => Timestamp.fromDate(d),
+};
 
-// ============================================================================
-// Helpers
-// ============================================================================
+const EMPTY_COUNTS: ImportCounts = {
+  categoriesCreated: 0,
+  categoriesUpdated: 0,
+  subcategoriesWritten: 0,
+  slotsWritten: 0,
+  slotsDeleted: 0,
+};
 
 function nowTs(): Timestamp {
-  return Timestamp.fromDate(new Date());
-}
-
-function toTimestamp(d: Date | null | undefined): Timestamp | undefined {
-  if (!d) return undefined;
-  return Timestamp.fromDate(d);
-}
-
-function nz(s: string): string | undefined {
-  return s ? s : undefined;
-}
-
-function toKebabSlug(input: string): string {
-  return (
-    (input || "category")
-      .toLowerCase()
-      .replace(/&/g, "-and-")
-      .replace(/[^a-z0-9]+/g, "-")
-      .replace(/^-+|-+$/g, "") || "category"
-  );
-}
-
-function pickUniqueSlug(base: string, existing: Set<string>): string {
-  const baseSlug = toKebabSlug(base);
-  if (!existing.has(baseSlug)) {
-    existing.add(baseSlug);
-    return baseSlug;
-  }
-  let i = 2;
-  while (existing.has(`${baseSlug}-${i}`)) i++;
-  const final = `${baseSlug}-${i}`;
-  existing.add(final);
-  return final;
+  return TIME.now();
 }
 
 // ============================================================================
-// Existing-state fetch
+// Existing-state fetch — 전부 이 행사(eventId) 범위
 // ============================================================================
-
-type ExistingCategory = Category & { id: string };
-type ExistingSubcategory = Subcategory & { id: string };
-type ExistingSlot = Slot & { id: string };
 
 type ExistingState = {
   categoriesByCode: Map<string, ExistingCategory>;
+  categories: ExistingCategory[];
   slugsInUse: Set<string>;
   maxOrder: number;
 };
@@ -164,18 +150,26 @@ async function fetchExistingCategories(eventId: string): Promise<ExistingState> 
     query(collection(getDb(), COL_CATEGORIES), where("eventId", "==", eventId))
   );
   const byCode = new Map<string, ExistingCategory>();
+  const categories: ExistingCategory[] = [];
   const slugs = new Set<string>();
   let maxOrder = -1;
   snap.forEach((d) => {
-    const data = d.data() as Category;
-    const cat: ExistingCategory = { ...data, id: d.id };
+    const cat = { ...(d.data() as ExistingCategory), id: d.id };
+    categories.push(cat);
     byCode.set(cat.code, cat);
     if (cat.slug) slugs.add(cat.slug);
     if (typeof cat.order === "number" && cat.order > maxOrder) {
       maxOrder = cat.order;
     }
   });
-  return { categoriesByCode: byCode, slugsInUse: slugs, maxOrder };
+  return { categoriesByCode: byCode, categories, slugsInUse: slugs, maxOrder };
+}
+
+async function fetchEventDocs<T>(col: string, eventId: string): Promise<T[]> {
+  const snap = await getDocs(
+    query(collection(getDb(), col), where("eventId", "==", eventId))
+  );
+  return snap.docs.map((d) => ({ ...(d.data() as T), id: d.id }));
 }
 
 async function fetchSubcategoriesByCategoryId(
@@ -187,180 +181,59 @@ async function fetchSubcategoriesByCategoryId(
       where("categoryId", "==", categoryId)
     )
   );
-  return snap.docs.map((d) => ({ ...(d.data() as Subcategory), id: d.id }));
+  return snap.docs.map((d) => ({ ...(d.data() as ExistingSubcategory), id: d.id }));
 }
 
-async function fetchSlotsByCategoryId(
-  categoryId: string
-): Promise<ExistingSlot[]> {
-  const snap = await getDocs(
-    query(
-      collection(getDb(), COL_SLOTS),
-      where("categoryId", "==", categoryId)
-    )
-  );
-  return snap.docs.map((d) => ({ ...(d.data() as Slot), id: d.id }));
-}
-
+/**
+ * 이 행사에서 코드가 같은 구좌.
+ * ⚠️ eventId 필터 필수 — 행사 복제로 다른 행사에 같은 코드(RGA-1-1 등)가 있으면
+ *    예전에는 그 행사의 구좌를 수정(merge)하거나 생성을 건너뛰었다(add_only).
+ */
 async function fetchSlotByCode(
-  code: string
+  code: string,
+  eventId: string
 ): Promise<ExistingSlot | null> {
   const snap = await getDocs(
     query(
       collection(getDb(), COL_SLOTS),
+      where("eventId", "==", eventId),
       where("code", "==", code),
       fsLimit(1)
     )
   );
   if (snap.empty) return null;
   const d = snap.docs[0];
-  return { ...(d.data() as Slot), id: d.id };
+  return { ...(d.data() as ExistingSlot), id: d.id };
 }
 
-async function fetchKnownTagIds(): Promise<Set<string>> {
-  try {
-    const ref = doc(getDb(), COL_TAXONOMY, TAXONOMY_DOC_ID);
-    const snap = await getDoc(ref);
-    if (!snap.exists()) return new Set();
-    const data = snap.data() as Taxonomy;
-    return new Set((data.tags ?? []).map((t) => t.id));
-  } catch {
-    return new Set();
+/** 행사별 태그 목록 (없으면 공용 main 폴백). */
+async function fetchKnownTagIds(eventId: string): Promise<Set<string>> {
+  for (const id of [eventId, TAXONOMY_FALLBACK_DOC_ID]) {
+    try {
+      const snap = await getDoc(doc(getDb(), COL_TAXONOMY, id));
+      if (!snap.exists()) continue;
+      const data = snap.data() as Taxonomy;
+      return new Set((data.tags ?? []).map((t) => t.id));
+    } catch {
+      // 다음 후보로
+    }
   }
+  return new Set();
 }
 
-// ============================================================================
-// Builders — ParsedX → Firestore doc
-// ============================================================================
-
-type BuildContext = {
-  newCategoryId: string; // auto-generated 또는 preserved
-  slug: string;
-  order: number;
-  isPublished: boolean;
-  createdAt: Timestamp;
-  eventId: string;       // 행사 분리
-  preserved?: ExistingCategory;
-};
-
-function buildCategory(
-  parsed: ParsedCategory,
-  ctx: BuildContext,
-  importHistoryId: string,
-  isOverwriteMode: boolean
-): Category {
-  const preserved = ctx.preserved;
-  const lockedFields = preserved
-    ? // 기존 카테고리 — lockedFields 그대로 유지 (잠금 해제 상태 보존)
-      preserved.lockedFields ?? []
-    : // 신규 — 잠금 가능한 모든 필드 자동 잠금
-      [...LOCKABLE_CATEGORY_FIELDS];
-
-  // overwrite 모드는 카테고리 레벨 텍스트 필드까지 보존. merge는 여기 안 옴 (별도 경로).
-  // shortDesc / selectorId / timingOverride / locationOverride 는 엑셀 우선,
-  // 비어있으면 기존(preserved) 값 유지.
-  const cat: Category = {
-    id: ctx.newCategoryId,
-    // ⚠️ 항상 ctx.eventId 사용 — preserved 는 같은 eventId 의 카테고리만 매칭되도록
-    // fetchExistingCategories(eventId) 에서 보장됨. fallback 패턴은 데이터 손실
-    // 버그의 원인이라 제거.
-    eventId: ctx.eventId,
-    code: parsed.code,
-    channel: parsed.channel,
-    type: parsed.type,
-    slug: ctx.slug,
-    name: { ko: parsed.nameKo, en: parsed.nameEn },
-    shortDesc: nz(parsed.shortDesc) ?? preserved?.shortDesc,
-    longDesc: isOverwriteMode ? preserved?.longDesc : undefined,
-    selectorId: nz(parsed.selectorId) ?? preserved?.selectorId,
-    timingOverride:
-      parsed.timing.length > 0
-        ? (parsed.timing as Category["timingOverride"])
-        : preserved?.timingOverride,
-    locationOverride:
-      parsed.location.length > 0
-        ? (parsed.location as Category["locationOverride"])
-        : preserved?.locationOverride,
-
-    size: nz(parsed.size),
-    fileFormat: nz(parsed.fileFormat),
-    deadline: toTimestamp(parsed.deadline),
-    designGuideText: isOverwriteMode ? preserved?.designGuideText : undefined,
-    designGuideFileUrl: isOverwriteMode
-      ? preserved?.designGuideFileUrl
-      : undefined,
-    designGuideFilePath: isOverwriteMode
-      ? preserved?.designGuideFilePath
-      : undefined,
-
-    // 이미지·도면 보존
-    heroImages:
-      preserved?.heroImages ?? { mode: "carousel", images: [] as ImageSlot["images"] },
-    detailImages: preserved?.detailImages,
-    floorImages: preserved?.floorImages,
-
-    videoUrl: isOverwriteMode ? preserved?.videoUrl : undefined,
-    videoSpec: isOverwriteMode ? preserved?.videoSpec : undefined,
-    mailingSpec: isOverwriteMode ? preserved?.mailingSpec : undefined,
-    contentSpec: isOverwriteMode ? preserved?.contentSpec : undefined,
-
-    tags: parsed.tags,
-    isPublished: ctx.isPublished,
-    order: ctx.order,
-    lockedFields,
-    createdAt: ctx.createdAt,
-    updatedAt: nowTs(),
-    lastImportId: importHistoryId,
-  };
-
-  return cat;
+/** 이 행사 스폰서가 확보한 구좌 — 조회 실패하면 보호를 못 하므로 임포트를 중단한다. */
+async function fetchSponsorSlotIds(eventId: string): Promise<Set<string>> {
+  const sponsors = await fetchEventDocs<{
+    items?: Array<{ slotId?: string; allocatedSlotIds?: string[] }>;
+  }>(COL_SPONSORS, eventId);
+  return collectSponsorSlotIds(sponsors);
 }
 
-function buildSubcategory(
-  parsed: ParsedSubcategory,
-  id: string,
-  categoryId: string,
-  eventId: string,
-  fallbackName: { ko: string; en: string },
-  order: number
-): Subcategory {
-  const sub: Subcategory = {
-    id,
-    eventId,
-    categoryId,
-    name: {
-      ko: parsed.nameKo || fallbackName.ko,
-      en: parsed.nameEn || fallbackName.en,
-    },
-    priceKRW: parsed.priceKRW,
-    priceUSD: parsed.priceUSD ?? undefined,
-    unit: { ko: parsed.unitKo, en: parsed.unitEn },
-    priceNote: undefined, // 어드민이 별도 입력
-    size: nz(parsed.size),
-    order,
-  };
-  return sub;
-}
-
-function buildSlot(
-  parsed: ParsedSlot,
-  id: string,
-  categoryId: string,
-  subcategoryId: string,
-  eventId: string,
-  order: number
-): Slot {
-  const slot: Slot = {
-    id,
-    eventId,
-    subcategoryId,
-    categoryId,
-    code: parsed.code,
-    status: parsed.isSold ? "sold" : "available",
-    note: nz(parsed.note),
-    order,
-  };
-  return slot;
+async function fetchPackageSlotIds(eventId: string): Promise<Set<string>> {
+  const packages = await fetchEventDocs<{
+    includedItems?: Array<{ referencedSlotIds?: string[] }>;
+  }>(COL_PACKAGES, eventId);
+  return collectPackageSlotIds(packages);
 }
 
 // ============================================================================
@@ -402,195 +275,88 @@ type HandlerInput = {
   state: ExistingState;
   knownTags: Set<string>;
   importHistoryId: string;
-  eventId: string;        // 행사 분리 (필수 — 모든 신규 도큐먼트에 태깅)
+  eventId: string; // 행사 분리 (필수 — 모든 신규 도큐먼트에 태깅)
+  sponsorSlotIds: Set<string>;
   onProgress: ImportProgress;
-  warnings: string[]; // taxonomy mismatch 등
+  warnings: string[];
 };
 
 type HandlerOutput = {
   ops: WriteOp[];
-  counts: {
-    categoriesCreated: number;
-    categoriesUpdated: number;
-    subcategoriesWritten: number;
-    slotsWritten: number;
-    slotsDeleted: number;
-  };
-  preserveCount: number;
-  deleteOpsCount: number;
+  counts: ImportCounts;
 };
 
 // ----- OVERWRITE -----
 
 async function handleOverwrite(input: HandlerInput): Promise<HandlerOutput> {
-  const { parseResult, state, knownTags, importHistoryId, eventId, onProgress, warnings } = input;
+  const { parseResult, state, knownTags, importHistoryId, eventId, sponsorSlotIds, onProgress, warnings } =
+    input;
   const db = getDb();
-  const writeOps: WriteOp[] = [];
-  const deleteOps: WriteOp[] = [];
 
-  let categoriesCreated = 0;
-  let categoriesUpdated = 0;
-  let subcategoriesWritten = 0;
-  let slotsWritten = 0;
-  let slotsDeleted = 0;
+  onProgress("preserve", 0, 3);
+  const [existingSubcategories, existingSlots, packageSlotIds] = await Promise.all([
+    fetchEventDocs<ExistingSubcategory>(COL_SUBCATEGORIES, eventId),
+    fetchEventDocs<ExistingSlot>(COL_SLOTS, eventId),
+    fetchPackageSlotIds(eventId),
+  ]);
+  onProgress("preserve", 3, 3);
 
-  // ----- preserve -----
-  const codes = parseResult.categories.map((c) => c.code);
-  const preservedByCode = new Map<string, ExistingCategory>();
-  for (let i = 0; i < codes.length; i++) {
-    const code = codes[i];
-    const existing = state.categoriesByCode.get(code);
-    if (existing) preservedByCode.set(code, existing);
-    onProgress("preserve", i + 1, codes.length);
-  }
-
-  // ----- delete (해당 code만) -----
-  let deleteIdx = 0;
-  const totalToDelete = preservedByCode.size;
-  for (const [code, existingCat] of Array.from(preservedByCode.entries())) {
-    deleteIdx++;
-    const subs = await fetchSubcategoriesByCategoryId(existingCat.id);
-    const slots = await fetchSlotsByCategoryId(existingCat.id);
-    deleteOps.push({
-      kind: "delete",
-      ref: doc(db, COL_CATEGORIES, existingCat.id),
-    });
-    for (const s of subs) {
-      deleteOps.push({
-        kind: "delete",
-        ref: doc(db, COL_SUBCATEGORIES, s.id),
-      });
-    }
-    for (const s of slots) {
-      deleteOps.push({
-        kind: "delete",
-        ref: doc(db, COL_SLOTS, s.id),
-      });
-      slotsDeleted++;
-    }
-    // 슬러그도 슬러그 풀에서 제거 — 같은 카테고리에서 그대로 사용 가능하게
-    if (existingCat.slug) state.slugsInUse.delete(existingCat.slug);
-    onProgress("delete", deleteIdx, totalToDelete);
-    void code;
-  }
-
-  // ----- build (write) -----
-  let nextOrder = state.maxOrder + 1;
-  const newCategoriesByCode = new Map<string, Category>();
-
-  for (const parsed of parseResult.categories) {
-    const preserved = preservedByCode.get(parsed.code);
-    const newRef = preserved
-      ? doc(db, COL_CATEGORIES, preserved.id) // 기존 ID 재사용
-      : doc(collection(db, COL_CATEGORIES));
-
-    const slug = preserved?.slug ?? pickUniqueSlug(parsed.nameEn, state.slugsInUse);
-    if (preserved?.slug) state.slugsInUse.add(preserved.slug); // 재추가
-
-    const order = preserved?.order ?? nextOrder++;
-    const ctx: BuildContext = {
-      newCategoryId: newRef.id,
-      slug,
-      order,
-      isPublished: preserved?.isPublished ?? false,
-      createdAt: preserved?.createdAt ?? nowTs(),
-      eventId,
-      preserved,
-    };
-
-    const cat = buildCategory(parsed, ctx, importHistoryId, true);
-    newCategoriesByCode.set(parsed.code, cat);
-    writeOps.push({
-      kind: "set",
-      ref: newRef,
-      data: cat as unknown as Record<string, unknown>,
-    });
-
-    if (preserved) categoriesUpdated++;
-    else categoriesCreated++;
-
-    // 태그 검증 (warning)
-    for (const t of parsed.tags) {
-      if (!knownTags.has(t)) {
-        warnings.push(
-          `카테고리 ${parsed.code} (${parsed.nameKo}): 태그 "${t}" 가 taxonomy에 없습니다 — 그대로 저장`
-        );
-      }
-    }
-  }
-
-  // 소분류 — 카테고리당 등장 순서로 order 부여
-  const subcatIdByKey = new Map<string, string>(); // catCode|subKo → subId
-  const subsByCategory = new Map<string, ParsedSubcategory[]>();
-  for (const ps of parseResult.subcategories) {
-    const arr = subsByCategory.get(ps.categoryCode) ?? [];
-    arr.push(ps);
-    subsByCategory.set(ps.categoryCode, arr);
-  }
-  for (const [catCode, subs] of Array.from(subsByCategory.entries())) {
-    const cat = newCategoriesByCode.get(catCode);
-    if (!cat) continue;
-    subs.forEach((ps, i) => {
-      const subRef = doc(collection(db, COL_SUBCATEGORIES));
-      const sub = buildSubcategory(ps, subRef.id, cat.id, eventId, cat.name, i);
-      subcatIdByKey.set(`${catCode}|${ps.nameKo}`, subRef.id);
-      writeOps.push({
-        kind: "set",
-        ref: subRef,
-        data: sub as unknown as Record<string, unknown>,
-      });
-      subcategoriesWritten++;
-    });
-  }
-
-  // 슬롯 — 카테고리당 등장 순서로 order 부여
-  const slotsByCategory = new Map<string, ParsedSlot[]>();
-  for (const ps of parseResult.slots) {
-    const arr = slotsByCategory.get(ps.categoryCode) ?? [];
-    arr.push(ps);
-    slotsByCategory.set(ps.categoryCode, arr);
-  }
-  for (const [catCode, slots] of Array.from(slotsByCategory.entries())) {
-    const cat = newCategoriesByCode.get(catCode);
-    if (!cat) continue;
-    slots.forEach((ps, i) => {
-      const subId = subcatIdByKey.get(`${catCode}|${ps.subcategoryNameKo}`);
-      if (!subId) return; // 그룹핑 누락 — 정상 흐름이면 발생 안 함
-      const slotRef = doc(collection(db, COL_SLOTS));
-      const slot = buildSlot(ps, slotRef.id, cat.id, subId, eventId, i);
-      writeOps.push({
-        kind: "set",
-        ref: slotRef,
-        data: slot as unknown as Record<string, unknown>,
-      });
-      slotsWritten++;
-    });
-  }
-
-  return {
-    ops: [...deleteOps, ...writeOps],
-    counts: {
-      categoriesCreated,
-      categoriesUpdated,
-      subcategoriesWritten,
-      slotsWritten,
-      slotsDeleted,
+  const plan = planOverwrite({
+    parsed: parseResult,
+    eventId,
+    importHistoryId,
+    existingCategories: state.categories,
+    existingSubcategories,
+    existingSlots,
+    sponsorSlotIds,
+    packageSlotIds,
+    knownTags,
+    deps: {
+      ...TIME,
+      newId: (col: PlanCollection) => doc(collection(db, col)).id,
     },
-    preserveCount: codes.length,
-    deleteOpsCount: deleteOps.length,
+  });
+  warnings.push(...plan.warnings);
+
+  // 쓰기 먼저, 삭제는 나중 — 배치가 중간에 실패해도 데이터가 사라지지 않게.
+  const ops: WriteOp[] = [
+    ...plan.writes.map(
+      (w): WriteOp => ({ kind: "set", ref: doc(db, w.col, w.id), data: w.data })
+    ),
+    ...plan.deletes.map(
+      (d): WriteOp => ({ kind: "delete", ref: doc(db, d.col, d.id) })
+    ),
+  ];
+
+  const c = plan.counts;
+  return {
+    ops,
+    counts: {
+      categoriesCreated: c.categoriesCreated,
+      categoriesUpdated: c.categoriesUpdated,
+      subcategoriesWritten: c.subcategoriesCreated + c.subcategoriesUpdated,
+      slotsWritten: c.slotsCreated + c.slotsUpdated,
+      slotsDeleted: c.slotsDeleted,
+      subcategoriesDeleted: c.subcategoriesDeleted,
+      slotsKeptReferenced: c.slotsKeptReferenced,
+      slotsSoldKept: c.slotsSoldKept,
+    },
   };
 }
 
 // ----- MERGE -----
 
 async function handleMerge(input: HandlerInput): Promise<HandlerOutput> {
-  const { parseResult, state, knownTags, importHistoryId, eventId, onProgress, warnings } = input;
+  const { parseResult, state, knownTags, importHistoryId, eventId, sponsorSlotIds, onProgress, warnings } =
+    input;
   const db = getDb();
   const writeOps: WriteOp[] = [];
 
   let categoriesCreated = 0;
   let subcategoriesWritten = 0;
   let slotsWritten = 0;
+  let slotsSoldKept = 0;
+  const unknownTags = new Set<string>();
 
   // 1) 카테고리 — 없는 것만 생성. 있는 것은 손대지 않음.
   const codeToCatId = new Map<string, string>(); // catCode → categoryId
@@ -619,7 +385,7 @@ async function handleMerge(input: HandlerInput): Promise<HandlerOutput> {
         createdAt: nowTs(),
         eventId,
       };
-      const cat = buildCategory(parsed, ctx, importHistoryId, false);
+      const cat = buildCategory(parsed, ctx, importHistoryId, false, TIME);
       writeOps.push({
         kind: "set",
         ref: newRef,
@@ -631,11 +397,7 @@ async function handleMerge(input: HandlerInput): Promise<HandlerOutput> {
       categoriesCreated++;
 
       for (const t of parsed.tags) {
-        if (!knownTags.has(t)) {
-          warnings.push(
-            `카테고리 ${parsed.code}: 태그 "${t}" 가 taxonomy에 없습니다 — 그대로 저장`
-          );
-        }
+        if (!knownTags.has(t)) unknownTags.add(t);
       }
     }
     onProgress("preserve", preserveDone, preserveTotal);
@@ -714,18 +476,32 @@ async function handleMerge(input: HandlerInput): Promise<HandlerOutput> {
     }
   }
 
-  // 3) 슬롯 — code로 lookup. 있으면 status·note 갱신, 없으면 신규.
+  // 3) 슬롯 — 이 행사에서 code로 lookup. 있으면 status·note 갱신, 없으면 신규.
   for (const parsed of parseResult.slots) {
     const catId = codeToCatId.get(parsed.categoryCode);
     if (!catId) continue;
     const subId = subKeyToSubId.get(`${parsed.categoryCode}|${parsed.subcategoryNameKo}`);
     if (!subId) continue;
 
-    const existingSlot = await fetchSlotByCode(parsed.code);
+    const existingSlot = await fetchSlotByCode(parsed.code, eventId);
     if (existingSlot) {
       // status, note 갱신. categoryId/subcategoryId는 변경하지 않음 (상위 컨테이너 이동 방지)
+      // 스폰서가 확보한 구좌는 엑셀이 '판매 가능' 이어도 매진 유지 (이중판매 방지).
+      const resolved = resolveSlotStatus(
+        existingSlot,
+        parsed.isSold,
+        sponsorSlotIds.has(existingSlot.id)
+      );
+      if (resolved.kept === "sponsor") {
+        slotsSoldKept++;
+        warnings.push(
+          `구좌 ${parsed.code}: 엑셀은 '판매 가능'이지만 스폰서가 확보한 구좌라 매진 유지`
+        );
+      } else if (resolved.kept === "reserved") {
+        warnings.push(`구좌 ${parsed.code}: 엑셀로 표현할 수 없는 '예약' 상태라 그대로 유지`);
+      }
       const updates: Record<string, unknown> = {
-        status: parsed.isSold ? "sold" : "available",
+        status: resolved.status,
         note: nz(parsed.note),
       };
       writeOps.push({
@@ -747,6 +523,9 @@ async function handleMerge(input: HandlerInput): Promise<HandlerOutput> {
     }
   }
 
+  const tagWarning = unknownTagsWarning(unknownTags);
+  if (tagWarning) warnings.push(tagWarning);
+
   return {
     ops: writeOps,
     counts: {
@@ -755,14 +534,13 @@ async function handleMerge(input: HandlerInput): Promise<HandlerOutput> {
       subcategoriesWritten,
       slotsWritten,
       slotsDeleted: 0,
+      slotsSoldKept,
     },
-    preserveCount: preserveTotal,
-    deleteOpsCount: 0,
   };
 }
 
 function countSubsForCat(
-  subs: ParsedSubcategory[],
+  subs: ParseResult["subcategories"],
   catCode: string,
   upToNameKo: string
 ): number {
@@ -793,6 +571,7 @@ async function handleAddOnly(input: HandlerInput): Promise<HandlerOutput> {
   let categoriesCreated = 0;
   let subcategoriesWritten = 0;
   let slotsWritten = 0;
+  const unknownTags = new Set<string>();
 
   // 1) 카테고리 — 없는 것만 생성
   const codeToCatId = new Map<string, string>();
@@ -817,7 +596,7 @@ async function handleAddOnly(input: HandlerInput): Promise<HandlerOutput> {
         createdAt: nowTs(),
         eventId,
       };
-      const cat = buildCategory(parsed, ctx, importHistoryId, false);
+      const cat = buildCategory(parsed, ctx, importHistoryId, false, TIME);
       writeOps.push({
         kind: "set",
         ref: newRef,
@@ -829,20 +608,16 @@ async function handleAddOnly(input: HandlerInput): Promise<HandlerOutput> {
       categoriesCreated++;
 
       for (const t of parsed.tags) {
-        if (!knownTags.has(t)) {
-          warnings.push(
-            `카테고리 ${parsed.code}: 태그 "${t}" 가 taxonomy에 없습니다 — 그대로 저장`
-          );
-        }
+        if (!knownTags.has(t)) unknownTags.add(t);
       }
     }
     onProgress("preserve", i + 1, parseResult.categories.length);
   }
 
-  // 2) 슬롯 — code 존재 확인. 존재하면 스킵, 없으면 새로 생성 (소분류도 필요시 생성)
+  // 2) 슬롯 — 이 행사에 같은 code 가 있으면 스킵, 없으면 새로 생성 (소분류도 필요시 생성)
   const subKeyToSubId = new Map<string, string>();
   for (const parsed of parseResult.slots) {
-    const existing = await fetchSlotByCode(parsed.code);
+    const existing = await fetchSlotByCode(parsed.code, eventId);
     if (existing) continue; // 스킵
 
     const catId = codeToCatId.get(parsed.categoryCode);
@@ -937,6 +712,9 @@ async function handleAddOnly(input: HandlerInput): Promise<HandlerOutput> {
     slotsWritten++;
   }
 
+  const tagWarning = unknownTagsWarning(unknownTags);
+  if (tagWarning) warnings.push(tagWarning);
+
   return {
     ops: writeOps,
     counts: {
@@ -946,8 +724,6 @@ async function handleAddOnly(input: HandlerInput): Promise<HandlerOutput> {
       slotsWritten,
       slotsDeleted: 0,
     },
-    preserveCount: parseResult.categories.length,
-    deleteOpsCount: 0,
   };
 }
 
@@ -961,7 +737,8 @@ async function writeImportHistory(
   fileSize: number,
   uploadedBy: string,
   mode: ImportMode,
-  counts: ImportResult["counts"],
+  eventId: string,
+  counts: ImportCounts,
   parseErrors: ParseResult["errors"],
   parseWarnings: ParseResult["warnings"],
   importerWarnings: string[]
@@ -990,8 +767,9 @@ async function writeImportHistory(
     });
   }
 
-  const history: ImportHistory = {
+  const history: ImportHistory & { eventId: string } = {
     id: importHistoryId,
+    eventId,
     fileName,
     fileSize,
     uploadedBy,
@@ -1025,7 +803,7 @@ export async function importParsedData(
   uploadedBy: string,
   fileName: string,
   fileSize: number,
-  eventId: string,         // 행사 분리 — 모든 신규 도큐먼트에 태깅
+  eventId: string, // 행사 분리 — 모든 신규 도큐먼트에 태깅
   onProgress?: ImportProgress
 ): Promise<ImportResult> {
   const errors: ImportError[] = [];
@@ -1037,17 +815,11 @@ export async function importParsedData(
       phase: "init",
       reason: `엑셀 파싱 단계에서 ${parseResult.errors.length}건의 에러가 있습니다. 먼저 수정하세요.`,
     });
-    return {
-      importHistoryId: "",
-      counts: {
-        categoriesCreated: 0,
-        categoriesUpdated: 0,
-        subcategoriesWritten: 0,
-        slotsWritten: 0,
-        slotsDeleted: 0,
-      },
-      errors,
-    };
+    return { importHistoryId: "", counts: { ...EMPTY_COUNTS }, errors, warnings: [] };
+  }
+  if (!eventId) {
+    errors.push({ phase: "init", reason: "행사가 선택되지 않았습니다." });
+    return { importHistoryId: "", counts: { ...EMPTY_COUNTS }, errors, warnings: [] };
   }
 
   const db = getDb();
@@ -1055,27 +827,22 @@ export async function importParsedData(
 
   let state: ExistingState;
   let knownTags: Set<string>;
+  let sponsorSlotIds: Set<string>;
   try {
-    [state, knownTags] = await Promise.all([
+    [state, knownTags, sponsorSlotIds] = await Promise.all([
       fetchExistingCategories(eventId),
-      fetchKnownTagIds(),
+      fetchKnownTagIds(eventId),
+      // 스폰서 확보 구좌를 못 읽으면 매진 보호가 불가능 — 아래 catch 로 중단
+      fetchSponsorSlotIds(eventId),
     ]);
   } catch (e) {
     errors.push({
       phase: "preserve",
-      reason: `기존 데이터 조회 실패: ${e instanceof Error ? e.message : String(e)}`,
+      reason: `기존 데이터 조회 실패 (스폰서 확보 구좌 보호를 위해 임포트를 중단했습니다): ${
+        e instanceof Error ? e.message : String(e)
+      }`,
     });
-    return {
-      importHistoryId,
-      counts: {
-        categoriesCreated: 0,
-        categoriesUpdated: 0,
-        subcategoriesWritten: 0,
-        slotsWritten: 0,
-        slotsDeleted: 0,
-      },
-      errors,
-    };
+    return { importHistoryId, counts: { ...EMPTY_COUNTS }, errors, warnings: [] };
   }
 
   // 모드 분기
@@ -1087,6 +854,7 @@ export async function importParsedData(
       knownTags,
       importHistoryId,
       eventId,
+      sponsorSlotIds,
       onProgress: progress,
       warnings: importerWarnings,
     };
@@ -1100,14 +868,9 @@ export async function importParsedData(
     });
     return {
       importHistoryId,
-      counts: {
-        categoriesCreated: 0,
-        categoriesUpdated: 0,
-        subcategoriesWritten: 0,
-        slotsWritten: 0,
-        slotsDeleted: 0,
-      },
+      counts: { ...EMPTY_COUNTS },
       errors,
+      warnings: importerWarnings,
     };
   }
 
@@ -1125,6 +888,7 @@ export async function importParsedData(
       importHistoryId,
       counts: output.counts,
       errors,
+      warnings: importerWarnings,
     };
   }
 
@@ -1137,6 +901,7 @@ export async function importParsedData(
       fileSize,
       uploadedBy,
       mode,
+      eventId,
       output.counts,
       parseResult.errors,
       parseResult.warnings,
@@ -1154,5 +919,6 @@ export async function importParsedData(
     importHistoryId,
     counts: output.counts,
     errors,
+    warnings: importerWarnings,
   };
 }

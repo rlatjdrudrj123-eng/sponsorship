@@ -150,8 +150,11 @@ export default function ImportPage() {
         );
       } else {
         setHistoryKey((k) => k + 1);
-        // 성공 메시지 잠깐 보여주고 카테고리 페이지로 이동
-        setTimeout(() => router.push("/admin/categories"), 1500);
+        // 확인할 사항이 없을 때만 자동 이동 — 있으면 사용자가 읽고 직접 이동
+        // (보호한 구좌·이름 변경 처리 같은 경고가 화면에서 바로 사라지지 않게)
+        if (result.warnings.length === 0) {
+          setTimeout(() => router.push("/admin/categories"), 1500);
+        }
       }
     } catch (e) {
       setUploadError(e instanceof Error ? e.message : String(e));
@@ -309,12 +312,47 @@ export default function ImportPage() {
               )}
 
               {uploadResult && uploadResult.errors.length === 0 && (
-                <div className="bg-brand-50 border border-brand-100 rounded-btn p-4 text-sm text-brand-700">
-                  ✓ 업로드 완료 — 카테고리{" "}
-                  {uploadResult.counts.categoriesCreated +
-                    uploadResult.counts.categoriesUpdated}
-                  개, 소분류 {uploadResult.counts.subcategoriesWritten}개, 슬롯{" "}
-                  {uploadResult.counts.slotsWritten}개. 잠시 후 카테고리 페이지로 이동합니다.
+                <div className="bg-brand-50 border border-brand-100 rounded-btn p-4 text-sm text-brand-700 space-y-1">
+                  <div>
+                    ✓ 업로드 완료 — 카테고리{" "}
+                    {uploadResult.counts.categoriesCreated +
+                      uploadResult.counts.categoriesUpdated}
+                    개, 소분류 {uploadResult.counts.subcategoriesWritten}개, 구좌{" "}
+                    {uploadResult.counts.slotsWritten}개
+                    {uploadResult.counts.slotsDeleted > 0 &&
+                      ` · 엑셀에서 빠진 구좌 ${uploadResult.counts.slotsDeleted}개 삭제`}
+                  </div>
+                  {((uploadResult.counts.slotsKeptReferenced ?? 0) > 0 ||
+                    (uploadResult.counts.slotsSoldKept ?? 0) > 0) && (
+                    <div className="text-[12.5px]">
+                      연결된 구좌 보호 — 삭제하지 않은 구좌{" "}
+                      {uploadResult.counts.slotsKeptReferenced ?? 0}개 · 매진 유지{" "}
+                      {uploadResult.counts.slotsSoldKept ?? 0}개
+                    </div>
+                  )}
+                  {uploadResult.warnings.length === 0 && (
+                    <div className="text-[12.5px]">잠시 후 카테고리 페이지로 이동합니다.</div>
+                  )}
+                </div>
+              )}
+
+              {uploadResult && uploadResult.errors.length === 0 && uploadResult.warnings.length > 0 && (
+                <div className="bg-amber-50 border border-amber-200 rounded-btn p-4 text-[12.5px] text-amber-900">
+                  <div className="font-bold mb-2">
+                    확인할 사항 {uploadResult.warnings.length}건
+                  </div>
+                  <ul className="space-y-1 max-h-72 overflow-y-auto list-disc pl-4 break-keep">
+                    {uploadResult.warnings.map((w, i) => (
+                      <li key={i}>{w}</li>
+                    ))}
+                  </ul>
+                  <button
+                    type="button"
+                    onClick={() => router.push("/admin/categories")}
+                    className="mt-3 px-3 py-1.5 rounded-btn bg-ink-900 text-white text-[12px] font-semibold hover:bg-ink-700"
+                  >
+                    카테고리로 이동
+                  </button>
                 </div>
               )}
             </>
@@ -335,6 +373,12 @@ export default function ImportPage() {
               <GuideItem>마감 컬럼은 TRUE/FALSE 또는 마감/가능</GuideItem>
               <GuideItem>가격은 숫자만 (콤마 OK)</GuideItem>
               <GuideItem>핀 좌표는 어드민 화면에서 직접 찍습니다</GuideItem>
+              <GuideItem>
+                다시 올려도 스폰서 확보 구좌·도면 핀·패키지 구성 연결과 진단 점수·페르소나·이미지는 유지됩니다
+              </GuideItem>
+              <GuideItem>
+                엑셀에서 뺀 구좌는 삭제되지만, 스폰서·패키지·도면에 연결된 구좌는 남기고 알려드립니다
+              </GuideItem>
             </ul>
             <div className="mt-3 p-3 rounded-btn bg-ink-900 text-white text-[12px]">
               매년 행사 마감 후 엑셀만 새로 받아 재업로드하면 끝.
