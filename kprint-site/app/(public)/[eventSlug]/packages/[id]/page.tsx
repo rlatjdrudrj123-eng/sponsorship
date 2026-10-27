@@ -51,7 +51,13 @@ export default function PackageDetailPage() {
             query(collection(db, "slots"), where("eventId", "==", eventId))
           ),
           getDocs(
-            query(collection(db, "categories"), where("eventId", "==", eventId))
+            // isPublished 조건 필수 — 보안 규칙상 비로그인 방문자는 공개 카테고리만 읽을 수 있어서
+            // 조건이 없으면 쿼리 전체가 권한 오류로 실패한다 (사진 없음 + K-PRINT 기본 혜택 폴백).
+            query(
+              collection(db, "categories"),
+              where("eventId", "==", eventId),
+              where("isPublished", "==", true)
+            )
           ),
           getDoc(doc(db, "siteSettings", eventId)),
         ]);

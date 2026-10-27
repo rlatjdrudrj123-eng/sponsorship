@@ -52,11 +52,14 @@ export function Footer({ settings }: { settings: SiteSettings | null }) {
                 </>
               ) : null}
             </p>
-            <p className="mt-4 text-[12px] text-ink-500 leading-relaxed max-w-sm">
-              {isEn
-                ? "Korea's largest exhibition gathering professionals across the print · label · packaging industries."
-                : "인쇄·라벨·패키징 산업 종사자를 한 자리에 모으는 국내 최대 규모 전시회."}
-            </p>
+            {/* 행사 소개 한 줄 — K-PRINT 문구라 K-PRINT(kprint-*) 행사에만 (closing.ts 와 같은 분기) */}
+            {eventId.startsWith("kprint") && (
+              <p className="mt-4 text-[12px] text-ink-500 leading-relaxed max-w-sm">
+                {isEn
+                  ? "Korea's largest exhibition gathering professionals across the print · label · packaging industries."
+                  : "인쇄·라벨·패키징 산업 종사자를 한 자리에 모으는 국내 최대 규모 전시회."}
+              </p>
+            )}
           </div>
 
           {/* 사무국 연락처 */}
